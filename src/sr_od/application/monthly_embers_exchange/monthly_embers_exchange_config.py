@@ -26,9 +26,21 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
             if field not in self.data:
                 self.data[field] = default
 
+    @staticmethod
+    def _as_bool(value) -> bool:
+        """MCP set 以字符串透传(value 原样落盘),读取口归一防 str 混入分支。"""
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in ('true', '1', 'yes', 'on')
+
+    @staticmethod
+    def _as_int(value) -> int:
+        """同上:优先级参与排序,字符串会让 str/int 混比崩溃。"""
+        return int(value)
+
     @property
     def special_pass_enabled(self) -> bool:
-        return self.get('special_pass_enabled', True)
+        return self._as_bool(self.get('special_pass_enabled', True))
 
     @special_pass_enabled.setter
     def special_pass_enabled(self, new_value: bool) -> None:
@@ -36,7 +48,7 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
 
     @property
     def special_pass_priority(self) -> int:
-        return self.get('special_pass_priority', 10)
+        return self._as_int(self.get('special_pass_priority', 10))
 
     @special_pass_priority.setter
     def special_pass_priority(self, new_value: int) -> None:
@@ -44,7 +56,7 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
 
     @property
     def pass_enabled(self) -> bool:
-        return self.get('pass_enabled', True)
+        return self._as_bool(self.get('pass_enabled', True))
 
     @pass_enabled.setter
     def pass_enabled(self, new_value: bool) -> None:
@@ -52,7 +64,7 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
 
     @property
     def pass_priority(self) -> int:
-        return self.get('pass_priority', 20)
+        return self._as_int(self.get('pass_priority', 20))
 
     @pass_priority.setter
     def pass_priority(self, new_value: int) -> None:
@@ -60,7 +72,7 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
 
     @property
     def tracks_of_destiny_enabled(self) -> bool:
-        return self.get('tracks_of_destiny_enabled', True)
+        return self._as_bool(self.get('tracks_of_destiny_enabled', True))
 
     @tracks_of_destiny_enabled.setter
     def tracks_of_destiny_enabled(self, new_value: bool) -> None:
@@ -68,7 +80,7 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
 
     @property
     def tracks_of_destiny_priority(self) -> int:
-        return self.get('tracks_of_destiny_priority', 30)
+        return self._as_int(self.get('tracks_of_destiny_priority', 30))
 
     @tracks_of_destiny_priority.setter
     def tracks_of_destiny_priority(self, new_value: int) -> None:
