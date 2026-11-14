@@ -1015,8 +1015,8 @@ _STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int, int]] = {
     # 轮回不止(id 332201):卡文「获得【白厄】和一件【轮回者】装备」效果条目1
     # 直读行——「获得…角色名」具名直读判据,白厄 ∈ CHARACTER_ROSTER
     # (cw_chars 注册,3 费独立单位);「一件【轮回者】装备」效果条目零建模 +
-    # 披露键 = cw_investments.STRATEGY_REINCARNATOR_UNMODELED 申报
-    # (轮回者四面零数据,禁猜);「进入第二/三位面时再获得一次」重复效果条目
+    # 原披露键 STRATEGY_REINCARNATOR_UNMODELED 已随轮回不止
+    # v4.7 退场删除(T-5,考古走 git 历史;本死条目挂账建模期批清);「进入第二/三位面时再获得一次」重复效果条目
     # 另表 = cw_investments.STRATEGY_PLANE_START_CHAR_GRANTS 位面开始
     # 角色子形专表分治(同卡两表,获得时点/位面开始两时点分域);
     # 白厄星级 1 = 星级先验家族口径( roster 单位,异于佩佩族 cost0 占位)。
