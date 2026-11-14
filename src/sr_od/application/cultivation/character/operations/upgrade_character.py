@@ -602,30 +602,34 @@ class UpgradeCharacterOp(SrOperation):
         → until 结果框「关闭」按钮出现(结果框为独立画面「快速刷取结果弹窗」,
         与确认框同名不同位;结果框出现 = 领奖完成)。
 
-        记账口径:轮数与消耗在确认点击生效(helper 返回 success)后才记账
-        ——确认点击未生效的 WAIT 重入轮只重发确认,不重复设次数、不重复
-        计数;确认被开拓力不足拦截时回滚本轮记账(未成交)。"""
+        记账口径(幂等,以 _farm_times_set 非零为未记账判据):确认点击生效
+        的两个等效证据 = 重入轮看到结果框(领奖完成,主记账点)/ helper 返回
+        success——带 until 的 helper 一次调用只点击一次、until 验证在下一次
+        调用开头,重入时结果框探测先于 helper 命中,记账必须两处共用
+        _settle_farm_accounting,只挂 helper success 则生产时序下不可达
+        (预算失效+统计恒 0);确认被开拓力不足拦截 = 本轮未成交未记账,
+        作废本轮次数记录即可,不动历史账。"""
         screen = self.last_screenshot
         # WAIT 重入幂等:带 until 的 round_by_find_and_click_area 未等到锚时
         # 以 WAIT 返回,引擎会原样重跑本节点——重入时确认点击已发出,按画面态
-        # 分流:开拓力补充弹窗在 = 券已扣但开拓力不够,刷取被拦,显式判停
-        # (WAIT 循环无重试上限,不判停会空转烧穿预算);结果框在 = 刷取完成
-        # 交返回分类;两弹窗都不在 = 刷取进行中慢询等待;只有确认框在才执行
-        # 次数设置与确认点击
+        # 分流:结果框在 = 领奖完成(主记账点);开拓力补充弹窗在 = 确认被拦,
+        # 本轮未成交,作废次数记录(WAIT 循环无重试上限,不判停会空转烧穿
+        # 预算;补充弹窗「确认」是星琼购开拓力,永不触碰);两弹窗都不在 =
+        # 刷取进行中慢询等待;只有确认框在才执行次数设置与确认点击
         if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
-            self._farm_draws -= self._farm_times_set  # 本轮未成交,回滚确认前记账
-            self._farm_times_set = 0
+            self._farm_times_set = 0  # 未成交未记账,本轮作废,不动历史账
             self._capped = True
             self._stop_status = 'POWER_CAPPED'
             log.info('晋阶: 确认已发出但被开拓力不足拦截,本轮未成交——'
                      '原路清场返回详情页(可待开拓力恢复后续跑)')
             return self.round_success(status='POWER_BLOCKED', wait=2)
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
+            self._settle_farm_accounting()
             return self.round_success(status='RESULT_OPEN', wait=1.5)
         if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
             return self.round_wait('刷取执行中,等结果框', wait=2)
         # 确认框在:次数未设则先设;已设(重入:确认点击未生效)跳过设次数
-        # 只重发确认——记账在确认点击生效后才发生,重入轮不重计
+        # 只重发确认
         if self._farm_times_set == 0:
             set_result = self._set_farm_times(self.farm_times_per_round)
             if not set_result.is_success:
@@ -636,15 +640,23 @@ class UpgradeCharacterOp(SrOperation):
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
         if result.is_success:
-            self._farm_rounds += 1
-            self._farm_draws += self._farm_times_set
-            log.info('晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
-                     '券免战斗开拓力照扣)',
-                     self._farm_rounds, self._farm_times_set,
-                     self._farm_times_set * _FARM_TRAILBLAZE_PER,
-                     self._farm_times_set * _FARM_TICKET_PER)
-            self._farm_times_set = 0  # 本轮已记账归零,防后续重入重复记账
+            self._settle_farm_accounting()
         return result
+
+    def _settle_farm_accounting(self) -> None:
+        """本轮券刷取记账(幂等):确认点击生效的两个等效证据(重入轮看到
+        结果框 / helper 返回 success)共用;以 _farm_times_set 非零为未记账
+        判据,记账后归零,WAIT 重入轮不会重复计。"""
+        if self._farm_times_set == 0:
+            return
+        self._farm_rounds += 1
+        self._farm_draws += self._farm_times_set
+        log.info('晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
+                 '券免战斗开拓力照扣)',
+                 self._farm_rounds, self._farm_times_set,
+                 self._farm_times_set * _FARM_TRAILBLAZE_PER,
+                 self._farm_times_set * _FARM_TICKET_PER)
+        self._farm_times_set = 0
 
     def _set_farm_times(self, target: int) -> OperationRoundResult:
         """快速刷取确认框内把次数设到目标:target=-1 = 点「^」拉满(滑条
