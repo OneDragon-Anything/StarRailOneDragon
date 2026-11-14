@@ -83,6 +83,12 @@ def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
             if names:
                 name = rng.choice(names)
                 ch = get_char(name)
+                if ch is None:
+                    # 出口产未注册名(观测噪声/桩残留):无羁绊无费用语义,
+                    # 拒绝产卡 → 槽留空(与名集空分支同语义;旧 dict 缺键
+                    # KeyError 同为拒绝产卡,非崩映射)。注册名路径随机数
+                    # 消耗序列不受影响(守卫分支先于 2★ 掷点)。
+                    continue
                 star = 1
                 if two_star_p > 0 and rng.random() < two_star_p:
                     star = 2
@@ -159,6 +165,11 @@ def sample_shop_deal_forced(gs: GameState, rng: random.Random, *, cost: int,
             slots.append(ShopSlot(kind='empty'))
             continue
         ch = get_char(name)
+        if ch is None:
+            # 出口产未注册名(观测噪声/桩残留):拒绝产卡 → 槽留空(与
+            # 名集空分支同语义;旧 dict 缺键 KeyError 同为拒绝产卡)。
+            slots.append(ShopSlot(kind='empty'))
+            continue
         star = 1
         if two_star_p > 0 and rng.random() < two_star_p:
             star = 2

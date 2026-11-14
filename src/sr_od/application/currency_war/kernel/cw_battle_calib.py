@@ -68,10 +68,10 @@ def _board_factions_of(deployed) -> dict[str, int]:
     选边单边计入(基数 = 其余在场角色注册表出身,不含装备贡献)。
     """
     from sr_od.application.currency_war.data.cw_chars import (
-        CHARACTERS as _CH,
+        SIDE_PICK_DUAL_BONDS as _SP,
     )
     from sr_od.application.currency_war.data.cw_chars import (
-        SIDE_PICK_DUAL_BONDS as _SP,
+        get_char as _get_char,
     )
     from sr_od.application.currency_war.data.cw_chars import (
         side_pick_bond as _side_pick,
@@ -80,7 +80,7 @@ def _board_factions_of(deployed) -> dict[str, int]:
     units = [d for d in (deployed or []) if d is not None]
     cids = [str(getattr(d, 'char_id', '') or '') for d in units]
     for cid in cids:
-        ch = _CH.get(cid) if cid else None
+        ch = _get_char(cid) if cid else None
         if ch is None:
             continue
         if cid in _SP:
