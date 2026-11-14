@@ -152,6 +152,7 @@ class UpgradeLightConeOp(SrOperation):
         self._capped: bool = False          #: 材料不足已判停(回光锥 TAB 收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的光锥等级(报告用)
         self._stop_status: str = 'LIGHT_CONE_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
+        self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取分流有界自旋用)
         self._farm_rounds: int = 0          #: 已执行的刷取轮数(预算控制;券轮=1次确认框,手动轮=1场)
         self._farm_draws: int = 0           #: 券刷累计次数(券消耗;确认框实际设到的次数)
         self._manual_fights: int = 0        #: 手动战斗场数(开拓力消耗)
@@ -481,7 +482,14 @@ class UpgradeLightConeOp(SrOperation):
                 pre_delay=0.5, success_wait=1.5, retry_wait=2,
             )
             if result.is_success:
+                self._farm_dialog_wait_rounds = 0
                 return self.round_success(status='USE_TICKET')
+            # 确认框偶发不开:helper 的 WAIT 返回无重试上限,原样返回会无限
+            # 自旋——连等超限 = 异常现场,留证后显式失败
+            self._farm_dialog_wait_rounds += 1
+            if self._farm_dialog_wait_rounds >= 4:
+                self.save_screenshot(prefix='副本刷取分流')
+                return self.round_fail('快速刷取确认框连续未打开,现场已截图')
             return result
         # 副本态锚(「拟造花萼」标题)在场才点挑战;否则(编队态/战斗态/结算态)
         # 直接交手动战斗节点分类——⚠️「挑战按钮」area 的 rect/text 与编队画面
