@@ -8,7 +8,7 @@
 **合成机理**:2 件「基础件」合成 1 件「进阶」。注册表每件进阶的 recipes 列出
 组件名组;两组件相同=自配(a×2),不同=交叉。派生规则::
 
-    进阶配方集 = {name: eq.recipes | eq.category == '进阶' 且 eq.recipes 非空}
+    进阶配方集 = {name: eq.recipes | eq.category == '进阶装备' 且 eq.recipes 非空}
       —— 星徽/宝钻的 recipes(红钻/蓝钻系、三路宝钻)不属基础件两合图谱,按类别排除。
     自配:recipe[0] == recipe[1];交叉:recipe[0] != recipe[1]。
     GUANGNENG_* 视图 = 配方中含「光能电池」的子集(与 7 标准件的分组管理口径,
@@ -24,8 +24,9 @@
 **K8 闭合**(派生后的结构事实):8 件基础件(7 标准简易 + 光能电池)两两合成图完整
 闭合:C(8,2)=28 交叉 + 8 自配 = 36 件进阶全量。
 
-**以太钻头 类别怪癖**:米游社 equipment.md 归「进阶」,但注册表按图鉴归「简易」
-(作合成基础件)——以官方 API 类别为准。
+**基础件登记形态(单源)**:官方 API ``equipment_list`` 无简易件条目(合成材料
+层),8 件基础件在注册表以 compose_list 子件派生的「简易装备」条目登记
+(含以太钻头——派生层分类是派生值非官方类,不存在跨源类别分叉)。
 """
 from __future__ import annotations
 
@@ -37,9 +38,10 @@ _GUANGNENG_BASE: str = '光能电池'
 
 # 进阶层的合成配方(名称 → 组件元组的元组),派生自注册表官方 compose_list。
 # 排除星徽/宝钻:它们的 recipes 是红钻/蓝钻系或三路合成,不属「两基础件→一进阶」图谱。
+# 过滤判据 = 官方分类名直落(注册表 category 值 = plaza category_name 原样)。
 _ADVANCE_RECIPES: dict[str, tuple[tuple[str, ...], ...]] = {
     _name: _eq.recipes for _name, _eq in EQUIPMENTS.items()
-    if _eq.category == '进阶' and _eq.recipes
+    if _eq.category == '进阶装备' and _eq.recipes
 }
 
 # 全量拆分:自配(a==b)/交叉(a!=b)。当前数据每件进阶恰 1 条配方;若未来出现
@@ -57,7 +59,7 @@ for _adv, _recipes in _ADVANCE_RECIPES.items():
 _ALL_BASES: frozenset[str] = frozenset(
     _comp for _recipes in _ADVANCE_RECIPES.values() for _r in _recipes for _comp in _r)
 
-# 7 件标准基础件(图鉴简易 tab 口径,不含光能电池;类别「简易」全集 − 光能电池)。
+# 7 件标准基础件(全量基础件 − 光能电池的光能电池系切分口径,不含光能电池)。
 SYNTHESIS_BASES: frozenset[str] = frozenset(_ALL_BASES - {_GUANGNENG_BASE})
 
 # 交叉配方:进阶名 → (基础件_a,基础件_b),不含光能电池系的 21 个(C(7,2))。
