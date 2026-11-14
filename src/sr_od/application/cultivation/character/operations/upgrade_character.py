@@ -162,7 +162,7 @@ class UpgradeCharacterOp(SrOperation):
         self._capped_level: int | None = None  #: 判停时的当前等级(报告用)
         self._stop_status: str = 'MATERIAL_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取有界自旋用)
-        self._farm_window_wait_rounds: int = 0  #: 资源窗口连开失败的连续等待轮数(快速刷取静默无反应有界自旋用)
+        self._farm_window_wait_rounds: int = 0  #: 资源窗口连开失败的连续等待轮数(快速刷取 toast 漏检兜底自旋用)
         self._squad_clicked: bool = False   #: 编队钮已点击待生效标志(计场数在离开编队态时发生,点击无效的重入轮不重计)
         self._start_level: int | None = None  #: 首入晋阶界面读到的起始等级(收尾报告「起始→结束」口径)
         self._banner_seen: bool = False    #: 横幅沿计数标志(关闭点击未生效的 WAIT 重入轮不重计)
@@ -514,18 +514,28 @@ class UpgradeCharacterOp(SrOperation):
     def open_farm_window(self) -> OperationRoundResult:
         """界面左下点「快速刷取」→「培养还需获取资源」窗口(until=窗口标题)。
 
-        ⚠️ 按钮禁用盲区:无可刷缺口时按钮白底可 OCR,点击被游戏拒绝并弹
-        短暂 toast 提示(帧短,截图轮从未捕获——故不靠 toast 判定)——
-        点击「假成功」但窗口不开时 helper 恒以 WAIT 返回(不计重试),
-        原样透传会无界自旋挂死一条龙。按钮真消失(not-found 的 RETRY)
-        与静默无反应(WAIT)同由连等封顶收口判停:第 4 轮封顶先于引擎
-        重试预算生效(第 3 次 RETRY 后引擎仍重跑本节点,不转 FAIL);
+        ⚠️ 无可刷缺口形态:缺口可由合成覆盖时按钮白底可 OCR 可点,点击
+        被游戏拒绝并弹 toast(实测显示 1~2s)——正判:前两个轮探测 toast
+        (首轮无害预探+首次点击后的重入轮,帧落 toast 可见窗;计数 ≥2
+        抑制——慢开窗时冗余二次点击被拒再弹的 toast 不得误读为无可刷
+        缺口),命中即判停收口;helper 的 WAIT(not-found 的 RETRY 同)
+        不计重试,toast 漏检由连等 4 轮封顶兜底判停(第 4 轮先于引擎
+        重试预算生效,第 3 次 RETRY 后引擎仍重跑本节点不转 FAIL);
         is_fail 仅「区域未配置」可达(全区已建档,兜底防线)。"""
         screen = self.last_screenshot
+        if self._farm_window_wait_rounds <= 1 and self.round_by_find_area(
+                screen, _ASCEND_SCREEN, '提示-无可刷缺口').is_success:
+            self._farm_window_wait_rounds = 0
+            self._capped = True
+            self._stop_status = 'MATERIAL_CAPPED'
+            self.save_screenshot(prefix='快速刷取无可刷缺口')
+            log.info('晋阶: 无可刷缺口(游戏 toast 命中),判停收尾——'
+                     '可改用 fill_generic 通用材料补全路线')
+            return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
         result = self.round_by_find_and_click_area(
             screen, _ASCEND_SCREEN, '按钮-快速刷取',
             until_find_all=[(_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+            pre_delay=0.5, success_wait=0.3, retry_wait=2,
         )
         if result.is_success:
             self._farm_window_wait_rounds = 0
@@ -539,8 +549,8 @@ class UpgradeCharacterOp(SrOperation):
                          '可改用 fill_generic 通用材料补全路线', result.status)
             else:
                 self.save_screenshot(prefix='打开资源窗口')
-                log.info('晋阶: 资源窗口连续未打开(快速刷取静默无反应/'
-                         '无可刷缺口),现场已截图,判停收尾——可改用 '
+                log.info('晋阶: 资源窗口连续未打开(toast 漏检,兜底封顶),'
+                         '现场已截图,判停收尾——可改用 '
                          'fill_generic 通用材料补全路线')
             return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
         self._farm_window_wait_rounds += 1
