@@ -16,9 +16,9 @@
 
 ## 3. 配置
 
-`MonthlyEmbersExchangeConfig`(ApplicationConfig,`config/<idx>/<group>/monthly_embers_exchange.yml`):三件套各 `enabled` + `priority`(默认全开,优先级 10/20/30 = 专票>通票>足迹)。数量固定拉满不可配(用户裁定)。
+`MonthlyEmbersExchangeConfig`(ApplicationConfig,`config/<idx>/<group>/monthly_embers_exchange.yml`):三件套各一个 `enabled` 开关(默认全开)+ 一条 `exchange_order` 兑换顺序清单(默认 专票>通票>足迹,canonical 序;读取时自愈:缺失补尾/未知剔除/去重)。数量固定拉满不可配(用户裁定)。
 
-读写通道:GUI(一条龙→每月余烬兑换页)、MCP(`describe_config`/`get_config`/`set_config`,经 config_router 登记)、运行时(factory 缓存实例,三者同一份,写立即生效)。
+读写通道:GUI(一条龙→设置→每月余烬兑换分组,顺序为**拖拽排序卡**,方案 A 2026-11-14)、MCP(`describe_config`/`get_config`/`set_config` 写开关;`exchange_order` 为全排列语义,只读——写入走 GUI 拖拽)、运行时(factory 缓存实例,三者同一份,写立即生效)。
 
 ## 4. 组成与文档
 

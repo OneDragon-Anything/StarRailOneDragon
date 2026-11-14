@@ -3,7 +3,8 @@
 编排(design: docs/develop/sr_od/application/monthly_embers_exchange/
 changes/v1-initial/application-flow.md,四段式):
     ① 导航段 OpenExchangeShop(任意画面 → 兑换商店列表页)
-    ② 兑换段 按配置优先级逐项 ExchangeShopBuyGoods(count=None 拉满),
+    ② 兑换段 按配置顺序(exchange_order 清单 + 开关)逐项
+       ExchangeShopBuyGoods(count=None, scroll_search=False):
        按购买 op 的 data.fail_status 分支:
        售罄/不可购/未找到 → 跳过记 skip_note 继续;
        余额不足 → 终止循环,其后项记 SKIP_BALANCE(用户裁定:换到换不动为止);
@@ -39,9 +40,6 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 from sr_od.operations.store.open_exchange_shop import OpenExchangeShop
 
-GOODS_FIXED_ORDER: list[str] = ['special_pass', 'pass', 'tracks_of_destiny']
-"""同优先级时的兜底顺序:专票 > 通票 > 足迹(用户裁定 2026-11-13 第 8 条)"""
-
 SKIP_BALANCE: str = 'SKIP_BALANCE'
 """余额不足终止循环后,未尝试项在 skip_note 中的标记(区别于尝试后的
 INSUFFICIENT_MATERIALS:该项从未进弹窗)"""
@@ -58,17 +56,21 @@ _CLASSIFY_SKIP: set[str] = {'SOLD_OUT', 'CARD_UNAVAILABLE', 'NOT_FOUND'}
 
 
 def resolve_exchange_order(
-        items: list[tuple[str, bool, int]]) -> list[str]:
-    """兑换项解析:过滤关闭项,按 (priority 升序, 固定序兜底) 排出兑换顺序。
+        order: list[str], enabled: dict[str, bool]) -> list[str]:
+    """兑换顺序解析:顺序清单按开关过滤(纯函数,测试锁定)。
 
-    :param items: (英文标识符, 开关, 优先级) 列表
-    :return: 已排序的英文标识符列表
+    :param order: 配置的兑换顺序清单(英文标识符;config.exchange_order
+        已做过缺失补尾/未知剔除/去重自愈,本函数再防一层:未知项按关闭处理)
+    :param enabled: 各商品开关(键=英文标识符;未收录键视作关闭)
+    :return: 实际兑换顺序
     """
-    fixed_idx = {goods: idx for idx, goods in enumerate(GOODS_FIXED_ORDER)}
-    enabled = [item for item in items if item[1]]
-    enabled.sort(key=lambda item: (item[2], fixed_idx.get(item[0],
-                                                        len(fixed_idx))))
-    return [item[0] for item in enabled]
+    result: list[str] = []
+    for goods in order:
+        if goods in result:
+            continue
+        if enabled.get(goods, False):
+            result.append(goods)
+    return result
 
 
 def classify_purchase_result(
@@ -133,13 +135,9 @@ class MonthlyEmbersExchangeApp(SrApplication):
         skip_note 与购买数量逐项即时写入运行记录;UNEXPECTED_FAIL 不在此
         终结,转失败收尾节点尽力返回大世界后带原始语境 FAIL。
         """
-        items: list[tuple[str, bool, int]] = [
-            (goods,
-             getattr(self._config, f'{goods}_enabled'),
-             getattr(self._config, f'{goods}_priority'))
-            for goods in GOODS_FIXED_ORDER
-        ]
-        order = resolve_exchange_order(items)
+        enabled = {goods: getattr(self._config, f'{goods}_enabled')
+                   for goods in monthly_embers_exchange_const.MONTHLY_GOODS}
+        order = resolve_exchange_order(self._config.exchange_order, enabled)
         stop_idx: int | None = None
         for idx, goods in enumerate(order):
             # scroll_search=False(用户优化 2026-11-14):月限三件套可用排前、

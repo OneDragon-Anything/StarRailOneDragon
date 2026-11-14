@@ -316,7 +316,7 @@ def _echo_of_war_update(config: object, item_id: str, item: object) -> bool:
     return config.update_plan_by_mission_id(item_id, item)  # type: ignore[attr-defined]
 
 
-# === monthly_embers_exchange helpers(每月余烬兑换,field-only 六字段) ===
+# === monthly_embers_exchange helpers(每月余烬兑换,field-only 三开关) ===
 
 def _monthly_embers_exchange_get_config(
     ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
@@ -440,9 +440,11 @@ def _build_routes() -> dict[str, RouterEntry]:
         ),
         'monthly_embers_exchange': RouterEntry(
             app_id='monthly_embers_exchange',
-            description='每月余烬兑换:余烬兑换 tab 月限三件套(星轨专票/星轨通票/命运的足迹)的开关与优先级;'
+            description='每月余烬兑换:余烬兑换 tab 月限三件套(星轨专票/星轨通票/命运的足迹)的开关;'
                         '纯字段配置无列表项(set 直改字段,下一次 run 立即生效);'
-                        '数量固定拉满不可配(用户裁定)',
+                        '数量固定拉满不可配(用户裁定);'
+                        '兑换顺序 exchange_order 为三件套全排列(get data 可读),'
+                        '写入走 GUI 拖拽排序(排列语义与通用清单增删工具不匹配,不开放)',
             item_from_dict=_noop_item_from_dict,
             get_config=_monthly_embers_exchange_get_config,
             validate_item=lambda ctx, item: None,  # field-only:无列表项可校验
@@ -453,11 +455,8 @@ def _build_routes() -> dict[str, RouterEntry]:
             supported_ops=('get', 'set', 'describe'),
             field_schema={
                 'special_pass_enabled': {'type': 'bool', 'desc': '兑换 星轨专票(90余烬/张,月限5) 开关'},
-                'special_pass_priority': {'type': 'int', 'desc': '星轨专票优先级(升序兑换,默认10最高)'},
                 'pass_enabled': {'type': 'bool', 'desc': '兑换 星轨通票(90余烬/张,月限额度动态) 开关'},
-                'pass_priority': {'type': 'int', 'desc': '星轨通票优先级(默认20)'},
                 'tracks_of_destiny_enabled': {'type': 'bool', 'desc': '兑换 命运的足迹(60余烬/张,月限1) 开关'},
-                'tracks_of_destiny_priority': {'type': 'int', 'desc': '命运的足迹优先级(默认30)'},
             },
         ),
     }

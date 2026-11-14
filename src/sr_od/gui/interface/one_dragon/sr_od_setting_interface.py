@@ -1,4 +1,10 @@
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QListWidget,
+    QListWidgetItem,
+    QWidget,
+)
 from qfluentwidgets import FluentIcon, SettingCardGroup
 
 from one_dragon.base.operation.application import application_const
@@ -7,13 +13,57 @@ from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.setting_card.combo_box_setting_card import (
     ComboBoxSettingCard,
 )
-from one_dragon_qt.widgets.setting_card.spin_box_setting_card import SpinBoxSettingCard
+from one_dragon_qt.widgets.setting_card.multi_push_setting_card import (
+    MultiLineSettingCard,
+)
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
 from one_dragon_qt.widgets.setting_card.yaml_config_adapter import YamlConfigAdapter
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    MONTHLY_TRIO,
+)
 from sr_od.application.monthly_embers_exchange import monthly_embers_exchange_const
 from sr_od.application.relic_salvage.relic_salvage_config import RelicLevelEnum
 from sr_od.context.sr_context import SrContext
+
+
+class ExchangeOrderCard(MultiLineSettingCard):
+    """兑换顺序卡:月限三件套的执行顺序,拖动行即改(config.exchange_order)。
+
+    仅「余烬不够换满」时顺序才有意义(先到先得);清单读写走配置的
+    自愈读取(缺失补尾/未知剔除/去重),拖拽只写显式顺序。
+    """
+
+    def __init__(self, config):
+        self._config = config
+
+        self._list = QListWidget()
+        self._list.setFixedSize(260, 96)
+        self._list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._list.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
+        self._list.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self._list.model().rowsMoved.connect(self._on_reordered)
+
+        for goods_id in config.exchange_order:
+            item = QListWidgetItem(MONTHLY_TRIO[goods_id])
+            item.setData(Qt.ItemDataRole.UserRole, goods_id)
+            self._list.addItem(item)
+
+        MultiLineSettingCard.__init__(
+            self,
+            icon=FluentIcon.GAME,
+            title=gt('兑换顺序', 'game'),
+            content=gt('拖动排序;仅余额不够换满时有意义(先到先得)'),
+            line_list=[[self._list]],
+        )
+        # 默认单行卡高 60px 装不下 3 行列表,显式加高
+        self.setFixedHeight(150)
+
+    def _on_reordered(self) -> None:
+        goods_list = [self._list.item(idx).data(Qt.ItemDataRole.UserRole)
+                      for idx in range(self._list.count())]
+        self._config.exchange_order = goods_list
 
 
 class SrOdSettingInterface(VerticalScrollInterface):
@@ -59,29 +109,12 @@ class SrOdSettingInterface(VerticalScrollInterface):
             YamlConfigAdapter(config, 'special_pass_enabled', True))
         group.addSettingCard(self.mee_special_pass_enabled_opt)
 
-        self.mee_special_pass_priority_opt = SpinBoxSettingCard(
-            icon=FluentIcon.GAME, title='星轨专票 优先级',
-            content='升序兑换;同优先级按 专票>通票>足迹 兜底', minimum=0,
-            maximum=99)
-        self.mee_special_pass_priority_opt.init_with_adapter(
-            YamlConfigAdapter(config, 'special_pass_priority', 10,
-                              getter_convert='int', setter_convert='int'))
-        group.addSettingCard(self.mee_special_pass_priority_opt)
-
         self.mee_pass_enabled_opt = SwitchSettingCard(
             icon=FluentIcon.GAME, title='兑换 星轨通票',
             content='90 余烬/张,月限额度动态(余烬渠道折扣价优先)')
         self.mee_pass_enabled_opt.init_with_adapter(
             YamlConfigAdapter(config, 'pass_enabled', True))
         group.addSettingCard(self.mee_pass_enabled_opt)
-
-        self.mee_pass_priority_opt = SpinBoxSettingCard(
-            icon=FluentIcon.GAME, title='星轨通票 优先级',
-            content='升序兑换', minimum=0, maximum=99)
-        self.mee_pass_priority_opt.init_with_adapter(
-            YamlConfigAdapter(config, 'pass_priority', 20,
-                              getter_convert='int', setter_convert='int'))
-        group.addSettingCard(self.mee_pass_priority_opt)
 
         self.mee_tracks_enabled_opt = SwitchSettingCard(
             icon=FluentIcon.GAME, title='兑换 命运的足迹',
@@ -90,13 +123,8 @@ class SrOdSettingInterface(VerticalScrollInterface):
             YamlConfigAdapter(config, 'tracks_of_destiny_enabled', True))
         group.addSettingCard(self.mee_tracks_enabled_opt)
 
-        self.mee_tracks_priority_opt = SpinBoxSettingCard(
-            icon=FluentIcon.GAME, title='命运的足迹 优先级',
-            content='升序兑换', minimum=0, maximum=99)
-        self.mee_tracks_priority_opt.init_with_adapter(
-            YamlConfigAdapter(config, 'tracks_of_destiny_priority', 30,
-                              getter_convert='int', setter_convert='int'))
-        group.addSettingCard(self.mee_tracks_priority_opt)
+        self.mee_exchange_order_card = ExchangeOrderCard(config)
+        group.addSettingCard(self.mee_exchange_order_card)
 
         return group
 
