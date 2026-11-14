@@ -9,7 +9,7 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:草案（r1 对抗收敛后修订，待 r2 复核定稿）
-- 设计对抗:进行中 · r1 报告 = `.debug/change-reviews/v1-initial/attack-r1a.md` 与 `attack-r1b.md`（报告不入 git，此处只记路径）
+- 迭代设计:定稿（2026-11-14，两轮对抗收敛零阻断）
+- 设计对抗:收敛 · r1 报告 = `.debug/change-reviews/v1-initial/attack-r1a.md` / `attack-r1b.md`；r2 报告 = 同目录 `attack-r2a.md` / `attack-r2b.md`（报告不入 git，此处只记路径）
 - 落地:0/7 done（3.1-3.7，末阶段正本更新单列；明细见 landing.md）
 - 正本更新:未开始

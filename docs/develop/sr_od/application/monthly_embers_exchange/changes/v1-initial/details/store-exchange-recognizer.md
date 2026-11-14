@@ -3,7 +3,7 @@
 ## 1. 问题与约束
 
 - 读数类需求的既定方向（用户裁定 2026-11-13）：**读数走画面识别器的结构化输出通道**（`analyze_screen` 的 extras），不为读数造一次性 op。
-- 机制现状（依据 decomposition.md §2.1 实勘）：`ScreenRecognizer` 子类声明 `screen_name` 类属性，被框架从 `sr_od.operations` / `sr_od.application` 自动扫描注册（rglob 全部 .py + `__module__` 守卫 + **无参实例化**——识别器构造函数必须无参或全默认参）；`analyze_screen` 精准命中画面后自动调用，结构化 dict 进 extras、字段语义进 extras_doc。现成样板：CW `SettlementRecognizer`（纯读 + 纯函数解析器复用 + extras_doc 键集=返回键集 + 不稳定字段不硬塞）。现有识别器无 `screen_name='商店'` 撞名。
+- 机制现状（依据 = `src/sr_od/backend/screen_recognizer_scan.py`：扫描根 `sr_od.operations`+`sr_od.application`、rglob 全 .py、`__module__` 守卫、**无参实例化**；`src/one_dragon/base/screen/screen_recognizer.py`：`recognize(ctx, image, screen_info)` 签名与 extras_doc 键集契约）：`ScreenRecognizer` 子类声明 `screen_name` 类属性即被自动扫描注册；`analyze_screen` 精准命中画面后自动调用，结构化 dict 进 extras、字段语义进 extras_doc。现成样板：CW `SettlementRecognizer`（纯读 + 纯函数解析器复用 + extras_doc 键集=返回键集 + 不稳定字段不硬塞）。现有识别器无 `screen_name='商店'` 撞名。
 - 商店画面建档 `screen_name='商店'`（assets/game_data/screen_info/store.yml）。
 - app 主链**不依赖**本识别器（购买 op 自带月限与余额判定并经 data 返回）；识别器服务 MCP agent 的「本月还能换啥 / 余额多少」类询问。
 - 识别器内**不滚动列表**（识别器应快速、无副作用；售罄灰卡会沉到列表末尾，当前视口不可见即如实报 visible=False——不硬塞原则）。
@@ -27,13 +27,14 @@
 | 符号 | 来源 | 说明 |
 |---|---|---|
 | 商品网格几何常量（`_GRID_COL_WINDOWS` / `_CARD_WIDTH` / `_CARD_HEIGHT` / `_NAME_OFFSET_FROM_TOP` / `_LIST_Y_MIN` / `_BADGE_OFFSET`） | shop_buy_goods | 原值平移 |
-| `_locate_window` 列窗口归列 | shop_buy_goods | `locate_cards` 的必需依赖（首版清单曾漏，补入） |
+| `_locate_window` 列窗口归列 | shop_buy_goods | `locate_cards` 的必需依赖 |
 | `locate_cards(ocr_result_list, names: set[str]) -> dict[str, Rect]` | 抽自 `_scan_goods` | 一次 OCR 结果按名字定位多张商品卡；op 的 `_scan_goods` 改为「调 locate_cards 后取目标键」，包含匹配语义不变（防星轨通票/专票一字之差误命中） |
 | `MONTHLY_TRIO: dict[str, str]`（special_pass/pass/tracks_of_destiny → OCR 关键词） | 抽自 `_GOODS_META` 前三条 | 三件套映射单源化：shop_buy_goods 的 `_GOODS_META` 对应三条改为引用本常量（对照表不出现第二源）；识别器按它定位卡 |
-| `parse_exchange_pair(text) -> tuple[int, int] \| None`（斜杠对取双值） | 合并 shop_buy_goods `parse_monthly_left` 与 shop_switch_tab.finish 的同款正则 | **斜杠对解析的单一源签名**（返回 remaining+total 对；全仓现有两处同正则收拢为一）；`parse_monthly_left` 保留为薄包装（取首值），shop_switch_tab.finish 改调它（data 键不变，行为零变化） |
+| `parse_exchange_pair(text) -> tuple[int, int] \| None`（斜杠对取双值） | 合并 shop_buy_goods `parse_monthly_left` 与 shop_switch_tab.finish 的同款正则 | **斜杠对解析的单一源签名**（返回 remaining+total 对；商店域现有两处同款正则收拢为一——CW 域另有同型两处，不属本域范围）；`parse_monthly_left` 保留为薄包装（取首值），shop_switch_tab.finish 改调它（data 键不变，行为零变化） |
 | `BADGE_UNAVAILABLE_KEYWORDS` 角标不可购关键词 | shop_buy_goods | 原值平移 |
 | `badge_rect(card_rect)` | shop_buy_goods `_badge_rect` | 原逻辑平移 |
-| `ocr_rect_text(ocr_service, screen, rect)` | 抽自 shop_buy_goods `_ocr_rect_text` | 角标读取管线（读关键词必备件，首版清单曾漏） |
+| `ocr_rect_text(ocr_service, screen, rect)` | 抽自 shop_buy_goods `_ocr_rect_text` | 角标读取管线（读关键词必备件） |
+| `read_count_two_pass(ocr_service, ocr, screen, area)` | 取 **shop_buy_goods 版**口径 | 两层取数（全图过滤 → 放大兜底）现网两份实现已漂移（shop_switch_tab 的弱化版首层非数字即返回；shop_buy_goods 的强化版非数字一律放大重试）——同族第二件升单一源，统一到强化版；`ShopSwitchTabOp.finish` 与购买 op 的余额读取都改调它（switch_tab 读数健壮性提升为唯一行为变化） |
 | `read_count_two_pass(ocr_service, ocr, screen, area)` | 取 **shop_buy_goods 版**口径 | 两层取数（全图过滤 → 放大兜底）现网两份实现已漂移（shop_switch_tab 的弱化版首层非数字即返回；shop_buy_goods 的强化版非数字一律放大重试）——同族第二件升单一源，统一到强化版；`ShopSwitchTabOp.finish` 与购买 op 的余额读取都改调它（switch_tab 读数健壮性提升为唯一行为变化） |
 
 `shop_buy_goods.py` / `shop_switch_tab.py` 保留同名薄包装或直接改导入（对外符号与行为不变），注释指向新模块。

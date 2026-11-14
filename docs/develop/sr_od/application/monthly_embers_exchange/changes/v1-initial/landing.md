@@ -18,7 +18,7 @@
 **优先级建议**：9
 **完成判据**：
 - 两张实拍已归档进 fixtures（路径在测试/判据中引用）
-- 离线：analyze_screen(screenshot=归档星芒选中实拍) 只有星芒选中区命中、余烬选中区不命中；余烬选中实拍反之（对照 flow.md §4.1-1 修法）
+- 离线：analyze_screen(screenshot=归档星芒选中实拍) 只有星芒选中区命中、余烬选中区不命中；余烬选中实拍反之（对照 flow.md §4.1-1 修法）；第三张 `tab-光锥呈现-选中` 模板纳入同一互斥对照（其裁片目视已含下划线，预期直接通过——不达标则一并重裁）
 - 实机：商店页跑 `ShopSwitchTabOp(embers)` 成功后选中判定与真实选中一致；切回星芒同理
 - 完成前常规检查（本节首）
 **验收凭据形式**：两次 analyze_screen 输出对照 + run_operation 输出
@@ -35,27 +35,28 @@
 - 完成前常规检查（本节首）
 **验收凭据形式**：run_operation 输出（结果状态/耗时）+ 流程测试（如适用）
 
-## 3.3 ExchangeShopBuyGoods 语义状态扩展
+## 3.3 ExchangeShopBuyGoods 语义状态扩展与确认封顶
 
-**范围**：失败出口在 data 补 `fail_status` 字段，语义集与逐口落位严格按 application-flow.md §3.1 表（SOLD_OUT / CARD_UNAVAILABLE / NOT_FOUND / INSUFFICIENT_MATERIALS 各自的出口清单，无遗漏无多余）；`status` 保持人读诊断句、消息文本与流程行为零变化；既有测试同步（含「无 fail_status 的失败=非预期」断言）。
-**设计依据**：application-flow.md §3.1（契约 C2 权威表）；shop_buy_goods.py 现有失败出口清单（代码内）
+**范围**：失败出口在 data 补 `fail_status` 字段，语义集与逐口落位严格按 application-flow.md §3.1 表（SOLD_OUT / CARD_UNAVAILABLE / NOT_FOUND / INSUFFICIENT_MATERIALS 各自的出口清单，无遗漏无多余）；fail 出口 `data.goods` 统一为英文标识符（现角标拦截出口为中文商品名，随本批统一）；`status` 保持人读诊断句、消息文本与流程行为零变化；**另修 confirm 节点确认等待无连等封顶**（框架 WAIT 不消耗重试预算，弹窗不消失会无限等待挂死一条龙）——加连续 N 轮弹窗未消失转 FAIL；既有测试同步（含「无 fail_status 的失败=非预期」断言）。
+**设计依据**：application-flow.md §3.1（契约 C2 权威表）与 §3.3；design.md §2.1-3（封顶动机）；shop_buy_goods.py 现有失败出口清单（代码内）
 **文件面**：`src/sr_od/application/cultivation/account/operations/shop_buy_goods.py`；`sr-od-test/test/sr_od/application/cultivation/account/operations/test_shop_buy_goods*`
 **依赖**：无
 **优先级建议**：8
 **完成判据**：
-- §3.1 表的每个出口在代码中可指认且 fail_status 落位正确；status 全部保持原诊断句；直接受影响流程测试一次通过
+- §3.1 表的每个出口在代码中可指认且 fail_status 落位正确；fail 出口 goods 为英文标识符；status 全部保持原诊断句
+- confirm 连等封顶生效：连续 N 轮点击后弹窗仍在 → round_fail（不再无限 WAIT）；直接受影响流程测试一次通过
 - 完成前常规检查（本节首）
 **验收凭据形式**：测试名 + 通过输出
 
 ## 3.4 app 五件套与串联验证（真实兑换用例）
 
 **范围**：const（无 PRIORITY）/ config（ApplicationConfig 子类 + `*_adapter` 属性）/ run_record（DAILY + 业务字段 + reset_record 覆写）/ factory（create_application 注入 config+run_record、create_config、create_run_record）/ app 类（节点图按 application-flow §1，含 n4 失败收尾）+ config_router.py 登记 RouterEntry；注册确认；`run_standalone_app` 实机串联第一跑——**含通票 2 张真实兑换（用户裁定 7 授权，唯一一次授权的真实消耗）**，验证成功兑换路径全链。
-**设计依据**：application-flow.md 全文；requirement.md §3；样板 = large_map_recorder（factory/config 注入）+ trick_snack（run_record 形态）+ config_router trailblaze_power 条目（RouterEntry 写法）
+**设计依据**：application-flow.md 全文；requirement.md §3；样板 = large_map_recorder（factory/config 注入）+ trick_snack（create_run_record 形态）+ config_router 的 `trailblaze_power` 条目（RouterEntry 写法）与 `_group` 条目（field-only 配置的必填占位写法：item_from_dict/id_kind 如何给无列表项配置）
 **文件面**：`src/sr_od/application/monthly_embers_exchange/`（新建包）；`src/sr_od/backend/config_router.py`（新增 RouterEntry）；`sr-od-test/`（排序/分支映射等可测逻辑）；**不含 SrContext 改动**（config/run_record 均走 factory 与 run_context 通道）
 **依赖**：3.1、3.2、3.3
 **优先级建议**：10
 **完成判据**：
-- `list_applications` 可见 monthly_embers_exchange 且 DEFAULT_GROUP=True（对照 application-flow §1 注册件）
+- `list_applications` 可见 monthly_embers_exchange 且 DEFAULT_GROUP=True（对照 design.md §2.1-1 注册件定义）
 - 串联第一跑：导航→专票(售罄跳过)→通票(真实购买 2 张, PURCHASED)→足迹(售罄跳过)→返回大世界；运行记录 bought_pass=2、skip_note 含两项、状态成功标完成（对照 §3.2 表）
 - 全程点击带 until；分支只认 data.fail_status（对照 §3.1 表逐行核）；非预期失败路径走 n4 尽力返回（对照 §1 节点图 n4 语义）
 - MCP 配置工具可达：describe_config 返回 6 字段结构（可达性验收在此，读写实测在 3.5）
@@ -78,13 +79,13 @@
 
 ## 3.6 画面识别器与扫描单一源抽取（可裁项）
 
-**范围**：抽 `shop_goods_scan.py`（平移收拢清单严格按 details/store-exchange-recognizer.md §2.2 表——含首版曾漏的 `_locate_window`/`MONTHLY_TRIO`/`ocr_rect_text`/强化版 `read_count_two_pass` 与斜杠对单源签名 `parse_exchange_pair`）+ `StoreExchangeRecognizer` 落地 + analyze_screen extras 验收。**可裁**：若抽取对已验证 op 的改动风险超预期，本阶段记档延后自成迭代，app 主线不受阻。
+**范围**：抽 `shop_goods_scan.py`（平移收拢清单严格按 details/store-exchange-recognizer.md §2.2 表——`_locate_window`/`MONTHLY_TRIO`/`ocr_rect_text`/强化版 `read_count_two_pass` 与斜杠对单源签名 `parse_exchange_pair` 等 15 项）+ `StoreExchangeRecognizer` 落地 + analyze_screen extras 验收。**可裁**：若抽取对已验证 op 的改动风险超预期，本阶段记档延后自成迭代，app 主线不受阻。
 **设计依据**：details/store-exchange-recognizer.md 全文
 **文件面**：`src/sr_od/application/cultivation/account/operations/shop_goods_scan.py`（新建）、`shop_buy_goods.py`（导入平移）、`shop_switch_tab.py`（改调 parse_exchange_pair / read_count_two_pass）、`src/sr_od/operations/store/store_exchange_recognizer.py`（新建）、`sr-od-test/` 对应测试
 **依赖**：3.1（active_tab 真实判别依赖模板修复）、3.3（抽取在语义状态扩展之上做，避免同文件并行改动）
 **优先级建议**：6
 **完成判据**：
-- 既有购买 op 测试一次通过（平移零行为变化；switch_tab 两层取数统一强化版为唯一注明行为变化）；analyze_screen 商店屏 extras 返回 C4 契约字段且语义与 extras_doc 一致（含 active_tab 在模板修复后的真实判别）
+- 既有购买 op 测试一次通过（平移零行为变化；switch_tab 两层取数统一强化版为唯一注明行为变化——该文件无既有测试，**为其补读数行为测试或实机验证凭据**）；analyze_screen 商店屏 extras 返回 C4 契约字段且语义与 extras_doc 一致（含 active_tab 在模板修复后的真实判别）
 - 完成前常规检查（本节首）
 **验收凭据形式**：测试输出 + analyze_screen extras 实拍对照
 
@@ -102,8 +103,8 @@
 
 ## 末阶段：正本更新（3.8）
 
-**范围**：按「正本更新清单」逐条更新；探索目录标注停更指针；skill 分歧走反馈件（不直改公共 skills 仓——AGENTS.local.md §1 红线）。
-**设计依据**：本文件「正本更新清单」节
+**范围**：按「正本更新清单」逐条更新；探索目录标注停更指针；skill 分歧走反馈件（不直改公共 skills 仓——AGENTS.local.md §1 红线）；跨期实勘承诺写入本地待办（`.debug/temp/TODO.md`：①下期分辨期限窗口口径 ②余额低水位时实勘余额不足横条形态）。
+**设计依据**：本文件「正本更新清单」节；design.md §2.4（两处「下期实勘」承诺的跟踪锚）
 **文件面**：清单所列正本文档与反馈件；`.debug/temp/app-explore/2026-11-13-monthly-exchange/`（加停更指针一行）
 **依赖**：全部落地阶段
 **优先级建议**：0
@@ -112,7 +113,7 @@
 
 ## 正本更新清单
 
-- docs/game/screens/store.md：三件套双渠道/角标体系/期限窗口/选中态锚修复（含信用点双形态复核结论）← 3.1、3.4（flow.md §4.2 玩法知识回填）
+- docs/game/screens/store.md：三件套双渠道/角标体系/期限窗口/选中态锚修复（含信用点双形态复核结论）；下期版本更新后复核期限口径（月历/版本周分辨，配 TODO 跟踪）← 3.1、3.4
 - docs/develop/sr_od/application/monthly_embers_exchange/ 正本区：新建 README 与结构说明（app 是什么、入口、配置、运行语义），从本迭代设计正本化 ← 3.4
 - `.debug/temp/skill_feedback.md`：write-application skill 两处分歧反馈——①§9「通用配置工具自动读写」承诺 vs SR 实码 config_router 手工路由（app 必须登记 RouterEntry 才可达）；②§7-§9 首个真实 app 实装补验结论 ← 3.5
 - （若 3.6 裁延后）details/store-exchange-recognizer.md 的 v2 归档注记 ← 3.6
