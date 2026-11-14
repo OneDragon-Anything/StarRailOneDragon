@@ -85,9 +85,6 @@ _FILL_SETTLE_SEC: float = 3.0
 # 每次刷取的固定消耗(难度 IV 实测;两项都扣)
 _FARM_TRAILBLAZE_PER: int = 30
 _FARM_TICKET_PER: int = 3
-# 刷取次数预算(防开拓力/券无限烧:每轮循环刷 1 次,材料够不够由右下按钮
-# 状态自反馈,不足再走刷取直至预算耗尽判停,调用方可续跑)
-_FARM_ROUNDS_MAX: int = 10
 
 # 详情页入口按钮两 area 同 rect 不同 text,OCR find 天然互斥
 _ENTRY_BTN_RISE: str = '按钮-升级'
@@ -520,8 +517,10 @@ class UpgradeCharacterOp(SrOperation):
         ⚠️ 按钮禁用盲区:无可刷缺口时按钮白底可 OCR 但点击静默无反应
         (光锥线同位实测,游戏提示当前并未缺少可通过快速刷取获取的材料)
         ——点击「假成功」但窗口不开时 helper 恒以 WAIT 返回(不计重试),
-        原样透传会无界自旋挂死一条龙:连等 4 轮超限转判停;按钮真消失的
-        重试预算耗尽(is_fail)同样转判停。"""
+        原样透传会无界自旋挂死一条龙:连等 4 轮超限转判停。is_fail 仅
+        「区域未配置」可达(全区已建档,兜底防线);按钮真消失走 helper
+        not-found 的节点重试,3 次耗尽 = op 整体失败(中断而非判停,
+        静默无反应才是实测主形态)。"""
         screen = self.last_screenshot
         result = self.round_by_find_and_click_area(
             screen, _ASCEND_SCREEN, '按钮-快速刷取',
@@ -536,8 +535,8 @@ class UpgradeCharacterOp(SrOperation):
             self._capped = True
             self._stop_status = 'MATERIAL_CAPPED'
             if result.is_fail:
-                log.info('晋阶: 资源窗口未打开(快速刷取钮已消失/不可用),'
-                         '判停收尾——可改用 fill_generic 通用材料补全路线')
+                log.info('晋阶: 资源窗口打开失败(%s),判停收尾——'
+                         '可改用 fill_generic 通用材料补全路线', result.status)
             else:
                 self.save_screenshot(prefix='打开资源窗口')
                 log.info('晋阶: 资源窗口连续未打开(快速刷取静默无反应/'
@@ -579,11 +578,21 @@ class UpgradeCharacterOp(SrOperation):
                 self.save_screenshot(prefix='副本刷取分流')
                 return self.round_fail('快速刷取确认框连续未打开,现场已截图')
             return result
-        # 副本态锚(副本类型标题)在场才点挑战;否则(编队态/战斗态/结算态)
-        # 直接交手动战斗节点分类——⚠️「挑战按钮」area 的 rect/text 与编队
-        # 画面「开始编队挑战」坐标重叠、文本相似,无副本态前置判定会在
-        # 编队画面误点开新战斗(光锥线同位实测事故,资源被连环消耗)
+        # 副本态锚(副本类型标题)在场才点挑战;否则按画面态三分——⚠️
+        # 「挑战按钮」area 的 rect/text 与编队画面「开始编队挑战」坐标
+        # 重叠、文本相似,无副本态前置判定会在编队画面误点开新战斗
+        # (光锥线同位实测事故,资源被连环消耗)
         if not self._in_dungeon_state(screen):
+            # 编队态:交手动战斗节点点开始挑战
+            if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '队伍标题').is_success:
+                return self.round_success(status='MANUAL_FIGHT')
+            # 挑战按钮在但两类副本标题都读不到 = 未识别副本类型(未建档
+            # 类型/标题 OCR 持续失败):交手动路线会零消耗空转(不计场的
+            # BATTLE_DONE 反复回环开窗进本)——计重试(瞬时 OCR 失败可
+            # 自愈),耗尽显式失败强制补档
+            if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '挑战按钮').is_success:
+                return self.round_retry('副本类型标题未识别(未建档类型/OCR 未读出),等重判', wait=2)
+            # 战斗/结算态:交手动战斗节点分类(计场在离开编队态时发生)
             return self.round_success(status='MANUAL_FIGHT')
         result = self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '挑战按钮',
@@ -744,7 +753,7 @@ class UpgradeCharacterOp(SrOperation):
     @node_from(from_name='手动挑战战斗')
     @node_from(from_name='手动挑战战斗', status='BATTLE_DONE')
     @node_from(from_name='入口核对', status='LEFTOVER')
-    @operation_node(name='返回养成界面', node_max_retry_times=30)
+    @operation_node(name='返回养成界面', node_max_retry_times=30, timeout_seconds=300)
     def back_to_ascend(self) -> OperationRoundResult:
         """刷取后返回分类(flat):每轮识别当前画面,点对应层的关闭控件,
         直到回到等级提升界面重入升级循环。手动路线与券路线落点不同——
@@ -752,6 +761,11 @@ class UpgradeCharacterOp(SrOperation):
         - 券路线:副本「关闭X」按浮层栈回退,沿途经结果框/资源窗口 → 等级提升;
         - 手动路线:浮层栈已卸载,结算「退出关卡」→ 副本「关闭X」直接回
           大世界 → BACK_TO_WORLD 交重走入口链。
+
+        战斗期等待:手动路线整场战斗(单场约 2 分钟)落末位过渡帧分支
+        (全锚 MISS),以 round_wait 慢询——不烧重试预算(30 次 retry 约
+        90s 即耗尽,会战斗中途 FAIL 且战场残留游戏内继续自打污染后续
+        入口判定),超时兜底交节点 timeout_seconds。
 
         残留弹窗两类(开拓力不足判停/中断现场遗留,盖住副本/养成锚致整帧
         识别 None):点取消清场后重入分类——补充弹窗「确认」是星琼购开拓力,
@@ -847,7 +861,9 @@ class UpgradeCharacterOp(SrOperation):
             # 落在角色详情:身份不可凭画面确认(角色详情不记忆上次角色),
             # 交重走入口链凭记名重选(无记名时彼端显式失败防升错)
             return self.round_success(status='BACK_TO_CHARACTER', wait=1)
-        return self.round_retry('返回途中未识别画面(过渡帧),等稳定重判', wait=1.5)
+        # 战斗期(手动路线,全锚 MISS)在此慢询:wait 不计重试(见节点
+        # docstring),超时兜底交节点 timeout_seconds
+        return self.round_wait('返回途中未识别画面(战斗中/过渡帧),等稳定重判', wait=1.5)
 
     @node_from(from_name='返回养成界面', status='BACK_TO_WORLD')
     @node_from(from_name='返回养成界面', status='BACK_TO_CHARACTER')
