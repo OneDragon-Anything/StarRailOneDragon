@@ -24,7 +24,6 @@ from typing import Any
 
 from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
-from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 # 符号解耦(淘汰计划 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
 # 不再依赖 kernel/cw_line_defs(死刑判据文件)
@@ -32,6 +31,10 @@ from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 from sr_od.application.currency_war.telemetry.cw_win_features import (
     features_from_deployed,
 )
+
+# (kernel.cw_system_cards.SYSTEM_CARDS import 随 seele 卡退役删除——seele 卡
+#  已随 v4.7 换赛季退役,SYSTEM_CARDS 现役仅 dot2,本模块无其余消费面,考古走
+#  git 历史。)
 
 #: 模型产物目录(离线训练输出;gitignored,模型走运行时资产惯例不进 git)。
 _MODEL_DIR = Path('.debug/temp/currency_war/cw_dev/win_model_v0')
@@ -42,13 +45,14 @@ _SHADOW_LOG = _MODEL_DIR / 'shadow_predictions.jsonl'
 #: 引擎实体单一源(原先三组具名字面量统一为 import/派生):
 #: - 铁三角 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(注册表 import 不复制);
 #: - DOT 件池 = ``trait_by_name['持续伤害'].members`` 的 ≤2 费子集(过渡件口径,
-#:   海瑟音4/黑天鹅5 是终局件不进池);
-#: - 希儿 = ``SYSTEM_CARDS['seele'].engine_required``(卡注册表)。
+#:   海瑟音4/黑天鹅5 是终局件不进池)。
+#: - (希儿引擎列随 seele 卡退役删除——希儿系连引擎单卡已掉出 v4.7 角色
+#:   注册表,``'seele'`` 特征列恒 0 无信息量;旧训练 meta 若含该列,向量
+#:   装配按缺列兜 0 不炸,考古走 git 历史。)
 _TRIO = tuple(sorted(_CORE_TRIO))
 _DOT_POOL = tuple(sorted(
     m for m in trait_by_name['持续伤害'].members
     if (ch := get_char(m)) is not None and ch.cost <= 2))
-_SEELE = SYSTEM_CARDS['seele'].engine_required[0]
 _NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 
 # ── plaza 先验面样本权重口径(逐篇语料接入,单一源)──────────────
@@ -122,7 +126,7 @@ def plaza_post_features(post: Any) -> dict[str, Any]:
 def _engine_columns(base: dict[str, Any]) -> dict[str, Any]:
     """基础特征 dict → 追加引擎覆盖度派生列(单一源,features 共用)。
 
-    engine_trio/dot_pieces/seele 实体出处见模块头「引擎实体单一源」注释。
+    engine_trio/dot_pieces 实体出处见模块头「引擎实体单一源」注释。
     """
     bow: dict[str, int] = base['bow']
     th = {int(k): v for k, v in base['tier_hist'].items()}
@@ -134,7 +138,6 @@ def _engine_columns(base: dict[str, Any]) -> dict[str, Any]:
         'n_tier2': th.get(2, 0),
         'engine_trio': sum(bow.get(c, 0) for c in _TRIO),
         'dot_pieces': sum(bow.get(c, 0) for c in _DOT_POOL),
-        'seele': bow.get(_SEELE, 0),
     }
 
 
@@ -273,7 +276,7 @@ class ShadowKilledModel:
         """战前上场名单 → 特征向量(C7 features 契约的 deployed 输入形态)。
 
         输出 = ``features_from_deployed`` 全量特征 + 引擎覆盖度派生列
-        (engine_trio/dot_pieces/seeile 见模块头单一源注释)。
+        (engine_trio/dot_pieces 见模块头单一源注释)。
         node_type 不在此(训练表侧 join 的先验,``predict`` 单独收)。
         """
         base = features_from_deployed(deployed)
