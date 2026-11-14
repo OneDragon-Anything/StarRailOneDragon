@@ -36,12 +36,12 @@
 
 ### 3.3 块 D：UpgradeTraceOp 面板态重构
 
-**范围**：起点/终点契约改面板态↔树态、删固定节点坐标与 `_SKILL_NAMES` 枚举、`target` 改校验锚语义、`auto_farm`→`farm_dungeon` 改名、券耗回填 1、连刷次数接入（`_set_farm_times` 同款）、光锥线补全双形态平移（实做项）、循环内分类失改 fail 交 agent、面板等级收尾读数记账、收尾关面板节点（新建「点击区-关面板空白」area，`_final_status` 出口机制）；mock 七场景（details/trace-rework.md §3）。
+**范围**：起点/终点契约改面板态↔树态、删固定节点坐标与 `_SKILL_NAMES` 枚举、`target` 改校验锚语义、`auto_farm`→`farm_dungeon` 改名、券耗回填 1、连刷次数接入（`_set_farm_times` 同款）、光锥线补全双形态平移（实做项）、循环内分类失配 fail 交 agent、面板等级收尾读数记账、收尾关面板节点（新建「点击区-关面板空白」area，`_final_status` 出口机制）；mock 八场景（details/trace-rework.md §3）。
 **设计依据**：details/trace-rework.md 全节。
 **文件面**：`upgrade_trace.py`、`character_traces.yml`（新建「点击区-关面板空白」area + 复用既有「读区-技能分类」/「读区-面板等级」两 area——坐标不符则纠档）、`cultivation_resource_window.yml`（**新建「资源窗口行锚」+「花萼行券按钮」两 area——券刷新链依赖，现档未建档**）、`sr-od-test/test/sr_od/application/cultivation/`（行迹测试文件）。
 **依赖**：无（与 3.1/3.2 无代码耦合）。
 **优先级建议**：6
-**完成判据**：mock 七场景全过；升级循环按钮态判定回归（平移段零行为变更）；ruff。
+**完成判据**：mock 八场景全过；升级循环按钮态判定回归（平移段零行为变更）；ruff。
 **验收凭据形式**：pytest 场景名清单。
 **既有测试判据同步声明（必红改写，非回归）**：`test_upgrade_trace.py` 锁现版节点图剧本（优先级⓪~⑤、「标题-材料补全弹窗」轮界锚、构造参数 `auto_farm`）——块 D 改契约两端与参数面后**近全文件失配必红**：轮界锚改面板态锚、构造参数改 `farm_dungeon`、状态集合按新出口集改写；另有三处点名——`:173/:205/:269` 的 `level_reads` 计数断言（收尾读数记账新增一次面板等级读取，计数语义变化）、`:207-234` 分类失配重点节点测试（循环③删除后该场景改为「fail 交 agent」语义，测试改写或删除）；落地时按本声明逐条改写，不逐条判断过时性（改动面 = 设计 §1 契约变更总览全表 + 上述点名）。
 

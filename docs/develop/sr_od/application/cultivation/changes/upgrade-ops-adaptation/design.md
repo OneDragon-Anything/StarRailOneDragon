@@ -2,7 +2,7 @@
 
 ## 0. 状态
 
-**对抗审中**（设计稿 v1 已修订一轮）。流程：本设计 → 无前提对抗 → 修订收敛 → 负责人批准 → 按 landing.md 落地。
+**定稿（对抗收敛）**。三轮对抗：R1 双攻击面（scope 13 条 + flow 15 条）→ R2 修订验证全量复攻（验证 26/28 落实 + 新发现 8 条）→ R3 收敛判定（唯一残留计数修订后收敛）。流程：负责人批准 → 按 landing.md 落地。
 
 文档清单：README.md（状态与块索引）/ design.md（本文件，总纲）/ details/fail-adaptation.md（块 A/B/C 节点卡）/ details/trace-rework.md（块 D 节点卡）/ landing.md（落地阶段与判据）/ attack.md（对抗记录，收敛后补）。
 
