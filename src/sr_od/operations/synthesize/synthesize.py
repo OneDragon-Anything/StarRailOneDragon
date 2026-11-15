@@ -49,6 +49,9 @@ class Synthesize(SrOperation):
         self._qty_dragged: bool = False
         """plus_monthly 路径本次运行是否已拖过滑条——区分「拖满到顶」与
         「入口即置灰的歧义态」(额度用完/材料约束到顶),节点轮询间保留"""
+        self._category_reset_done: bool = False
+        """plus_monthly 首屏判定前是否已点分类页签强制回顶(一次;防人工
+        滚动过列表时视口不在顶、误判首屏未见)"""
 
     @node_from(from_name='画面识别')
     @operation_node(name='开始前返回')
@@ -113,10 +116,18 @@ class Synthesize(SrOperation):
 
         if result is None:
             if self.item.quantity_mode == QUANTITY_MODE_PLUS_MONTHLY:
-                # 月限物品不拖拽深扫:材料合成列表「可合成排前、不可用沉底」
-                # (额度用尽沉底实测),首屏未见即本期不可合成;沉底项深处
-                # 位置不定,深扫不可达。额度用尽/材料不足由调用方按运行记录
-                # 当月锚裁定(见 STATUS_ITEM_ABSENT)
+                # 首屏判定(用户裁定:可合成时恒居列表左上首位,不可用沉底,
+                # 同兑换商店月限商品排序律)——不拖拽深扫,沉底项深处位置
+                # 不定,深扫不可达。前提 = 列表在顶:进页/切页签默认回顶;
+                # 视口不在顶(中途人工滚动过)时先点分类页签强制回顶再判
+                # 一次,仍未见才结论首屏未见。额度用尽/材料不足的裁定归
+                # 调用方按运行记录当月锚(见 STATUS_ITEM_ABSENT)
+                if not self._category_reset_done:
+                    self._category_reset_done = True
+                    self.round_by_click_area(
+                        '合成', f'分类-{self.item.category}')
+                    return self.round_retry('首屏未见,点分类页签回顶后复查',
+                                            wait=1)
                 return self.round_success(STATUS_ITEM_ABSENT)
             area = self.ctx.screen_loader.get_area('合成', '物品列表')
             drag_from = area.center
