@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.config.config_item import ConfigItem
 from one_dragon.base.operation.application import application_const
+from sr_od.application.apocalyptic_shadow import apocalyptic_shadow_const
 from sr_od.application.echo_of_war.echo_of_war_config import (
     EchoOfWarConfig,
     get_war_mission_list,
@@ -358,6 +359,20 @@ def _monthly_synthesize_get_config(
     )
 
 
+def _apocalyptic_shadow_get_config(
+    ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
+) -> object:
+    # 经 run_context 取 factory 缓存实例(与 app 运行同一份,写立即生效);
+    # 空 instance/group 自行落默认(同月度两条目)
+    idx = instance_idx if instance_idx is not None else ctx.current_instance_idx
+    gid = group_id if group_id else application_const.DEFAULT_GROUP_ID
+    return ctx.run_context.get_config(
+        apocalyptic_shadow_const.APP_ID,
+        instance_idx=idx,
+        group_id=gid,
+    )
+
+
 # === ROUTES(含 field_schema + item_schema) ===
 
 def _build_routes() -> dict[str, RouterEntry]:
@@ -493,6 +508,25 @@ def _build_routes() -> dict[str, RouterEntry]:
             supported_ops=('get', 'set', 'describe'),
             field_schema={
                 'self_modeling_resin_enabled': {'type': 'bool', 'desc': '合成 自塑尘脂(月限额度拉满) 开关'},
+            },
+        ),
+        'apocalyptic_shadow': RouterEntry(
+            app_id='apocalyptic_shadow',
+            description='末日幻影一键挑战:随机选人占位策略(用户裁定 2026-11-16,先串流程);'
+                        '纯字段配置无列表项(set 直改字段,下一次 run 立即生效);'
+                        'character_pool 为列表字段,set_config 写不了 ——'
+                        'get_config(key="character_pool") 可读,改池直接编辑'
+                        'config/<实例>/one_dragon/apocalyptic_shadow.yml 后下一次 run 生效',
+            item_from_dict=_noop_item_from_dict,
+            get_config=_apocalyptic_shadow_get_config,
+            validate_item=lambda ctx, item: None,  # field-only:无列表项可校验
+            add=None,
+            delete=None,
+            id_kind='app_id',  # field-only 占位(无列表项定位语义),照 _group 条目
+            item_kind='dict',
+            supported_ops=('get', 'set', 'describe'),
+            field_schema={
+                'claim_rewards': {'type': 'bool', 'desc': '挑战成功后是否领取期次祭礼奖励(两 tab 一键全领)'},
             },
         ),
     }

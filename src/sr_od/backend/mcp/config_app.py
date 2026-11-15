@@ -198,6 +198,14 @@ def make_set_config(backend: SrBackendContext) -> Callable:
                 valid_values = [m.value.value for m in field_meta['enum_cls']]
                 if value not in valid_values:
                     raise ConfigError(f'{key} 值 {value} 不合法(可用: {valid_values})')
+            # 布尔矫正:MCP 客户端可能把 JSON 布尔序列化成字符串落进 yaml
+            # (实测 'false' 字符串在 Python 侧为真值,开关语义反转),按字段
+            # 类型 coerce 回真布尔
+            if field_meta.get('type') == 'bool' and isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered not in ('true', 'false'):
+                    raise ConfigError(f'{key} 值 {value!r} 不是合法布尔(true/false)')
+                value = lowered == 'true'
         config.update(key, value)
         config.save()
         return f'已设置 {app_id}.{key}={value}'
