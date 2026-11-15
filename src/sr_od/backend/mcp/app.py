@@ -312,19 +312,17 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
                     'steps': [], 'error': str(e)}
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="关闭游戏"))  # 操作类+破坏性:关游戏
-    def close_game() -> dict:
+    def close_game() -> str:
         """关闭游戏窗口(发关闭信号,秒级)。操作类,破坏性(游戏会被关闭)。
 
         返回只表「信号已发」非已关闭——用 check_game_window 验证是否真关。
         """
         try:
-            msg = backend.close_game()
-        except StopRunInterrupted:
-            # 同 click_game:BaseException 按名收尾,防穿透 ASGI(防御纵深)。
-            return {'success': False, 'error': '运行已被停机中断(守卫拦截本次操作)'}
-        except Exception as e:  # noqa: BLE001 工具层兜底(BackendNotReadyError 等)
-            return {'success': False, 'error': str(e)}
-        return {'success': True, 'result': msg}
+            return backend.close_game()
+        except StopRunInterrupted as e:
+            # BaseException 不能裸透传(FastMCP/Starlette 只接 Exception,穿透即连接断):
+            # 按名转普通异常走错误通道(防御纵深;手动端点已在 backend 层豁免,正常不达)
+            raise RuntimeError('运行已被停机中断(守卫拦截本次操作)') from e
 
     @mcp.tool(annotations=ToolAnnotations(title="点击游戏坐标"))  # 操作类:操作游戏点击(非破坏)
     def click_game(
