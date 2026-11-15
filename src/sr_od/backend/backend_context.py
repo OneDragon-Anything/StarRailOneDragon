@@ -1086,7 +1086,8 @@ class SrBackendContext:
         screen_info 的匹配键(中文),须完全一致。
 
         Raises:
-            Exception: screen_loader 读取失败时透传,由适配层决定兜底方式。
+            Exception: screen_loader 读取失败时透传(MCP 层不拦截,
+                FastMCP 转 tool error)。
         """
         return sorted(s.screen_name for s in self._ctx.screen_loader.screen_info_list)
 
