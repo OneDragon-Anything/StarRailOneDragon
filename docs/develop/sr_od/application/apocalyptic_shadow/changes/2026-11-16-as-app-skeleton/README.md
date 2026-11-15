@@ -5,7 +5,7 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:对抗审中（报告=[attack.md](attack.md)，2 阻塞 6 建议；阻塞 1 已修=判据 2 改注册证据口径、阻塞 2 已修=§3 探测节点状态机写实；建议项处置见 §5 落地记录）
+- 迭代设计:定稿（报告=[attack.md](attack.md)，2 阻塞 6 建议全部处置，见 design 对应节）
 - 设计对抗:收敛
-- 落地:3.1 done（含评审修订）· 3.2 进行中（端到端第二轮）
-- 正本更新:未开始
+- 落地:3.1 done（含评审修订）· 3.2 done（端到端至战斗发起全通过；战斗完成度未通过=随机占位实证，见 §10 #6/#7 与 #8）· 3.3 done · 3.4 done
+- 正本更新:清零（正本 docs/develop/sr_od/application/apocalyptic_shadow/design.md）
