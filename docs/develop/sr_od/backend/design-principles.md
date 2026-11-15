@@ -132,12 +132,12 @@ MCP 规范 tool 定义含 `outputSchema`(可选 JSON Schema,描述返回结构,�
 - dataclass docstring 是开发者文档,**模型不可见**,不是字段描述的承载处;tool docstring 只讲作用与信任姿态(P9),不抄返回结构;
 - MCP 层有 outputSchema 时,`extras_doc` 这类「随返回带字段说明」的机制仅服务于**运行时动态字段**(识别器自定 dict 的字段静态 schema 无法穷举),静态结构一律走 outputSchema。
 
-FastMCP(mcp sdk 1.28.1)实测,返回类型注解自动生成 outputSchema 的五条路径:
+FastMCP(mcp sdk 1.28.1)实测(client-server 全往返),返回类型注解自动生成 outputSchema 的五条路径:
 - **顶层 dataclass** 字段的 `Annotated[X, Field(description)]` **丢失**(sdk 内部 `get_type_hints()` 剥元数据);
 - **嵌套 dataclass** 的 Field description **保留**(pydantic 的 dataclass 适配路径自行解析注解);
 - **BaseModel**(顶层与嵌套)Field description **全保留**;
-- **`-> dict`** 生成空 object schema,**字段描述无处安放**——禁用;
-- **`-> str` / `-> bool` 等原子注解**生成单值 schema(如 `{"type": "string"}`),无字段可描述,整体语义一句放 docstring。
+- **`-> dict`** 生成 **无 outputSchema**(裸 dict 无类型信息,结构化输出缺失)——字段描述无处安放,禁用;
+- **`-> str` / `-> bool` 等原子注解**生成 **wrapped 单字段 schema**(`{'result': <type>}`,sdk `_create_wrapped_model`,wrap_output=True):structuredContent 包一层 `result`,模型主要消费的 **text 通道为裸字符串**——原子语义一句放 docstring(schema 的 result 字段无自定义描述)。
 
 落地模式:框架层保持纯 dataclass(不引 pydantic 依赖),**MCP 层定义带 `Field(description)` 的 pydantic 输出模型(`*Out` 后缀),`from_backend()` 以 `**asdict` 一步转换**——pydantic 递归校验完成嵌套转换,框架字段增删自动跟随,框架与 MCP 契约解耦。样板:`sr_od/backend/schemas.py` 的 `AnalyzeScreenOut` 族;HTTP 侧仍序列化框架 dataclass(字段同名,输出一致)。
 

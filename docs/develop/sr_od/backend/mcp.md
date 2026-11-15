@@ -8,7 +8,7 @@
 
 ## 跨工具约定要点
 
-- **返回契约（跨工具统一）**：成功标志键一律 `success`（bool）；运行类受理语义用 `started`（≠完成）；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。裸字符串 + `错误:` 前缀的返回已全部结构化（`capture_game_screen`/`close_game`/block 终态），调用方判错不再靠字符串匹配。
+- **返回契约（跨工具统一）**：多字段返回一律 MCP 层 `*Out` 模型（字段语义进 outputSchema，见 [design-principles.md](design-principles.md) P15）；原子返回（`capture_game_screen` 的路径 / `close_game` 的确认文案）直给 `-> str`，docstring 一行说明返回值；运行类受理语义用 `started`（≠完成）；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。**失败走异常通道**（P6 三分法）：backend 异常透传 → MCP tool error / HTTP 错误响应，同文案对称——旧「返回体带 `success`/`error` 字段」模式已退役，存量 `-> dict` 工具改造中。
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。
 - backend 实例通过闭包注入 tool，不使用全局单例，也不让 FastMCP lifespan 管 backend 生命周期。
 - `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。
