@@ -461,6 +461,36 @@ class RunStopOut(BaseModel):
         return cls(**asdict(result))
 
 
+class ConfigReadOut(BaseModel):
+    """配置读取结果(get_config 返回)。"""
+
+    value: object = Field(
+        default=None, description='key 查询时为该字段的当前值(key 传 None 时为 null)')
+    data: dict | None = Field(
+        default=None, description='key=None 时为该 config 全量字段值 dict;key 查询时为 null')
+
+
+class ConfigSchemaOut(BaseModel):
+    """配置结构描述(describe_config 返回;set/add 调用的字段结构依据)。"""
+
+    description: str = Field(description='该 config 的一句话用途说明')
+    set_fields: list[dict] = Field(
+        description='可改字段清单:每项含 name/type/描述/约束;'
+                    'enum 类字段的 options 元素 value 是 set 时要传的字符串(非 label)')
+    ro_fields: list[str] = Field(
+        description='只读字段名(运行态/身份,set 会被拒);与 set_fields 互斥')
+    list_fields: list[dict] = Field(
+        description='列表字段结构(item 结构 + add 示例);add_config_item/update_config_item 的 item_dict 照此构造')
+
+
+class ConfigListOut(BaseModel):
+    """可改配置清单(list_app_configs 返回)。"""
+
+    configs: list[dict] = Field(
+        description='每项含 app_id/description/supported_ops/item_kind/id_kind;'
+                    'id_kind 说明 add/delete/update 的项标识字段名;字段级结构再进 describe_config')
+
+
 @dataclass
 class GotoScreenResult:
     """画面导航结果(传输无关;arrived=False 是带现场的正常结果,非错误)。
