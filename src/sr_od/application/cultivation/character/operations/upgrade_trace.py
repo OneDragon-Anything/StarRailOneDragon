@@ -304,26 +304,35 @@ class UpgradeTraceOp(SrOperation):
                 and self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-快速刷取').is_success:
             return self.round_success('NEED_FARM')
 
-        # ⑦ 两按钮都不命中分两态(锚在=真全缺判停;锚不在=执行后动画/过渡
-        # 期按钮暂隐 → 点空白重试不判停——误报判停比多等一轮危害大)。
-        # 另一态:材料不足灰态(禁用钮+无可提升标记+快速刷取入口消失,重试
-        # 永不收敛)——用连续轮次区分:按钮带全空连续 3 轮 = 灰态判停;过渡
-        # 态一两轮内按钮回归,计数复位(④⑤⑤b 命中处复位)
+        # ⑦ 两按钮都不命中 = 灰态或过渡态(锚不在已由 ② 分流)。灰态正判
+        # 两形态:「可提升至」标记在场(普通面板禁用钮) / 按钮位灰字
+        # 「材料不足」(星神面板实机形态,「可提升至」不在场,「快速刷取」
+        # 仍在)——第一轮判停;farm_dungeon 授权时灰态已先经 ⑥ 转券刷(缺口
+        # 不可合成覆盖,刷取有收益),落此处 = 未授权或预算耗尽。剩余 = 按钮
+        # 暂隐过渡态:连续 3 轮按钮带全空兜底判停,过渡态一两轮内按钮回归,
+        # 计数复位(④⑤⑤b 命中处复位)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
             self._final_status = 'MATERIAL_CAPPED'
             self._end_level = self._read_panel_level()
             log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._end_level)
             return self.round_success('CLOSE_PANEL')
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-材料不足').is_success:
+            self._buttonless_rounds = 0
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            log.info('行迹升级: 按钮为「材料不足」灰态,判停于等级 %s', self._end_level)
+            return self.round_success('CLOSE_PANEL')
         self._buttonless_rounds += 1
         if self._buttonless_rounds >= 3:
             self._final_status = 'MATERIAL_CAPPED'
             self._end_level = self._read_panel_level()
-            log.info('行迹升级: 按钮带连续 %d 轮全空(材料不足灰态),判停于等级 %s',
+            log.info('行迹升级: 按钮带连续 %d 轮全空,判停于等级 %s',
                      self._buttonless_rounds, self._end_level)
             return self.round_success('CLOSE_PANEL')
-        self.ctx.controller.click(
-            self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
-        return self.round_retry('疑似动画/过渡态,点空白重试', wait=2)
+        # 按钮暂隐过渡态:纯等待等按钮回归,不点空白——面板锚在场时点
+        # 「点击区-面板外空白」= 关面板位(实机把面板点掉后误判「不在目标
+        # 技能面板」,灰态判停防线也因面板被关而永不收敛)
+        return self.round_retry('按钮暂隐,等待回归', wait=2)
 
     @node_from(from_name='升级循环', status='NEED_FARM')
     @operation_node(name='券刷链', timeout_seconds=300, node_max_retry_times=30)
