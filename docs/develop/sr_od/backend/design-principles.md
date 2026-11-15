@@ -73,7 +73,8 @@ server 给「**事实**」,智能体做「**决策 + 通用理解**」。server 
 - **语义化字段**,避免 cryptic 技术标识符(`name` / `image_url` 而非 `uuid` / `mime_type`);自然语言名比 id 好;
 - 带**定位锚点**(时间戳 / 路径)让智能体关联日志 / 截图 / 源码;
 - 大返回用 `response_format`(concise / detailed) enum 让智能体控详略;或分页 / 过滤 / 截断 + 合理默认(Claude Code tool response 限 25000 tokens);
-- **错误要 actionable**(给正确格式示例),不要 opaque traceback。
+- **错误要 actionable**(给正确格式示例),不要 opaque traceback;
+- **返回体纯度**:成功返回体只含有效识别/结果数据——机制字段(`success` / `error`)不混入(失败走错误通道:异常 → MCP tool error / HTTP 错误响应,原因文本带下一步提示);可从其他工具派生的信息(建档配置回显、多结果差集)不返回(P12);静态说教不作为返回字段(P14)。
 
 ### P7. 三层协同(MCP / 智能体自身 / skill)
 能力分工写进 **skill**,指引智能体何时用哪层。例「调试失败运行」:`get_run_status` 拿状态 + 失败定位 → 要深入 tail 日志 → 要视觉 `capture` + 视觉大模型。
@@ -81,8 +82,18 @@ server 给「**事实**」,智能体做「**决策 + 通用理解**」。server 
 ### P8. 长耗时操作的运行态必须暴露
 运行态(在跑吗 / 跑到哪 / 结果 / 中断后)是活内存态,智能体无法自感 → 必须暴露(`get_run_status` / `stop_run` / `block` 参数)。
 
-### P9. docstring 是筛选 prompt
-docstring 是智能体在众多 tool 里**选对工具**的依据,必须明确说清「能做什么 + 关键约束 + 副作用」,把**隐式上下文**(查询格式 / 术语 / 资源关系)显式化,参数**无歧义命名**(`user_id` 非 `user`)。但 context 有限,**不啰嗦** —— 准确说清即可。
+### P9. docstring 是筛选 prompt,只讲作用与信任姿态
+docstring 是智能体在众多 tool 里**选对工具**的依据——只放帮它**选对、用对、解读对**的哲学(工具是什么 / 语义可信度 / 覆盖边界 / 与其他工具的分工)。信息分层路由,每层只讲一个维度的事:
+
+| 信息 | 唯一的家 |
+|---|---|
+| 跨工具全局口径(坐标系 / 通用格式) | server instructions |
+| 工具作用与信任姿态 | tool docstring |
+| 参数行为 | inputSchema 的 Field description |
+| 返回字段语义 | outputSchema 的 Field description(P15) |
+| 机制行为(失败走 error / 结构化输出) | 系统行为,不写——模型已知 |
+
+docstring 里出现流程教学、参数行为复述、返回结构重抄、机制细节括号,都是放错层的信号。参数**无歧义命名**(`user_id` 非 `user`)。
 (Anthropic prompt-engineering descriptions:think how you'd describe the tool to a new hire。)
 
 ### P10. 命名空间(namespacing)
@@ -107,6 +118,19 @@ tool 按服务 / 资源分组前缀(如 `game_*` / `run_*`),帮智能体在多 s
 观察类 tool(如 `analyze_screen`)的输出是**部分识别**(OCR 文字 + 已建模模板命中项),不保证覆盖画面全部视觉信息。智能体易把它当「画面全貌」下判断 → 状态 / 布局判断不完整。故 tool 的能力边界与结果解读纪律(哪些字段可作操作依据 / 散落 OCR 只给坐标不给结论 / 覆盖缺口靠看图补、看图发现建档确认后才可信)写进 **tool 描述**——P9 的「隐式上下文显式化」,随每次工具选择必然可见。
 
 不作为返回字段承载(如曾有的 `vision_hint`):静态说教每次调用重复传输,而工具描述是唯一必然可见层(instructions 为客户端可选注入,实测项目级 workspace-mcp 路径不注入;返回体按次付费)。与 P1「capability over compensation」的边界不变:陈述客观固有能力边界(它本就只做部分识别,边界永远成立,事实独立于模型能力),非新增 tool 补偿模型弱点。与 P13 协同:描述里引导「`save_image=True` 拿路径自己看图」,路径给复用入口。
+
+### P15. 返回字段语义写在 outputSchema,不写 docstring / dataclass docstring
+MCP 规范 tool 定义含 `outputSchema`(可选 JSON Schema,描述返回结构,字段描述写在各字段的 description 上),与 `inputSchema` 对称——这是返回字段语义的**唯一规范位置**:
+- 字段描述写 outputSchema 各字段的 description,随工具列表必然可见(模型读工具定义即看到);
+- dataclass docstring 是开发者文档,**模型不可见**,不是字段描述的承载处;tool docstring 只讲作用与信任姿态(P9),不抄返回结构;
+- MCP 层有 outputSchema 时,`extras_doc` 这类「随返回带字段说明」的机制仅服务于**运行时动态字段**(识别器自定 dict 的字段静态 schema 无法穷举),静态结构一律走 outputSchema。
+
+FastMCP(mcp sdk 1.28.1)实测,返回类型注解自动生成 outputSchema 的三条路径:
+- **顶层 dataclass** 字段的 `Annotated[X, Field(description)]` **丢失**(sdk 内部 `get_type_hints()` 剥元数据);
+- **嵌套 dataclass** 的 Field description **保留**(pydantic 的 dataclass 适配路径自行解析注解);
+- **BaseModel**(顶层与嵌套)Field description **全保留**。
+
+落地模式:框架层保持纯 dataclass(不引 pydantic 依赖),**MCP 层定义带 `Field(description)` 的 pydantic 输出模型(`*Out` 后缀),`from_backend()` 以 `**asdict` 一步转换**——pydantic 递归校验完成嵌套转换,框架字段增删自动跟随,框架与 MCP 契约解耦。样板:`sr_od/backend/schemas.py` 的 `AnalyzeScreenOut` 族;HTTP 侧仍序列化框架 dataclass(字段同名,输出一致)。
 
 ## 4. 能力分配总表
 
