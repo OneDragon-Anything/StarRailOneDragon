@@ -9,7 +9,12 @@ from pydantic import Field
 from sr_od.backend import operation_flow, operation_registry
 from sr_od.backend.backend_context import SrBackendContext
 from sr_od.backend.schemas import (
+    AmbiguousCandidatesOut,
+    AmbiguousMatchesOut,
     ApplicationListResultOut,
+    FlowOut,
+    OperationDescOut,
+    OperationListOut,
     RunFinishOut,
     RunFinishResult,
     RunStartOut,
@@ -90,71 +95,69 @@ def make_list_applications(backend: SrBackendContext) -> Callable[[], Applicatio
     return list_applications
 
 
-def make_list_operations(backend: SrBackendContext) -> Callable[..., dict]:
+def make_list_operations(backend: SrBackendContext) -> Callable[..., OperationListOut]:
     """构造 ``list_operations`` tool(自定义 operation 运行入口)。"""
     def list_operations(
         query: Annotated[str, Field(description="子串过滤 op_id(大小写不敏感),如 'move'/'battle';空=全量")] = "",
-    ) -> dict:
+    ) -> OperationListOut:
         """列出可运行的自定义 operation 的定位符清单。观察类(纯反射,不实例化,不改任何状态)。
 
         只返回定位符不含参数 schema——参数详情用 describe_operation 查;列应用
-        用 list_applications。定位符可直接传给 describe_operation / run_operation:
-        类名无同名冲突时为类名短名(如 MoveDirectly),有同名冲突时为完整 op_id
-        (含点),无需区分。failures[] 为单模块 import 失败记录,不影响其余结果。
+        用 list_applications。
         """
-        try:
-            result = operation_registry.scan_operations(backend.ctx)
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'error': str(e)}
-        return operation_registry.compact_operation_list(result, query)
+        result = operation_registry.scan_operations(backend.ctx)
+        payload = operation_registry.compact_operation_list(result, query)
+        return OperationListOut(
+            total=payload['total'],
+            operations=payload['operations'],
+            failures=payload['failures'],
+        )
     return list_operations
 
 
-def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
+def make_describe_operation(backend: SrBackendContext) -> Callable[[str], OperationDescOut | AmbiguousMatchesOut]:
     """构造 ``describe_operation`` tool(自定义 operation 运行入口)。"""
     def describe_operation(
         op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly),命中多个同名类时全部返回")],
-    ) -> dict:
+    ) -> OperationDescOut | AmbiguousMatchesOut:
         """描述单个 operation 的参数 schema。观察类(纯反射,不实例化,不改任何状态)。
 
-        op_id 短名命中多个同名类时返回全部候选(ambiguous=True),未找到时附
-        相似类名建议。返回的 docstring 是该 op 的语义唯一来源(做什么/起终点
-        画面/副作用/参数语义);params[] 元素的 json_serializable 标记能否直接
-        传 JSON 值,coercible 标记可传 dict 由 run_operation 自动反序列化。
+        op_id 短名命中多个同名类时返回全部候选(ambiguous),未找到时报错附
+        相似类名建议;返回的 docstring 是该 op 的语义唯一来源(做什么/起终点
+        画面/副作用/参数语义),先读它再决定怎么传参。
         """
-        try:
-            return operation_registry.describe_operation(backend.ctx, op_id)
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'error': str(e)}
+        payload = operation_registry.describe_operation(backend.ctx, op_id)
+        if payload.get('ambiguous'):
+            # hint 是用法引导(ambiguous 字段描述已承载「用完整 op_id 重查」),不进返回体
+            return AmbiguousMatchesOut.model_validate(
+                {k: v for k, v in payload.items() if k != 'hint'})
+        return OperationDescOut.model_validate(payload)
     return describe_operation
 
 
-def make_describe_operation_flow(backend: SrBackendContext) -> Callable[[str, bool], dict]:
+def make_describe_operation_flow(backend: SrBackendContext) -> Callable[[str, bool], FlowOut | AmbiguousCandidatesOut]:
     """构造 ``describe_operation_flow`` tool(自定义 operation 运行入口)。
 
     核心函数纯反射不依赖 backend.ctx,签名保留 backend 与既有工厂对齐
-    (挂接层统一注入模式);MCP / HTTP 同契约走同一核心函数。
+    (挂接层统一注入模式);MCP / HTTP 同契约走同一核心函数,registry dict
+    负载为两适配器共用(形状不动),本工具只做 MCP 面的 Out 包装。
     """
     def describe_operation_flow(
         op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly);完整形态实时解析,接受任意 Operation 子类含 Application")],
         mermaid: Annotated[bool, Field(description="True 时额外返回 mermaid 字段(flowchart 源码,渲染交给客户端);默认 False 不占返回体")] = False,
-    ) -> dict:
+    ) -> FlowOut | AmbiguousCandidatesOut:
         """查看单个 operation 的节点流转图(节点/边/诊断)。观察类(纯反射,不实例化,不改任何状态)。
 
         describe_operation 看参数 schema,本 tool 看节点怎么流转(怎么走/失败走哪/
         收尾在哪),两者互补;改 op 前先看图了解现状,改完再看图核对。纯静态提取
         零副作用,可在运行前发现断名边/多起点等编排错误。短名查不到属预期
         (App 类不进扫描缓存),改用完整 op_id。
-
-        Returns:
-            flow 文本图的记号:「←入:」标注仅入边≥2 的汇聚节点出现;断名边以
-            「←✗不存在的来源」挂在 to 节点侧;edges[] 断名边(from=null)统一垫底。
-            diagnostics 的 error=运行时必炸或图不成立,warn=结构可疑不致命。
         """
-        try:
-            return operation_flow.describe_operation_flow(op_id, mermaid=mermaid)
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'error': str(e)}
+        payload = operation_flow.describe_operation_flow(op_id, mermaid=mermaid)
+        if payload.get('ambiguous'):
+            return AmbiguousCandidatesOut.model_validate(
+                {k: v for k, v in payload.items() if k != 'hint'})
+        return FlowOut.model_validate(payload)
     return describe_operation_flow
 
 

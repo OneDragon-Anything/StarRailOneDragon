@@ -535,6 +535,91 @@ class RecordScreenOut(BaseModel):
         return cls(**asdict(result))
 
 
+class OperationListOut(BaseModel):
+    """operation 定位符清单(list_operations 返回)。"""
+
+    total: int = Field(description='全量可运行 op 数(过滤前)')
+    operations: list[str] = Field(
+        description='定位符列表(原 op_id 序);元素可直接传给 describe_operation / run_operation——'
+                    '无同名类时为类名短名,同名冲突时为完整 op_id,元素含不含点自可辨')
+    failures: list[str] = Field(
+        description='单模块 import 失败记录({module}: {error} 格式);不影响其余结果')
+
+
+class ParamOut(BaseModel):
+    """operation 构造参数的反射描述。"""
+
+    name: str = Field(description='参数名(已剔除 self/ctx)')
+    annotation: str = Field(description='类型注解的可读字符串(如 str / ChargePlanItem / int)')
+    required: bool = Field(description='是否必填(无默认值)')
+    default: str | None = Field(default=None, description='默认值的字符串表示;必填参数为 null')
+    json_serializable: bool = Field(
+        description='能否直接传 JSON 值(str/int/float/bool/list/dict/Optional)')
+    coercible: bool = Field(
+        description='可传 dict 由 run_operation 自动 from_dict 反序列化(@dataclass+from_dict 参数)')
+
+
+class OperationDescOut(BaseModel):
+    """单个 operation 的反射描述(describe_operation 单命中)。"""
+
+    op_id: str = Field(description='定位标识 <module>.<ClassName>,run_operation 的入参')
+    class_name: str = Field(description='类名')
+    module: str = Field(description='定义模块的 dotted path')
+    docstring: str | None = Field(
+        default=None, description='本类 docstring(op 语义——做什么/起终点画面/副作用/参数含义——的唯一来源);未写为 null')
+    params: list[ParamOut] = Field(
+        default_factory=list, description='构造参数 schema(已剔除 self/ctx)')
+    debuggable: bool = Field(
+        description='所有必填参数均可经 run_operation 直接构造(JSON 可序列化或可 from_dict)')
+
+
+class AmbiguousMatchesOut(BaseModel):
+    """短名多命中的候选形态(describe_operation)。"""
+
+    ambiguous: bool = Field(
+        description='恒 True:短名命中多个同名类,用完整 op_id 精确指定后重查')
+    count: int = Field(description='候选数量')
+    matches: list[OperationDescOut] = Field(
+        description='各候选的完整描述(逐条读 docstring 选目标)')
+
+
+class AmbiguousCandidatesOut(BaseModel):
+    """短名多命中的轻量候选形态(describe_operation_flow)。"""
+
+    ambiguous: bool = Field(
+        description='恒 True:短名命中多个同名类,用完整 op_id 精确指定后重查')
+    count: int = Field(description='候选数量')
+    candidates: list[str] = Field(description='候选 op_id 列表')
+
+
+class FlowOut(BaseModel):
+    """operation 节点流转描述(describe_operation_flow 单命中)。"""
+
+    op_id: str = Field(description='定位标识')
+    class_name: str = Field(description='类名')
+    module: str = Field(description='定义模块的 dotted path')
+    start_node: str | None = Field(default=None, description='入口节点名;无起点(诊断 error)时 null')
+    node_count: int = Field(description='节点总数')
+    edge_count: int = Field(description='边总数')
+    flow: str = Field(
+        description='文本流转图(BFS 执行序)。记号:「←入:」标注仅入边≥2 的汇聚节点;'
+                    '「←✗不存在的来源」为断名边,挂在 to 节点侧')
+    mermaid: str | None = Field(
+        default=None, description='mermaid=true 时的 flowchart 源码(渲染交给客户端);默认 null')
+    nodes: list[dict] = Field(
+        default_factory=list,
+        description='节点明细:cn(节点名)/method(方法名)/is_start_node/timeout_seconds/'
+                    'node_max_retry_times/reachable(是否可达)')
+    edges: list[dict] = Field(
+        default_factory=list,
+        description='边明细:from/to/success/status/ignore_status;断名边 from=null 统一垫底')
+    diagnostics: list[dict] = Field(
+        default_factory=list,
+        description='静态诊断:level=error 运行时必炸或图不成立,warn=结构可疑不致命')
+    notes: list[str] = Field(
+        default_factory=list, description='固定图例说明(每行一条,随返回带)')
+
+
 @dataclass
 class GotoScreenResult:
     """画面导航结果(传输无关;arrived=False 是带现场的正常结果,非错误)。
