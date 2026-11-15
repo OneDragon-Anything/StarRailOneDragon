@@ -1,11 +1,11 @@
-"""角色静态基础信息查询 MCP 工具：全角色定义 + 行迹满级 + 星魂效果 + 突破材料链路。
+"""角色静态基础信息查询 MCP 工具：全角色定义 + 行迹满级 + 星魂效果 + 行迹材料 + 突破材料链路。
 
 数据单一真相源是 ``character_const``（98 条角色常量）、
-``sr_character_details``（行迹/星魂快照）与 ``character_ascension_const``/
-``dungeon_drop_const``（with_ascension=true 时的晋阶材料与副本反查）——
-本模块只是查询薄壳（零 IO、零状态、无游戏依赖）。与 ``mys_get_characters``
-的分工：本工具查**静态基础信息**（全角色，不随账号变、不需要登录）；查
-**账号拥有与练度**（等级/星魂解锁/遗器词条/面板）走 mys 工具。
+``sr_character_details``（行迹/星魂快照）、``trace_material_const``（行迹材料归属）
+与 ``character_ascension_const``/``dungeon_drop_const``（with_ascension=true 时的
+晋阶材料与副本反查）——本模块只是查询薄壳（零 IO、零状态、无游戏依赖）。与
+``mys_get_characters`` 的分工：本工具查**静态基础信息**（全角色，不随账号变、
+不需要登录）；查**账号拥有与练度**（等级/星魂解锁/遗器词条/面板）走 mys 工具。
 
 匹配策略（按优先级，命中即返回）：
 1. 纯数字 = 游戏内部角色数字 id（avatar_id，mys equip 同源）→ 精确反查
@@ -27,6 +27,7 @@ from sr_od.config.dungeon_drop_const import (
     find_dungeon_by_material,
     find_missions_by_material,
 )
+from sr_od.config.trace_material_const import find_character_trace_materials
 from sr_od.mys.sr_character_details import resolve_eidolons, resolve_traces
 
 #: 模块级角色索引（加载时构建一次：英文代号 → Character 实例）
@@ -103,6 +104,38 @@ def _char_ascension_block(char: Character) -> dict | None:
     }
 
 
+def _char_trace_materials_block(char: Character) -> dict | None:
+    """角色 → 行迹升级材料名 + 刷取副本反查 dict;归属表未收录返回 None。
+
+    行迹材料名随「命途线(花萼赤三档)+实装年代(历战余响 boss 材料)+版本特殊项」
+    变化,非全角色统一(表来源与三重锚点见 trace_material_const);信用点为通用项
+    也含在 materials 内。副本反查语义与 ascension 块一致:dungeon_by_material
+    分类级、missions_by_material 实例级、extra_sources_by_material 副本外途径。
+    """
+    materials = find_character_trace_materials(char.cn)
+    if not materials:
+        return None
+    dungeon_by_material: dict[str, list[str]] = {}
+    missions_by_material: dict[str, list[dict[str, str]]] = {}
+    extra_by_material: dict[str, list[str]] = {}
+    for material in materials:
+        dungeons = find_dungeon_by_material(material)
+        if dungeons:
+            dungeon_by_material[material] = dungeons
+        missions = find_missions_by_material(material)
+        if missions:
+            missions_by_material[material] = missions
+        extra = MATERIAL_EXTRA_SOURCES.get(material)
+        if extra:
+            extra_by_material[material] = list(extra)
+    return {
+        'materials': materials,
+        'dungeon_by_material': dungeon_by_material,
+        'missions_by_material': missions_by_material,
+        'extra_sources_by_material': extra_by_material,
+    }
+
+
 def lookup_character(
     query: str,
     rarity: int | None = None,
@@ -125,7 +158,7 @@ def lookup_character(
 
     Returns:
         ``{"status","message","data"}``：``success`` 时 data 为角色定义
-        （精确/模糊单命中带 traces+eidolons 详情；list_all 时为
+        （精确/模糊单命中带 traces+eidolons+trace_materials 详情；list_all 时为
         ``{'list': [...]}`` 仅基础字段）；``ambiguous`` 模糊多命中
         （candidates 候选名）；``not_found`` 查无。
     """
@@ -135,8 +168,9 @@ def lookup_character(
                 and (element_cn is None or char.combat_type.cn == element_cn))
 
     def _single_hit(char: Character, match: str) -> dict:
-        """单命中统一出口：详情 + 可选晋阶材料块。"""
+        """单命中统一出口：详情 + 行迹材料块 + 可选晋阶材料块。"""
         data = _char_full_data(char, match)
+        data['trace_materials'] = _char_trace_materials_block(char)
         if with_ascension:
             data['ascension'] = _char_ascension_block(char)
         return {'status': 'success', 'message': None, 'data': data}
@@ -213,12 +247,15 @@ def register_character_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类�
             - ``success``：精确/模糊单命中时 ``data`` 含基础字段(avatar_id/id/cn/
               path_cn/element_cn/rarity/technique_type/icon)+``traces``(行迹满级
               列表: tag/name/max_level/max_values/desc)+``eidolons``(星魂:
-              pos/name/desc)；``with_ascension=true`` 时另附 ``ascension``
+              pos/name/desc)+``trace_materials``(行迹升级材料名 materials + 刷取
+              副本反查 dungeon_by_material/missions_by_material + 副本外途径;
+              材料随命途线与实装年代变化非统一,表未收录该角色时为 null)；
+              ``with_ascension=true`` 时另附 ``ascension``
               (stages 分段需求/total 满晋阶总量/dungeon_by_material 材料→刷取副本
               分类级/missions_by_material 实例级:具体虚影·boss,与指南关卡同名对齐/
               extra_sources_by_material 副本外途径;表未收录该角色时为 null)；
               ``list_all=true`` 时 ``data`` 为 ``{'list': [...], 'count': n}``
-              仅基础字段(不带 traces/eidolons/ascension)；
+              仅基础字段(不带 traces/eidolons/trace_materials/ascension)；
             - ``ambiguous``：模糊多命中，``data.candidates`` 为候选角色名；
             - ``not_found``：查无。
         """
