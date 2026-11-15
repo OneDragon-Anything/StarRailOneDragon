@@ -476,11 +476,12 @@ class ConfigSchemaOut(BaseModel):
     description: str = Field(description='该 config 的一句话用途说明')
     set_fields: list[dict] = Field(
         description='可改字段清单:每项含 name/type/描述/约束;'
-                    'enum 类字段的 options 元素 value 是 set 时要传的字符串(非 label)')
+                    'enum 类字段的 options 元素 value 是 set/add 时要传的字符串(非 label)')
     ro_fields: list[str] = Field(
         description='只读字段名(运行态/身份,set 会被拒);与 set_fields 互斥')
     list_fields: list[dict] = Field(
-        description='列表字段结构(item 结构 + add 示例);add_config_item/update_config_item 的 item_dict 照此构造')
+        description='列表字段结构(item 结构 + add 示例);add_config_item/update_config_item 的 '
+                    'item_dict 照此构造,其中 enum 展开的 options 同样传 value 非 label')
 
 
 class ConfigListOut(BaseModel):

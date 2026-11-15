@@ -266,7 +266,7 @@ def _trailblaze_power_validate_item(ctx: 'SrContext', item: object) -> str | Non
 
 
 def _trailblaze_power_add(config: object, item: object, idx: int | None = None) -> None:
-    # add_plan_item 内部校验 mission 可解析与插入位置越界,失败抛 ValueError(handler 转 error);
+    # add_plan_item 内部校验 mission 可解析与插入位置越界,失败抛 ValueError(工具异常通道透传);
     # 一条龙按 plan_list 顺序执行,插入位置 = 执行顺位
     config.add_plan_item(item, idx)  # type: ignore[attr-defined]
 

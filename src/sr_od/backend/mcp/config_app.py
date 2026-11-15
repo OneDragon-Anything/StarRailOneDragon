@@ -200,7 +200,7 @@ def make_set_config(backend: SrBackendContext) -> Callable:
                     raise ConfigError(f'{key} 值 {value} 不合法(可用: {valid_values})')
         config.update(key, value)
         config.save()
-        return f'已设置 {app_id}.{key}={value}(写穿缓存并已落盘,下一次运行立即生效)'
+        return f'已设置 {app_id}.{key}={value}'
     return set_config
 
 
