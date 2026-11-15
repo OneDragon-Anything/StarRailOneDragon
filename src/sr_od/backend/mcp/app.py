@@ -59,6 +59,7 @@ from sr_od.backend.mcp.service_app import (
 )
 from sr_od.backend.schemas import (
     AnalyzeScreenOut,
+    InputTextOut,
     RunStatusOut,
     ScreenNamesOut,
     WindowStatusOut,
@@ -393,19 +394,17 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     def input_text(
         text: Annotated[str, Field(description="要输入的文本(账号/密码/兑换码等)")],
         use_clipboard: Annotated[bool | None, Field(description="None=跟随 game_config.type_input_way;True=强制剪贴板;False=强制逐键")] = None,
-    ) -> dict:
+    ) -> InputTextOut:
         """向当前焦点输入框输入文本。操作类(会控制游戏),需游戏窗口就绪。
 
-        需先用 click_game 点击输入框聚焦。返回的 masked_text 对密码类输入已打码。
+        需先用 click_game 点击输入框聚焦。
         """
         try:
-            return backend.input_text(text, use_clipboard)
-        except StopRunInterrupted:
-            # 同 click_game:BaseException 按名收尾,防穿透 ASGI(防御纵深)。
-            return {'success': False, 'method': None, 'masked_text': None,
-                    'error': '运行已被停机中断(守卫拦截本次输入)'}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'method': None, 'masked_text': None, 'error': str(e)}
+            return InputTextOut.from_backend(backend.input_text(text, use_clipboard))
+        except StopRunInterrupted as e:
+            # BaseException 不能裸透传(FastMCP/Starlette 只接 Exception,穿透即连接断):
+            # 按名转普通异常走错误通道(防御纵深;手动端点已在 backend 层豁免,正常不达)
+            raise RuntimeError('运行已被停机中断(守卫拦截本次输入)') from e
 
     # 运行类 / 查询类工厂 tool:annotations(含 title)在注册时传(函数定义在 service_app.py)
     mcp.tool(annotations=ToolAnnotations(title="打开游戏"))(make_open_game(backend))

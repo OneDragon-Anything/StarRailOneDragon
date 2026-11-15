@@ -195,6 +195,21 @@ class ScreenNamesOut(BaseModel):
                     '作 goto_screen / get_screen_detail / upsert_screen_area 的定位入参')
 
 
+class InputTextOut(BaseModel):
+    """文本输入结果(input_text 返回)。"""
+
+    method: str = Field(
+        description="实际输入方式:'clipboard'(剪贴板粘贴,支持中文/特殊字符)/"
+                    "'keyboard'(逐键);use_clipboard=None 时跟随 game_config.type_input_way")
+    masked_text: str = Field(
+        description='实际输入文本的脱敏回显(密码类已打码)')
+
+    @classmethod
+    def from_backend(cls, result: 'InputTextResult') -> 'InputTextOut':
+        """框架输入结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
 @dataclass
 class WindowStatus:
     """游戏窗口状态。
@@ -283,6 +298,20 @@ class ApplicationListResult:
     current_instance_idx: int
     active_standalone_app_id: str | None
     applications: list[ApplicationInfo]
+
+
+@dataclass
+class InputTextResult:
+    """文本输入结果(MCP/HTTP 共享,传输无关)。
+
+    Attributes:
+        method: 实际输入方式 'clipboard'(剪贴板粘贴)/'keyboard'(逐键);
+            use_clipboard=None 时由 game_config.type_input_way 决定。
+        masked_text: 实际输入文本的脱敏回显;密码类已打码。
+    """
+
+    method: str
+    masked_text: str
 
 
 @dataclass

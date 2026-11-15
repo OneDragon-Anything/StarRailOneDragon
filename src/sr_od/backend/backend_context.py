@@ -50,6 +50,7 @@ from sr_od.backend.schemas import (
     AnalyzeScreenResult,
     ApplicationInfo,
     ApplicationListResult,
+    InputTextResult,
     OcrText,
     RunStatusResult,
     WindowStatus,
@@ -1332,7 +1333,7 @@ class SrBackendContext:
             controller.drag_to(Point(int(x2), int(y2)), start=Point(int(x1), int(y1)), duration=duration)
         return {'success': True, 'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2), 'duration': duration}
 
-    def input_text(self, text: str, use_clipboard: bool | None = None) -> dict:
+    def input_text(self, text: str, use_clipboard: bool | None = None) -> InputTextResult:
         """向当前焦点输入框输入文本(账号/密码等)。操作类。
 
         use_clipboard=None → 跟随 ``game_config.type_input_way``(同 ``EnterGame``);
@@ -1344,8 +1345,7 @@ class SrBackendContext:
                 False=逐键(controller.input_str);None=跟随全局配置。
 
         Returns:
-            ``{success, method, masked_text}``:method ∈ {'clipboard','keyboard'};
-            masked_text 为脱敏文本。
+            实际输入方式与脱敏文本。
 
         Raises:
             BackendNotReadyError: SrContext 未就绪或游戏窗口未就绪时抛。
@@ -1363,7 +1363,7 @@ class SrBackendContext:
             else:
                 controller.input_str(text)
                 method = 'keyboard'
-        return {'success': True, 'method': method, 'masked_text': mask_text(text)}
+        return InputTextResult(method=method, masked_text=mask_text(text))
 
     def _resolve_use_clipboard(self, use_clipboard: bool | None) -> bool:
         """解析输入方式:非 None 原样返回;None 读 game_config.type_input_way(== CLIPBOARD 则 True)。"""
