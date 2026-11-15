@@ -11,7 +11,8 @@
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import re
+from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.operation.application_run_record import AppRunRecord
 from one_dragon.base.operation.operation_edge import node_from
@@ -53,6 +54,12 @@ _BANNER_SCREEN: str = '末日幻影-首领简报'
 class ApocalypticShadowApp(SrApplication):
     """末日幻影一键挑战:主界面起、大世界收;单次运行挑战当前默认选中难度
     (=最高可玩,本 app 不做难度选择)一次。"""
+
+    #: 挑战重试预算 = 初选 + 2 次换人重选;仅针对「列表到底未找到 X」形态
+    _MAX_CHALLENGE_ATTEMPTS: int = 3
+
+    #: 编队填充失败的候选名提取(填充 op 的失败状态原文 = f'列表到底未找到 {名}')
+    _MISSING_NAME_PAT: ClassVar[re.Pattern] = re.compile(r'列表到底未找到 (.+)')
 
     def __init__(self, ctx: SrContext, run_record: AppRunRecord | None = None,
                  instance_idx: int | None = None):
@@ -136,11 +143,45 @@ class ApocalypticShadowApp(SrApplication):
     @node_from(from_name='随机选人')
     @operation_node(name='执行挑战', node_max_retry_times=2)
     def challenge(self) -> OperationRoundResult:
-        """挑战组合 op:入口检测已在编队屏直接接续(探测节点已到达),
-        编队 → 装配 → 前往挑战 → 战斗推进 → 返回选关。"""
-        op = TlApocalypticShadowChallengeOp(
-            self.ctx, self._team_names, self._buff_slots)
-        return self.round_by_op_result(op.execute())
+        """挑战组合 op(带换人重选):编队 → 装配 → 前往挑战 → 战斗推进 → 返回选关。
+
+        填充失败的已知形态 = 「列表到底未找到 X」(候选名在编队屏角色列表
+        实扫不到;2026-11-16 实测:狩猎版三月七整列表遍历从未出卡,根因待查,
+        证据见迭代设计稿 §10)。此形态剔除该名重选重试——填充 op 先清空
+        再填,可安全重入;重试预算耗尽或非此形态失败 → 按设计中止。"""
+        excluded: set[str] = set()
+        last: OperationRoundResult | None = None
+        for _ in range(self._MAX_CHALLENGE_ATTEMPTS):
+            op = TlApocalypticShadowChallengeOp(
+                self.ctx, self._team_names, self._buff_slots)
+            op_result = op.execute()
+            if op_result.success:
+                return self.round_by_op_result(op_result)
+            last = self.round_by_op_result(op_result)
+            match = self._MISSING_NAME_PAT.search(op_result.status or '')
+            if match is None:
+                return last
+            missing = match.group(1).strip()
+            excluded.add(missing)
+            log.info('末日幻影 app: %s 在编队屏列表扫不到,剔除后重选(已剔 %s)',
+                     missing, sorted(excluded))
+            if not self._re_pick(excluded):
+                return self.round_fail(f'剔除 {missing} 重选后角色池不足')
+        return last
+
+    def _re_pick(self, excluded: set[str]) -> bool:
+        """剔除不可扫名单后重选队伍(重写 _team_names/_buff_slots);
+        池不足返回 False(调用方走失败,队伍保持上次值不再发起)。"""
+        known = {c.cn for c in CHARACTER_LIST}
+        pool = [n for n in self.config.character_pool
+                if n in known and n not in excluded]
+        try:
+            self._team_names = pick_random_teams(pool, self._team_count)
+        except ValueError:
+            return False
+        self._buff_slots = tuple([1] * self._team_count)
+        log.info('末日幻影 app: 重选队伍 %s', self._team_names)
+        return True
 
     @node_from(from_name='执行挑战')
     @operation_node(name='领取期次奖励', node_max_retry_times=2)
