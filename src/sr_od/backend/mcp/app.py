@@ -301,36 +301,31 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         x: float, y: float,
         press_time: Annotated[float, Field(description="按住时长(秒);默认 0.1(游戏识别下限,0=极短按可能无效)")] = 0.1,
         pc_alt: Annotated[bool, Field(description="点击前是否按住 Alt 解锁光标;大世界等 pc_alt=true 画面必需,其余 False")] = False,
-    ) -> dict:
+    ) -> bool:
         """点击游戏窗口内坐标(取画面建档 pc_rect 中心)。操作类(会控制游戏),需游戏窗口就绪。
 
         鼠标点击用本 tool;键盘按键用 key_tap;拖拽用 drag。坐标经控制器缩放到
-        真实屏幕;不在窗口内则不点击(in_window=False)。大世界等锁光标画面
-        点击会落空,需传 pc_alt=True 解锁光标(画面是否锁光标看建档的 pc_alt)。
+        真实屏幕。返回 False = 坐标不在窗口内、未点击(正常结果,非错误)。
+        大世界等锁光标画面点击会落空,需传 pc_alt=True 解锁光标(画面是否锁
+        光标看建档的 pc_alt)。
 
         ⚠️ 底层无内置等待:点 UI 常触发画面切换(菜单/弹窗/进画面),连续操作或
         截图前建议 sleep ~1s 等动画(否则截过渡帧)。
         """
         try:
             return backend.click_game(x, y, press_time, pc_alt)
-        except StopRunInterrupted:
-            # 停机守卫异常是 BaseException,下方泛型 except Exception 接不住;
-            # 不按名收尾会穿透 FastMCP → Starlette ServerErrorMiddleware
-            # (同样只接 Exception)→ ASGI 层错误 + 连接断,客户端拿不到
-            # 结构化错误。正常路径不应到达此处(手动端点在 backend 层已
-            # stop_guard_exemption 豁免)——本兜底是防御纵深:未来新增端点
-            # 忘记豁免时,客户端仍拿到可读错误而非连接断。
-            return {'success': False, 'x': x, 'y': y, 'in_window': False, 'pc_alt': pc_alt,
-                    'error': '运行已被停机中断(守卫拦截本次输入)'}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'x': x, 'y': y, 'in_window': False, 'pc_alt': pc_alt, 'error': str(e)}
+        except StopRunInterrupted as e:
+            # 停机守卫异常是 BaseException,不能裸透传(FastMCP/Starlette 只接
+            # Exception,穿透即 ASGI 错误 + 连接断)。手动端点在 backend 层已
+            # stop_guard_exemption 豁免,本兜底是防御纵深:转普通异常走错误通道。
+            raise RuntimeError('运行已被停机中断(守卫拦截本次输入)') from e
 
     @mcp.tool(annotations=ToolAnnotations(title="键盘按键"))  # 操作类:键盘输入(非破坏)
     def key_tap(
         key: Annotated[str, Field(description="框架键名:w/a/s/d 移动、f 交互、esc、space 等(沿用框架 btn_controller 约定)")],
         press_time: Annotated[float, Field(description="按住时长(秒);0=短按 tap,>0=长按(如移动长按 1-2s)")] = 0.0,
-    ) -> dict:
-        """向游戏发送键盘按键(短按/长按)。操作类(会控制游戏),需游戏窗口就绪。
+    ) -> str:
+        """向游戏发送键盘按键(短按/长按),返回确认文案。操作类(会控制游戏),需游戏窗口就绪。
 
         键盘按键用本 tool;鼠标点击用 click_game;拖拽用 drag。
 
@@ -339,19 +334,16 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.key_tap(key, press_time)
-        except StopRunInterrupted:
-            # 同 click_game:BaseException 按名收尾,防穿透 ASGI(防御纵深)。
-            return {'success': False, 'key': key, 'press_time': press_time,
-                    'error': '运行已被停机中断(守卫拦截本次输入)'}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'key': key, 'press_time': press_time, 'error': str(e)}
+        except StopRunInterrupted as e:
+            # 同 click_game:BaseException 按名转普通异常,防穿透 ASGI(防御纵深)。
+            raise RuntimeError('运行已被停机中断(守卫拦截本次输入)') from e
 
     @mcp.tool(annotations=ToolAnnotations(title="鼠标拖拽"))  # 操作类:鼠标拖拽(非破坏)
     def drag(
         x1: float, y1: float, x2: float, y2: float,
         duration: Annotated[float, Field(description="拖拽耗时(秒),默认 1.0")] = 1.0,
-    ) -> dict:
-        """鼠标按住拖拽 (x1,y1)→(x2,y2)。操作类(会控制游戏),需游戏窗口就绪。
+    ) -> str:
+        """鼠标按住拖拽 (x1,y1)→(x2,y2),返回确认文案。操作类(会控制游戏),需游戏窗口就绪。
 
         鼠标拖拽用本 tool;点击用 click_game;按键用 key_tap。列表滚动/翻页用
         拖拽实现,手指移动方向决定滚动方向(触摸语义:手指上滑=列表向深处翻页)。
@@ -360,12 +352,9 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.drag(x1, y1, x2, y2, duration)
-        except StopRunInterrupted:
-            # 同 click_game:BaseException 按名收尾,防穿透 ASGI(防御纵深)。
-            return {'success': False, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'duration': duration,
-                    'error': '运行已被停机中断(守卫拦截本次输入)'}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'duration': duration, 'error': str(e)}
+        except StopRunInterrupted as e:
+            # 同 click_game:BaseException 按名转普通异常,防穿透 ASGI(防御纵深)。
+            raise RuntimeError('运行已被停机中断(守卫拦截本次输入)') from e
 
     @mcp.tool(annotations=ToolAnnotations(title="输入文本"))  # 操作类:文本输入(非破坏)
     def input_text(

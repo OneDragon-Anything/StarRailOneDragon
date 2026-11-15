@@ -1236,7 +1236,7 @@ class SrBackendContext:
         controller.close_game()
         return '已发送关闭游戏信号,可用 check_game_window 验证'
 
-    def click_game(self, x: int | float, y: int | float, press_time: float = 0.1, pc_alt: bool = False) -> dict:
+    def click_game(self, x: int | float, y: int | float, press_time: float = 0.1, pc_alt: bool = False) -> bool:
         """点击游戏窗口内指定坐标(1080p 游戏空间,同源 screen_info pc_rect)。操作类。
 
         坐标经控制器自动缩放到真实屏幕。坐标不在游戏窗口内时控制器返 False(不点击)。
@@ -1248,7 +1248,7 @@ class SrBackendContext:
                 (星穹铁道会锁光标,不按 Alt 点击落空);其余画面保持 False。
 
         Returns:
-            ``{success, x, y, in_window, pc_alt}``:``success/in_window=False`` 表示坐标不在窗口内。
+            True=点击已发出;False=坐标不在游戏窗口内,未点击(正常结果,非错误)。
 
         Raises:
             BackendNotReadyError: SrContext 未就绪或游戏窗口未就绪时抛。
@@ -1262,10 +1262,9 @@ class SrBackendContext:
         # unwind 中的 run 线程输入仍被守卫拦截。
         with stop_guard_exemption():
             controller.active_window()
-            clicked = controller.click(Point(int(x), int(y)), press_time=press_time, pc_alt=pc_alt)
-        return {'success': clicked, 'x': int(x), 'y': int(y), 'in_window': clicked, 'pc_alt': pc_alt}
+            return controller.click(Point(int(x), int(y)), press_time=press_time, pc_alt=pc_alt)
 
-    def key_tap(self, key: str, press_time: float = 0.0) -> dict:
+    def key_tap(self, key: str, press_time: float = 0.0) -> str:
         """键盘按键:``press_time=0`` 短按(tap),``press_time>0`` 长按(press→保持→release)。操作类。
 
         覆盖框架 ``btn_controller`` 能发的键:移动 ``w``/``a``/``s``/``d``、交互 ``f``、
@@ -1276,7 +1275,7 @@ class SrBackendContext:
             press_time: >0 时长按若干秒(如移动长按 1-2s);=0 短按。
 
         Returns:
-            ``{success, key, press_time}``。
+            确认文案(「已按下 <key>」/长按附时长)。
 
         Raises:
             BackendNotReadyError: SrContext / 游戏窗口未就绪时抛。
@@ -1292,9 +1291,11 @@ class SrBackendContext:
                 controller.btn_press(key, press_time=press_time)
             else:
                 controller.btn_tap(key)
-        return {'success': True, 'key': key, 'press_time': press_time}
+        if press_time > 0:
+            return f'已长按 {key}(press_time={press_time}s)'
+        return f'已按下 {key}'
 
-    def drag(self, x1: int | float, y1: int | float, x2: int | float, y2: int | float, duration: float = 1.0) -> dict:
+    def drag(self, x1: int | float, y1: int | float, x2: int | float, y2: int | float, duration: float = 1.0) -> str:
         """鼠标按住拖拽:从 (x1,y1) 拖到 (x2,y2),持续 duration 秒。操作类。
 
         1080p 游戏空间坐标(同 screen_info ``pc_rect``)。覆盖刮刮卡刮开、八卦收集
@@ -1306,7 +1307,7 @@ class SrBackendContext:
             duration: 拖拽持续秒数(默认 1.0)。
 
         Returns:
-            ``{success, x1, y1, x2, y2, duration}``。
+            确认文案(「已拖拽 (x1,y1)→(x2,y2)」)。
 
         Raises:
             BackendNotReadyError: SrContext / 游戏窗口未就绪时抛。
@@ -1318,7 +1319,7 @@ class SrBackendContext:
         with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机一次性标志位
             controller.active_window()
             controller.drag_to(Point(int(x2), int(y2)), start=Point(int(x1), int(y1)), duration=duration)
-        return {'success': True, 'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2), 'duration': duration}
+        return f'已拖拽 ({int(x1)},{int(y1)})→({int(x2)},{int(y2)})'
 
     def input_text(self, text: str, use_clipboard: bool | None = None) -> InputTextResult:
         """向当前焦点输入框输入文本(账号/密码等)。操作类。
