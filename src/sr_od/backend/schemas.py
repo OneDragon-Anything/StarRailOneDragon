@@ -191,7 +191,7 @@ class ScreenNamesOut(BaseModel):
     """画面名清单(list_screen_names 返回)。"""
 
     screen_names: list[str] = Field(
-        description='全部画面名(排序后)。screen_name 是画面建档的匹配键(中文,须完全一致)，'
+        description='全部画面名(排序后)。screen_name 是画面建档的匹配键(中文，须完全一致)，'
                     '作 goto_screen / get_screen_detail / upsert_screen_area 的定位入参')
 
 
