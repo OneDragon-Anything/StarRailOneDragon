@@ -196,6 +196,26 @@ class AreaMutationOut(BaseModel):
         return cls(**asdict(result))
 
 
+class GotoScreenOut(BaseModel):
+    """画面导航结果(goto_screen 返回;arrived=False 是带现场的正常结果,非错误)。"""
+
+    arrived: bool = Field(
+        description='是否已到达目标画面;False 为正常中断结果(非错误),据 reason 判断如何继续')
+    current_screen: str | None = Field(
+        description='最终确认所在的画面名(可直接作 goto_screen 目标或 analyze_screen 核对);'
+                    '画面无法识别(过渡帧/未建档)时为 null')
+    steps: list[str] = Field(
+        description='实际执行的跳转步骤,每步「画面 --区域--> 画面」;中断时含已完成部分')
+    reason: str | None = Field(
+        description="arrived=False 时的中断原因(无路径/area 未命中/点击失败/停机中断等,"
+                    "文案带下一步提示);arrived=True 时为 null")
+
+    @classmethod
+    def from_backend(cls, result: 'GotoScreenResult') -> 'GotoScreenOut':
+        """框架导航结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
 class ApplicationListResultOut(BaseModel):
     """应用运行配置概览(list_applications 返回)。"""
 
@@ -355,6 +375,23 @@ class ScreenCreateResult:
 
     screen_id: str
     screen_name: str
+
+
+@dataclass
+class GotoScreenResult:
+    """画面导航结果(传输无关;arrived=False 是带现场的正常结果,非错误)。
+
+    Attributes:
+        arrived: 是否已到达目标画面;False 为正常中断结果。
+        current_screen: 最终确认所在画面名;画面无法识别时 None。
+        steps: 实际执行的跳转步骤(「画面 --区域--> 画面」);中断时含已完成部分。
+        reason: 中断原因;arrived=True 时 None。
+    """
+
+    arrived: bool
+    current_screen: str | None
+    steps: list[str]
+    reason: str | None = None
 
 
 @dataclass

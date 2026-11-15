@@ -60,6 +60,7 @@ from sr_od.backend.mcp.service_app import (
 from sr_od.backend.schemas import (
     AnalyzeScreenOut,
     AreaMutationOut,
+    GotoScreenOut,
     InputTextOut,
     RunStatusOut,
     ScreenCreateOut,
@@ -271,23 +272,15 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     def goto_screen(
         target_screen_name: Annotated[str, Field(description="目标画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
         max_steps: Annotated[int, Field(description="最多点击次数,防路由成环", ge=1, le=30)] = 10,
-    ) -> dict:
+    ) -> GotoScreenOut:
         """沿画面建档的路由边自动导航到目标画面(实际点击游戏)。操作类(会控制游戏)。
 
-        识别当前画面 → 查路由 → 逐边点击;报「无路径」= 跳转边未建档(补 area
-        的 goto_list,别硬试坐标)。跳转边如实记录(含不可逆/消耗类出口),
-        本工具不做安全过滤,路径安全由调用方负责。
+        报「无路径」= 跳转边未建档(补 area 的 goto_list,别硬试坐标)。
+        跳转边如实记录(含不可逆/消耗类出口),本工具不做安全过滤,路径安全由
+        调用方负责。arrived=False 是正常中断结果(带 current_screen/steps 现场
+        与 reason 原因),非错误。
         """
-        try:
-            return backend.goto_screen(target_screen_name, max_steps)
-        except StopRunInterrupted:
-            # 同 click_game:BaseException 按名收尾,防穿透 ASGI(防御纵深;
-            # backend 层另有按名收尾,双保险)。
-            return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
-                    'steps': [], 'error': '运行已被停机中断(守卫拦截本次导航点击)'}
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
-                    'steps': [], 'error': str(e)}
+        return GotoScreenOut.from_backend(backend.goto_screen(target_screen_name, max_steps))
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="关闭游戏"))  # 操作类+破坏性:关游戏
     def close_game() -> str:

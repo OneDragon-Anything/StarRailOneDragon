@@ -51,6 +51,7 @@ from sr_od.backend.schemas import (
     ApplicationInfo,
     ApplicationListResult,
     AreaMutationResult,
+    GotoScreenResult,
     InputTextResult,
     OcrText,
     RunStatusResult,
@@ -1147,12 +1148,12 @@ class SrBackendContext:
             return mrl.max.center + area.rect.left_top
         return area.center
 
-    def goto_screen(self, target_screen_name: str, max_steps: int = 10) -> dict:
+    def goto_screen(self, target_screen_name: str, max_steps: int = 10) -> GotoScreenResult:
         """沿建档 goto_list 路由导航到目标画面。操作类(会实际点击游戏)。
 
         复用 op 层 round_by_goto_screen 的同一套路由图(screen_loaderFloyd
         预计算),供 MCP agent 手工导航用,不再逐步 click_game 造轮子。
-        边界:路由取决于画面档 goto_list 的完整度 —— 报「无路径」= 两画面间
+        边界:路由取决于画面档 goto_list 的完整度 —— 「无路径」中断 = 两画面间
         的跳转边未建档,补 area 的 goto_list 而非硬试坐标。每步点击后等
         1.5s 转场再识别(同 op 层 success_wait 口径)。
 
@@ -1161,63 +1162,60 @@ class SrBackendContext:
             max_steps: 最多点击次数(防路由环/坏边打转)。
 
         Returns:
-            ``{success, current_screen, target_screen, steps[每步 <画面>--<area>--><画面>], error}``。
+            导航结果:arrived=True 到达;False 为正常中断结果(current_screen/steps
+            带现场,reason 带原因)——导航中断不占异常通道。
+
+        Raises:
+            BackendNotReadyError: 游戏窗口未就绪。
+            ScreenInfoError: 目标画面名不存在(文案含查全量提示)。
         """
         self._ensure_ready()
         if self._ctx.controller is None or not self._ctx.controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
         known = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
         if target_screen_name not in known:
-            return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
-                    'steps': [], 'error': f'目标画面不存在: {target_screen_name}(用 list_screen_names 查全量)'}
+            raise ScreenInfoError(f'目标画面不存在: {target_screen_name}(用 list_screen_names 查全量)')
         steps: list[str] = []
         current: str | None = None
+
+        def interrupted(reason: str) -> GotoScreenResult:
+            """导航中断的统一出口(带现场,业务多态而非异常)。"""
+            return GotoScreenResult(arrived=False, current_screen=current,
+                                    steps=steps, reason=reason)
+
         try:
             for _ in range(max(1, max_steps)):
                 # 对齐 analyze:controller.get_screenshot 返 ndarray;
                 # controller.screenshot() 返 (image, 时间) 元组,不能直接喂识别。
                 image = self._ctx.controller.get_screenshot(independent=False)
                 if image is None:
-                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                            'steps': steps, 'error': '截图失败'}
+                    return interrupted('截图失败')
                 current = screen_utils.get_match_screen_name(self._ctx, image)
                 if current is None:
-                    return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
-                            'steps': steps, 'error': '当前画面无法识别(过渡帧或未建档),稍后重试或先 analyze_screen 判现状'}
+                    return interrupted('当前画面无法识别(过渡帧或未建档),稍后重试或先 analyze_screen 判现状')
                 self._ctx.screen_loader.update_current_screen_name(current)
                 if current == target_screen_name:
-                    return {'success': True, 'current_screen': current, 'target_screen': target_screen_name,
-                            'steps': steps, 'error': None}
+                    return GotoScreenResult(arrived=True, current_screen=current, steps=steps, reason=None)
                 route = self._ctx.screen_loader.get_screen_route(current, target_screen_name)
                 if route is None or not route.can_go or not route.node_list:
-                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                            'steps': steps,
-                            'error': f'路由图中无 {current} -> {target_screen_name} 的路径(画面档 goto_list 未建档)'}
+                    return interrupted(f'路由图中无 {current} -> {target_screen_name} 的路径(画面档 goto_list 未建档)')
                 node = route.node_list[0]
                 screen_info = self._ctx.screen_loader.get_screen(current)
                 area = self._ctx.screen_loader.get_area(current, node.from_area)
                 to_click = self._find_area_click_point(image, screen_info, area)
                 if to_click is None:
-                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                            'steps': steps,
-                            'error': f'画面 {current} 与建档不符:area {node.from_area} 未命中(画面可能已流转,重试或 analyze_screen 核对)'}
+                    return interrupted(f'画面 {current} 与建档不符:area {node.from_area} 未命中(画面可能已流转,重试或 analyze_screen 核对)')
                 if not self._ctx.controller.click(to_click, pc_alt=area.pc_alt or screen_info.pc_alt):
-                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                            'steps': steps, 'error': f'点击 {current}/{node.from_area} 失败'}
+                    return interrupted(f'点击 {current}/{node.from_area} 失败')
                 steps.append(f'{current} --{node.from_area}--> {node.to_screen}')
                 self._ctx.screen_loader.update_current_screen_name(node.to_screen)
                 time.sleep(1.5)  # 等转场动画,下一轮截图再识别(同 op 层 success_wait 口径)
-            return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                    'steps': steps, 'error': f'超过 max_steps={max_steps} 步未到达 {target_screen_name}(路由可能成环)'}
+            return interrupted(f'超过 max_steps={max_steps} 步未到达 {target_screen_name}(路由可能成环)')
         except StopRunInterrupted:
-            # 停机守卫穿透(异常为 BaseException,泛型 except Exception 接不住):
-            # run 收尾期调用 goto_screen 属被拦场景,按本工具的错误契约返回
-            # 结构化失败,不把异常漏给 MCP 请求层。
-            return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                    'steps': steps, 'error': '运行已被停机中断(守卫拦截本次导航点击)'}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
-                    'steps': steps, 'error': str(e)}
+            # 停机守卫是 BaseException,不能穿透(FastMCP/Starlette 只接 Exception);
+            # 手动端点在 backend 层已豁免,本分支是防御纵深——转正常中断结果,
+            # 调用方拿 current_screen/steps 仍可排障。
+            return interrupted('运行已被停机中断(守卫拦截本次导航点击)')
 
     def close_game(self) -> str:
         """关闭游戏(发关闭窗口信号,秒级,不走运行槽)。
