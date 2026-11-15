@@ -60,7 +60,6 @@ from sr_od.backend.mcp.service_app import (
 from sr_od.backend.schemas import (
     AnalyzeScreenOut,
     RunStatusOut,
-    WindowStatus,
     WindowStatusOut,
 )
 
@@ -146,16 +145,12 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     mcp = FastMCP(name, instructions=render_instructions())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="检查游戏窗口"))
-    def check_game_window() -> WindowStatusOut | dict:
+    def check_game_window() -> WindowStatusOut:
         """检查星穹铁道游戏窗口状态。观察类(只读,不改任何状态)。
 
         判断游戏是否在跑/窗口是否存在,看 is_win_valid——勿据 win_title 判断。
         """
-        try:
-            result = backend.check_window()
-        except Exception as e:  # noqa: BLE001 工具层统一兜底，避免异常透传到 MCP 框架
-            return {'error': str(e)}
-        return WindowStatusOut.from_backend(result) if isinstance(result, WindowStatus) else result
+        return WindowStatusOut.from_backend(backend.check_window())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="捕获游戏截图"))
     def capture_game_screen() -> dict:
