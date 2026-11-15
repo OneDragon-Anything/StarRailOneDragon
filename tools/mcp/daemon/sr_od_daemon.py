@@ -27,6 +27,9 @@ mcp = FastMCP("SR OD Server Manage")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 # 主 MCP server 默认端口（start tool 的 port 参数默认值；区别于 daemon 自身监听端口）
 MCP_SERVER_PORT = 24001
+# MCP 运行模式合法值(与 src/sr_od/backend/mcp/modes.py 对齐;daemon 不 import src,用字面量)
+# player=只暴露游戏内容工具(默认),dev=额外暴露维护类工具;模式是进程级状态,切换需重启
+MCP_SERVER_MODES = ('player', 'dev')
 # 本 daemon 自身监听 host/port(__main__ 启动时回填,restart_daemon 自重启沿用)
 # 注:不在此处加类型注解,否则 __main__ 里 `global` 声明会 SyntaxError(annotated name can't be global)
 _DAEMON_HOST = '127.0.0.1'
@@ -102,6 +105,26 @@ def _get_server_port(proc: psutil.Process) -> int | None:
     return None
 
 
+def _get_server_mode(proc: psutil.Process) -> str | None:
+    """从主 server 进程命令行解析 ``--mode``(镜像 ``_get_server_port`` 的做法)。
+
+    Args:
+        proc: 主 server 进程。
+
+    Returns:
+        解析到的模式;命令行未携带 ``--mode`` 的旧版进程按 server 默认值计
+        (player,与 server 进程的实际行为一致);进程信息读取失败返回 ``None``。
+    """
+    try:
+        cmdline = proc.cmdline()
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return None
+    for i, arg in enumerate(cmdline):
+        if arg == '--mode' and i + 1 < len(cmdline) and cmdline[i + 1] in MCP_SERVER_MODES:
+            return cmdline[i + 1]
+    return 'player'   # 未带 --mode 的进程按 server 默认值计(默认玩家)
+
+
 def is_port_in_use(port: int) -> bool:
     """检查端口是否处于监听状态。"""
     for conn in psutil.net_connections(kind='inet'):
@@ -128,19 +151,25 @@ def _log_evidence_note(log_path: Path, started_at: datetime) -> str:
 
 
 @mcp.tool()
-def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
+def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT, mode: str = 'player') -> str:
     """启动主 MCP server(游戏操作),在 Session 1 拉起。
 
     Args:
         port: 主 server 监听端口,默认 24001。
+        mode: MCP 运行模式。player=玩家模式,只暴露游戏内容工具(默认);
+            dev=开发模式,额外暴露维护类工具(画面建档/op 流转图/录屏)。
+            模式是进程级状态,切换需重启。
 
     Returns:
         启动结果信息。
     """
+    if mode not in MCP_SERVER_MODES:
+        return f"[ERROR] 未知模式: {mode}(合法值: {', '.join(MCP_SERVER_MODES)})"
     with _start_lock:
         existing_proc = find_sr_od_mcp_server_process()
         if existing_proc:
-            return f"[OK] 主 MCP server 已在运行 (PID: {existing_proc.pid})"
+            existing_mode = _get_server_mode(existing_proc) or '未知(见进程命令行)'
+            return f"[OK] 主 MCP server 已在运行 (PID: {existing_proc.pid}, 模式: {existing_mode})"
 
         if is_port_in_use(port):
             return f"[WARN] 端口 {port} 已被占用，可能有其他程序在使用"
@@ -154,7 +183,8 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
             # 避免新人未建 .env 时 uv run 报 "No such file or directory"）
             if (PROJECT_ROOT / '.env').is_file():
                 cmd.extend(['--env-file', '.env'])
-            cmd.extend(['python', '-m', 'sr_od.backend.entry.server', '--port', str(port)])
+            cmd.extend(['python', '-m', 'sr_od.backend.entry.server',
+                        '--port', str(port), '--mode', mode])
             # src-layout + [tool.uv] package=false：`-m` 解析 sr_od 包必须 src 在 sys.path。
             # 显式注入绝对路径 PYTHONPATH，不再依赖 .env（.env 含 PYTHONPATH 会被 DSH 的
             # 启动环境校验拒绝，导致从本项目目录启动 dsh headless/CLI 直接失败）。
@@ -208,6 +238,7 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
                 # 排障者按此提示查死文件,而活日志在另一候选)。
                 return (f"[SUCCESS] 主 MCP server 启动成功 (PID: {process.pid})\n"
                         f"端口: {port}\n"
+                        f"模式: {mode}\n"
                         f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}(op/框架日志唯一信道,判读看这里)\n"
                         f"stdout 兜底: {log_path}(仅收 print/未捕获 traceback,静默属常态)")
             if process.poll() is not None:
@@ -274,13 +305,20 @@ def stop_sr_od_mcp_server() -> str:
 
 
 @mcp.tool()
-def restart_sr_od_mcp_server() -> str:
+def restart_sr_od_mcp_server(mode: str | None = None) -> str:
     """重启主 MCP server(先停再启,沿用原监听端口)。
+
+    Args:
+        mode: 重启后的 MCP 运行模式。None(默认)=沿用当前进程的模式(命令行未带
+            --mode 的旧版进程视为 player);显式传 player/dev 则切换模式。
 
     r99 守卫:**主 server 有运行中的对局时拒绝重启**(杀对局 = 半途而废局 + 污染遥测;
     局19 被局中重启污染实证)。检测:HTTP /run/status 的 state==running;server 不可达
     (已死)则放行(重启救活本来就是重启的目的)。
     """
+    if mode is not None and mode not in MCP_SERVER_MODES:
+        return f"[ERROR] 未知模式: {mode}(合法值: {', '.join(MCP_SERVER_MODES)})"
+
     # r99 局中重启守卫:主 server 活着且对局 running → 拒绝(说明该等局完或先 stop_run)
     try:
         import urllib.request
@@ -292,9 +330,11 @@ def restart_sr_od_mcp_server() -> str:
     except Exception:   # noqa: BLE001  server 不可达(已死)→ 放行重启
         pass
 
-    # 停止前读取当前端口,重启后沿用,避免非默认端口被静默改回 24001
+    # 停止前读取当前端口/模式,重启后沿用,避免非默认端口被静默改回 24001、
+    # dev 模式进程被静默重置为 player
     proc = find_sr_od_mcp_server_process()
     port = _get_server_port(proc) if proc else None
+    keep_mode = _get_server_mode(proc) if proc else None
 
     stop_result = stop_sr_od_mcp_server()
 
@@ -305,10 +345,12 @@ def restart_sr_od_mcp_server() -> str:
 
     time.sleep(2)
 
-    start_result = (
-        start_sr_od_mcp_server(port) if port is not None
-        else start_sr_od_mcp_server()
-    )
+    effective_mode = mode if mode is not None else keep_mode
+    start_kwargs = {'mode': effective_mode} if effective_mode is not None else {}
+    if port is not None:
+        start_result = start_sr_od_mcp_server(port, **start_kwargs)
+    else:
+        start_result = start_sr_od_mcp_server(**start_kwargs)
 
     return f"[RESTART]\n{stop_result}\n{start_result}"
 
@@ -330,6 +372,7 @@ def get_sr_od_mcp_server_status() -> str:
             memory_info = proc.memory_info()
             children = len(proc.children(recursive=True))
             server_port = _get_server_port(proc)
+            server_mode = _get_server_mode(proc)
 
             return f"""[STATUS] 主 MCP server 运行中
 PID: {pid}
@@ -337,7 +380,8 @@ PID: {pid}
 CPU 使用: {cpu_percent}%
 内存使用: {memory_info.rss / 1024 / 1024:.2f} MB
 子进程数: {children}
-端口: {server_port if server_port is not None else '未知(见进程命令行)'}"""
+端口: {server_port if server_port is not None else '未知(见进程命令行)'}
+模式: {server_mode if server_mode is not None else '未知(见进程命令行)'}(player=玩家/dev=开发)"""
 
     except Exception as e:
         return f"[STATUS] 主 MCP server 运行中 (PID: {proc.pid})\n[ERROR] 无法获取详细信息: {e}"

@@ -26,6 +26,7 @@ from one_dragon.utils.log_utils import (
 from sr_od.backend.backend_context import SrBackendContext
 from sr_od.backend.http.routes import register_http_routes
 from sr_od.backend.mcp.app import create_mcp_server
+from sr_od.backend.mcp.modes import MCP_MODE_DEV, MCP_MODE_PLAYER
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -127,25 +128,27 @@ def _route_uvicorn_logs_to_mcp_log() -> None:
                 lg.propagate = False
 
 
-def create_app(backend: SrBackendContext) -> "Starlette":
+def create_app(backend: SrBackendContext, mode: str = MCP_MODE_PLAYER) -> "Starlette":
     """装配应用：同一 FastMCP 同时挂 MCP tool 与 ``/game/*`` custom_route。
 
-    先创建 MCP 服务器（注册 11 个 game 工具），再把 ``/game/*`` HTTP 端点挂到
-    同一实例上，最后返回 ``streamable_http_app()`` 产生的 Starlette app。
+    先创建 MCP 服务器（按 ``mode`` 决定工具暴露面，见 ``mcp/modes.py``），
+    再把 ``/game/*`` HTTP 端点挂到同一实例上，最后返回
+    ``streamable_http_app()`` 产生的 Starlette app。
     这样 MCP ``/mcp`` 端点与 HTTP ``/game/*`` 端点同进程、同 app 共存。
 
     Args:
         backend: 已就绪的 ``SrBackendContext``，提供 game 切片能力。
+        mode: MCP 运行模式（player/dev），只影响 MCP 工具暴露面，HTTP 不受影响。
 
     Returns:
         挂载好 MCP 与 ``/game/*`` 路由的 Starlette 应用。
     """
-    mcp = create_mcp_server(backend)
+    mcp = create_mcp_server(backend, mode=mode)
     register_http_routes(mcp, backend)
     return mcp.streamable_http_app()
 
 
-async def _serve(host: str, port: int) -> None:
+async def _serve(host: str, port: int, mode: str = MCP_MODE_PLAYER) -> None:
     """启动后端服务：初始化 backend → 装配 app → uvicorn 运行。
 
     构造 ``SrContext`` 与 ``SrBackendContext``，在线程池中完成 ``SrContext`` 的
@@ -156,6 +159,7 @@ async def _serve(host: str, port: int) -> None:
     Args:
         host: 监听地址。
         port: 监听端口。
+        mode: MCP 运行模式（player/dev），默认玩家。
     """
     # 日志分流必须在 SrContext() 之前:上下文构造期间(地图数据/实例配置加载)
     # 就会打框架日志,分流未做时这些行走默认双写 —— console→main_server.log
@@ -179,7 +183,7 @@ async def _serve(host: str, port: int) -> None:
     try:
         framework_log.info("SR 后端：初始化 SrContext（线程池，不阻塞事件循环）……")
         await backend.start()
-        app = create_app(backend)
+        app = create_app(backend, mode=mode)
         # GUI 会主动轮询 /health 和 /game/status；关闭 access log，避免日志被访问记录刷屏。
         # log_config=None 的真实因果(2026-09-02 tmp 日志探针实证):uvicorn 缺省
         # log_config 会给自己的 logger 族挂 stderr StreamHandler,每次重启的启动块
@@ -193,7 +197,9 @@ async def _serve(host: str, port: int) -> None:
         config = uvicorn.Config(app, host=host, port=port, log_level="info",
                                 access_log=False, log_config=None)
         server = uvicorn.Server(config)
-        framework_log.info(f"SR 后端监听: http://{host}:{port}/mcp 与 /game/*")
+        # 启动行记运行模式:排查「工具怎么不见/怎么多出来」时从 mcp_server.log
+        # 可直接 grep 当前进程模式(进程级状态,同 build_fingerprint 的可观测思路)
+        framework_log.info(f"SR 后端监听: http://{host}:{port}/mcp 与 /game/* (MCP 模式: {mode})")
         await server.serve()
     finally:
         await backend.shutdown()
@@ -202,8 +208,8 @@ async def _serve(host: str, port: int) -> None:
 def main() -> None:
     """命令行入口：解析参数并启动后端服务。
 
-    通过 argparse 解析 ``--host`` / ``--port``（默认 ``127.0.0.1`` / ``24001``），
-    随后 ``asyncio.run`` 驱动 ``_serve`` 完成整个生命周期。
+    通过 argparse 解析 ``--host`` / ``--port`` / ``--mode``（默认 ``127.0.0.1`` /
+    ``24001`` / ``player``），随后 ``asyncio.run`` 驱动 ``_serve`` 完成整个生命周期。
     """
     # stdout/stderr 被 daemon 重定向到 main_server.log 时,Windows 默认用 locale(GBK)
     # 编码 → 中文(op 名/OCR)写进 UTF-8 文件变 mojibake,日志不可读。强制 UTF-8。
@@ -213,8 +219,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="启动 SR 后端服务（MCP + HTTP）")
     parser.add_argument("--host", default=DEFAULT_HOST, help="监听地址")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="监听端口")
+    parser.add_argument("--mode", choices=(MCP_MODE_PLAYER, MCP_MODE_DEV),
+                        default=MCP_MODE_PLAYER,
+                        help="MCP 运行模式:player=只暴露游戏内容工具(默认);dev=额外暴露维护类工具(建档/流转图/录屏)")
     args = parser.parse_args()
-    asyncio.run(_serve(args.host, args.port))
+    asyncio.run(_serve(args.host, args.port, args.mode))
 
 
 if __name__ == "__main__":

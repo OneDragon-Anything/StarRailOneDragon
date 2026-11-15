@@ -11,6 +11,8 @@
 
 模式差异(开发者 / 使用者)走 guide item 的 ``mode`` 字段分流,不进 instructions
 (instructions 是 server 级全局、启动时定,不支持运行时按消费者切;且两套会膨胀违背精炼)。
+工具层的模式分流(server 启动参数 player/dev)沿用同一对概念:玩家模式隐藏
+dev 向 guide 项 + 开发专属工具(名单见 ``mcp/app.py`` 的 ``DEV_ONLY_TOOLS``)。
 """
 
 from typing import Annotated
@@ -18,6 +20,8 @@ from typing import Annotated
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
+
+from sr_od.backend.mcp.modes import MCP_MODE_PLAYER
 
 
 def render_instructions() -> str:
@@ -178,8 +182,24 @@ def register_prompts(mcp: FastMCP) -> None:
         return render_run_standalone_app_guide(app_id)
 
 
-def register_prompt_tools(mcp: FastMCP) -> None:
-    """把 prompt 模板以普通 MCP tool 形式暴露,便于智能体发现(含 dev 模式项)。"""
+def register_prompt_tools(mcp: FastMCP, mode: str = MCP_MODE_PLAYER) -> None:
+    """把 prompt 模板以普通 MCP tool 形式暴露,便于智能体发现。
+
+    Args:
+        mcp: FastMCP 实例。
+        mode: 运行模式。玩家模式目录与读取均只覆盖 user 项(dev 向指南
+            按未知名称处理);开发模式全量。
+    """
+    player_only = mode == MCP_MODE_PLAYER
+
+    def _visible_guides() -> list[dict[str, str]]:
+        """玩家模式只回 user 项;开发模式全量(guide item 的 mode 字段分流)。"""
+        guides = list_prompt_guides()
+        return [g for g in guides if g.get('mode') == 'user'] if player_only else guides
+
+    def _is_visible(name: str) -> bool:
+        """指南名在当前模式下是否可见(玩家模式 dev 项按未知处理)。"""
+        return any(g['name'] == name for g in _visible_guides())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出操作指南"))
     def list_mcp_usage_guides() -> list[dict[str, str]]:
@@ -188,7 +208,7 @@ def register_prompt_tools(mcp: FastMCP) -> None:
         每项含 ``mode``(user/dev):user 项面向普通使用者(跑龙/独立应用),
         dev 项面向开发者(验证 op/调试)。
         """
-        return list_prompt_guides()
+        return _visible_guides()
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取操作指南"))
     def get_mcp_usage_guide(
@@ -197,4 +217,7 @@ def register_prompt_tools(mcp: FastMCP) -> None:
     ) -> str:
         """读取 sr_od MCP 操作指南，相当于某个任务的 --help。观察类(只读)。
         """
+        if not _is_visible(name):
+            names = ", ".join(item["name"] for item in _visible_guides())
+            return f"未知指南: {name}。可用指南: {names}"
         return render_prompt_guide(name, app_id)

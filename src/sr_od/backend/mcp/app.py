@@ -12,6 +12,9 @@
     - 运行类 tool 工厂（``make_open_game`` 等）为模块级函数，
       只调 backend 公开方法，不戳 run_slot 私有，便于独立测试。
     - 增减 MCP method（新增/删除 tool）后需客户端 /mcp 重连才能拿到新工具清单。
+    - 运行模式（player/dev）由启动参数决定:玩家模式按 ``DEV_ONLY_TOOLS``
+      名单隐藏维护类工具(全量注册后移除,注册代码与名单解耦)。
+      设计见 docs/develop/sr_od/backend/changes/mcp-mode-split/design.md。
 
 tool 写法（annotations / Field / 返回 / docstring）遵循
 ``docs/develop/sr_od/backend/mcp-implementation.md``。
@@ -41,6 +44,7 @@ from sr_od.backend.mcp.config_app import (
 from sr_od.backend.mcp.game_config_tools import register_game_config_tools
 from sr_od.backend.mcp.light_cone_tools import register_light_cone_tools
 from sr_od.backend.mcp.markdown_render import render_screen_detail
+from sr_od.backend.mcp.modes import DEV_ONLY_TOOLS, MCP_MODE_DEV, MCP_MODE_PLAYER
 from sr_od.backend.mcp.mys_tools import register_mys_tools
 from sr_od.backend.mcp.prompts import (
     register_prompt_tools,
@@ -132,7 +136,8 @@ def make_stop_run(backend: SrBackendContext) -> Callable[[], RunStopOut]:
     return stop_run
 
 
-def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP:
+def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
+                      mode: str = MCP_MODE_PLAYER) -> FastMCP:
     """创建 MCP 服务器并注册 game 工具与 prompt。
 
     通过闭包将 ``backend`` 注入到各工具函数中，使工具调用最终落到 backend 的
@@ -143,10 +148,17 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     Args:
         backend: 已就绪的 ``SrBackendContext``，提供 game 切片能力。
         name: MCP 服务器名称，默认 ``sr_od``。
+        mode: 运行模式。``player``(默认)=按 ``DEV_ONLY_TOOLS`` 名单隐藏维护类
+            工具;``dev``=全量暴露。由启动参数决定,进程级状态(切换需重启+客户端重连)。
 
     Returns:
         注册好工具的 ``FastMCP`` 实例。
+
+    Raises:
+        ValueError: ``mode`` 不在合法值内(fail-fast,不静默回退玩家)。
     """
+    if mode not in (MCP_MODE_PLAYER, MCP_MODE_DEV):
+        raise ValueError(f"未知 MCP 运行模式: {mode}(合法值: {MCP_MODE_PLAYER} / {MCP_MODE_DEV})")
     mcp = FastMCP(name, instructions=render_instructions())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="检查游戏窗口"))
@@ -393,6 +405,14 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     register_relic_tools(mcp, backend)
     register_game_config_tools(mcp, backend)
     register_prompts(mcp)
-    register_prompt_tools(mcp)
+    register_prompt_tools(mcp, mode)
+
+    if mode == MCP_MODE_PLAYER:
+        # 先全量注册再按名单移除(而非条件注册):注册代码零改动,名单是唯一分流依据。
+        # 取交集再删:remove_tool 对未注册名抛 ToolError,名单含尚未存在的工具名
+        # (如登记笔误)不炸启动,偏差由契约测试暴露。
+        registered = set(mcp._tool_manager._tools.keys())
+        for tool_name in DEV_ONLY_TOOLS & registered:
+            mcp.remove_tool(tool_name)
 
     return mcp
