@@ -80,10 +80,22 @@ class ScreenInfoError(Exception):
     """画面建档校验失败(area CRUD 的入参/引用校验:area_name 空 / pc_rect 非法 /
     模板不存在 / 画面或 area 未找到等)。
 
-    文案带下一步提示(actionable);失败走异常通道,不占成功返回结构。
+    失败走异常通道,不占成功返回结构。
     """
 
     pass
+
+
+def _screen_not_found_error(screen_loader: object, screen_name: str, original: Exception) -> ScreenInfoError:
+    """画面名未找到的统一包装:文案带「完全一致」提示 + 既有画面名示例 + 指路句。
+
+    screen_loader.get_screen 未找到抛裸 Exception,各建档工具统一 catch 后
+    经本函数转 ScreenInfoError,保证同族口径一致。
+    """
+    known = '、'.join(sorted(s.screen_name for s in screen_loader.screen_info_list)[:10])
+    return ScreenInfoError(
+        f'画面名未找到: {screen_name}(须与 screen_info 的 screen_name 完全一致;'
+        f'示例: {known} …可用 list_screen_names 工具查全量;原始错误: {original})')
 
 
 def _iso(ts: float | None) -> str | None:
@@ -1001,7 +1013,10 @@ class SrBackendContext:
             color_range=color_range, goto_list=goto_list or [],
             id_mark=id_mark, gamepad_key=gamepad_key,
         )
-        screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+        try:
+            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+        except Exception as e:
+            raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
         action = screen_info.upsert_area(area)
         self._ctx.screen_loader.save_screen(screen_info)
         return AreaMutationResult(screen_name=screen_name, area_name=area_name,
@@ -1022,7 +1037,10 @@ class SrBackendContext:
         """
         if not area_name:
             raise ScreenInfoError('area_name 不能为空')
-        screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+        try:
+            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+        except Exception as e:
+            raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
         if not screen_info.remove_area_by_name(area_name):
             raise ScreenInfoError(f'未找到 area: {area_name}')
         self._ctx.screen_loader.save_screen(screen_info)
@@ -1092,10 +1110,7 @@ class SrBackendContext:
         try:
             screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
         except Exception as e:
-            known = '、'.join(sorted(s.screen_name for s in self._ctx.screen_loader.screen_info_list)[:10])
-            raise ScreenInfoError(
-                f'画面名未找到: {screen_name}(须与 screen_info 的 screen_name 完全一致;'
-                f'示例: {known} …可用 list_screen_names 工具查全量;原始错误: {e})') from e
+            raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
         areas = [
             {
                 'area_name': a.area_name,
