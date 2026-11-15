@@ -1,8 +1,8 @@
-"""货币战争 投资策略 + 投资环境领域模型(meta 层,V4.4)。
+"""货币战争 投资策略 + 投资环境领域模型(meta 层,V4.7)。
 
 **两层架构**:
 - **base 事实层** = ``cw_invest_data.py``(``skills/sr-od-dev-currency-war/scripts/gen_plaza_invest.py`` 从米游社攻略广场
-  官方 API 生成,勿手编):名字/品质/效果全文,数字 id 稳定主键,投资策略 334 + 投资环境 83
+  官方 API 生成,勿手编):名字/品质/效果全文,数字 id 稳定主键,投资策略 298 + 投资环境 73
   官方全量(游戏内数据银行同口径,米游社百科 doc 的 19 条版本漂移缺口就此补齐)。
 - **建模增量层** = 本文件手维护(API 给不了的人工建模):
   - ``STRATEGY_ECONOMY``(可数值化经济效果);
@@ -2678,7 +2678,7 @@ _MANUAL_EXTRAS: list[InvestmentStrategy] = []
 
 # ===== 合并层:base(plaza API)× overlay → 注册表=====
 def _build_strategies() -> dict[str, InvestmentStrategy]:
-    """base 334 条 + 补遗 → 注册表;economy 从 overlay 挂;孤儿键报错。"""
+    """base 298 条 + 补遗 → 注册表;economy 从 overlay 挂;孤儿键报错。"""
     out: dict[str, InvestmentStrategy] = {}
     for a in PLAZA_AUGMENTS:
         out[a.name] = InvestmentStrategy(
@@ -3017,7 +3017,7 @@ def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], fro
 
 
 def get_strategy(name: str) -> InvestmentStrategy | None:
-    """按规范名取 InvestmentStrategy;无则 None(注册表已全量 335,miss = OCR 形变,消费侧走 resolve_strategy_canonical 的 LCS 兜底;
+    """按规范名取 InvestmentStrategy;无则 None(注册表已全量 298,miss = OCR 形变,消费侧走 resolve_strategy_canonical 的 LCS 兜底;
     入参先经 normalize_invest_name 归一分隔符形变,如 `全都要•彩`→`全都要·彩`)。"""
     return INVESTMENT_STRATEGIES.get(normalize_invest_name(name))
 
