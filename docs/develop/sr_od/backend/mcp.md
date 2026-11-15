@@ -2,11 +2,25 @@
 
 > 把 `SrBackendContext`（见 [architecture.md](architecture.md)）以 **MCP** 暴露给 MCP 客户端（AI 编码工具等）。MCP 是两个并行适配器之一，另一个是 HTTP（见 [http.md](http.md)）；两者共享同一 backend。
 
-## 工具契约的单一源
+## 1. 运行模式（player / dev）
+
+MCP server 有两种运行模式，由启动参数 `--mode` 决定（默认 `player`），是**进程级状态**——切换需重启 server 并让 MCP 客户端重连：
+
+| 模式 | 工具面 | 适用 |
+|---|---|---|
+| `player`（默认） | 隐藏维护类工具（名单 = `src/sr_od/backend/mcp/modes.py` 的 `DEV_ONLY_TOOLS`：画面建档写操作 `create_screen` / `upsert_screen_area` / `delete_screen_area`、op 节点流转图 `describe_operation_flow`、录屏 `record_screen`） | 玩家拿 MCP 工具 + skill 让 agent 替自己完成**全部游戏内容**（含一条龙）——人不直接操作工具 |
+| `dev` | 全量 | 自动化项目维护者（画面建档、op 编排审查、录屏取证） |
+
+- 划分判据是「维护自动化产品」vs「完成游戏内容」，不是读写性质：游戏内容操作载体（`list/describe/run_operation`）、配置读写（`*_config*` 七件）、画面只读（`get_screen_detail` / `list_screen_names`）、框架配置（`update_game_config`）都在玩家面。
+- **新工具默认进玩家面**（玩家面缺工具 = 玩家任务办不成，主路径优先）；维护类工具必须显式登记进 `DEV_ONLY_TOOLS`，契约测试锁「dev 工具集 − player 工具集 == 名单」防漂移。
+- guide 目录随模式过滤：玩家模式 `list_mcp_usage_guides` 只回 user 项，dev 项按未知指南处理。
+- 模式只影响 MCP 工具暴露面；HTTP `/game/*`（GUI 用）不受影响。
+
+## 2. 工具契约的单一源
 
 本文档**不维护工具清单**——每个 tool 的名称、参数与返回契约，单一源是代码里各 tool 函数的 docstring（agent 经 MCP 工具列表直接读到，不会与实现脱节）。工具定义在 `src/sr_od/backend/mcp/`：注册入口 `app.py`，按资源分组在各 `*_tools.py`；自定义 op 工具另走 `operation_registry`（+ 流转查看 `operation_flow`）+ `run_slot._start`。
 
-## 跨工具约定要点
+## 3. 跨工具约定要点
 
 - **返回契约（跨工具统一）**：多字段返回一律 MCP 层 `*Out` 模型（字段语义进 outputSchema，见 [design-principles.md](design-principles.md) P15）；原子返回（`capture_game_screen` 的路径 / `close_game` 的确认文案）直给 `-> str`，docstring 一行说明返回值；运行类工具按 `block` 参数返回受理（`RunStartOut`）或终态（`RunFinishOut`）两种业务形状；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。**失败走异常通道**（P6 三分法）：backend 异常透传 → MCP tool error / HTTP 错误响应，同文案对称——旧「返回体带 `success`/`error` 字段」模式已退役，存量 `-> dict` 工具改造中。
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。
@@ -28,11 +42,11 @@
 - `mys_*` 三工具走 `mys_tools.py` 的 `MysAccessController` 状态机（idle/awaiting_ticket，验证循环上限 3）；会话失效只打标记不清任何本机数据；凭据纪律与协议规格见 [mys.md](mys.md)（⚠️ `mys_login` 的密码经 LLM 上下文，工具描述含知情声明）。
 - 理念：MCP 只做感知 / 操作，编码 / 调试交给 AI（[design-principles.md](design-principles.md)）。
 
-## Instructions
+## 4. Instructions
 
 `FastMCP(name, instructions=...)` 传 server 级 `instructions`，握手时返回；客户端**通常注入** system prompt（协议 Optional/MAY，Claude Code 会注入；非协议强制）。放两边共通的操作哲学（保持精炼）：工具分类（观察/操作）、操作三件套（`analyze_screen` → 操作 → 等 ~1s 后验）、实机约束（`pc_alt`）、出错查 log、安全边界。
 
-## 引导内容三通道
+## 5. 引导内容三通道
 
 引导内容分三条通道，分工互补（可见性均为客户端行为，非协议强制——spec 用 Optional/MAY）：
 
@@ -42,9 +56,9 @@
 | `prompts`（`@mcp.prompt()`） | 由客户端决定；Claude Code 是 slash 命令，智能体平时不自动看到 | 按场景剧本（见下） |
 | help tool（`list_mcp_usage_guides` / `get_mcp_usage_guide`） | 通常可见（客户端一般暴露 tools） | 同 prompts 模板，给智能体 `--help` 入口 |
 
-`prompts` 协议设计给人手动选，智能体平时不自动看到 → 同份模板再做成 tool 镜像补；但 tool 要智能体「想到去调」，故核心操作哲学放 `instructions`（通常注入，最贴近常驻）。guide item 带 `mode`（`user`/`dev`）：user 项（跑龙/独立应用）也有对应 prompt，dev 项（`sr_dev_validate_op`：op 实操验证 / 战斗 op 边界）只走 tool。模式差异不进 instructions（server 级全局、不支持运行时切；且两套会膨胀违背精炼）。
+`prompts` 协议设计给人手动选，智能体平时不自动看到 → 同份模板再做成 tool 镜像补；但 tool 要智能体「想到去调」，故核心操作哲学放 `instructions`（通常注入，最贴近常驻）。guide item 带 `mode`（`user`/`dev`）：user 项（跑龙/独立应用）也有对应 prompt，dev 项（`sr_dev_validate_op`：op 实操验证 / 战斗 op 边界）只走 tool。运行模式（见 §1）为 player 时 guide 目录与读取均只覆盖 user 项（dev 项按未知指南处理）。模式差异不进 instructions（server 级全局、不支持运行时切；且两套会膨胀违背精炼）。
 
-## Prompts
+## 6. Prompts
 
 | MCP prompt | 用途 |
 |---|---|
@@ -59,7 +73,7 @@
 - 运行类 prompt 默认使用 `block=False` 启动，再轮询 `get_run_status`，便于客户端在长耗时任务中持续反馈状态。
 - 部分 MCP 客户端不会主动展示 prompts；这时可让 agent 先调用 `list_mcp_usage_guides`，再调用 `get_mcp_usage_guide` 读取同一份模板。
 
-## 传输与端口
+## 7. 传输与端口
 
 - 传输：streamable-http。
 - MCP 端点：`/mcp`。
@@ -67,7 +81,7 @@
 - MCP URL：`http://127.0.0.1:24001/mcp`。
 - 健康检查：`http://127.0.0.1:24001/health`。
 
-## 接入 MCP 客户端
+## 8. 接入 MCP 客户端
 
 主 server 是标准 streamable-http,任何 MCP 客户端都可挂载。
 先通过 GUI「开发工具 -> MCP 服务」或命令行启动本机 server，再在你的 MCP 客户端新增服务器（按所用工具，见下）。
@@ -106,9 +120,10 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 - 当前服务只实现 streamable HTTP，不是 STDIO server；Codex 中不要选 STDIO。
 - 本机接口默认无鉴权，因此不需要 Bearer token 或额外 headers。
 - MCP 客户端只负责连接已启动的 HTTP MCP server；启动 / 停止 / 重启由 GUI「MCP 服务」页或命令行负责。
-- 命令行启动可用 `uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`；如果项目根目录存在 `.env`，也可使用 `uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`。
+- **运行模式随启动命令决定**（见 §1）：不带 `--mode` 即默认玩家模式；开发者要用维护类工具时启动命令加 `--mode dev`，切换模式 = 重启 + 客户端重连。经 daemon 管理时用 `start_sr_od_mcp_server(mode=...)` / `restart_sr_od_mcp_server(mode=...)`。
+- 命令行启动可用 `uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`（默认玩家模式）；开发模式加 `--mode dev`；如果项目根目录存在 `.env`，也可使用 `uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`。
 
-## 开机自启(主 server)
+## 9. 开机自启(主 server)
 
 主 server 可在登录后自动启动（Session 1 内直接拉起，**不经 daemon 派生**），与 [daemon 开机自启](remote-ssh.md#开机自启) 相互独立、可共存：
 
@@ -116,12 +131,12 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 - 装自启快捷方式：`.\tools\mcp\create_mcp_server_startup_shortcut.ps1` —— 在 Startup 文件夹建 `SR OD MCP Server.lnk`，登录后自动调上面脚本（隐藏窗口）。卸载即删该 `.lnk`。
 - 幂等说明：本快捷方式与 daemon 自启快捷方式各管各的；daemon 的 `start_sr_od_mcp_server` 先按命令行检测进程已存在则跳过，不会重复拉起 / 端口冲突。
 
-## 路线图（尚未实现）
+## 10. 路线图（尚未实现）
 
 - 更多 game 感知 / 交互 tool：原 `identify_current_screen` → `analyze_screen`、`click_at_position` → `click_game`、`press_key` → `key_tap`、`drag_to` → `drag` 均已实现；后续按需补 `scroll` 等。
 - 更完整的 AI 操作范式，例如失败恢复、实例切换与多步巡检。
 
-## 相关文档
+## 11. 相关文档
 
 - [architecture.md](architecture.md) - backend 方法定义
 - [http.md](http.md) - 并行的 HTTP 适配器

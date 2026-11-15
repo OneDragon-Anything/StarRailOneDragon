@@ -36,6 +36,7 @@ daemon 就是那个**常驻 Session 1、握有管理员权限**的管理者—�
    ```
 
 4. 重启客户端,用 daemon 的 4 个 tool:`start_sr_od_mcp_server` / `get_sr_od_mcp_server_status` / `stop_sr_od_mcp_server` / `restart_sr_od_mcp_server`。
+5. 运行模式(见 [mcp.md](mcp.md) §1)也由 daemon 管:`start_sr_od_mcp_server(mode='player'|'dev')` 启动时指定(默认 player);`restart_sr_od_mcp_server(mode=None)` 默认沿用当前进程模式,显式传参切换;`get_sr_od_mcp_server_status` 回显当前模式。
 
 ## 开机自启
 

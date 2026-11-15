@@ -14,6 +14,12 @@ uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --p
 uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001
 ```
 
+以上都不带 `--mode`，默认玩家模式（MCP 工具面见 [mcp.md](mcp.md) §1）；开发模式加 `--mode dev`：
+
+```shell
+uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001 --mode dev
+```
+
 启动流程：
 
 1. 创建 `SrContext()`。
@@ -45,13 +51,14 @@ CLI 参数：
 
 - `--host`：默认 `127.0.0.1`。
 - `--port`：默认 `24001`。
+- `--mode`：MCP 运行模式，`player`（默认，只暴露游戏内容工具）/ `dev`（额外暴露维护类工具，见 [mcp.md](mcp.md) §1）；进程级状态，切换需重启 + MCP 客户端重连。
 
 ## GUI 启动
 
 GUI 的「开发工具 -> MCP 服务」页面提供本机 server 管理：
 
 - 探测：请求 `http://127.0.0.1:<port>/health`。
-- 启动：在项目根目录执行 `uv run python -m sr_od.backend.entry.server --port <port>`；如果项目根目录存在 `.env`，会自动补上 `--env-file .env`。
+- 启动：在项目根目录执行 `uv run python -m sr_od.backend.entry.server --port <port>`；如果项目根目录存在 `.env`，会自动补上 `--env-file .env`。不带 `--mode`，即默认玩家模式；需要开发模式时经 daemon 启动或手动命令行加 `--mode dev`。
 - 停止 / 重启：查找并管理 `sr_od.backend.entry.server` 进程。
 - 日志：`.debug/sr_od_mcp/main_server.log`，默认关闭 uvicorn access log;uvicorn logger 族经 log_config=None 不自配 handler,统一归 .log/mcp_server.log 单一信道，避免状态轮询刷屏。
 - MCP 地址：`http://127.0.0.1:<port>/mcp`。

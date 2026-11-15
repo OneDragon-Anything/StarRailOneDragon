@@ -27,7 +27,8 @@ src/sr_od/backend/
   operation_registry.py  # 自定义 op 扫描 / op_id 解析 / args 校验（纯反射，不实例化）
   screen_recognizer_scan.py  # 画面额外识别器(recognizer)扫描 + 注册表填充（镜像 operation_registry,扫描期无参实例化）
   mcp/
-    app.py               # create_mcp_server + 基础 game tools
+    app.py               # create_mcp_server(按运行模式过滤工具面) + 基础 game tools
+    modes.py             # 运行模式常量 + 开发专属工具名单 DEV_ONLY_TOOLS(单一源)
     service_app.py       # list_applications / run_one_dragon / run_standalone_app / list_operations / describe_operation / run_operation
     prompts.py           # MCP prompt 案例与注册
   http/
