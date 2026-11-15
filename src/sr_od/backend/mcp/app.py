@@ -219,9 +219,6 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         - 依然存在未建档，或传统算法不方便识别的内容未在本方法返回；
         - 因此，识别内容不代表画面的全部，依然要使用大模型读取图片进行完整理解；
         - 返回坐标是精准坐标，相信本方法坐标而不是大模型读图的目测坐标。
-
-        用法：默认不带参数直接调用(需游戏在线)；失败时返回 error，按提示处理。
-        返回字段说明见 outputSchema。
         """
         return AnalyzeScreenOut.from_backend(backend.analyze(screenshot, save_image, include_ocr))
 
