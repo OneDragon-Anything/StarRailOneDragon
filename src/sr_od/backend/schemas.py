@@ -302,7 +302,7 @@ class ApplicationListResult:
 
 @dataclass
 class InputTextResult:
-    """文本输入结果(MCP/HTTP 共享,传输无关)。
+    """文本输入结果(传输无关)。
 
     Attributes:
         method: 实际输入方式 'clipboard'(剪贴板粘贴)/'keyboard'(逐键);
