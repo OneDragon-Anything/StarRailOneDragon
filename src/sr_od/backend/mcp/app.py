@@ -60,6 +60,7 @@ from sr_od.backend.mcp.service_app import (
 from sr_od.backend.schemas import (
     AnalyzeScreenOut,
     RunStatusOut,
+    ScreenNamesOut,
     WindowStatusOut,
 )
 
@@ -260,16 +261,9 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
                     'action': None, 'error': str(e)}
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出画面名"))
-    def list_screen_names() -> dict:
-        """列出全部画面名(排序全量)。观察类(只读),无需游戏在线。
-
-        screen_name 是画面建档的匹配键(中文,须完全一致),goto_screen /
-        get_screen_detail / upsert_screen_area 的定位入参都从这里查。
-        """
-        try:
-            return backend.list_screen_names()
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'count': 0, 'screen_names': [], 'error': str(e)}
+    def list_screen_names() -> ScreenNamesOut:
+        """列出全部画面名(排序全量)。观察类(只读),无需游戏在线。"""
+        return ScreenNamesOut(screen_names=backend.list_screen_names())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取画面档全集"))
     def get_screen_detail(

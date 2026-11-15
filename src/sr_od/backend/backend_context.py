@@ -1067,20 +1067,16 @@ class SrBackendContext:
             return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
                     'action': None, 'error': str(e)}
 
-    def list_screen_names(self) -> dict:
-        """列出全部画面名(只读,无副作用)。
+    def list_screen_names(self) -> list[str]:
+        """列出全部画面名(排序后,只读,无副作用)。
 
         供 goto_list 填写与 goto_screen 目标选择时查全量;screen_name 是
         screen_info 的匹配键(中文),须完全一致。
 
-        Returns:
-            ``{success, count, screen_names(排序后全量), error}``。
+        Raises:
+            Exception: screen_loader 读取失败时透传,由适配层决定兜底方式。
         """
-        try:
-            names = sorted(s.screen_name for s in self._ctx.screen_loader.screen_info_list)
-            return {'success': True, 'count': len(names), 'screen_names': names, 'error': None}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'count': 0, 'screen_names': [], 'error': str(e)}
+        return sorted(s.screen_name for s in self._ctx.screen_loader.screen_info_list)
 
     def get_screen_detail(self, screen_name: str) -> dict:
         """读取单个画面档全集(只读):全部 area 含 goto_list,加路由图可达邻居。
