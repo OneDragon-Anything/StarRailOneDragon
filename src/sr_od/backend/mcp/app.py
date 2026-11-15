@@ -153,20 +153,16 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         return WindowStatusOut.from_backend(backend.check_window())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="捕获游戏截图"))
-    def capture_game_screen() -> dict:
-        """捕获游戏画面并保存截图,返回截图路径。观察类(只读,不改任何状态)。
+    def capture_game_screen() -> str:
+        """捕获游戏画面并保存截图,返回截图文件绝对路径。观察类(只读,不改任何状态)。
 
         仅在「只要截图文件本身」时用(存档证据 / 喂视觉大模型);要识别画面内容
         直接调 analyze_screen——它自己截图自己分析,先走本 tool 再传路径是多一次
         往返,且两次截图间画面可能已变。
         """
-        try:
-            image = backend.capture()
-            path = _save_screenshot(image)
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'error': str(e)}
+        path = _save_screenshot(backend.capture())
         log.info(f"截图已保存到: {path}")
-        return {'success': True, 'path': path}
+        return path
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="分析游戏画面"))
     def analyze_screen(
