@@ -72,8 +72,7 @@ def make_open_game(backend: SrBackendContext) -> Callable:
     """构造 ``open_game`` tool(模块级,便于独立测试)。
 
     enter=True(默认)跑 ``OpenAndEnterGame``(打开+自动登录,到大世界);
-    enter=False 跑 ``OpenGame``(打开+等窗口就绪,停在打开游戏 ready 态,不登录)。
-    其余 block/并发语义同原 ``open_and_enter_game``。
+    enter=False 跑 ``OpenGame``(打开+等窗口就绪,不登录)。
     """
     async def open_game(
         enter: Annotated[bool, Field(description="True=打开+自动登录到大世界;False=只打开停在 ready 态不登录")] = True,
@@ -81,7 +80,7 @@ def make_open_game(backend: SrBackendContext) -> Callable:
     ) -> dict:
         """打开游戏(可选自动登录)。长耗时,需交互式桌面。操作类(会启动游戏进程,可能登录)。
 
-        单跑道:同一时间只允许一个运行,已有运行时返回拒绝(含 source 与提示)。
+        单跑道:同一时间只允许一个运行,已有运行时返回拒绝。
         """
         from sr_od.operations.enter_game.open_and_enter_game import OpenAndEnterGame
         from sr_od.operations.enter_game.open_game import OpenGame
@@ -180,7 +179,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供视觉模型复用;离线模式忽略")] = False,
         include_ocr: Annotated[bool, Field(description="是否返回全量散落 OCR 文本(未归类到任何 area 的);默认 False 只回画面匹配+area 命中,读屏幕上的零散文字时才开")] = False,
     ) -> AnalyzeScreenOut:
-        """基于已探索的画面信息(screen_info)，通过 OCR 和图像算法，识别游戏画面的内容。观察类(只读，不改游戏状态)。
+        """基于已探索的画面信息(screen_info)，通过 OCR 和图像算法，识别游戏画面的内容。观察类(只读,不改游戏状态)。
 
         - 识别内容为确认过的游戏语义，相信返回内容的语义说明；
         - 依然存在未建档，或传统算法不方便识别的内容未在本方法返回；
@@ -206,7 +205,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         fragmented mp4,中途被 kill 也安全可播)。
 
         Returns:
-            dict: ``{success, path?, pid?, action, error?, hint?, encoder?, returncode?}``。
+            dict: ``{success, path?(文件路径), pid?(start 模式进程号), action,
+            error?, hint?, encoder?(编码器), returncode?}``。
         """
         try:
             return backend.record_screen(mode, duration, out_name, fps, capture, bitrate)
@@ -321,7 +321,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
                     'steps': [], 'error': str(e)}
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="关闭游戏"))  # 操作类+破坏性:关游戏
-    def close_game() -> str:
+    def close_game() -> dict:
         """关闭游戏窗口(发关闭信号,秒级)。操作类,破坏性(游戏会被关闭)。
 
         返回只表「信号已发」非已关闭——用 check_game_window 验证是否真关。
@@ -343,7 +343,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     ) -> dict:
         """点击游戏窗口内坐标(取画面建档 pc_rect 中心)。操作类(会控制游戏),需游戏窗口就绪。
 
-        鼠标点击用本 tool;键盘按键用 key_tap;拖拽用 drag。大世界等锁光标画面
+        鼠标点击用本 tool;键盘按键用 key_tap;拖拽用 drag。坐标经控制器缩放到
+        真实屏幕;不在窗口内则不点击(in_window=False)。大世界等锁光标画面
         点击会落空,需传 pc_alt=True 解锁光标(画面是否锁光标看建档的 pc_alt)。
 
         ⚠️ 底层无内置等待:点 UI 常触发画面切换(菜单/弹窗/进画面),连续操作或

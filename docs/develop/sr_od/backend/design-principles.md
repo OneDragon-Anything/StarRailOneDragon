@@ -117,7 +117,7 @@ tool 按服务 / 资源分组前缀(如 `game_*` / `run_*`),帮智能体在多 s
 ### P14. 能力边界与解读纪律写进工具描述(P9)
 观察类 tool(如 `analyze_screen`)的输出是**部分识别**(OCR 文字 + 已建模模板命中项),不保证覆盖画面全部视觉信息。智能体易把它当「画面全貌」下判断 → 状态 / 布局判断不完整。故 tool 的能力边界与结果解读纪律(哪些字段可作操作依据 / 散落 OCR 只给坐标不给结论 / 覆盖缺口靠看图补、看图发现建档确认后才可信)写进 **tool 描述**——P9 的「隐式上下文显式化」,随每次工具选择必然可见。
 
-不作为返回字段承载(如曾有的 `vision_hint`):静态说教每次调用重复传输,而工具描述是唯一必然可见层(instructions 为客户端可选注入,实测项目级 workspace-mcp 路径不注入;返回体按次付费)。与 P1「capability over compensation」的边界不变:陈述客观固有能力边界(它本就只做部分识别,边界永远成立,事实独立于模型能力),非新增 tool 补偿模型弱点。与 P13 协同:描述里引导「`save_image=True` 拿路径自己看图」,路径给复用入口。
+不作为返回字段承载(如曾有的 `vision_hint`):静态说教每次调用重复传输,而工具描述是唯一必然可见层(instructions 为客户端可选注入,实测项目级 workspace-mcp 路径不注入;返回体按次付费)。与 P1「capability over compensation」的边界不变:陈述客观固有能力边界(它本就只做部分识别,边界永远成立,事实独立于模型能力),非新增 tool 补偿模型弱点。与 P13 协同:「怎么拿可读的图」的复用入口(`save_image=True` → `screenshot_path`)写在字段 description(outputSchema),docstring 只陈述「需读图补全」的边界事实本身。
 
 ### P15. 返回字段语义写在 outputSchema,不写 docstring / dataclass docstring
 MCP 规范 tool 定义含 `outputSchema`(可选 JSON Schema,描述返回结构,字段描述写在各字段的 description 上),与 `inputSchema` 对称——这是返回字段语义的**唯一规范位置**:

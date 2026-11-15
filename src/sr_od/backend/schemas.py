@@ -147,7 +147,8 @@ class RunStatusOut(BaseModel):
     retry_count: int | None = Field(
         default=None, description='运行中当前节点重试次数；终态为 null')
     last_status: str | None = Field(
-        default=None, description='仅终态有值:成功描述 / 失败原因 / 已停止[来源]；运行中为 null')
+        default=None, description='仅终态有值:成功描述 / 失败原因 / '
+                    '已停止[来源](来源如 mcp:stop_run / hook:* / gui:*)；运行中为 null')
     failed_node: str | None = Field(
         default=None, description='仅 failed:失败停在哪一步(排障锚点)；否则为 null')
 

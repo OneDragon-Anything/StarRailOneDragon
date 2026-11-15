@@ -22,8 +22,7 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
         """按当前 GUI/配置的一条龙设置启动完整一条龙运行。长耗时(全套应用,可达小时级)。操作类(会控制游戏)。
 
         跑全套已启用应用用本 tool;单个应用用 run_standalone_app;单个 operation
-        用 run_operation。单跑道:同一时间只允许一个运行,已有运行时返回拒绝
-        (含 source 与提示)。
+        用 run_operation。单跑道:同一时间只允许一个运行,已有运行时返回拒绝。
         """
         try:
             ok, future = backend.run_one_dragon('mcp')
@@ -60,8 +59,7 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
         """启动单个独立应用。操作类(会控制游戏)。
 
         单个应用用本 tool;全套用 run_one_dragon;单个 operation 用 run_operation。
-        可运行应用清单用 list_applications 查。单跑道,已有运行时返回拒绝
-        (含 source 与提示)。
+        可运行应用清单用 list_applications 查。单跑道,已有运行时返回拒绝。
         """
         try:
             ok, future = backend.run_standalone_app('mcp', app_id=app_id)
@@ -158,8 +156,12 @@ def make_describe_operation_flow(backend: SrBackendContext) -> Callable[[str, bo
         describe_operation 看参数 schema,本 tool 看节点怎么流转(怎么走/失败走哪/
         收尾在哪),两者互补;改 op 前先看图了解现状,改完再看图核对。纯静态提取
         零副作用,可在运行前发现断名边/多起点等编排错误。短名查不到属预期
-        (App 类不进扫描缓存),改用完整 op_id。返回字段语义随结果自解释:
-        diagnostics 的 error=运行时必炸或图不成立,warn=结构可疑不致命。
+        (App 类不进扫描缓存),改用完整 op_id。
+
+        Returns:
+            flow 文本图的记号:「←入:」标注仅入边≥2 的汇聚节点出现;断名边以
+            「←✗不存在的来源」挂在 to 节点侧;edges[] 断名边(from=null)统一垫底。
+            diagnostics 的 error=运行时必炸或图不成立,warn=结构可疑不致命。
         """
         try:
             return operation_flow.describe_operation_flow(op_id, mermaid=mermaid)
@@ -184,8 +186,8 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         单个 operation 用本 tool;全套用 run_one_dragon;单个应用用
         run_standalone_app。短名命中多个同名类时拒绝并列出候选(防误运行);
         复杂参数先用 describe_operation 看参数与传法。单跑道,已有运行时返回
-        拒绝(含 source 与提示)。block=True 终态的 data 字段是 op 的数据通道
-        (读数类 op 携带结果,无数据为 null)。
+        拒绝。block=True 终态的 data 字段是 op 的数据通道(读数类 op 携带结果,
+        无数据为 null)。
         """
         try:
             cls = operation_registry.resolve_unique_op(op_id)

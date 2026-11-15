@@ -13,8 +13,11 @@
 (instructions 是 server 级全局、启动时定,不支持运行时按消费者切;且两套会膨胀违背精炼)。
 """
 
+from typing import Annotated
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 
 def render_instructions() -> str:
@@ -188,11 +191,10 @@ def register_prompt_tools(mcp: FastMCP) -> None:
         return list_prompt_guides()
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取操作指南"))
-    def get_mcp_usage_guide(name: str, app_id: str | None = None) -> str:
+    def get_mcp_usage_guide(
+        name: Annotated[str, Field(description="指南名称,可先调 list_mcp_usage_guides 查看")],
+        app_id: Annotated[str | None, Field(description="独立应用 ID,仅 sr_run_standalone_app 使用")] = None,
+    ) -> str:
         """读取 sr_od MCP 操作指南，相当于某个任务的 --help。观察类(只读)。
-
-        Args:
-            name: 指南名称，可先调用 ``list_mcp_usage_guides`` 查看。
-            app_id: 独立应用 ID，仅 ``sr_run_standalone_app`` 使用。
         """
         return render_prompt_guide(name, app_id)
