@@ -7,8 +7,9 @@
 - 数据 ↔ 工具的关系说明按「一次一行」收拢在输出头部，明细行只留该行特有
   的信息，缺省值与样板语义不逐行重复；
 - backend 方法保持结构化返回（框架内部消费不变），渲染只发生在 MCP 工具层；
+  渲染层只处理成功数据，失败走异常通道（ScreenInfoError），不进渲染层；
 - 每个工具配一个 ``render_xxx(result: dict) -> str``：输入是该工具结构化
-  返回的信封，``success=False`` 错误形态同样渲染（单一出口）。
+  返回的纯数据 dict。
 """
 
 #: 建档缺省识别阈值（``ScreenArea`` 构造缺省 / ``upsert_screen_area`` 入参缺省）：
@@ -68,11 +69,9 @@ def render_screen_detail(result: dict) -> str:
     （画面名 → ``goto_screen`` 目标与 ``get_screen_detail`` / ``upsert_screen_area``
     入参、区域中心 → ``click_game`` 坐标、识别配置 → ``analyze_screen`` 命中
     依据、可达名单 → ``goto_screen`` 目标），只在有内容时输出；最后每个区域
-    一行（见 ``_render_area_line``），区域顺序保持建档原序。
+    一行（见 ``_render_area_line``），区域顺序保持建档原序。渲染层只处理
+    成功数据——失败走异常通道（ScreenInfoError），不进本函数。
     """
-    if not result.get('success'):
-        return f"画面档查询失败: {result.get('error')}"
-
     screen_name = result.get('screen_name')
     neighbors: list[str] = result.get('goto_neighbors') or []
     lines: list[str] = [

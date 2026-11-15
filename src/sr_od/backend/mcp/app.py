@@ -265,13 +265,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         analyze_screen 只回当前帧命中;本方法回建档全集——核对画面建档、
         查「从这里能 goto 到哪」、建档补漏用。
         """
-        try:
-            result = backend.get_screen_detail(screen_name)
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            result = {'success': False, 'screen_name': screen_name, 'screen_id': None,
-                      'pc_alt': None, 'area_count': 0, 'areas': [], 'goto_neighbors': [],
-                      'error': str(e)}
-        return render_screen_detail(result)
+        return render_screen_detail(backend.get_screen_detail(screen_name))
 
     @mcp.tool(annotations=ToolAnnotations(title="按路由导航画面"))  # 操作类:实际点击游戏
     def goto_screen(

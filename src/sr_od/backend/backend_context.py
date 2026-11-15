@@ -1081,41 +1081,45 @@ class SrBackendContext:
             screen_name: 目标画面名(与 screen_info 的 screen_name 完全一致)。
 
         Returns:
-            ``{success, screen_name, screen_id, pc_alt, area_count, areas[], goto_neighbors[], error}``;
-            areas 元素含 area_name/id_mark/pc_rect/text/lcs_percent/template_id/
-            template_sub_dir/template_match_threshold/goto_list。
+            ``{screen_name, screen_id, pc_alt, area_count, areas[], goto_neighbors[]}``
+            (纯数据,无成败字段);areas 元素含 area_name/id_mark/pc_rect/text/
+            lcs_percent/template_id/template_sub_dir/template_match_threshold/goto_list。
+
+        Raises:
+            ScreenInfoError: 画面名未找到(文案含可用画面名提示)。
         """
         try:
             screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
-            areas = [
-                {
-                    'area_name': a.area_name,
-                    'id_mark': a.id_mark,
-                    'pc_rect': [a.rect.x1, a.rect.y1, a.rect.x2, a.rect.y2],
-                    'text': a.text,
-                    'lcs_percent': a.lcs_percent,
-                    'template_id': a.template_id,
-                    'template_sub_dir': a.template_sub_dir,
-                    'template_match_threshold': a.template_match_threshold,
-                    'goto_list': list(a.goto_list),
-                }
-                for a in screen_info.area_list
-            ]
-            route_map = self._ctx.screen_loader.screen_route_map.get(screen_name, {})
-            neighbors = sorted(
-                to for to, route in route_map.items()
-                if to != screen_name and route is not None and route.can_go
-            )
-            return {
-                'success': True, 'screen_name': screen_name,
-                'screen_id': screen_info.screen_id, 'pc_alt': screen_info.pc_alt,
-                'area_count': len(areas), 'areas': areas,
-                'goto_neighbors': neighbors, 'error': None,
+        except Exception as e:
+            known = '、'.join(sorted(s.screen_name for s in self._ctx.screen_loader.screen_info_list)[:10])
+            raise ScreenInfoError(
+                f'画面名未找到: {screen_name}(须与 screen_info 的 screen_name 完全一致;'
+                f'示例: {known} …可用 list_screen_names 工具查全量;原始错误: {e})') from e
+        areas = [
+            {
+                'area_name': a.area_name,
+                'id_mark': a.id_mark,
+                'pc_rect': [a.rect.x1, a.rect.y1, a.rect.x2, a.rect.y2],
+                'text': a.text,
+                'lcs_percent': a.lcs_percent,
+                'template_id': a.template_id,
+                'template_sub_dir': a.template_sub_dir,
+                'template_match_threshold': a.template_match_threshold,
+                'goto_list': list(a.goto_list),
             }
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'screen_name': screen_name, 'screen_id': None,
-                    'pc_alt': None, 'area_count': 0, 'areas': [], 'goto_neighbors': [],
-                    'error': str(e)}
+            for a in screen_info.area_list
+        ]
+        route_map = self._ctx.screen_loader.screen_route_map.get(screen_name, {})
+        neighbors = sorted(
+            to for to, route in route_map.items()
+            if to != screen_name and route is not None and route.can_go
+        )
+        return {
+            'screen_name': screen_name,
+            'screen_id': screen_info.screen_id, 'pc_alt': screen_info.pc_alt,
+            'area_count': len(areas), 'areas': areas,
+            'goto_neighbors': neighbors,
+        }
 
     def _find_area_click_point(self, screen: 'MatLike', screen_info: ScreenInfo,
                                area: ScreenArea) -> Point | None:
