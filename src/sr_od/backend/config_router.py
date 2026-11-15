@@ -23,6 +23,9 @@ from sr_od.application.echo_of_war.echo_of_war_config import (
 from sr_od.application.monthly_embers_exchange import (
     monthly_embers_exchange_const,
 )
+from sr_od.application.monthly_synthesize import (
+    monthly_synthesize_const,
+)
 from sr_od.application.trailblaze_power.trailblaze_power_config import (
     TrailblazePowerConfig,
     TrailblazePowerPlanItem,
@@ -339,6 +342,20 @@ def _noop_item_from_dict(data: dict) -> object:
     return data
 
 
+def _monthly_synthesize_get_config(
+    ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
+) -> object:
+    # 经 run_context 取 factory 缓存实例(与 app 运行/GUI 同一份,写立即生效);
+    # 空 instance/group 自行落默认(同余烬兑换条目)
+    idx = instance_idx if instance_idx is not None else ctx.current_instance_idx
+    gid = group_id if group_id else application_const.DEFAULT_GROUP_ID
+    return ctx.run_context.get_config(
+        monthly_synthesize_const.APP_ID,
+        instance_idx=idx,
+        group_id=gid,
+    )
+
+
 # === ROUTES(含 field_schema + item_schema) ===
 
 def _build_routes() -> dict[str, RouterEntry]:
@@ -457,6 +474,23 @@ def _build_routes() -> dict[str, RouterEntry]:
                 'special_pass_enabled': {'type': 'bool', 'desc': '兑换 星轨专票(90余烬/张,月限5) 开关'},
                 'pass_enabled': {'type': 'bool', 'desc': '兑换 星轨通票(90余烬/张,月限额度动态) 开关'},
                 'tracks_of_destiny_enabled': {'type': 'bool', 'desc': '兑换 命运的足迹(60余烬/张,月限1) 开关'},
+            },
+        ),
+        'monthly_synthesize': RouterEntry(
+            app_id='monthly_synthesize',
+            description='每月合成:材料合成分类月限物品(当前仅自塑尘脂,残骸×800/个)的合成开关;'
+                        '数量固定拉满不可配(用户裁定);'
+                        '运行记录按自然月(MONTHLY),月内跑完不再跑,材料不足判失败日批补跑(用户裁定)',
+            item_from_dict=_noop_item_from_dict,
+            get_config=_monthly_synthesize_get_config,
+            validate_item=lambda ctx, item: None,  # field-only:无列表项可校验
+            add=None,
+            delete=None,
+            id_kind='app_id',  # field-only 占位(无列表项定位语义),照 _group 条目
+            item_kind='dict',
+            supported_ops=('get', 'set', 'describe'),
+            field_schema={
+                'self_modeling_resin_enabled': {'type': 'bool', 'desc': '合成 自塑尘脂(月限额度拉满) 开关'},
             },
         ),
     }
