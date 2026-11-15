@@ -62,6 +62,7 @@ from sr_od.backend.schemas import (
     AreaMutationOut,
     GotoScreenOut,
     InputTextOut,
+    RecordScreenOut,
     RunFinishOut,
     RunFinishResult,
     RunStartOut,
@@ -191,22 +192,16 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         fps: Annotated[int, Field(description="帧率")] = 30,
         capture: Annotated[str, Field(description="'window'=游戏窗口(按句柄定位,窗口不在退回 desktop);'desktop'=全桌面")] = 'window',
         bitrate: Annotated[str, Field(description="目标码率,如 6M")] = '6M',
-    ) -> dict:
+    ) -> RecordScreenOut:
         """录屏(**dev-only**)。观察类(只读,不占单跑道,可与 bot run 并行)。需 dev 依赖 imageio-ffmpeg。
 
         ffmpeg gdigrab 采集,能录游戏画面;编码器自动探测(h264_nvenc 优先,回退
-        libx264),结果带 encoder 字段;imageio-ffmpeg 缺失时返回提示,不影响 server。
+        libx264),结果带 encoder 字段。
         典型流程:mode='start' 开录 → 跑 bot → mode='stop' 收尾(start 为
         fragmented mp4,中途被 kill 也安全可播)。
-
-        Returns:
-            dict: ``{success, path?(文件路径), pid?(start 模式进程号), action,
-            error?, hint?, encoder?(编码器), returncode?}``。
         """
-        try:
-            return backend.record_screen(mode, duration, out_name, fps, capture, bitrate)
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'error': str(e)}
+        return RecordScreenOut.from_backend(
+            backend.record_screen(mode, duration, out_name, fps, capture, bitrate))
 
     @mcp.tool(annotations=ToolAnnotations(title="增改画面区域"))  # 操作类:改 screen_info(写 yml + reload)
     def upsert_screen_area(

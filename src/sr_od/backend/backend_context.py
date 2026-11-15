@@ -54,6 +54,7 @@ from sr_od.backend.schemas import (
     GotoScreenResult,
     InputTextResult,
     OcrText,
+    RecordScreenResult,
     RunStatusResult,
     RunStopResult,
     ScreenCreateResult,
@@ -739,7 +740,7 @@ class SrBackendContext:
         fps: int = 30,
         capture: str = 'window',
         bitrate: str = '6M',
-    ) -> dict:
+    ) -> RecordScreenResult:
         """录屏(dev-only,需 dev 依赖 imageio-ffmpeg)。观察类,不占单跑道,可与 bot run 并行。
 
         ffmpeg gdigrab 采集,跑在本 server 进程(Session 1 / 交互桌面),故能录到
@@ -763,9 +764,12 @@ class SrBackendContext:
             bitrate: 目标码率,如 ``6M``。
 
         Returns:
-            ``{success, path?, pid?, action, error?, hint?, encoder?, returncode?}``。
-            无 ffmpeg 时 success=False + error 提示装 dev 依赖(imageio-ffmpeg)。
-            imageio-ffmpeg 为延迟导入,缺失不影响 server 启动。
+            录屏操作结果(动作 / 产物路径 / pid / 编码器 / 退出码)。
+
+        Raises:
+            RuntimeError: 无 ffmpeg(装 dev 依赖) / ffmpeg 启动失败或非零退出 /
+                stop 时无进行中录屏 / mode 不支持。imageio-ffmpeg 为延迟导入,
+                缺失不影响 server 启动。
         """
         with self._recorder_lock:
             if mode == 'stop':
@@ -774,7 +778,7 @@ class SrBackendContext:
                 self._recorder_proc = None
                 self._recorder_path = None
                 if proc is None:
-                    return {'success': False, 'error': '没有正在进行的录屏'}
+                    raise RuntimeError('没有正在进行的录屏')
                 try:
                     proc.terminate()
                     proc.wait(timeout=5)
@@ -783,16 +787,14 @@ class SrBackendContext:
                         proc.kill()
                 # fragmented mp4 被 TerminateProcess 截断也保持可播(参数组依据见
                 # _build_record_cmd start 分支),故 stop 无需优雅收尾。
-                return {'success': True, 'path': out, 'action': 'stopped',
-                        'returncode': proc.returncode}
+                return RecordScreenResult(action='stopped', path=out,
+                                          returncode=proc.returncode)
 
             ffexe = _resolve_ffmpeg_exe()
             if not ffexe:
-                return {
-                    'success': False,
-                    'error': '未找到 ffmpeg。录屏是 dev-only,需 dev 依赖 imageio-ffmpeg',
-                    'hint': '确认已 uv sync --group dev;或把 ffmpeg 放到 PATH',
-                }
+                raise RuntimeError('未找到 ffmpeg。录屏是 dev-only,需 dev 依赖 '
+                                   'imageio-ffmpeg;确认已 uv sync --group dev,'
+                                   '或把 ffmpeg 放到 PATH')
 
             out_dir = _record_dir()
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -816,7 +818,7 @@ class SrBackendContext:
                 # error 输出量极小,长录也不会撑爆管道缓冲)。
                 proc = subprocess.Popen(cmd, stderr=subprocess.PIPE)
             except Exception as e:
-                return {'success': False, 'error': f'启动 ffmpeg 失败: {e}'}
+                raise RuntimeError(f'启动 ffmpeg 失败: {e}') from e
 
             if mode == 'fixed':
                 try:
@@ -827,27 +829,23 @@ class SrBackendContext:
                     with contextlib.suppress(Exception):
                         proc.wait()
                     ok = False
-                result: dict = {'success': ok, 'path': out_path if ok else None,
-                                'action': 'fixed', 'returncode': proc.returncode,
-                                'encoder': encoder}
                 if not ok:
                     err = _drain_stderr(proc)
-                    result['error'] = err or f'ffmpeg 非零退出(returncode={proc.returncode})'
-                return result
+                    raise RuntimeError(err or f'ffmpeg 非零退出(returncode={proc.returncode})')
+                return RecordScreenResult(action='fixed', path=out_path,
+                                          returncode=proc.returncode, encoder=encoder)
 
             if mode == 'start':
                 death_err = _wait_recorder_early_death(proc, _RECORDER_START_GRACE_SECONDS)
                 if death_err is not None:
-                    return {'success': False, 'action': 'start',
-                            'error': f'ffmpeg 启动后立即退出: {death_err}'}
+                    raise RuntimeError(f'ffmpeg 启动后立即退出: {death_err}')
                 self._recorder_proc = proc
                 self._recorder_path = out_path
-                return {'success': True, 'pid': proc.pid, 'path': out_path,
-                        'action': 'started', 'encoder': encoder,
-                        'hint': '后台录屏中;调 record_screen(mode="stop") 收尾'}
+                return RecordScreenResult(action='started', path=out_path,
+                                          pid=proc.pid, encoder=encoder)
             with contextlib.suppress(Exception):
                 proc.kill()
-            return {'success': False, 'error': f'未知 mode={mode}(支持 fixed/start/stop)'}
+            raise RuntimeError(f'未知 mode={mode}(支持 fixed/start/stop)')
 
     @staticmethod
     def _resolve_screenshot(screenshot: str) -> 'tuple[MatLike | None, str]':

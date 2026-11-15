@@ -492,6 +492,45 @@ class ConfigListOut(BaseModel):
 
 
 @dataclass
+class RecordScreenResult:
+    """录屏操作结果(传输无关)。
+
+    Attributes:
+        action: 实际执行的动作 fixed(录完自停)/started(后台开录)/stopped(收尾)。
+        path: 产物文件绝对路径;fixed/stopped 为成品,started 为目标路径。
+        pid: started 模式的 ffmpeg 进程号;其余 None。
+        encoder: 编码器(h264_nvenc/libx264);started/fixed 有,stopped None。
+        returncode: ffmpeg 退出码(fixed/stopped);started None。
+    """
+
+    action: str
+    path: str | None = None
+    pid: int | None = None
+    encoder: str | None = None
+    returncode: int | None = None
+
+
+class RecordScreenOut(BaseModel):
+    """录屏操作结果(record_screen 返回)。"""
+
+    action: str = Field(
+        description="实际执行的动作:'fixed'(录完自停)/'started'(后台开录)/'stopped'(收尾)")
+    path: str | None = Field(
+        default=None, description='产物文件绝对路径;fixed/stopped 为成品,started 为目标路径')
+    pid: int | None = Field(
+        default=None, description="started 模式的 ffmpeg 进程号;其余 null")
+    encoder: str | None = Field(
+        default=None, description="编码器(h264_nvenc/libx264);stopped 时 null")
+    returncode: int | None = Field(
+        default=None, description="ffmpeg 退出码(fixed/stopped);started 时 null")
+
+    @classmethod
+    def from_backend(cls, result: 'RecordScreenResult') -> 'RecordScreenOut':
+        """框架录屏结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+@dataclass
 class GotoScreenResult:
     """画面导航结果(传输无关;arrived=False 是带现场的正常结果,非错误)。
 
