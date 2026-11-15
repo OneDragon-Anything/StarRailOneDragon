@@ -26,7 +26,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 |---|---|---|---|
 | `src/sr_od/config/character_const.py` | **手动** | 新增 Character 常量(插最后一个常量后)+ 追加 CHARACTER_LIST 末尾;字段规则见附录 A | import 后 `get_character_by_id('<新id>')` 命中且字段正确;旧角色抽查非 None;ruff 不新增违规 |
 | `src/sr_od/mys/sr_character_details.py` | 脚本生成 | `uv run python skills/sr-od-dev-character-data/scripts/gen_character_details.py`(输入步骤 1 的 char_details.json) | `resolve_traces(<avatarId>)`/`resolve_eidolons(<avatarId>)` 非空 |
-| `src/sr_od/config/character_ascension_const.py` + `src/sr_od/config/dungeon_drop_const.py` | 脚本生成 | `uv run python skills/sr-od-dev-character-data/scripts/generate_ascension_const.py`(官方 wiki 直拉) | `find_character_ascension('<cn>')` 命中 |
+| `src/sr_od/config/character_ascension_const.py` + `src/sr_od/config/dungeon_drop_const.py` | 脚本生成 | `uv run python skills/sr-od-dev-character-data/scripts/generate_ascension_const.py`(官方 wiki 直拉) | `find_character_ascension('<cn>')` 命中;**产出表覆盖**——本轮新实装材料经 `find_missions_by_material` 命中实例;官方词条滞后导致实例映射缺失时(材料只进分类清单、无映射)登记待补,commit 注明,wiki 补齐后重跑本生成器追补 |
 | `src/sr_od/config/trace_levelup_const.py` | 脚本生成(低频) | `generate_trace_cost_const.py`;全 5 星统一固定表,仅游戏机制变更时重跑 | 表结构不变即无需动 |
 
 - 生成器均项目根运行(`PYTHONPATH=src`);产物头部注释由生成器写入,**禁手改常量数据块**(单一源 = 官方 wiki,修正走重新生成)。
