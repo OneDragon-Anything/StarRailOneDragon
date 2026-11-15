@@ -105,6 +105,87 @@ class AnalyzeScreenOut(BaseModel):
         return cls(**asdict(result))
 
 
+class WindowStatusOut(BaseModel):
+    """游戏窗口状态。"""
+
+    win_title: str | None = Field(
+        default=None,
+        description='controller 缓存的预期窗口标题(来自配置)，游戏未启动时也可能非 None；'
+                    '勿据本字段判断窗口是否存在')
+    is_win_valid: bool = Field(
+        description='窗口句柄是否有效；判断游戏是否在跑/窗口是否存在看本字段')
+    is_win_active: bool = Field(description='窗口当前是否处于激活状态')
+    is_win_scale: bool = Field(
+        description='窗口是否处于非标准尺寸(客户区 ≠ 1920×1080)；截图仍会归一到标准分辨率')
+    x: int | None = Field(default=None, description='窗口左上角横坐标；不可用时为 null')
+    y: int | None = Field(default=None, description='窗口左上角纵坐标；不可用时为 null')
+    width: int | None = Field(default=None, description='窗口客户区宽度；不可用时为 null')
+    height: int | None = Field(default=None, description='窗口客户区高度；不可用时为 null')
+
+    @classmethod
+    def from_backend(cls, result: 'WindowStatus') -> 'WindowStatusOut':
+        """框架窗口状态 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+class RunStatusOut(BaseModel):
+    """运行状态查询结果(MCP/HTTP 共享,传输无关)。"""
+
+    state: str = Field(
+        description='idle(无运行)/running(运行中,含 stop 后退出中的间隙)/'
+                    'success/failed/stopped(终态,固化)')
+    source: str | None = Field(
+        default=None, description='触发方 "mcp"/"http"；终态后保留,反映最近一次来源')
+    app: str | None = Field(
+        default=None, description='operation 类名；终态后保留(上次跑的什么)')
+    started_at: str | None = Field(
+        default=None, description='ISO 时间戳,可作 tail 日志锚点；不可用时为 null')
+    duration_seconds: float | None = Field(
+        default=None, description='截至查询时的耗时(秒)；不可用时为 null')
+    current_node: str | None = Field(
+        default=None, description='运行中当前节点名；终态为 null')
+    retry_count: int | None = Field(
+        default=None, description='运行中当前节点重试次数；终态为 null')
+    last_status: str | None = Field(
+        default=None, description='仅终态有值:成功描述 / 失败原因 / 已停止[来源]；运行中为 null')
+    failed_node: str | None = Field(
+        default=None, description='仅 failed:失败停在哪一步(排障锚点)；否则为 null')
+
+    @classmethod
+    def from_backend(cls, result: 'RunStatusResult') -> 'RunStatusOut':
+        """框架运行状态 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+class ApplicationInfoOut(BaseModel):
+    """单个可运行应用的信息。"""
+
+    app_id: str = Field(description='应用 ID,运行/配置类工具的定位入参')
+    app_name: str = Field(description='应用显示名')
+    enabled_in_one_dragon: bool = Field(description='是否已在一条龙组启用')
+    in_standalone_list: bool = Field(description='是否出现在独立应用列表')
+    is_active_standalone: bool = Field(
+        description='是否为 GUI「独立应用运行」当前选中项')
+
+
+class ApplicationListResultOut(BaseModel):
+    """应用运行配置概览(list_applications 返回)。"""
+
+    current_instance_idx: int = Field(
+        description='当前激活实例的下标(账号下标)：idx N → config/0N 目录'
+                    '(idx 1 → config/01 账号01)，不是 config/0<idx+1>；'
+                    '改某实例配置前先据此定位目录')
+    active_standalone_app_id: str | None = Field(
+        default=None, description='GUI「独立应用运行」当前选中的 app_id；无则 null')
+    applications: list[ApplicationInfoOut] = Field(
+        default_factory=list, description='可运行应用列表及各运行模式状态')
+
+    @classmethod
+    def from_backend(cls, result: 'ApplicationListResult') -> 'ApplicationListResultOut':
+        """框架应用列表 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
 @dataclass
 class WindowStatus:
     """游戏窗口状态。

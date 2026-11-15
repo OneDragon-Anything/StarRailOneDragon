@@ -8,7 +8,7 @@ from pydantic import Field
 
 from sr_od.backend import operation_flow, operation_registry
 from sr_od.backend.backend_context import SrBackendContext
-from sr_od.backend.schemas import ApplicationListResult
+from sr_od.backend.schemas import ApplicationListResult, ApplicationListResultOut
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.operation_base import OperationResult
@@ -21,15 +21,9 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
     ) -> dict:
         """按当前 GUI/配置的一条龙设置启动完整一条龙运行。长耗时(全套应用,可达小时级)。操作类(会控制游戏)。
 
-        跑全套已启用应用用本 tool;单个应用用 ``run_standalone_app``;单个 operation
-        用 ``run_operation``。副作用:操作游戏;单跑道(同一时间只允许一个运行,
-        已有运行时返回拒绝,含 source + 提示)。
-
-        Returns:
-            三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
-            ② 受理 dict ``{started: True, source, app, started_at, hint}``(block=False);
-            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
-            进度/结果细节看 ``get_run_status``。
+        跑全套已启用应用用本 tool;单个应用用 run_standalone_app;单个 operation
+        用 run_operation。单跑道:同一时间只允许一个运行,已有运行时返回拒绝
+        (含 source 与提示)。
         """
         try:
             ok, future = backend.run_one_dragon('mcp')
@@ -65,15 +59,9 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
     ) -> dict:
         """启动单个独立应用。操作类(会控制游戏)。
 
-        单个应用用本 tool;全套用 ``run_one_dragon``;单个 operation 用 ``run_operation``。
-        ``app_id`` 缺省时用 GUI「应用运行」当前选中的应用,可运行应用清单用
-        ``list_applications`` 查。副作用:操作游戏;单跑道,已有运行时返回拒绝。
-
-        Returns:
-            三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
-            ② 受理 dict ``{started: True, source, app, started_at, hint}``(block=False);
-            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
-            进度/结果细节看 ``get_run_status``。
+        单个应用用本 tool;全套用 run_one_dragon;单个 operation 用 run_operation。
+        可运行应用清单用 list_applications 查。单跑道,已有运行时返回拒绝
+        (含 source 与提示)。
         """
         try:
             ok, future = backend.run_standalone_app('mcp', app_id=app_id)
@@ -101,27 +89,18 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
     return run_standalone_app
 
 
-def make_list_applications(backend: SrBackendContext) -> Callable[[], ApplicationListResult | dict]:
+def make_list_applications(backend: SrBackendContext) -> Callable[[], ApplicationListResultOut | dict]:
     """构造 ``list_applications`` tool。"""
-    def list_applications() -> ApplicationListResult | dict:
+    def list_applications() -> ApplicationListResultOut | dict:
         """列出当前实例可运行应用、独立应用列表和当前选中项。观察类(只读,不刷新配置)。
 
-        列应用用本 tool;列可运行 operation 用 ``list_operations``。
-
-        返回的 ``current_instance_idx`` 是激活实例的 idx(账号下标):**idx N → config/0N 目录**
-        (idx 1 → config/01 账号01),**不是** config/0<idx+1>。激活实例看
-        ``config/one_dragon.yml`` 的 ``instance_list`` 里 ``active: true`` 项;
-        改某实例配置前据此定位目录,别把 idx 当目录号做偏移。
-
-        Returns:
-            ``{current_instance_idx, active_standalone_app_id, applications[]}``;
-            ``applications[]`` 元素: ``{app_id, app_name, enabled_in_one_dragon,
-            in_standalone_list, is_active_standalone}``。
+        列应用用本 tool;列可运行 operation 用 list_operations。
         """
         try:
-            return backend.list_applications()
+            result = backend.list_applications()
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'error': str(e)}
+        return ApplicationListResultOut.from_backend(result) if isinstance(result, ApplicationListResult) else result
     return list_applications
 
 
@@ -132,20 +111,10 @@ def make_list_operations(backend: SrBackendContext) -> Callable[..., dict]:
     ) -> dict:
         """列出可运行的自定义 operation 的定位符清单。观察类(纯反射,不实例化,不改任何状态)。
 
-        只返回定位符列表,不含参数 schema——LLM 上下文有限,全量参数 schema 必然
-        截断;参数详情用 ``describe_operation(定位符)`` 查。列应用用 ``list_applications``。
-
-        元素可直接传给 describe_operation / run_operation:类名无同名冲突时为类名
-        短名(如 MoveDirectly),有同名冲突时为完整 op_id(含点),无需区分。
-
-        Args:
-            query: 子串过滤(大小写不敏感),按完整 op_id 匹配——类名是其后缀,
-                模块路径中的词也可作关键字;空串 = 全量。找目标 op 先传关键字
-                缩小范围(如 'move'/'battle'/'charge'),避免全量长列表。
-
-        Returns:
-            ``{total, count, operations[], failures[], hint}``;``failures[]`` 是
-            单模块 import 失败记录(``{module}: {error}``),不影响其余扫描结果。
+        只返回定位符不含参数 schema——参数详情用 describe_operation 查;列应用
+        用 list_applications。定位符可直接传给 describe_operation / run_operation:
+        类名无同名冲突时为类名短名(如 MoveDirectly),有同名冲突时为完整 op_id
+        (含点),无需区分。failures[] 为单模块 import 失败记录,不影响其余结果。
         """
         try:
             result = operation_registry.scan_operations(backend.ctx)
@@ -162,19 +131,10 @@ def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
     ) -> dict:
         """描述单个 operation 的参数 schema。观察类(纯反射,不实例化,不改任何状态)。
 
-        op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名(如
-        ``MoveDirectly``):短名命中唯一时返回单条 schema;命中多个同名类时返回
-        ``{ambiguous: True, matches[]}`` 全部候选;未找到时报错附相似类名建议。
-
-        Returns:
-            单命中 ``{op_id, class_name, module, docstring, params[], debuggable}``;
-            ``docstring`` = 本类 docstring(做什么/起终点画面/副作用/参数语义,
-            未写为 None,不继承基类)——远程使用者看不到源码,op 语义唯一来源;
-            ``params[]`` 元素: ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'),
-            required, default(默认值字符串,必填为 None), json_serializable(可否直接传
-            JSON 值), coercible(@dataclass+from_dict,可传 dict 自动反序列化)}``;
-            ``debuggable``=所有必填参数是否可经 JSON 传入。
-            多命中 ``{ambiguous: True, count, matches[](每条同单命中结构), hint}``。
+        op_id 短名命中多个同名类时返回全部候选(ambiguous=True),未找到时附
+        相似类名建议。返回的 docstring 是该 op 的语义唯一来源(做什么/起终点
+        画面/副作用/参数语义);params[] 元素的 json_serializable 标记能否直接
+        传 JSON 值,coercible 标记可传 dict 由 run_operation 自动反序列化。
         """
         try:
             return operation_registry.describe_operation(backend.ctx, op_id)
@@ -195,38 +155,11 @@ def make_describe_operation_flow(backend: SrBackendContext) -> Callable[[str, bo
     ) -> dict:
         """查看单个 operation 的节点流转图(节点/边/诊断)。观察类(纯反射,不实例化,不改任何状态)。
 
-        ``describe_operation`` 看参数 schema,本 tool 看节点怎么流转(怎么走/
-        失败走哪/收尾在哪),两者互补。不实例化的原因:``SrOperation.__init__``
-        构造 ``OpenAndEnterGame`` 等副作用依赖,且编排校验要等 ``execute`` 才
-        触发——静态提取零副作用,还能在运行前发现断名边/多起点等编排错误
-        (诊断 error 级与运行时 raise 一一对应)。
-
-        op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名(如
-        ``MoveDirectly``)。完整形态实时解析,接受任意 Operation 子类含
-        Application(app 同样是节点编排重灾区,本工具口径是可读性不限可运行性);
-        短名走扫描缓存精确匹配,App 类被可运行性口径过滤不进缓存,短名查不到
-        属预期,改用完整 op_id。
-
-        Args:
-            op_id: operation 定位标识,完整 ``<module>.<ClassName>`` 或类名短名。
-            mermaid: True 时额外返回 ``mermaid`` 字段(flowchart 源码),默认 False。
-
-        Returns:
-            单命中: ``{op_id, class_name, module, start_node(None=多起点/无起点),
-            node_count, edge_count, flow, mermaid, nodes[], edges[], diagnostics[],
-            notes[]}``。``flow`` = 文本流转图主形态(含图例行;``←入:`` 标注仅
-            入边≥2 的汇聚节点出现;断名边以 ``←✗不存在的来源`` 挂在 to 节点侧)。
-            ``nodes[]`` 按 BFS 执行序(不可达垫底): ``{cn, method(定位源码用),
-            is_start_node, timeout_seconds, node_max_retry_times, reachable}``。
-            ``edges[]`` 断名边(``from=None``)统一垫底: ``{from, to, success,
-            status, ignore_status(已静态归一)}``。``diagnostics[]``:
-            ``{level, code, message}``,error=运行时必炸或图不成立(断名边/重复
-            节点名/多起点/无起点),warn=结构可疑不致命(不可达节点/同方向多条
-            兜底边/边挂非节点方法)——出现 error 时 ``flow`` 仍尽力渲染,调试
-            价值在运行前看到全貌。
-            短名多命中: ``{ambiguous: True, count, candidates[], hint}``(只列
-            候选 op_id,不带 schema)。
-            解析失败(未找到/非 Operation 子类): ``{error}``。
+        describe_operation 看参数 schema,本 tool 看节点怎么流转(怎么走/失败走哪/
+        收尾在哪),两者互补;改 op 前先看图了解现状,改完再看图核对。纯静态提取
+        零副作用,可在运行前发现断名边/多起点等编排错误。短名查不到属预期
+        (App 类不进扫描缓存),改用完整 op_id。返回字段语义随结果自解释:
+        diagnostics 的 error=运行时必炸或图不成立,warn=结构可疑不致命。
         """
         try:
             return operation_flow.describe_operation_flow(op_id, mermaid=mermaid)
@@ -248,20 +181,11 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
     ) -> dict:
         """按 op_id(package.path.ClassName)或类名短名运行任意 operation;args 传构造参数。操作类(会控制游戏)。
 
-        单个 operation 用本 tool;全套用 ``run_one_dragon``;单个应用用 ``run_standalone_app``。
-
-        op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名:短名命中
-        唯一即运行;命中多个同名类时拒绝并列出候选 op_id(防误运行)。
-        args 传 JSON 标量/列表/字典;``@dataclass``+``from_dict`` 参数传 dict,
-        实例化前自动反序列化;其余复杂数据类走 application(先 ``describe_operation``
-        看参数)。副作用:操作游戏;单跑道,已有运行时返回拒绝(含 source + 提示)。
-
-        Returns:
-            三种形态:① 参数/并发错误 dict ``{started: False, error(, source, hint)}``;
-            ② 受理 dict ``{started: True, op_id, source, started_at, hint}``(block=False);
-            ③ block=True 终态 dict ``{success: bool, result: <结果文本>, data}`` ——
-            ``data`` = op 的数据通道(读数类 op 携带结果,无数据时为 None)。
-            进度/结果细节看 ``get_run_status``。
+        单个 operation 用本 tool;全套用 run_one_dragon;单个应用用
+        run_standalone_app。短名命中多个同名类时拒绝并列出候选(防误运行);
+        复杂参数先用 describe_operation 看参数与传法。单跑道,已有运行时返回
+        拒绝(含 source 与提示)。block=True 终态的 data 字段是 op 的数据通道
+        (读数类 op 携带结果,无数据为 null)。
         """
         try:
             cls = operation_registry.resolve_unique_op(op_id)

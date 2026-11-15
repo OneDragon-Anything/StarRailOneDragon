@@ -32,14 +32,10 @@ def register_game_config_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
     ) -> dict:
         """更新框架级游戏配置(白名单键,暂只支持语言与游戏路径)。操作类(会改框架级配置)。
 
-        与通用配置工具(``set_config``)的分界:本工具面向框架级配置(lang /
-        game_path),不在 ApplicationConfig 体系内。lang 只改配置状态源
-        (i18 默认语言/窗口标题/OCR 阈值表随它取值),不操作游戏内设置——
-        游戏内切换语言走 SwitchLanguageOp(operation);用户手动在游戏内改了
-        语言后,也用本工具校正配置(键:lang)。
-
-        Returns:
-            ``{success, key, value}`` 或 ``{success: False, error}``(非法键/值)。
+        与通用配置工具(set_config)的分界:本工具面向框架级配置,不在
+        ApplicationConfig 体系内。lang 只改配置状态源(i18 默认语言/窗口标题/
+        OCR 阈值表随它取值),不动游戏内设置——游戏内切换语言走 SwitchLanguageOp;
+        用户手动在游戏内改了语言后,也用本工具校正配置(key=lang)。
         """
         if key == 'lang':
             if value not in _LANG_VALUES:
