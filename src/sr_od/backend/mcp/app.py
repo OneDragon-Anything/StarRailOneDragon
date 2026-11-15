@@ -57,7 +57,11 @@ from sr_od.backend.mcp.service_app import (
     make_run_operation,
     make_run_standalone_app,
 )
-from sr_od.backend.schemas import AnalyzeScreenResult, RunStatusResult, WindowStatus
+from sr_od.backend.schemas import (
+    AnalyzeScreenOut,
+    RunStatusResult,
+    WindowStatus,
+)
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.operation_base import OperationResult
@@ -208,47 +212,19 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         screenshot: Annotated[str | None, Field(description="截图来源:None=实时截当前画面(需游戏在线);传路径=读该图(无需游戏在线);纯名字=读 .debug/images/<名字>.png")] = None,
         save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供视觉模型复用;离线模式忽略")] = False,
         include_ocr: Annotated[bool, Field(description="是否返回全量散落 OCR 文本(未归类到任何 area 的);默认 False 只回画面匹配+area 命中,读屏幕上的零散文字时才开")] = False,
-    ) -> AnalyzeScreenResult:
-        """识别层对账工具:画面身份判定 + area 命中详情 + 结构化数据。观察类(只读,不改游戏状态)。
+    ) -> AnalyzeScreenOut:
+        """基于已探索的画面信息(screen_info)，通过 OCR 和图像算法，识别游戏画面的内容。观察类(只读，不改游戏状态)。
 
-        **本工具管「核对与定位」,不管「看懂画面」**。使用场景:
-        - 判定当前在哪个画面(对建档 screen_info 的确定性匹配,以 is_precise=True 为准);
-        - 拿元素的实测坐标(pc_rect,定坐标/验坐标的 ground truth);
-        - 读画面注册的结构化领域数据(extras + extras_doc,字段语义随返回给全);
-        - 零图像 token 的廉价轮询(已知画面轮询状态时,不带 save_image 反复调用)。
+        - 识别内容为确认过的游戏语义，相信返回内容的语义说明；
+        - 依然存在未建档，或传统算法不方便识别的内容未在本方法返回；
+        - 因此，识别内容不代表画面的全部，依然要使用大模型读取图片进行完整理解
+          (save_image=True 回传截图路径供读图)；
+        - 返回坐标是精准坐标，相信本方法坐标而不是大模型读图的目测坐标。
 
-        **画面理解交给视觉**:布局、图标语义、状态、未建档元素,本工具读不出来——
-        需要时加 save_image=True 拿截图路径,自己看图。看图结论与识别结果不一致时,
-        优先怀疑建档漂移(area 坐标/文本过期),回验 screen_info,不偏信单方。
-
-        **结果解读纪律**:
-        - 只有 areas[] 的命中项可作操作依据:area 名携带建档时确认过的语义。
-        - 散落 OCR(ocr_texts)只提供「哪里有什么字」:没有建档背书,不要从 OCR
-          文本推断业务含义(是什么按钮/数字是什么资源),推断只能当待验证线索。
-        - 本工具与看图都只覆盖部分信息:看图发现的新元素/布局位移/未建档浮层,
-          建档确认后才可信——你的游戏知识可能过期,画面语义以建档为准。
-
-        **用法**:默认不带参数直接调——自动截当前画面并分析(需游戏在线);
-        不要先调 capture_game_screen 再把路径传进来。screenshot 仅用于离线场景
-        (分析已存的历史截图,无需游戏在线):绝对路径按路径读,纯名字到
-        .debug/images/<名字>.png 读;不回写识别状态。
-
-        Returns:
-            顶层字段 ocr_texts / screens / screenshot_path / extras / extras_doc。
-            screens[]: ``{screen_name(中文), is_precise, areas[]}``——精准命中 1 个
-            (is_precise=True);否则按命中数返回 top_n 个候选(is_precise=False)。
-            areas[]: ``{area_name, pc_rect, matched_text, match_target}``——
-            pc_rect=[x1,y1,x2,y2] 为**实测**命中框(1080p 游戏空间,非建档配置值;
-            唯一例外:离线传入非 1080p 图片时是该图像素空间,别当游戏坐标喂点击);
-            matched_text=实际识别内容(模板区为 null);match_target=该区建档时的
-            原始匹配目标(期望文本或模板 id)。
-            ocr_texts 默认空列表,include_ocr=True 才返回全量散落 OCR。
-            extras / extras_doc(精准命中时):结构化领域数据与其字段语义;
-            无注册识别器或识别器异常时为 null。
-
-        失败(窗口未就绪/截图失败/读图失败)→ 本 tool 返回 error,按提示处理。
+        用法：默认不带参数直接调用(需游戏在线)；失败时返回 error，按提示处理。
+        返回字段说明见 outputSchema。
         """
-        return backend.analyze(screenshot, save_image, include_ocr)
+        return AnalyzeScreenOut.from_backend(backend.analyze(screenshot, save_image, include_ocr))
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="录屏(dev)"))
     def record_screen(

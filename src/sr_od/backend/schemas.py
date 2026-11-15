@@ -1,4 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+
+from pydantic import BaseModel, Field
 
 from one_dragon.base.screen.screen_match import ScreenMatch
 
@@ -41,6 +43,66 @@ class AnalyzeScreenResult:
     screenshot_path: str | None = None
     extras: dict | None = None
     extras_doc: dict[str, str] | None = None
+
+
+# —— analyze_screen 的 MCP 输出模型(字段描述经 outputSchema 随工具列表对模型可见;
+#    字段名与框架 dataclass 同构,转换用 from_backend 一步完成)——
+
+
+class OcrTextOut(BaseModel):
+    """散落 OCR 文字(未确认的裸文字,不带建档语义)。"""
+
+    text: str = Field(description='识别出的文字内容')
+    pc_rect: list[int] = Field(description='文字框 [x1,y1,x2,y2]，1080p 游戏空间')
+
+
+class AreaMatchOut(BaseModel):
+    """单个区域的命中详情(实测结果)。"""
+
+    area_name: str = Field(description='区域名，确认过的游戏语义，见名知义')
+    pc_rect: list[int] = Field(
+        description='本次实测命中框 [x1,y1,x2,y2]，1080p 游戏空间'
+                    '（唯一例外：离线传入非 1080p 图片时是该图像素空间）')
+    matched_text: str | None = Field(
+        default=None, description='实际识别到的文字；模板区（图标匹配）为 null')
+    match_target: str = Field(
+        default='', description='该区登记的原始匹配目标（期望文本或模板 id）')
+
+
+class ScreenMatchOut(BaseModel):
+    """单个画面的匹配结果。"""
+
+    screen_name: str = Field(
+        description='画面名，可作为 goto_screen / get_screen_detail / upsert_screen_area 的定位入参')
+    is_precise: bool = Field(
+        description='画面身份是否已确认；False 表示仅候选，画面未确认，应读图确认所在画面')
+    areas: list[AreaMatchOut] = Field(
+        default_factory=list, description='本次命中的区域详情')
+
+
+class AnalyzeScreenOut(BaseModel):
+    """analyze_screen 的返回结构(纯识别数据;失败经错误通道上报,不占本结构)。"""
+
+    screens: list[ScreenMatchOut] = Field(
+        default_factory=list,
+        description='画面匹配结果；精准命中时为 1 个 is_precise=True，否则为若干候选')
+    ocr_texts: list[OcrTextOut] = Field(
+        default_factory=list, description='未确认的裸文字（include_ocr=True 才返回，默认空）')
+    screenshot_path: str | None = Field(
+        default=None, description='本次识别落盘的截图路径（save_image=True 时有值），供读图复用')
+    extras: dict | None = Field(
+        default=None, description='精准命中画面登记的结构化数据（未登记为 null）')
+    extras_doc: dict[str, str] | None = Field(
+        default=None, description='extras 各字段的语义说明，与 extras 平级对照读（未登记为 null）')
+
+    @classmethod
+    def from_backend(cls, result: AnalyzeScreenResult) -> 'AnalyzeScreenOut':
+        """框架识别结果 dataclass → MCP 输出模型。
+
+        dataclass 字段与 Out 模型同构同名,asdict 展开后由 pydantic 递归校验
+        完成嵌套转换;dataclass 字段增删时本转换自动跟随,无需手改。
+        """
+        return cls(**asdict(result))
 
 
 @dataclass

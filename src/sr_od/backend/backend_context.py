@@ -857,9 +857,7 @@ class SrBackendContext:
         ``.debug/sr_od_mcp/screenshot/``,路径写入 ``screenshot_path`` 返回,
         供调用方视觉判读复用(省掉第二次截图)。离线模式忽略(调用方本就有路径)。
 
-        include_ocr=False(默认)→ ``ocr_texts`` 恒为空列表:全量散落 OCR 是
-        无视觉时代的「替眼睛」输出,当前定位(对账:画面身份/坐标/结构化数据)
-        下默认是噪音;读屏幕零散文字时由调用方显式开启。
+        include_ocr=False(默认)→ ``ocr_texts`` 恒为空列表,散落 OCR 按需开启。
 
         Args:
             screenshot: 截图绝对路径,或 ``.debug/images`` 下的图名(不带后缀);
