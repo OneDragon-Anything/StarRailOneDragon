@@ -76,7 +76,7 @@ src/one_dragon/base/screen/
 - **终态固化**：`_run` 用顶层 try/except/finally 包裹，任何路径（含 `refresh_config` / `run_application` 抛异常）都固化 `terminal_state`，避免卡 `RUNNING`。
 - **进度读取**统一：`_query_status` 在运行态读 `progress = current_op or run_context.current_application`（Application 也是 Operation，都有 `_current_node` / `node_retry_times`）；终态读固化的 `terminal_state`。
 - **配置刷新**：app 路径把 `_refresh_runtime_config` 作为 `refresh_config` 钩子注入 `_run`（槽线程内、`_start` 已赢锁后、`run_application` 前执行）——拒绝路径不进 `_run`，因此不刷新，修原跨方法刷新竞态；`current_instance_idx` 在刷新后重读（可能切实例）。`list_applications` 是只读路径，**不**刷新配置。
-- **stop**：`_stop` 对未完成运行调 `run_context.stop_running()` 发信号；停机中断一次性标志位置位后，controller 层停机守卫在**任何游戏输入动作前**抛 `StopRunInterrupted` 穿透执行链——信号到实际退出间不再有游戏输入落地（完结/遥测等只读收尾仍有短暂过渡期，期间 `_query_status` 仍报 `running`，`RunState` 无 `STOPPING` 态，沿用现状）。手动输入端点（`click_game` 等）先消费一次性标志位（显式外部接管放行）。
+- **stop**：`_stop` 对未完成运行调 `run_context.stop_running()` 发信号；停机中断一次性标志位置位后，controller 层停机守卫在**任何游戏输入动作前**抛 `StopRunInterrupted` 穿透执行链——信号到实际退出间不再有游戏输入落地（完结/遥测等只读收尾仍有短暂过渡期，期间 `_query_status` 仍报 `running`，`RunState` 无 `STOPPING` 态，沿用现状）。手动输入端点（`click_game` 等四个输入族）经 `stop_guard_exemption()` **本地豁免**放行（显式外部接管；豁免按线程隔离、不清一次性标志位——旧「消费标志位」语义已退役）。
 
 `SrBackendContext.query_status()` 和 `SrBackendContext.stop()` 各自塌缩为一次 `run_slot._query_status()` / `_stop()`，不再跨槽仲裁。
 
