@@ -55,6 +55,7 @@ from sr_od.backend.schemas import (
     InputTextResult,
     OcrText,
     RunStatusResult,
+    RunStopResult,
     ScreenCreateResult,
     WindowStatus,
 )
@@ -81,6 +82,17 @@ class ScreenInfoError(Exception):
     模板不存在 / 画面或 area 未找到等)。
 
     失败走异常通道,不占成功返回结构。
+    """
+
+    pass
+
+
+class RunStartRefusedError(Exception):
+    """运行受理被拒(单跑道已有运行 / 游戏窗口被其他进程占用)。
+
+    文案区分两类原因(双进程交替操作事故的排查教训);调用方可据此行动
+    (stop_run 停当前运行后重试 / get_run_status 查现状),走异常通道
+    (MCP isError=True / HTTP 错误响应)表达「本次启动意图未达成」。
     """
 
     pass
@@ -1474,7 +1486,7 @@ class SrBackendContext:
         return self.run_slot._query_status()
 
     def run_refusal_response(self, hint: str) -> dict:
-        """start 类入口被拒(``_start`` 返回 ok=False)时的统一拒绝响应。
+        """start 类入口被拒(``_start`` 返回 ok=False)时的统一拒绝响应(HTTP 用)。
 
         error 优先取 ``run_slot.last_refusal_reason``:跨进程窗口占用与本进程
         已有 run 必须可区分(2026-08-24 双进程交替操作事故的排查教训——笼统的
@@ -1497,12 +1509,24 @@ class SrBackendContext:
             'hint': hint,
         }
 
-    def stop(self) -> dict:
-        """停止当前运行(单槽)。无运行时返回 ``{stopped: False, error}``。"""
+    def run_refusal_error(self, hint: str) -> RunStartRefusedError:
+        """start 类入口被拒时的统一拒绝异常(MCP 用,与 HTTP 的 dict 响应同文案)。
+
+        Args:
+            hint: 下一步提示(如「先 get_run_status 查状态,或 stop_run 停止」)。
+
+        Returns:
+            装配好文案的异常(调用方 raise)。
+        """
+        st = self.query_status()
+        reason = self.run_slot.last_refusal_reason
+        error = reason if isinstance(reason, str) and reason else '已有运行在进行中'
+        return RunStartRefusedError(f'{error}(当前/最近运行来源: {st.source};{hint})')
+
+    def stop(self) -> RunStopResult:
+        """停止当前运行(单槽)。无运行时 stopped=False(幂等正常结果,目标态已成立)。"""
         stopped, source = self.run_slot._stop()
-        if stopped:
-            return {'stopped': True, 'source': source}
-        return {'stopped': False, 'error': '当前无运行'}
+        return RunStopResult(stopped=stopped, source=source if stopped else None)
 
     async def start(self) -> None:
         """启动服务：在线程池中初始化 ``SrContext``，不阻塞事件循环。

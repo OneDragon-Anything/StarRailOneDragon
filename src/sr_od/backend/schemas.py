@@ -378,6 +378,90 @@ class ScreenCreateResult:
 
 
 @dataclass
+class RunStartResult:
+    """运行受理结果(block=False 立即返回,传输无关)。
+
+    Attributes:
+        app: 本次运行的 operation 类名。
+        started_at: 受理时间 ISO 时间戳(可作 tail 日志锚点)。
+    """
+
+    app: str | None = None
+    started_at: str | None = None
+
+
+class RunStartOut(BaseModel):
+    """运行受理结果(run_* 工具 block=False 立即返回;进度用 get_run_status 轮询)。"""
+
+    app: str | None = Field(
+        default=None, description='本次运行的 operation 类名')
+    started_at: str | None = Field(
+        default=None, description='受理时间 ISO 时间戳;可作 tail 日志锚点')
+
+    @classmethod
+    def from_backend(cls, result: 'RunStartResult') -> 'RunStartOut':
+        """框架受理结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+@dataclass
+class RunFinishResult:
+    """运行终态摘要(block=True 阻塞到结束返回,传输无关)。
+
+    Attributes:
+        success: 运行是否成功。
+        status: 终态描述(成功描述 / 失败原因 / 已停止[来源])。
+        data: op 的数据通道(读数类 op 携带结果);无数据为 None。
+    """
+
+    success: bool
+    status: str
+    data: dict | None = None
+
+
+class RunFinishOut(BaseModel):
+    """运行终态摘要(run_* 工具 block=True 阻塞返回)。"""
+
+    success: bool = Field(description='运行是否成功')
+    status: str = Field(
+        description='终态描述:成功描述 / 失败原因 / 已停止[来源]')
+    data: dict | None = Field(
+        default=None, description='op 的数据通道(读数类 op 携带结果,如抽卡记录读取);无数据为 null')
+
+    @classmethod
+    def from_backend(cls, result: 'RunFinishResult') -> 'RunFinishOut':
+        """框架终态摘要 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+@dataclass
+class RunStopResult:
+    """停止信号结果(传输无关)。
+
+    Attributes:
+        stopped: 是否发出了停止信号;False=当前无运行(幂等正常结果,目标态已成立)。
+        source: 被停运行的触发方;无运行时 None。
+    """
+
+    stopped: bool
+    source: str | None = None
+
+
+class RunStopOut(BaseModel):
+    """停止信号结果(stop_run 返回)。"""
+
+    stopped: bool = Field(
+        description='是否发出了停止信号;False=当前无运行(幂等结果,目标态已成立)')
+    source: str | None = Field(
+        default=None, description='被停运行的触发方(mcp/http/hook:*/gui:*);无运行时 null')
+
+    @classmethod
+    def from_backend(cls, result: 'RunStopResult') -> 'RunStopOut':
+        """框架停止结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+@dataclass
 class GotoScreenResult:
     """画面导航结果(传输无关;arrived=False 是带现场的正常结果,非错误)。
 

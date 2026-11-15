@@ -62,7 +62,12 @@ from sr_od.backend.schemas import (
     AreaMutationOut,
     GotoScreenOut,
     InputTextOut,
+    RunFinishOut,
+    RunFinishResult,
+    RunStartOut,
+    RunStartResult,
     RunStatusOut,
+    RunStopOut,
     ScreenCreateOut,
     ScreenNamesOut,
     WindowStatusOut,
@@ -81,32 +86,26 @@ def make_open_game(backend: SrBackendContext) -> Callable:
     async def open_game(
         enter: Annotated[bool, Field(description="True=打开+自动登录到大世界;False=只打开停在 ready 态不登录")] = True,
         block: Annotated[bool, Field(description="True=阻塞到完成;False=立刻返回,用 get_run_status 查进度")] = True,
-    ) -> dict:
+    ) -> RunStartOut | RunFinishOut:
         """打开游戏(可选自动登录)。长耗时,需交互式桌面。操作类(会启动游戏进程,可能登录)。
 
-        单跑道:同一时间只允许一个运行,已有运行时返回拒绝。
+        单跑道:已有运行时受理被拒(RunStartRefusedError,可先 stop_run 再重试)。
         """
         from sr_od.operations.enter_game.open_and_enter_game import OpenAndEnterGame
         from sr_od.operations.enter_game.open_game import OpenGame
         op_factory = (lambda ctx: OpenGame(ctx)) if not enter else (lambda ctx: OpenAndEnterGame(ctx))
         ok, future = backend.start_run('mcp', op_factory)
         if not ok:
-            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
-            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
+            raise backend.run_refusal_error('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             st = backend.query_status()
-            return {
-                'started': True,
-                'source': 'mcp',
-                'started_at': st.started_at,
-                'hint': '用 get_run_status 查进度与结果',
-            }
+            return RunStartOut.from_backend(RunStartResult(app=st.app, started_at=st.started_at))
         result: OperationResult = await asyncio.wrap_future(future)  # 中断 cancel 的是 await,底层 _run 继续
         if enter:
-            msg = '成功打开并进入星穹铁道游戏' if result.success else f'打开游戏失败: {result.status}'
+            status = '成功打开并进入星穹铁道游戏' if result.success else f'打开游戏失败: {result.status}'
         else:
-            msg = '成功打开游戏(未登录)' if result.success else f'打开游戏失败: {result.status}'
-        return {'success': result.success, 'result': msg}
+            status = '成功打开游戏(未登录)' if result.success else f'打开游戏失败: {result.status}'
+        return RunFinishOut.from_backend(RunFinishResult(success=result.success, status=status))
     return open_game
 
 
@@ -120,15 +119,15 @@ def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusOut]
     return get_run_status
 
 
-def make_stop_run(backend: SrBackendContext) -> Callable[[], dict]:
+def make_stop_run(backend: SrBackendContext) -> Callable[[], RunStopOut]:
     """构造 ``stop_run`` tool(模块级,便于独立测试)。"""
-    def stop_run() -> dict:
+    def stop_run() -> RunStopOut:
         """向正在运行的 operation 发出停止信号(当前节点完成后退出,非强杀)。操作类。
 
-        返回仅表信号已发——过渡期 get_run_status 仍显示 running,以其离开
-        running 为准。
+        返回只表「信号已发」非已结束——过渡期 get_run_status 仍显示 running,
+        以其离开 running 为准。stopped=False = 当前无运行(幂等结果,非错误)。
         """
-        return backend.stop()
+        return RunStopOut.from_backend(backend.stop())
     return stop_run
 
 

@@ -8,7 +8,13 @@ from pydantic import Field
 
 from sr_od.backend import operation_flow, operation_registry
 from sr_od.backend.backend_context import SrBackendContext
-from sr_od.backend.schemas import ApplicationListResultOut
+from sr_od.backend.schemas import (
+    ApplicationListResultOut,
+    RunFinishOut,
+    RunFinishResult,
+    RunStartOut,
+    RunStartResult,
+)
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.operation_base import OperationResult
@@ -18,35 +24,28 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
     """构造 ``run_one_dragon`` tool。"""
     async def run_one_dragon(
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到一条龙结束")] = False,
-    ) -> dict:
+    ) -> RunStartOut | RunFinishOut:
         """按当前 GUI/配置的一条龙设置启动完整一条龙运行。长耗时(全套应用,可达小时级)。操作类(会控制游戏)。
 
         跑全套已启用应用用本 tool;单个应用用 run_standalone_app;单个 operation
-        用 run_operation。单跑道:同一时间只允许一个运行,已有运行时返回拒绝。
+        用 run_operation。单跑道:已有运行时受理被拒(RunStartRefusedError,文案
+        区分本进程占用与跨进程窗口占用,可先 stop_run 再重试)。
         """
-        try:
-            ok, future = backend.run_one_dragon('mcp')
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'started': False, 'error': str(e)}
+        ok, future = backend.run_one_dragon('mcp')
         if not ok:
-            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
-            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
+            raise backend.run_refusal_error('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             # 长耗时自动化默认不阻塞 MCP 调用，避免 agent 等待期间失去交互能力。
             st = backend.query_status()
-            return {
-                'started': True,
-                'source': 'mcp',
-                'app': st.app,
-                'started_at': st.started_at,
-                'hint': '用 get_run_status 查进度与结果',
-            }
+            return RunStartOut.from_backend(RunStartResult(app=st.app, started_at=st.started_at))
         # block=True 只返回最终摘要，不把运行日志塞进 tool 输出。
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
-            return {'success': False, 'result': '一条龙运行结束,但未返回结果'}
-        return {'success': result.success,
-                'result': '一条龙运行成功' if result.success else f'一条龙运行失败: {result.status}'}
+            return RunFinishOut.from_backend(
+                RunFinishResult(success=False, status='一条龙运行结束,但未返回结果'))
+        return RunFinishOut.from_backend(RunFinishResult(
+            success=result.success,
+            status='一条龙运行成功' if result.success else f'一条龙运行失败: {result.status}'))
     return run_one_dragon
 
 
@@ -55,35 +54,28 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
     async def run_standalone_app(
         app_id: Annotated[str | None, Field(description="独立应用 ID;None=用 GUI「应用运行」当前选中项")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
-    ) -> dict:
+    ) -> RunStartOut | RunFinishOut:
         """启动单个独立应用。操作类(会控制游戏)。
 
         单个应用用本 tool;全套用 run_one_dragon;单个 operation 用 run_operation。
-        可运行应用清单用 list_applications 查。单跑道,已有运行时返回拒绝。
+        可运行应用清单用 list_applications 查。单跑道:已有运行时受理被拒
+        (RunStartRefusedError,可先 stop_run 再重试)。
         """
-        try:
-            ok, future = backend.run_standalone_app('mcp', app_id=app_id)
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'started': False, 'error': str(e)}
+        ok, future = backend.run_standalone_app('mcp', app_id=app_id)
         if not ok:
-            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
-            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
+            raise backend.run_refusal_error('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             # 独立应用也可能跑很久，默认立刻返回并交给 get_run_status 轮询。
             st = backend.query_status()
-            return {
-                'started': True,
-                'source': 'mcp',
-                'app': st.app,
-                'started_at': st.started_at,
-                'hint': '用 get_run_status 查进度与结果',
-            }
+            return RunStartOut.from_backend(RunStartResult(app=st.app, started_at=st.started_at))
         # block=True 只返回最终摘要，不把运行日志塞进 tool 输出。
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
-            return {'success': False, 'result': '独立应用运行结束,但未返回结果'}
-        return {'success': result.success,
-                'result': '独立应用运行成功' if result.success else f'独立应用运行失败: {result.status}'}
+            return RunFinishOut.from_backend(
+                RunFinishResult(success=False, status='独立应用运行结束,但未返回结果'))
+        return RunFinishOut.from_backend(RunFinishResult(
+            success=result.success,
+            status='独立应用运行成功' if result.success else f'独立应用运行失败: {result.status}'))
     return run_standalone_app
 
 
@@ -176,51 +168,43 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly),命中多个同名类时报错并列出候选")],
         args: Annotated[dict | None, Field(description="构造参数 dict;JSON 标量/列表/字典;@dataclass+from_dict 参数及其 Optional/list/dict 容器形态传对应 JSON 结构(dict/list[dict]),实例化前自动规整;tuple/set 参数传 list 自动转换;其余复杂数据类走 application")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
-    ) -> dict:
+    ) -> RunStartOut | RunFinishOut:
         """按 op_id(package.path.ClassName)或类名短名运行任意 operation;args 传构造参数。操作类(会控制游戏)。
 
         单个 operation 用本 tool;全套用 run_one_dragon;单个应用用
         run_standalone_app。短名命中多个同名类时拒绝并列出候选(防误运行);
-        复杂参数先用 describe_operation 看参数与传法。单跑道,已有运行时返回
-        拒绝。block=True 终态的 data 字段是 op 的数据通道(读数类 op 携带结果,
-        无数据为 null)。
+        复杂参数先用 describe_operation 看参数与传法。单跑道,已有运行时受理
+        被拒(RunStartRefusedError)。block=True 终态的 data 字段是 op 的数据
+        通道(读数类 op 携带结果,无数据为 null)。
         """
-        try:
-            cls = operation_registry.resolve_unique_op(op_id)
-            err = operation_registry.validate_args(cls, args or {})
-            if err:
-                return {'started': False, 'error': err}
-            # 闭包把 cls + args bake 进 op_factory(槽只认统一签名 op_factory(ctx) → Operation)
-            def op_factory(ctx):  # noqa: ANN202 闭包签名固定 Callable[[SrContext], Operation]
-                # 参数值规整为注解形态(dataclass from_dict 及其 Optional/容器级,tuple/set 的 list 转换)
-                coerced_args = operation_registry.coerce_params(cls, args or {})
-                return cls(ctx, **coerced_args)
-            # display_name 用解析后的完整 op_id:短名传入时也能在运行状态/日志定位到具体 op
-            ok, future = backend.run_slot._start(
-                'mcp', op_factory=op_factory,
-                display_name=f'{cls.__module__}.{cls.__name__}',
-            )
-        except Exception as e:  # noqa: BLE001 工具层兜底(resolve/validate/_start 异常)
-            return {'started': False, 'error': str(e)}
+        cls = operation_registry.resolve_unique_op(op_id)
+        err = operation_registry.validate_args(cls, args or {})
+        if err:
+            raise ValueError(err)
+        # 闭包把 cls + args bake 进 op_factory(槽只认统一签名 op_factory(ctx) → Operation)
+        def op_factory(ctx):  # noqa: ANN202 闭包签名固定 Callable[[SrContext], Operation]
+            # 参数值规整为注解形态(dataclass from_dict 及其 Optional/容器级,tuple/set 的 list 转换)
+            coerced_args = operation_registry.coerce_params(cls, args or {})
+            return cls(ctx, **coerced_args)
+        # display_name 用解析后的完整 op_id:短名传入时也能在运行状态/日志定位到具体 op
+        ok, future = backend.run_slot._start(
+            'mcp', op_factory=op_factory,
+            display_name=f'{cls.__module__}.{cls.__name__}',
+        )
         if not ok:
-            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
-            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
+            raise backend.run_refusal_error('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             st = backend.query_status()
-            return {
-                'started': True,
-                'op_id': op_id,
-                'source': 'mcp',
-                'started_at': st.started_at,
-                'hint': '用 get_run_status 查进度与结果',
-            }
+            return RunStartOut.from_backend(RunStartResult(app=st.app, started_at=st.started_at))
         # block=True 只返回最终摘要,不把运行日志塞进 tool 输出。
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
-            return {'success': False, 'result': 'operation 运行结束,但未返回结果'}
+            return RunFinishOut.from_backend(
+                RunFinishResult(success=False, status='operation 运行结束,但未返回结果'))
         # data 是 op 的数据通道(读数类 op 如 ReadWarpStatusOp 把结果放这里);
         # 无数据的 op 为 None,不占输出
-        return {'success': result.success,
-                'result': 'operation 运行成功' if result.success else f'operation 运行失败: {result.status}',
-                'data': result.data}
+        return RunFinishOut.from_backend(RunFinishResult(
+            success=result.success,
+            status='operation 运行成功' if result.success else f'operation 运行失败: {result.status}',
+            data=result.data))
     return run_operation

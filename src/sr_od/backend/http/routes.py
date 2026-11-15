@@ -190,9 +190,9 @@ async def handle_game_stop(backend: SrBackendContext, _request: Request | None =
         _request: Starlette 请求对象（本处理器不使用）。
 
     Returns:
-        200 + ``backend.stop()`` 返回的 JSON。
+        200 + ``{stopped, source}``(stopped=False = 当前无运行,幂等结果)。
     """
-    return JSONResponse(backend.stop())
+    return JSONResponse(asdict(backend.stop()))
 
 
 async def handle_game_close(backend: SrBackendContext, _request: Request | None = None) -> Response:
