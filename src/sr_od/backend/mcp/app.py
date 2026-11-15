@@ -316,7 +316,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             return backend.close_game()
         except StopRunInterrupted as e:
             # BaseException 不能裸透传(FastMCP/Starlette 只接 Exception,穿透即连接断):
-            # 按名转普通异常走错误通道(防御纵深;手动端点已在 backend 层豁免,正常不达)
+            # 按名转普通异常走错误通道。防御纵深:当前调用链是窗口关闭信号(非输入
+            # 动作),不经过停机守卫检查点,本分支不可达;防未来改走守卫拦截路径。
             raise RuntimeError('运行已被停机中断(守卫拦截本次操作)') from e
 
     @mcp.tool(annotations=ToolAnnotations(title="点击游戏坐标"))  # 操作类:操作游戏点击(非破坏)
