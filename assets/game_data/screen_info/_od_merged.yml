@@ -6322,7 +6322,7 @@
     - 505
     - 1520
     - 568
-    text: '3'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -7615,11 +7615,11 @@
     - 258
     - 1055
     - 315
-    text: 战斗
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
-    template_match_threshold: null
+    template_match_threshold: 0.7
     color_range: null
     goto_list: []
   - area_name: 提示-点击空白加速
@@ -10475,7 +10475,15 @@
     template_id: ui_icon_03
     template_match_threshold: 0.5
     color_range: null
-    goto_list: []
+    goto_list:
+    - 背包-养成材料
+    - 背包-光锥
+    - 背包-遗器
+    - 背包-其他材料
+    - 背包-消耗品
+    - 背包-任务
+    - 背包-贵重物
+    - 背包-随宠
   - area_name: 左上图标-菜单
     id_mark: false
     pc_rect:
@@ -12893,7 +12901,7 @@
     - 230
     - 280
     - 272
-    text: 记忆紊流
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -13999,7 +14007,7 @@
     - 105
     - 1740
     - 165
-    text: 布洛妮娅
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14013,7 +14021,7 @@
     - 222
     - 1665
     - 268
-    text: 等级80/80
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14041,7 +14049,7 @@
     - 342
     - 1895
     - 385
-    text: '4411'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14055,7 +14063,7 @@
     - 378
     - 1895
     - 420
-    text: '1708'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14069,7 +14077,7 @@
     - 414
     - 1895
     - 458
-    text: '1346'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14083,7 +14091,7 @@
     - 450
     - 1895
     - 494
-    text: '141'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14097,7 +14105,7 @@
     - 486
     - 1895
     - 530
-    text: 10.8%
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14111,7 +14119,7 @@
     - 522
     - 1895
     - 568
-    text: 223.0%
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14772,10 +14780,10 @@
   - area_name: 按钮-快速刷取
     id_mark: false
     pc_rect:
-    - 1285
-    - 965
-    - 1450
-    - 1015
+    - 1225
+    - 945
+    - 1420
+    - 1008
     text: 快速刷取
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -14856,10 +14864,10 @@
   - area_name: 标题-材料补全弹窗
     id_mark: false
     pc_rect:
-    - 882
-    - 262
-    - 1036
-    - 320
+    - 860
+    - 250
+    - 1070
+    - 400
     text: 材料补全
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -14870,10 +14878,10 @@
   - area_name: 按钮-确认材料补全
     id_mark: false
     pc_rect:
-    - 1149
-    - 764
-    - 1225
-    - 819
+    - 1130
+    - 660
+    - 1245
+    - 835
     text: 确认
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -14884,10 +14892,10 @@
   - area_name: 按钮-取消材料补全
     id_mark: false
     pc_rect:
-    - 734
-    - 767
-    - 806
-    - 818
+    - 715
+    - 660
+    - 825
+    - 835
     text: 取消
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -14917,10 +14925,10 @@
     - 1880
     - 1012
     text: 材料合成
-    lcs_percent: 0.5
+    lcs_percent: 0.75
     template_sub_dir: ''
     template_id: ''
-    template_match_threshold: 0.75
+    template_match_threshold: 0.7
     color_range: null
     goto_list: []
   - area_name: 提示-无可刷缺口
@@ -14937,7 +14945,7 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
-  - area_name: 文本-材料不足
+  - area_name: 按钮-材料不足
     id_mark: false
     pc_rect:
     - 1527
@@ -14945,10 +14953,10 @@
     - 1880
     - 1012
     text: 材料不足
-    lcs_percent: 0.5
+    lcs_percent: 0.75
     template_sub_dir: ''
     template_id: ''
-    template_match_threshold: 0.75
+    template_match_threshold: 0.7
     color_range: null
     goto_list: []
 - screen_id: character_eidolon
@@ -15080,7 +15088,7 @@
     - 220
     - 840
     - 275
-    text: 养精蓄锐
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15094,7 +15102,7 @@
     - 200
     - 1255
     - 255
-    text: 快速行军
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15108,7 +15116,7 @@
     - 405
     - 1695
     - 460
-    text: 鼓炮齐鸣
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15122,7 +15130,7 @@
     - 880
     - 1495
     - 935
-    text: 攻其不备
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15136,7 +15144,7 @@
     - 845
     - 1010
     - 900
-    text: 所向克捷
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15150,7 +15158,7 @@
     - 765
     - 555
     - 820
-    text: 气贯长虹
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15356,7 +15364,7 @@
     - 262
     - 1905
     - 302
-    text: 贝洛伯格
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -15880,7 +15888,7 @@
     - 158
     - 1905
     - 218
-    text: 先驱的绝热围壳
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -17449,7 +17457,7 @@
     - 213
     - 445
     - 252
-    text: 难度03
+    text: ''
     lcs_percent: 0.85
     template_sub_dir: ''
     template_id: ''
@@ -17463,7 +17471,7 @@
     - 213
     - 445
     - 252
-    text: 难度04
+    text: ''
     lcs_percent: 0.85
     template_sub_dir: ''
     template_id: ''
@@ -18404,7 +18412,7 @@
     - 708
     - 1890
     - 742
-    text: 可提升至40级
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -18531,6 +18539,20 @@
     - 1190
     - 330
     text: 当前并未缺少可以通过快速刷取获得的材料
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 读名区-左上
+    id_mark: false
+    pc_rect:
+    - 95
+    - 40
+    - 330
+    - 105
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -21322,6 +21344,20 @@
     - 400
     - 1160
     - 680
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-跳过
+    id_mark: false
+    pc_rect:
+    - 1822
+    - 35
+    - 1912
+    - 95
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
