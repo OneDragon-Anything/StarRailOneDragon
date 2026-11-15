@@ -50,9 +50,11 @@ from sr_od.backend.schemas import (
     AnalyzeScreenResult,
     ApplicationInfo,
     ApplicationListResult,
+    AreaMutationResult,
     InputTextResult,
     OcrText,
     RunStatusResult,
+    ScreenCreateResult,
     WindowStatus,
 )
 from sr_od.backend.screen_recognizer_scan import get_recognizer
@@ -68,6 +70,16 @@ class AnalyzeScreenError(Exception):
     """画面分析失败(窗口未就绪 / 截图失败 / 截图读取失败 / 识别内部异常)。
 
     失败走异常通道(MCP 层转 tool error、HTTP 层转错误响应),不占成功返回结构。
+    """
+
+    pass
+
+
+class ScreenInfoError(Exception):
+    """画面建档校验失败(area CRUD 的入参/引用校验:area_name 空 / pc_rect 非法 /
+    模板不存在 / 画面或 area 未找到等)。
+
+    文案带下一步提示(actionable);失败走异常通道,不占成功返回结构。
     """
 
     pass
@@ -89,19 +101,6 @@ def _validate_pc_rect(pc_rect: list[int]) -> str | None:
     if not (0 <= x1 < x2 <= 1920 and 0 <= y1 < y2 <= 1080):
         return f'pc_rect 越界或非正(需 1920×1080 内、x2>x1、y2>y1): {pc_rect}'
     return None
-
-
-def _area_result(success: bool, screen_name: str, area_name: str, action: str | None,
-                 error: str | None = None, count: int | None = None) -> dict:
-    """构造 area CRUD 的统一返回 dict。"""
-    return {
-        'success': success,
-        'screen_name': screen_name,
-        'area_name': area_name,
-        'action': action,
-        'area_count': count,
-        'error': error,
-    }
 
 
 class RunState(str, Enum):
@@ -952,7 +951,7 @@ class SrBackendContext:
         goto_list: list[str] | None = None,
         id_mark: bool = False,
         gamepad_key: str | None = None,
-    ) -> dict:
+    ) -> AreaMutationResult:
         """按 area_name 在指定 screen 插入或更新一个 area(写 yml + reload)。操作类。
 
         area_name 已存在 → 整体更新;不存在 → 追加。写回 screen_info yml 并重载,
@@ -972,43 +971,42 @@ class SrBackendContext:
             gamepad_key: 手柄动作名。
 
         Returns:
-            ``{success, screen_name, area_name, action(inserted/updated), area_count, error}``。
-        """
-        try:
-            if not area_name:
-                return _area_result(False, screen_name, area_name, None, error='area_name 不能为空')
-            rect_msg = _validate_pc_rect(pc_rect)
-            if rect_msg is not None:
-                return _area_result(False, screen_name, area_name, None, error=rect_msg)
-            if template_id and self._ctx.template_loader.load_template(template_sub_dir, template_id) is None:
-                return _area_result(False, screen_name, area_name, None,
-                                    error=f'模板不存在: {template_sub_dir}/{template_id}')
-            # goto_list 是画面路由图的边(填错要到运行时 round_by_goto_screen 才 log.error),
-            # 建档时就在这里拦下,并列出既有画面名供修正。
-            known_screen_names = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
-            bad_goto = [g for g in (goto_list or []) if g not in known_screen_names]
-            if bad_goto:
-                sample = '、'.join(sorted(known_screen_names)[:10])
-                return _area_result(False, screen_name, area_name, None,
-                                    error=f'goto_list 目标画面不存在: {bad_goto}(画面名须与 screen_info 的 screen_name 完全一致;示例: {sample} …可用 list_screen_names 工具查全量)')
-            area = ScreenArea(
-                area_name=area_name,
-                pc_rect=Rect(int(pc_rect[0]), int(pc_rect[1]), int(pc_rect[2]), int(pc_rect[3])),
-                text=text, lcs_percent=lcs_percent,
-                template_id=template_id, template_sub_dir=template_sub_dir,
-                template_match_threshold=template_match_threshold,
-                color_range=color_range, goto_list=goto_list or [],
-                id_mark=id_mark, gamepad_key=gamepad_key,
-            )
-            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
-            action = screen_info.upsert_area(area)
-            self._ctx.screen_loader.save_screen(screen_info)
-            return _area_result(True, screen_name, area_name, action, count=len(screen_info.area_list))
-        except Exception as e:  # noqa: BLE001 工具层兜底,不向 MCP 透传
-            return _area_result(False, screen_name, area_name, None, error=str(e),
-                                count=self._safe_area_count(screen_name))
+            变更结果(画面名 / area 名 / 动作 / 变更后 area 总数)。
 
-    def delete_screen_area(self, screen_name: str, area_name: str) -> dict:
+        Raises:
+            ScreenInfoError: 校验失败(area_name 空 / pc_rect 非法 / 模板不存在 /
+                goto_list 目标画面不存在 / 画面名未找到)。
+        """
+        if not area_name:
+            raise ScreenInfoError('area_name 不能为空')
+        rect_msg = _validate_pc_rect(pc_rect)
+        if rect_msg is not None:
+            raise ScreenInfoError(rect_msg)
+        if template_id and self._ctx.template_loader.load_template(template_sub_dir, template_id) is None:
+            raise ScreenInfoError(f'模板不存在: {template_sub_dir}/{template_id}')
+        # goto_list 是画面路由图的边(填错要到运行时 round_by_goto_screen 才 log.error),
+        # 建档时就在这里拦下,并列出既有画面名供修正。
+        known_screen_names = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
+        bad_goto = [g for g in (goto_list or []) if g not in known_screen_names]
+        if bad_goto:
+            sample = '、'.join(sorted(known_screen_names)[:10])
+            raise ScreenInfoError(f'goto_list 目标画面不存在: {bad_goto}(画面名须与 screen_info 的 screen_name 完全一致;示例: {sample} …可用 list_screen_names 工具查全量)')
+        area = ScreenArea(
+            area_name=area_name,
+            pc_rect=Rect(int(pc_rect[0]), int(pc_rect[1]), int(pc_rect[2]), int(pc_rect[3])),
+            text=text, lcs_percent=lcs_percent,
+            template_id=template_id, template_sub_dir=template_sub_dir,
+            template_match_threshold=template_match_threshold,
+            color_range=color_range, goto_list=goto_list or [],
+            id_mark=id_mark, gamepad_key=gamepad_key,
+        )
+        screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+        action = screen_info.upsert_area(area)
+        self._ctx.screen_loader.save_screen(screen_info)
+        return AreaMutationResult(screen_name=screen_name, area_name=area_name,
+                                  action=action, area_count=len(screen_info.area_list))
+
+    def delete_screen_area(self, screen_name: str, area_name: str) -> AreaMutationResult:
         """按 area_name 删除指定 screen 的一个 area(写 yml + reload)。操作类。
 
         Args:
@@ -1016,22 +1014,21 @@ class SrBackendContext:
             area_name: 要删除的区域名;不存在则报错。
 
         Returns:
-            ``{success, screen_name, area_name, action(deleted), area_count, error}``。
-        """
-        try:
-            if not area_name:
-                return _area_result(False, screen_name, area_name, None, error='area_name 不能为空')
-            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
-            if not screen_info.remove_area_by_name(area_name):
-                return _area_result(False, screen_name, area_name, None,
-                                    error=f'未找到 area: {area_name}', count=len(screen_info.area_list))
-            self._ctx.screen_loader.save_screen(screen_info)
-            return _area_result(True, screen_name, area_name, 'deleted', count=len(screen_info.area_list))
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return _area_result(False, screen_name, area_name, None, error=str(e),
-                                count=self._safe_area_count(screen_name))
+            变更结果(动作恒为 deleted)。
 
-    def create_screen(self, screen_id: str, screen_name: str, app_id: str = '', pc_alt: bool = False) -> dict:
+        Raises:
+            ScreenInfoError: area_name 为空 / area 未找到 / 画面名未找到。
+        """
+        if not area_name:
+            raise ScreenInfoError('area_name 不能为空')
+        screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+        if not screen_info.remove_area_by_name(area_name):
+            raise ScreenInfoError(f'未找到 area: {area_name}')
+        self._ctx.screen_loader.save_screen(screen_info)
+        return AreaMutationResult(screen_name=screen_name, area_name=area_name,
+                                  action='deleted', area_count=len(screen_info.area_list))
+
+    def create_screen(self, screen_id: str, screen_name: str, app_id: str = '', pc_alt: bool = False) -> ScreenCreateResult:
         """创建一个新画面(空 area_list;写 yml + reload)。操作类。
 
         screen_id 不与既有冲突、screen_name 唯一。创建后用 ``upsert_screen_area`` 加 area。
@@ -1044,29 +1041,24 @@ class SrBackendContext:
             pc_alt: PC 端点击是否需 Alt。
 
         Returns:
-            ``{success, screen_id, screen_name, action(created), error}``。
+            新建画面结果(screen_id / screen_name)。
+
+        Raises:
+            ScreenInfoError: screen_id / screen_name 为空或已存在。
         """
-        try:
-            if not screen_id or not screen_name:
-                return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
-                        'action': None, 'error': 'screen_id / screen_name 不能为空'}
-            loader = self._ctx.screen_loader
-            if screen_id in loader._id_2_screen:
-                return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
-                        'action': None, 'error': f'screen_id 已存在: {screen_id}'}
-            if screen_name in loader.screen_info_map:
-                return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
-                        'action': None, 'error': f'screen_name 已存在: {screen_name}'}
-            screen_info = ScreenInfo({
-                'screen_id': screen_id, 'screen_name': screen_name,
-                'app_id': app_id, 'pc_alt': pc_alt, 'area_list': [],
-            })
-            loader.save_screen(screen_info)
-            return {'success': True, 'screen_id': screen_id, 'screen_name': screen_name,
-                    'action': 'created', 'error': None}
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
-                    'action': None, 'error': str(e)}
+        if not screen_id or not screen_name:
+            raise ScreenInfoError('screen_id / screen_name 不能为空')
+        loader = self._ctx.screen_loader
+        if screen_id in loader._id_2_screen:
+            raise ScreenInfoError(f'screen_id 已存在: {screen_id}')
+        if screen_name in loader.screen_info_map:
+            raise ScreenInfoError(f'screen_name 已存在: {screen_name}')
+        screen_info = ScreenInfo({
+            'screen_id': screen_id, 'screen_name': screen_name,
+            'app_id': app_id, 'pc_alt': pc_alt, 'area_list': [],
+        })
+        loader.save_screen(screen_info)
+        return ScreenCreateResult(screen_id=screen_id, screen_name=screen_name)
 
     def list_screen_names(self) -> list[str]:
         """列出全部画面名(排序后,只读,无副作用)。
@@ -1222,13 +1214,6 @@ class SrBackendContext:
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
                     'steps': steps, 'error': str(e)}
-
-    def _safe_area_count(self, screen_name: str) -> int | None:
-        """异常路径下尽量取 area 数(取不到返 None,不再抛)。"""
-        try:
-            return len(self._ctx.screen_loader.get_screen(screen_name).area_list)
-        except Exception:  # noqa: BLE001
-            return None
 
     def close_game(self) -> str:
         """关闭游戏(发关闭窗口信号,秒级,不走运行槽)。

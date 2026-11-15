@@ -169,6 +169,33 @@ class ApplicationInfoOut(BaseModel):
         description='是否为 GUI「独立应用运行」当前选中项')
 
 
+class ScreenCreateOut(BaseModel):
+    """新建画面结果(create_screen 返回)。"""
+
+    screen_id: str = Field(description='画面 ID(英文 snake_case,作 yml 文件名)')
+    screen_name: str = Field(description='画面名(中文,作 analyze_screen / goto_screen 的匹配键)')
+
+    @classmethod
+    def from_backend(cls, result: 'ScreenCreateResult') -> 'ScreenCreateOut':
+        """框架新建画面结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
+class AreaMutationOut(BaseModel):
+    """画面区域变更结果(upsert/delete_screen_area 返回)。"""
+
+    screen_name: str = Field(description='目标画面名')
+    area_name: str = Field(description='本次变更的 area 名(同画面内唯一,作匹配键)')
+    action: str = Field(
+        description="实际发生的动作:'inserted'(新增)/'updated'(整体更新,已存在时全字段覆盖)/'deleted'(删除)")
+    area_count: int = Field(description='变更后该画面的 area 总数')
+
+    @classmethod
+    def from_backend(cls, result: 'AreaMutationResult') -> 'AreaMutationOut':
+        """框架 area 变更结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
 class ApplicationListResultOut(BaseModel):
     """应用运行配置概览(list_applications 返回)。"""
 
@@ -298,6 +325,36 @@ class ApplicationListResult:
     current_instance_idx: int
     active_standalone_app_id: str | None
     applications: list[ApplicationInfo]
+
+
+@dataclass
+class AreaMutationResult:
+    """画面 area 变更结果(传输无关)。
+
+    Attributes:
+        screen_name: 目标画面名(中文,建档匹配键)。
+        area_name: 本次变更的 area 名(同画面内唯一)。
+        action: 实际发生的动作 inserted(新增)/updated(整体更新)/deleted(删除)。
+        area_count: 变更后该画面的 area 总数。
+    """
+
+    screen_name: str
+    area_name: str
+    action: str
+    area_count: int
+
+
+@dataclass
+class ScreenCreateResult:
+    """新建画面结果(传输无关)。
+
+    Attributes:
+        screen_id: 画面 ID(英文 snake_case,yml 文件名)。
+        screen_name: 画面名(中文,建档匹配键)。
+    """
+
+    screen_id: str
+    screen_name: str
 
 
 @dataclass

@@ -59,8 +59,10 @@ from sr_od.backend.mcp.service_app import (
 )
 from sr_od.backend.schemas import (
     AnalyzeScreenOut,
+    AreaMutationOut,
     InputTextOut,
     RunStatusOut,
+    ScreenCreateOut,
     ScreenNamesOut,
     WindowStatusOut,
 )
@@ -214,35 +216,26 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         template_sub_dir: str = '', template_id: str = '', template_match_threshold: float = 0.7,
         color_range: list[list[int]] | None = None, goto_list: list[str] | None = None,
         id_mark: bool = False, gamepad_key: str | None = None,
-    ) -> dict:
+    ) -> AreaMutationOut:
         """按 area_name 在指定 screen 插入或更新一个 area(写 yml + reload,下次 analyze_screen 即生效)。
         操作类(改画面建档,不碰游戏运行时),无需游戏在线。
 
-        area_name 存在则整体更新,不存在则追加;写前校验 screen 存在、area_name
-        非空、pc_rect 合法、模板引用存在(template_id 非空时)。pc_alt 是 screen
-        级属性(create_screen 设置),area 不单设。
+        area_name 存在则整体更新,不存在则追加。pc_alt 是 screen 级属性
+        (create_screen 设置),area 不单设。
         """
-        try:
-            return backend.upsert_screen_area(
-                screen_name, area_name, pc_rect, text, lcs_percent,
-                template_sub_dir, template_id, template_match_threshold,
-                color_range, goto_list, id_mark, gamepad_key,
-            )
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'screen_name': screen_name, 'area_name': area_name,
-                    'action': None, 'area_count': None, 'error': str(e)}
+        return AreaMutationOut.from_backend(backend.upsert_screen_area(
+            screen_name, area_name, pc_rect, text, lcs_percent,
+            template_sub_dir, template_id, template_match_threshold,
+            color_range, goto_list, id_mark, gamepad_key,
+        ))
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="删除画面区域"))  # 操作类+不可逆:删 screen_info area
-    def delete_screen_area(screen_name: str, area_name: str) -> dict:
+    def delete_screen_area(screen_name: str, area_name: str) -> AreaMutationOut:
         """按 area_name 删除指定 screen 的一个 area(写 yml + reload,不可逆)。操作类。
 
         下次 analyze_screen 即生效。
         """
-        try:
-            return backend.delete_screen_area(screen_name, area_name)
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'screen_name': screen_name, 'area_name': area_name,
-                    'action': None, 'area_count': None, 'error': str(e)}
+        return AreaMutationOut.from_backend(backend.delete_screen_area(screen_name, area_name))
 
     @mcp.tool(annotations=ToolAnnotations(title="新建画面"))  # 操作类:建新 screen_info(写 yml + reload)
     def create_screen(
@@ -250,16 +243,12 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         screen_name: Annotated[str, Field(description="画面名,中文,作 get_screen / analyze 的 key(如 货币战争-大厅)")],
         app_id: str = '',
         pc_alt: bool = False,
-    ) -> dict:
+    ) -> ScreenCreateOut:
         """创建一个新画面(空 area_list;写 yml + reload)。操作类(改画面建档),无需游戏在线。
 
         screen_id 不与既有冲突,screen_name 唯一;创建后用 upsert_screen_area 加 area。
         """
-        try:
-            return backend.create_screen(screen_id, screen_name, app_id, pc_alt)
-        except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
-                    'action': None, 'error': str(e)}
+        return ScreenCreateOut.from_backend(backend.create_screen(screen_id, screen_name, app_id, pc_alt))
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出画面名"))
     def list_screen_names() -> ScreenNamesOut:
