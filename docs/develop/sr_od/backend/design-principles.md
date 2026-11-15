@@ -74,7 +74,13 @@ server 给「**事实**」,智能体做「**决策 + 通用理解**」。server 
 - 带**定位锚点**(时间戳 / 路径)让智能体关联日志 / 截图 / 源码;
 - 大返回用 `response_format`(concise / detailed) enum 让智能体控详略;或分页 / 过滤 / 截断 + 合理默认(Claude Code tool response 限 25000 tokens);
 - **错误要 actionable**(给正确格式示例),不要 opaque traceback;
-- **返回体纯度**:成功返回体只含有效识别/结果数据——机制字段(`success` / `error`)不混入(失败走错误通道:异常 → MCP tool error / HTTP 错误响应,原因文本带下一步提示);可从其他工具派生的信息(建档配置回显、多结果差集)不返回(P12);静态说教不作为返回字段(P14)。
+- **返回体是数据,不是文档**:返回体的读者是「正在读结果的模型」,只装**本次调用产生的有效数据**;说明性内容(用法引导 / 字段语义 / 机制细节)各有唯一的家(P9 路由表),不进返回体——返回体里出现 `hint` / `note` 类指路句 = 放错层(每次调用重复传输,按次付费);
+- **返回体纯度(三分法)**:一次返回只属三种形态之一——
+  1. **纯结果**:成功返回体只含有效数据,机制字段(`success` / `error`)不混入;
+  2. **业务多态**:调用方**能据此继续行动**的正常分支(验证等待中 / 多候选 / 未命中 / 点击落在窗口外),保留在返回体内用判别字段表达;
+  3. **异常**:调用方**只能到此为止**的失败(设备不可用 / 资源缺失 / 校验拒绝),走错误通道(异常 → MCP tool error / HTTP 错误响应),不占成功结构,原因文本带下一步提示。
+  分界判据一句话:拿到它**还能继续做事**的是结果(含多态),**只能到此为止**的是异常;
+- **冗余字段四删**:每个字段要能回答「删掉它模型损失了什么」——答不上就删。①可派生(`count` = 列表长度,P12);②入参回显(`x` / `app_id` 等,调用方刚传的);③恒真或恒等字段(恒 `success: True`、与另一字段恒等的冗余布尔);④成功时的占位 null(如 `error: null`)。
 
 ### P7. 三层协同(MCP / 智能体自身 / skill)
 能力分工写进 **skill**,指引智能体何时用哪层。例「调试失败运行」:`get_run_status` 拿状态 + 失败定位 → 要深入 tail 日志 → 要视觉 `capture` + 视觉大模型。
@@ -91,6 +97,7 @@ docstring 是智能体在众多 tool 里**选对工具**的依据——只放帮
 | 工具作用与信任姿态 | tool docstring |
 | 参数行为 | inputSchema 的 Field description |
 | 返回字段语义 | outputSchema 的 Field description(P15) |
+| 本次调用的有效数据 | 返回体(纯数据,无说明性内容,P6) |
 | 机制行为(失败走 error / 结构化输出) | 系统行为,不写——模型已知 |
 
 docstring 里出现流程教学、参数行为复述、返回结构重抄、机制细节括号,都是放错层的信号。参数**无歧义命名**(`user_id` 非 `user`)。
@@ -125,12 +132,19 @@ MCP 规范 tool 定义含 `outputSchema`(可选 JSON Schema,描述返回结构,�
 - dataclass docstring 是开发者文档,**模型不可见**,不是字段描述的承载处;tool docstring 只讲作用与信任姿态(P9),不抄返回结构;
 - MCP 层有 outputSchema 时,`extras_doc` 这类「随返回带字段说明」的机制仅服务于**运行时动态字段**(识别器自定 dict 的字段静态 schema 无法穷举),静态结构一律走 outputSchema。
 
-FastMCP(mcp sdk 1.28.1)实测,返回类型注解自动生成 outputSchema 的三条路径:
+FastMCP(mcp sdk 1.28.1)实测,返回类型注解自动生成 outputSchema 的五条路径:
 - **顶层 dataclass** 字段的 `Annotated[X, Field(description)]` **丢失**(sdk 内部 `get_type_hints()` 剥元数据);
 - **嵌套 dataclass** 的 Field description **保留**(pydantic 的 dataclass 适配路径自行解析注解);
-- **BaseModel**(顶层与嵌套)Field description **全保留**。
+- **BaseModel**(顶层与嵌套)Field description **全保留**;
+- **`-> dict`** 生成空 object schema,**字段描述无处安放**——禁用;
+- **`-> str` / `-> bool` 等原子注解**生成单值 schema(如 `{"type": "string"}`),无字段可描述,整体语义一句放 docstring。
 
 落地模式:框架层保持纯 dataclass(不引 pydantic 依赖),**MCP 层定义带 `Field(description)` 的 pydantic 输出模型(`*Out` 后缀),`from_backend()` 以 `**asdict` 一步转换**——pydantic 递归校验完成嵌套转换,框架字段增删自动跟随,框架与 MCP 契约解耦。样板:`sr_od/backend/schemas.py` 的 `AnalyzeScreenOut` 族;HTTP 侧仍序列化框架 dataclass(字段同名,输出一致)。
+
+**返回形状单一**(P6 返回体纯度的形状面):一个工具一套返回形状——
+- 多字段返回一律 `*Out` 模型(字段描述进 outputSchema 的唯一通路,见上五条路径);
+- 原子返回(纯路径 / 纯确认文案)直给 `-> str`,docstring 一行说明返回值语义(此时 docstring 是该语义唯一的家,不算挤字段说明);
+- **禁失败兜底 union**(`Out | dict`):工具层 try/except 把失败折进成功通道,union 使 outputSchema 变包裹形态 `{result: ...}`、模型读到两种形状——失败一律走异常(P6 三分法),注解保持纯 `*Out`。
 
 ## 4. 能力分配总表
 
