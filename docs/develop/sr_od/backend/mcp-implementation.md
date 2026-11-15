@@ -58,7 +58,7 @@ def click_game(
 - **形状单一(P15)**:一个工具一套返回形状。多字段返回一律 MCP 层 pydantic `*Out` 模型(Field description 进 outputSchema),框架层保持纯 dataclass / 原生类型,`from_backend(**asdict)` 一步转换(样板:`schemas.py` 的 `AnalyzeScreenOut` 族);原子返回(纯路径 / 确认文案)直给 `-> str`(text 通道即裸值),docstring 一行说明返回值语义;**禁 `-> dict`**(裸 dict 生成无 outputSchema,字段描述无处安放);**禁失败兜底 union**(`T | dict` 使 outputSchema 变包裹形态 `{result: ...}`,模型读到两种形状)。
 - **失败走异常通道(P6 三分法)**:backend 校验 / 资源类失败直接透传(如 `BackendNotReadyError`)。sdk 实测(mcp 1.28.1):工具函数抛 Exception → FastMCP 转 `ToolError` → lowlevel 层返回 `CallToolResult(isError=True)` 文本结果,连接不断;HTTP 侧 catch 同一异常返错误响应——同文案对称。**不要 try/except 把失败折进成功结构**:旧模式「返回带 `error` 字段的 dict」已退役——`isError=False` 的失败会骗过按 isError 判成败的客户端。
 - **BaseException 防穿透**:停机守卫异常(`StopRunInterrupted`,BaseException 子类)不能裸透传——FastMCP/Starlette 泛型兜底只接 Exception,穿透即 ASGI 层错误 + 连接断。工具层捕获后 `raise RuntimeError(文案) from e` 转普通异常走错误通道(样板:`close_game` / `input_text`;手动端点在 backend 层已有 `stop_guard_exemption` 豁免,此兜底是防御纵深)。
-- **与 HTTP 对称(P11)**:同一 backend 方法,MCP 与 HTTP **各自序列化**同构数据(MCP:Out 模型;HTTP:`asdict(dataclass)` / JSON)。别在 MCP 把结构压成多行文本(早期 `check_game_window` 的坑,已修);文本形态仅限「自解释 markdown」类工具(`get_screen_detail`,渲染层 `markdown_render.py`)。
+- **与 HTTP 对称(P11)**:同一 backend 方法,MCP 与 HTTP **各自序列化**同构数据(MCP:Out 模型;HTTP:`asdict(dataclass)` / JSON)。别把结构化数据压成多行文本(早期 `check_game_window` 的坑,已修)——多行文本压缩仅限「自解释 markdown」渲染类工具(`get_screen_detail`,渲染层 `markdown_render.py`);单行原子确认文案(`-> str`,见第 1 条形状规则)不受此限。
 
 ## 4. docstring 三要素
 
