@@ -1228,9 +1228,11 @@ class SrBackendContext:
                 time.sleep(1.5)  # 等转场动画,下一轮截图再识别(同 op 层 success_wait 口径)
             return interrupted(f'超过 max_steps={max_steps} 步未到达 {target_screen_name}(路由可能成环)')
         except StopRunInterrupted:
-            # 停机守卫是 BaseException,不能穿透(FastMCP/Starlette 只接 Exception);
-            # 手动端点在 backend 层已豁免,本分支是防御纵深——转正常中断结果,
-            # 调用方拿 current_screen/steps 仍可排障。
+            # goto_screen 不做 stop_guard_exemption(与手动单次输入族不同):本方法
+            # 连点可达 max_steps=30 次,停机后「零游戏输入」不变式优先——守卫拦截
+            # 是本方法真实可达的主路径(run 被停后、下次运行开始前,手动导航的
+            # 第一次点击即被拦)。拦截转中断结果(带现场)而非异常:
+            # BaseException 不穿透,agent 仍可拿 current_screen/steps 排障。
             return interrupted('运行已被停机中断(守卫拦截本次导航点击)')
 
     def close_game(self) -> str:
