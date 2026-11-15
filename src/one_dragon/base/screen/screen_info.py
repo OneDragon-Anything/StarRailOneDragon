@@ -102,6 +102,10 @@ class ScreenInfo:
         Returns:
             ``'updated'`` 表示替换了既有同名 area;``'inserted'`` 表示新追加。
         """
+        # pc_alt 是画面级标记,area 上的值只是加载时从画面抄来的运行时副本。
+        # 外部构造的区域对象(如 MCP upsert_screen_area)构造默认 False,挂进画面
+        # 前必须从画面重抄,否则锁光标画面(pc_alt=true)上该区域点击不带 Alt 落空。
+        area.pc_alt = self.pc_alt
         for idx, cur in enumerate(self.area_list):
             if cur.area_name == area.area_name:
                 self.area_list[idx] = area

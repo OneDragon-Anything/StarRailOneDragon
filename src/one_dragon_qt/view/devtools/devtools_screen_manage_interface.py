@@ -643,6 +643,9 @@ class DevtoolsScreenManageInterface(VerticalScrollInterface, HistoryMixin):
         area.template_sub_dir = sub_dir
         area.template_id = template_id
 
+        # pc_alt 只能从画面继承(加载时抄给区域),新建的区域对象构造默认 False,
+        # 挂进画面时须同步画面级标记,否则锁光标画面上该区域点击落空
+        area.pc_alt = self.chosen_screen.pc_alt
         self.chosen_screen.area_list.append(area)
         self._area_table_update.signal.emit()
 
@@ -669,7 +672,10 @@ class DevtoolsScreenManageInterface(VerticalScrollInterface, HistoryMixin):
         if self.chosen_screen is None:
             return
 
-        self.chosen_screen.area_list.append(ScreenArea())
+        # pc_alt 只能从画面继承,新建的区域对象须同步画面级标记(同 _on_template_chosen)
+        new_area = ScreenArea()
+        new_area.pc_alt = self.chosen_screen.pc_alt
+        self.chosen_screen.area_list.append(new_area)
         self._area_table_update.signal.emit()
 
     def _on_row_delete_clicked(self):
