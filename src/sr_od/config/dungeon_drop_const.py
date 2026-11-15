@@ -776,6 +776,13 @@ MATERIAL_EXTRA_SOURCES: dict[str, list[str]] = {
 
 # 材料 → 具体副本实例(仅来源串带【区域】/boss 名的材料;与指南关卡同名对齐)
 MATERIAL_MISSIONS: dict[str, list[dict[str, str]]] = {
+ "伪觉者的期许": [
+  {
+   "category": "历战余响",
+   "mission": "坏灭的喜剧·历战余响",
+   "region": "寂灭空飨妖都"
+  }
+ ],
  "万色，愚者自将": [
   {
    "category": "拟造花萼（赤）",
@@ -818,6 +825,13 @@ MATERIAL_MISSIONS: dict[str, list[dict[str, str]]] = {
    "region": "海原电视塔"
   }
  ],
+ "嗤笑丑面": [
+  {
+   "category": "凝滞虚影",
+   "mission": "吞噬之形",
+   "region": "渡画泉隐"
+  }
+ ],
  "法吉娜之酒": [
   {
    "category": "拟造花萼（赤）",
@@ -858,6 +872,27 @@ MATERIAL_MISSIONS: dict[str, list[dict[str, str]]] = {
    "category": "拟造花萼（赤）",
    "mission": "巡猎之蕾",
    "region": "「葬忆彼岸」时光归墟"
+  }
+ ],
+ "《绒绒号》手绘分镜稿": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "欢愉之蕾",
+   "region": "「世界尽头」酒馆"
+  }
+ ],
+ "《绒绒号》连载纪念刊": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "欢愉之蕾",
+   "region": "「世界尽头」酒馆"
+  }
+ ],
+ "《绒绒号》典藏版合集": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "欢愉之蕾",
+   "region": "「世界尽头」酒馆"
   }
  ],
  "狂雷扫弦": [
