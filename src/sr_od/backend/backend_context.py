@@ -175,7 +175,7 @@ class RunSlot:
         # 最近一次 _start 拒绝的原因;None = 拒绝源于本进程已有运行(历史语义)。
         # 跨进程窗口占用与本进程已有 run 须可区分(2026-08-24 双进程交替操作事故
         # 的排查教训:笼统的「已有运行在进行中」把排障引向错误进程),受理成功时
-        # 清空。start 类入口经 run_refusal_response 消费。
+        # 清空。start 类入口经 run_refusal_response(HTTP dict)/ run_refusal_error(MCP 异常)消费。
         self.last_refusal_reason: str | None = None
 
     def is_running(self) -> bool:

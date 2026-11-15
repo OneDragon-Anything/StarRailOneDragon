@@ -8,7 +8,7 @@
 
 ## 跨工具约定要点
 
-- **返回契约（跨工具统一）**：多字段返回一律 MCP 层 `*Out` 模型（字段语义进 outputSchema，见 [design-principles.md](design-principles.md) P15）；原子返回（`capture_game_screen` 的路径 / `close_game` 的确认文案）直给 `-> str`，docstring 一行说明返回值；运行类受理语义用 `started`（≠完成）；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。**失败走异常通道**（P6 三分法）：backend 异常透传 → MCP tool error / HTTP 错误响应，同文案对称——旧「返回体带 `success`/`error` 字段」模式已退役，存量 `-> dict` 工具改造中。
+- **返回契约（跨工具统一）**：多字段返回一律 MCP 层 `*Out` 模型（字段语义进 outputSchema，见 [design-principles.md](design-principles.md) P15）；原子返回（`capture_game_screen` 的路径 / `close_game` 的确认文案）直给 `-> str`，docstring 一行说明返回值；运行类工具按 `block` 参数返回受理（`RunStartOut`）或终态（`RunFinishOut`）两种业务形状；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。**失败走异常通道**（P6 三分法）：backend 异常透传 → MCP tool error / HTTP 错误响应，同文案对称——旧「返回体带 `success`/`error` 字段」模式已退役，存量 `-> dict` 工具改造中。
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。
 - backend 实例通过闭包注入 tool，不使用全局单例，也不让 FastMCP lifespan 管 backend 生命周期。
 - `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。
@@ -21,7 +21,7 @@
 - 配置修改工具（`get/set/add/delete/update_config_item` + `describe_config` + `list_app_configs`）按 `app_id` 路由到各 config 领域方法（`config_router.py`），写穿 ctx 缓存实例、写入前校验；已接入路由：`standalone_app` / `_group`（通用）、`trailblaze_power`（开拓力体力计划：`plan_list` 计划项增删 + `loop` 开关，`add` 的 `idx` 插入位置即一条龙执行顺位）与 `echo_of_war`（历战余响周本计划：列表由全部周本关卡全量补齐，不支持增删条目，用 `update_config_item` 按 `mission_id` 原位改挑战次数）。两者 `add/delete/update` 写穿当前实例缓存，下一次一条龙 run 立即生效无需重启；`mission_id` 格式「生存索引 {分类} {关卡} {区域}」，材料→关卡反查用 `dungeon_drop_const.find_missions_by_material`；后续接入同类 `@dataclass`+`from_dict` 配置时在 `config_router._build_routes` 补 `RouterEntry`（`add` 支持传 None = 该 config 不支持增条目，`update` 可选按 item_id 原位替换）。
 - 配置刷新：app 路径在 `run_application` 前（槽线程内、`_start` 已赢锁后）刷新当前进程的 YAML 配置缓存，对齐 GUI 已保存设置；`list_applications` 与 `list_operations` 是只读路径，不刷新。
 - `get_run_status` / `stop_run` 是统一入口：无论最近一次运行来自 op 路径还是 app 路径，都通过同一组工具查询和停止。
-- 单进程内已有运行时会返回并发拒绝，避免同一个 backend 内重复操作游戏资源。
+- 单进程内已有运行时,启动类工具受理被拒（异常通道,MCP isError / HTTP 错误响应;文案区分本进程占用与跨进程窗口占用）,避免同一个 backend 内重复操作游戏资源。
 - MCP tool 不返回运行日志正文；客户端需要用 `get_run_status` 轮询是否完成，GUI 服务页负责展示日志。
 - `close_game` / `click_game` / `key_tap` / `drag` / `input_text` 是独立同步操作，不走运行槽；`click_game` / `drag` 使用 1080p 游戏空间坐标。底层 click / key_tap / drag **无内置等待**，连续操作或 `capture` 前建议 sleep 等动画（见各 tool 描述的 ⚠️ 提醒）。
 - `list_mcp_usage_guides` / `get_mcp_usage_guide` 把 prompt 模板以普通 tool 暴露，方便不会主动消费 MCP prompts 的客户端发现。

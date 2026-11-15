@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass, field
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -394,7 +395,7 @@ class RunStartOut(BaseModel):
     """运行受理结果(run_* 工具 block=False 立即返回;进度用 get_run_status 轮询)。"""
 
     app: str | None = Field(
-        default=None, description='本次运行的 operation 类名')
+        default=None, description='本次运行的展示名(应用/op 中文名);受理瞬间后台线程可能尚未回填,为 null')
     started_at: str | None = Field(
         default=None, description='受理时间 ISO 时间戳;可作 tail 日志锚点')
 
@@ -411,12 +412,13 @@ class RunFinishResult:
     Attributes:
         success: 运行是否成功。
         status: 终态描述(成功描述 / 失败原因 / 已停止[来源])。
-        data: op 的数据通道(读数类 op 携带结果);无数据为 None。
+        data: op 的数据通道(OperationResult.data 为 Any,读数类 op 携带
+            dict/list/标量等自定形态);无数据为 None。
     """
 
     success: bool
     status: str
-    data: dict | None = None
+    data: Any = None
 
 
 class RunFinishOut(BaseModel):
@@ -425,8 +427,10 @@ class RunFinishOut(BaseModel):
     success: bool = Field(description='运行是否成功')
     status: str = Field(
         description='终态描述:成功描述 / 失败原因 / 已停止[来源]')
-    data: dict | None = Field(
-        default=None, description='op 的数据通道(读数类 op 携带结果,如抽卡记录读取);无数据为 null')
+    data: Any = Field(
+        default=None,
+        description='op 自定数据通道(JSON 可序列化形态:dict/list/标量,随 op 而定;'
+                    '读数类 op 携带结果,无数据为 null)')
 
     @classmethod
     def from_backend(cls, result: 'RunFinishResult') -> 'RunFinishOut':
@@ -453,7 +457,7 @@ class RunStopOut(BaseModel):
     stopped: bool = Field(
         description='是否发出了停止信号;False=当前无运行(幂等结果,目标态已成立)')
     source: str | None = Field(
-        default=None, description='被停运行的触发方(mcp/http/hook:*/gui:*);无运行时 null')
+        default=None, description='被停运行的触发方(mcp/http);无运行时 null')
 
     @classmethod
     def from_backend(cls, result: 'RunStopResult') -> 'RunStopOut':
