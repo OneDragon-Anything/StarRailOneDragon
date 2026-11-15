@@ -615,7 +615,9 @@ class FlowOut(BaseModel):
         description='边明细:from/to/success/status/ignore_status;断名边 from=null 统一垫底')
     diagnostics: list[dict] = Field(
         default_factory=list,
-        description='静态诊断:level=error 运行时必炸或图不成立,warn=结构可疑不致命')
+        description='静态诊断,元素含 level/code/message:level=error 运行时必炸或图不成立,'
+                    'warn=结构可疑不致命;code=诊断码(no_start/multiple_start/missing_node/'
+                    'duplicate_node_name 等),message=人读说明')
     notes: list[str] = Field(
         default_factory=list, description='固定图例说明(每行一条,随返回带)')
 
