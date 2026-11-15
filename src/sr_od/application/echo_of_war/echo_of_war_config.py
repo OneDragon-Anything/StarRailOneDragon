@@ -69,6 +69,9 @@ class EchoOfWarConfig(YamlConfig):
             plan_list: List[TrailblazePowerPlanItem] = self.plan_list
             if not plan_list:  # 空计划:无东西可重置,且 any_incomplete 永远 False 会死循环
                 break
+            if all(item.plan_times <= 0 for item in plan_list):
+                # 全部 0 数量(0=该项不排产):没有执行进度可重置,重置子循环减 0 空转会死循环(同空计划守卫)
+                break
             any_incomplete = False
             for item in plan_list:
                 if item.run_times < item.plan_times:

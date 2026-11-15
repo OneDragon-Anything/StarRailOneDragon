@@ -161,8 +161,8 @@ def _validate_hint_for(app_id: str) -> str:
     hints = {
         'standalone_app': 'app_id 必须已注册(is_app_registered)',
         '_group': 'app_id 必须已注册;add 不支持(app 由注册注入)',
-        'trailblaze_power': 'mission_id 须能被指南数据解析(get_mission_by_unique_id);plan_times≥1;0≤run_times≤plan_times',
-        'echo_of_war': 'mission_id 须属于历战余响分类(周本全量);plan_times≥1;0≤run_times≤plan_times',
+        'trailblaze_power': 'mission_id 须能被指南数据解析(get_mission_by_unique_id);plan_times≥0(0=该项不排产);0≤run_times≤plan_times',
+        'echo_of_war': 'mission_id 须属于历战余响分类(周本全量);plan_times≥0(0=该项不排产,急刷单项时其余项置 0);0≤run_times≤plan_times',
     }
     return hints.get(app_id, '')
 
@@ -257,11 +257,13 @@ def _trailblaze_power_item_from_dict(data: dict) -> object:
 
 def _trailblaze_power_validate_item(ctx: 'SrContext', item: object) -> str | None:
     # mission_id 可解析性由 add_plan_item 校验(需 guide_data,与 init_plan_list 同源);
-    # 这里只做数值边界,提前拦截明显的坏参数
+    # 这里只做数值边界,提前拦截明显的坏参数。
+    # plan_times=0 是合法语义 = 该项不排产(负责人裁定:周本急刷时其余项置 0 禁用);
+    # run_times ≤ plan_times 保证「run_times < plan_times 为未完成」的跳过判定不被破坏。
     if not item.mission_id:  # type: ignore[attr-defined]
         return 'mission_id 不能为空'
-    if item.plan_times < 1:  # type: ignore[attr-defined]
-        return f'plan_times 必须≥1,实际 {item.plan_times}'  # type: ignore[attr-defined]
+    if item.plan_times < 0:  # type: ignore[attr-defined]
+        return f'plan_times 不能为负,实际 {item.plan_times}'  # type: ignore[attr-defined]
     if item.run_times < 0 or item.run_times > item.plan_times:  # type: ignore[attr-defined]
         return (f'run_times 须在 0~plan_times 内,'
                 f'实际 run_times={item.run_times}, plan_times={item.plan_times}')  # type: ignore[attr-defined]
