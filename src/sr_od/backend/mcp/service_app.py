@@ -8,7 +8,7 @@ from pydantic import Field
 
 from sr_od.backend import operation_flow, operation_registry
 from sr_od.backend.backend_context import SrBackendContext
-from sr_od.backend.schemas import ApplicationListResult, ApplicationListResultOut
+from sr_od.backend.schemas import ApplicationListResultOut
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.operation_base import OperationResult
@@ -87,18 +87,14 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
     return run_standalone_app
 
 
-def make_list_applications(backend: SrBackendContext) -> Callable[[], ApplicationListResultOut | dict]:
+def make_list_applications(backend: SrBackendContext) -> Callable[[], ApplicationListResultOut]:
     """构造 ``list_applications`` tool。"""
-    def list_applications() -> ApplicationListResultOut | dict:
+    def list_applications() -> ApplicationListResultOut:
         """列出当前实例可运行应用、独立应用列表和当前选中项。观察类(只读,不刷新配置)。
 
         列应用用本 tool;列可运行 operation 用 list_operations。
         """
-        try:
-            result = backend.list_applications()
-        except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'error': str(e)}
-        return ApplicationListResultOut.from_backend(result) if isinstance(result, ApplicationListResult) else result
+        return ApplicationListResultOut.from_backend(backend.list_applications())
     return list_applications
 
 
