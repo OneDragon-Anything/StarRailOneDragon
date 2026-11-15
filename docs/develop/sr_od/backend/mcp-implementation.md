@@ -51,16 +51,14 @@ def click_game(
 ) -> dict: ...
 ```
 
-## 3. 返回值:本项目对称与错误兜底
+## 3. 返回值:形状单一 + 失败走异常通道
 
-(通用结构化返回 / `response_format` / 分页 / outputSchema 见官方 mcp-builder。这里只讲本项目约束。)
+(通用结构化返回 / `response_format` / outputSchema 见官方 mcp-builder。这里只讲本项目约束;方法论依据见 design-principles.md P6 / P15。)
 
-- **与 HTTP 对称(对应 design P11)**:同一 backend 方法,MCP 和 HTTP 返**同构字段**。如 `check_window` → MCP 返 `WindowStatus` dataclass、HTTP `/game/window` 返 `asdict(WindowStatus)`。**别在 MCP 把结构压成多行文本**(早期 `check_game_window` 的坑,已修)。
-- **错误兜底:项目统一 `try/except` 返带 `error` 字段的结构,不 `raise ToolError`**(尽管 sdk 原生支持)。理由:不把 opaque traceback 透传给客户端,返回 actionable 结构。两种落地:
-  - 成功返回 dataclass **本身带 `success`/`error` 字段** → 错误也返该 dataclass(`success=False, error=str(e)`),如 `analyze_screen` → `AnalyzeScreenResult`。
-  - 成功返回 dataclass **不带错误字段** → 错误返 `{'error': str(e)}` dict,返回类型注解 `T | dict`,如 `list_applications` → `ApplicationListResult | dict`、`check_game_window` → `WindowStatus | dict`。
-- **单值 ack 例外**:`close_game` 的约定文案(「已发送关闭游戏信号」)保持 `str`,结构化无增益。
-- 字段**语义化命名**(`success` / `error` / `in_window` / `started`),避免 cryptic id。
+- **形状单一(P15)**:一个工具一套返回形状。多字段返回一律 MCP 层 pydantic `*Out` 模型(Field description 进 outputSchema),框架层保持纯 dataclass / 原生类型,`from_backend(**asdict)` 一步转换(样板:`schemas.py` 的 `AnalyzeScreenOut` 族);原子返回(纯路径 / 确认文案)直给 `-> str`,docstring 一行说明返回值语义;**禁 `-> dict`**(生成空 object schema,字段描述无处安放);**禁失败兜底 union**(`T | dict` 使 outputSchema 变包裹形态 `{result: ...}`,模型读到两种形状)。
+- **失败走异常通道(P6 三分法)**:backend 校验 / 资源类失败直接透传(如 `BackendNotReadyError`)。sdk 实测(mcp 1.28.1):工具函数抛 Exception → FastMCP 转 `ToolError` → lowlevel 层返回 `CallToolResult(isError=True)` 文本结果,连接不断;HTTP 侧 catch 同一异常返错误响应——同文案对称。**不要 try/except 把失败折进成功结构**:旧模式「返回带 `error` 字段的 dict」已退役——`isError=False` 的失败会骗过按 isError 判成败的客户端。
+- **BaseException 防穿透**:停机守卫异常(`StopRunInterrupted`,BaseException 子类)不能裸透传——FastMCP/Starlette 泛型兜底只接 Exception,穿透即 ASGI 层错误 + 连接断。工具层捕获后 `raise RuntimeError(文案) from e` 转普通异常走错误通道(样板:`close_game` / `input_text`;手动端点在 backend 层已有 `stop_guard_exemption` 豁免,此兜底是防御纵深)。
+- **与 HTTP 对称(P11)**:同一 backend 方法,MCP 与 HTTP **各自序列化**同构数据(MCP:Out 模型;HTTP:`asdict(dataclass)` / JSON)。别在 MCP 把结构压成多行文本(早期 `check_game_window` 的坑,已修);文本形态仅限「自解释 markdown」类工具(`get_screen_detail`,渲染层 `markdown_render.py`)。
 
 ## 4. docstring 三要素
 
@@ -68,7 +66,7 @@ def click_game(
 
 1. **一句话说能做什么 + 首句标「观察类 / 操作类」并带内联定义**——如「观察类(只读,不改任何状态)」/「操作类(会控制游戏)」/「操作类(会改配置文件)」:instructions 是客户端可选注入(server 级定义不保证可见),工具级自带定义不依赖它;
 2. **关键约束 / 隐式上下文**(坐标空间、需窗口就绪、单跑道、**操作后需 sleep** 等 —— 把智能体猜不到的显式化);
-3. **返回结构**(`Returns:` 段写 dict / dataclass 字段)。
+3. **返回值语义**:原子返回(`-> str`)一行说明返回的是什么;多字段返回的字段语义住 outputSchema(第 3 节),docstring 不抄返回结构。
 
 不啰嗦(context 有限),准确说清即可。参考新 tool(`click_game` / `key_tap` / `drag`)的密度,那是踩坑后校准的基线。
 
@@ -91,7 +89,7 @@ def click_game(
 - [ ] **读写分离**:单 tool 不混观察 + 操作(通用硬要求);相似操作 tool(`click_game` / `key_tap` / `drag`)描述**互指**何时用另一个(disambiguate);
 - [ ] `title` annotation(可选):Anthropic Directory 提交时每个 tool 必须有 title;本项目不提交 Directory,按需作 UI 显示名;
 - [ ] 难懂参数加了 `Field description`;
-- [ ] 返回结构化(非裸字符串,单值 ack 除外)+ 错误兜底按第 3 节;
+- [ ] 返回形状按第 3 节(多字段 `*Out` / 原子 `-> str`;失败走异常通道,禁兜底 dict / union;BaseException 转 RuntimeError);
 - [ ] HTTP 对称能力是否也要补(两个适配器消费者都用 → 放 backend 共享,见 design P11);
 - [ ] 测试(`sr-od-test/test/sr_od/backend/`)断言对齐新返回;
 - [ ] `ruff check` 改动文件 + 经 daemon 重启 server 验证 tool 注册。
