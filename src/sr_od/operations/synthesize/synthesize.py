@@ -46,8 +46,8 @@ class Synthesize(SrOperation):
 
         self.item: SynthesizeItem = item  # 要合成的物品
         self.num: int = num  # 要合成的数量 0为最大值
-        self._plus_clicked: bool = False
-        """plus_monthly 路径本次运行是否已点过「+」——区分「点满到顶」与
+        self._qty_dragged: bool = False
+        """plus_monthly 路径本次运行是否已拖过滑条——区分「拖满到顶」与
         「入口即置灰的歧义态」(额度用完/材料约束到顶),节点轮询间保留"""
 
     @node_from(from_name='画面识别')
@@ -148,13 +148,13 @@ class Synthesize(SrOperation):
         return result
 
     @node_from(from_name='选择合成物品')
-    @operation_node(name='选择数量', node_max_retry_times=30)
+    @operation_node(name='选择数量', node_max_retry_times=4)
     def choose_num(self) -> OperationRoundResult:
         """
         选择合成数量:按物品的数量策略分流。
 
         max_btn(默认):消耗品合成页点「最大值」,材料不足判失败;
-        plus_monthly:月限物品,+ 按钮逐次点满(重试预算 30 覆盖个位数额度)。
+        plus_monthly:月限物品,滑条拖满(重试预算覆盖拖动复查)。
         :return:
         """
         if self.item.quantity_mode == QUANTITY_MODE_PLUS_MONTHLY:
@@ -171,14 +171,15 @@ class Synthesize(SrOperation):
 
     def _choose_num_plus_monthly(self) -> OperationRoundResult:
         """
-        月限物品数量拉满(材料合成页滑条 UI,无「最大值」按钮,点轨道会误改
-        数量,故用 + 按钮逐次点满)。
+        月限物品数量拉满:滑条拖满 + 置灰判顶(拖动手法与滑条点选同源,
+        拖到轨道右端取精确上限,不受上限值大小影响)。
 
         每轮顺序:材料不足判失败(裁定:材料不足是失败,不标本周期完成,
-        由调用方后续补跑)→ 亮态命中点 + 重试 → 置灰命中:本轮已点过 = 拉满
-        完成;入口即置灰为歧义态(额度用完 / 已被材料约束到顶),读「本月
-        还可合成」消歧:0 = 无事可做;≥1 = 已到顶,合成当前数量;读不出 =
-        判失败不冒险。两态都不命中 = 画面异常判失败。
+        由调用方后续补跑)→ 置灰命中:本轮已拖 = 拉满完成;入口即置灰为
+        歧义态(额度用完 / 已被材料约束到顶),读「本月还可合成」消歧:0 =
+        无事可做;≥1 = 已到顶,合成当前数量;读不出 = 判失败不冒险。未置灰
+        = 拖手柄到轨道右端后重试(起点 = 手柄最小值位,新开合成页数量恒回
+        1 实测;手柄不在最小值位时按住轨道会先跳到该位、拖到右端仍归位上限)。
         :return:
         """
         screen = self.last_screenshot
@@ -187,15 +188,9 @@ class Synthesize(SrOperation):
         if insufficient.is_success:
             return self.round_fail(insufficient.status)
 
-        plus = self.round_by_find_area(screen, '合成', '按钮-数量增加')
-        if plus.is_success:
-            self.round_by_click_area('合成', '按钮-数量增加')
-            self._plus_clicked = True
-            return self.round_retry('已点数量+,下一轮复查', wait=0.8)
-
         gray = self.round_by_find_area(screen, '合成', '按钮-数量增加-置灰')
         if gray.is_success:
-            if self._plus_clicked:
+            if self._qty_dragged:
                 return self.round_success(STATUS_QTY_MAXED, wait=0.5)
             quota = self._read_monthly_quota()
             if quota == 0:
@@ -204,7 +199,12 @@ class Synthesize(SrOperation):
                 return self.round_fail('额度文本不可读')
             return self.round_success(STATUS_QTY_MAXED, wait=0.5)
 
-        return self.round_fail('数量按钮不可识别')
+        handle = self.ctx.screen_loader.get_area('合成', '滑条-手柄起点')
+        end = self.ctx.screen_loader.get_area('合成', '滑条-拉满终点')
+        self.ctx.controller.drag_to(start=handle.center, end=end.center,
+                                    duration=0.6)
+        self._qty_dragged = True
+        return self.round_retry('已拖滑条到右端,下一轮复查', wait=1)
 
     def _read_monthly_quota(self) -> int | None:
         """
