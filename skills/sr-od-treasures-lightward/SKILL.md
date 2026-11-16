@@ -5,11 +5,11 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 # 逐光捡金玩法路由（sr-od-treasures-lightward）
 
-逐光捡金（Treasures Lightward）是常驻高难挑战合集，入口链：大世界 → 手机菜单 → 星际和平指南 → 逐光捡金 tab → 分类页（左侧四类）。玩法总机制与入口链细节见本 skill [references/gameplay.md](references/gameplay.md)；**各副本的逐步操作路由（步骤表/op 参数/结果解读/失败去向/奖励领取）见 [references/operations.md](references/operations.md)**；各画面建档见 docs/game/screens/ 下同名 doc。
+逐光捡金（Treasures Lightward）是常驻高难挑战合集，入口链：大世界 → 手机菜单 → 星际和平指南 → 逐光捡金 tab → 分类页（左侧四类）。玩法总机制与入口链细节见本 skill [references/gameplay.md](references/gameplay.md)；**各副本的逐步操作路由（步骤表/op 参数/结果解读/失败去向/奖励领取）见 [references/operations.md](references/operations.md)**；各画面建档细节走 MCP `get_screen_detail(画面名)`,全部画面名用 `list_screen_names()` 列出。
 
 ## 总 checklist（没做完这 5 步不算完成一次逐光捡金任务）
 
-1. ☐ **判类型**：确认目标是四类之一——忘却之庭·混沌回忆 / 虚构叙事 / 末日幻影 / 异相仲裁（对应代码枚举 TLMode：FORGOTTEN_HALL / PURE_FICTION / APOCALYPTIC_SHADOW / ANOMALY_ARBITRATION）。异相仲裁未探明，直接告知用户不能自动打。必做。
+1. ☐ **判类型**：确认目标是四类之一——忘却之庭·混沌回忆 / 虚构叙事 / 末日幻影 / 异相仲裁（挑战 op 的 `mode` 参数对应 `'forgotten_hall'` / `'pure_fiction'` / `'apocalyptic_shadow'`）。异相仲裁未探明，直接告知用户不能自动打。必做。
 2. ☐ **收集输入**：① 环境增益（按类型块的读法读当期实值）；② 敌人弱点与等级（编队屏「建议属性」等）；③ 账号练度（mys MCP 直拉：`mys_get_characters` 概况 / `mys_get_roster_detail` 全量；练度判读口径见 `sr-od-game-coach` `references/investment.md`）。判据：三样各有明确值或标「不可得」，不许缺省编造。必做。
 3. ☐ **定阵容**：按 `sr-od-game-coach` 的配队决策工作流选体系与成员，交叉游戏内「通关阵容」推荐。判据：每队给出成员 + 一句核心逻辑。必做。
 4. ☐ **导航并挑战**：按类型块的「操作路径」跑 op（经 MCP `run_operation`，op_id 格式 `sr_od.application.treasures_lightward.operations.<玩法子包>.<模块>.<类名>`，子包 = forgotten_hall / pure_fiction / apocalyptic_shadow，公共导航无子包段）。判据：op 返回挑战成功状态。必做。
@@ -47,7 +47,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 逐步路由表（含结果解读与失败去向）见 [references/operations.md](references/operations.md) §2；概要：
 
 1. `GotoTreasuresLightward(mode='forgotten_hall')` → 选关（记忆紊流更新弹窗自动关闭）。
-2. 选关界面点目标关卡水晶 → 编队屏（画面 doc：忘却之庭-编队）。
+2. 选关界面点目标关卡水晶 → 编队屏（画面：忘却之庭-编队）。
 3. 读输入：编队屏每半场「建议属性」（= 该半场敌人弱点表）+ 敌人等级 +「词条-记忆紊流」看本关增益。
 4. 跑挑战 ops（见「编队与战斗 op」）。
 5. 战斗收尾自动回选关；换下一关回到步骤 2。多关循环编排无现成 op，由调用方控制。
@@ -66,7 +66,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 ### 奖励
 
 - 首次 3 星通关最高解锁关弹「快速通关」（视同通关全部前置，奖励列表 + 确认）→「获得物品」页——由 `TlFhBattleOp` 自动处理。
-- 期次累计奖励：选关界面「按钮-星芒礼包」→ 馈赠弹窗（印记馈赠 / 回忆馈赠两 tab）。自动领取 op 未建模，需 MCP 手动点击（坐标以画面 doc 为准）。
+- 期次累计奖励：选关界面「按钮-星芒礼包」→ 馈赠弹窗（印记馈赠 / 回忆馈赠两 tab）。自动领取 op 未建模，需 MCP 手动点击（坐标走 MCP `get_screen_detail('逐光捡金')`）。
 
 ## 虚构叙事（PURE_FICTION）
 
@@ -79,7 +79,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 逐步路由表（含结果解读与失败去向）见 [references/operations.md](references/operations.md) §3；概要：
 
 1. `GotoTreasuresLightward(mode='pure_fiction')` → 选关（新期开场介绍页自动点「开启故事」）。
-2. 选关点目标关卡纸鹤 → 编队屏（画面 doc：虚构叙事-编队）。
+2. 选关点目标关卡纸鹤 → 编队屏（画面：虚构叙事-编队）。
 3. 读输入：左栏「战意效果」列表 + 每行「荒腔走板」——点行尾加号开弹窗后，用 MCP `analyze_screen` 识别「虚构叙事-荒腔走板」，extras 返回 node_no/boss_name/buffs（含 slot/name/equipped/desc）。
 4. 跑挑战 op（见「编队与战斗 op」）。
 
@@ -108,14 +108,14 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 逐步路由表（含结果解读与失败去向）见 [references/operations.md](references/operations.md) §4；概要：
 
-1. `GotoTreasuresLightward(mode='apocalyptic_shadow')` → 选关（新期开场介绍页自动点「前往挑战」；画面 doc：末日幻影-选关）。
+1. `GotoTreasuresLightward(mode='apocalyptic_shadow')` → 选关（新期开场介绍页自动点「前往挑战」；画面：末日幻影-选关）。
 2. 选关默认选中最高可玩难度——进编队屏前重新点目标难度标签。
 3. 读输入：「末日幻影-首领信息」画面看 boss 弱点与机制；行尾圆圈开「终焉公理」弹窗后，用 MCP `analyze_screen` 识别「末日幻影-终焉公理」，extras 返回 node_no/boss_name/buffs（含 slot/name/equipped/desc）。
 4. 跑挑战 op（见「编队与战斗 op」）。
 
 ### 攻略与推荐阵容
 
-- `sr-od-game-coach` 路由到末日幻影玩法档（击破/爆发体系优先），boss 机制核对画面 doc：末日幻影-首领信息。
+- `sr-od-game-coach` 路由到末日幻影玩法档（击破/爆发体系优先），boss 机制核对画面：末日幻影-首领信息（`get_screen_detail('末日幻影-首领信息')`）。
 - 编队屏通关阵容入口未建档；攻略缺口用 web 搜索补。
 
 ### 编队与战斗 op
@@ -128,21 +128,21 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 - 「通关阵容」按钮位置随布局漂移：双节点(01-03)在编队屏右上 y≈147；星启(04)在同区域 y≈65——点击前以 OCR 实读「通关阵容」文本位置为准。
 - 星启编队屏交互模型（2026-11-06 实机）：点行内槽位剪影（x≈1494）= 展开选人列表 + 选中该行；行尾「+」（x≈1826）= 打开该行终焉公理增益弹窗；右上垃圾桶 = 清空全部三行（连增益一起清）；**退出编队屏直接关闭丢弃修改，从节点结算页「退出」回编队屏则保留**；改队后再挑战会弹「战绩重置」确认。
-- 通关阵容弹窗已建档（screen `末日幻影-通关阵容`：推荐/好友 tab、三节点行、一键上阵、换一批；fixture 测试仓 `末日幻影-通关阵容/推荐阵容.webp`）；推荐头像用脸库脚本识别（fixture 帧实测全部命中）。
+- 通关阵容弹窗已建档（画面「末日幻影-通关阵容」：推荐/好友 tab、三节点行、一键上阵、换一批）；推荐头像识别实测全部命中。
 - **满员验证（星启）**：槽位像素判空在星启布局不可用（V 亮度/SIFT 特征数/剪影模板三方案实测均无区分度——空槽底板 V≈182 与头像同亮、剪影本身高纹理）；可靠信号 = **角色列表卡上的「队伍N」标记 OCR 计数**（12 标记 = 满员）+ 一键上阵确认弹窗预告的各节点持有数（持有不足的位会留空，需手动点槽位补人）。
 
 ### 奖励
 
 - 快速通关补发——由 `TlAsBattleOp` 自动处理。
-- 期次累计奖励：选关屏左下礼物盒 → 「末日幻影-祭礼奖励」弹窗，两 tab（永劫祭礼=期次星数累计 / 终局祭礼=各难度首通）**各点一次「领取」即全 tab 一键发放**，领取后弹「获得物品」页点空白处关闭——`TlRewardClaimOp` 已建模实跑（无领路径实机验证、领取路径 fixture 覆盖）。⚠️「奇珍琳琅」袋子入口是兑换商店（消耗代币兑换材料），不是领奖入口。
-- 星启模式（难度04，三节点）：挑战链已实机打通——`TlApocalypticShadowChallengeOp(team_names 12 人按行序, buff_slots 三节点序号)` 跑全链；`TlAsBattleOp` 可单独重打或从中断接续（起点=选关屏或节点画面）。识别阈值已按实机定标（以 screen_info 为准，选关 doc 有待复验备注）。
+- 期次累计奖励：选关屏左下礼物盒 → 「末日幻影-祭礼奖励」弹窗，两 tab（永劫祭礼=期次星数累计 / 终局祭礼=各难度首通）**各点一次「领取」即全 tab 一键发放**，领取后弹「获得物品」页点空白处关闭——`TlRewardClaimOp` 已建模实跑（无领路径实机验证、领取路径离线样本验证）。⚠️「奇珍琳琅」袋子入口是兑换商店（消耗代币兑换材料），不是领奖入口。
+- 星启模式（难度04，三节点）：挑战链已实机打通——`TlApocalypticShadowChallengeOp(team_names 12 人按行序, buff_slots 三节点序号)` 跑全链；`TlAsBattleOp` 可单独重打或从中断接续（起点=选关屏或节点画面）。识别阈值已按实机定标（以 MCP `get_screen_detail` 为准；选关屏部分阈值待复验）。
 
 ## 异相仲裁（ANOMALY_ARBITRATION）
 
-未探明：无画面建档、无玩法 doc、无挑战 op。`GotoTreasuresLightward` 对它的分支点击入口按钮后显式失败挂账。要打它：先按 `od-dev-screen-onboarding` 建档 → 按 `od-dev-write-application` 从零做 op——在此之
+未探明：无画面建档、无挑战 op。`GotoTreasuresLightward` 对它的分支点击入口按钮后显式失败挂账。用户要打它时如实告知未支持——需要先完成画面建档与挑战 op 建模（开发侧工作），再谈自动化。
 
 ## 现状边界
 
 - app 整体（选关循环 / 星数检测 / 满星自动下一关）未迁移新框架：单次挑战的各 op 可用，多关编排由调用方控制。
 - 忘却之庭星启模式（难度 12,3 节点）未适配。
-- 所有增益按位置选择不按名称；所有点击坐标以 screen_info / 画面 doc 为准，不在代码里硬编码。
+- 所有增益按位置选择不按名称；所有点击坐标以 MCP `get_screen_detail` 建档为准，不在本文硬编码。
