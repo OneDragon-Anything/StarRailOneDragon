@@ -13,7 +13,7 @@ wiki 频道均未收录）——共 64 套 = 隧洞 34 + 位面饰品 30、件�
 wiki 词条偶有错字/缺段（实测 8 套 effects/件名与已固化常量不一致）——
 effects 与件名一律以本模块原有常量为准，wiki 只作新增字段来源。
 
-识别模板规范库见 ``config/relic_templates.py``（空 id 套装暂缓入库）。
+识别模板规范库见 ``sr_od/application/cultivation/relic/relic_tpl_store.py``（空 id 套装暂缓入库）。
 
 版本刷新走 ``sr-od-dev-relic-data`` skill 工序；新套装未及固化时由
 ``resolve_set_name`` 兜底（warning 不抛异常），勿临时塞未经抓取核验的数据。

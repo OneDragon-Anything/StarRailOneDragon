@@ -6,7 +6,7 @@
 **身份层**——masked 模板匹配(TM):卡面 = 图标 × UI 缩放常量合成(同渲染),
 按绝对目标像素缩放模板,前景 mask(底色距分割)后 TM_CCORR_NORMED 匹配,
 低于拒答门槛诚实返回 None 不硬猜。模板集 = 识别模板规范库单一入口
-``config/relic_templates.iter_relic_templates``(规范目录
+``relic_tpl_store.card_faces``(规范目录
 ``assets/template/relic_icon/<套装id>_<部位英文>/raw.webp``;空 id 套装
 暂缺不入库)。缩放按模板原始尺寸换算(256 正源 → 90px、
 512 连结绳 → 92/96px),卡面渲染像素才是常量,比例随模板分辨率派生——混合尺寸
@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import cv2
@@ -31,9 +30,11 @@ import numpy as np
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from one_dragon.utils import cv2_utils, os_utils
+from sr_od.application.cultivation.relic.relic_tpl_store import (
+    _SIFT,
+    _UPSAMPLE_SCALES,
+)
 from sr_od.config.character_const import get_character_by_id
-from sr_od.config.relic_templates import iter_relic_templates
 from sr_od.mys.sr_codes import RELIC_POS_CN
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET
 
@@ -47,10 +48,6 @@ _LEVEL_VALUE_RE = re.compile(r'(\d{1,3})')
 
 # masked TM 身份层参数(2026-11-11 实机六部位帧验证:真值卡彩色 NCC 0.93-0.99,
 # 全部判对;错误匹配峰值 ~0.93 出现在缩放档错位时,档位对齐后未复现)
-_TM_TARGET_PX = 90        # 256 系正源模板的目标像素(卡面渲染实测 ~90px)
-_TM_TARGET_PX_ROPE = 92   # 连结绳(pos6,512×512 正源)未选中卡渲染实测 ~92px
-_TM_TARGET_PX_ROPE_SEL = 96  # 连结绳选中卡(白框)渲染放大 ~4% → 96px(尺度扫描峰值)
-_TM_TARGET_PX_SELECTED = 96  # 256 系选中卡(白框)渲染实测 96px(尺度扫描峰值;与连结绳选中卡同值)
 _TM_CASCADE_GATE = 0.95   # 级联门槛:主档 NCC 低于此的卡再跑选中档(选中卡通常 0-2 张,增量成本可忽略)
 _TM_SEARCH_PAD = 22       # 卡矩形外扩(吸收定位偏差与版本间网格漂移)
 _TM_GATE = 0.85           # 拒答门槛:低于此视为无有效图案(重掷中遮挡卡 0.86 级),诚实返回 None
@@ -268,7 +265,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
-                                        min_inliers=self._owner_min_inliers())
+                                        min_inliers=self._owner_min_inliers(), ctx=ctx)
             level = self._read_level(ocr_results, card_rect)
             if self._is_masked_card(ocr_results, card_rect):
                 # 重掷动画帧:卡面被遮罩持续污染,身份不可信——标记 masked 不猜
@@ -326,50 +323,16 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
                 if 0 <= level <= 15:
                     return level
         return None
-_tm_prep_cache: dict[str, list[tuple[np.ndarray, np.ndarray]]] | None = None
-
-
-def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
-    """归档 webp 的前景 mask:四角中位取合成底色,色距 >30 为前景。
-
-    归档模板无 alpha(透明区已合成深紫底),底色平坦不产生匹配信号;TM 逐
-    像素比对必须剔除底色,否则底色互相关稀释前景分数。
-    """
-    corners = np.stack([rgb[:4, :4].reshape(-1, 3), rgb[:4, -4:].reshape(-1, 3),
-                        rgb[-4:, :4].reshape(-1, 3), rgb[-4:, -4:].reshape(-1, 3)])
-    bg = np.median(corners.reshape(-1, 3), axis=0)
-    return np.linalg.norm(rgb.astype(np.float64) - bg[None, None, :], axis=2) > 30
-
-
 def _tm_templates_all(ctx: SrContext) -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
-    """遗器件名 → [(RGB 模板, 前景 mask), ...] 按档位,已缩放到目标像素(进程级缓存)。
+    """遗器件名 → [(RGB 模板, 前景 mask), ...] 按档位,已缩放到目标像素(ctx 级 store 懒构建)。
 
-    模板经卡面库单一入口 iter_relic_templates 取(规范目录
+    模板经模板库单一入口 ctx.relic_tpl_store.card_faces 取(规范目录
     assets/template/relic_icon/<套装id>_<部位英文>/raw.webp;空 id 套装
     暂缺不入库,国际服 wiki 同步补 id 后自动生效)。缩放按模板原始尺寸归一:
     256 系正源 → 90/96 双档、512 连结绳 → 92/96 双档——卡面渲染像素才是
     常量,比例随模板分辨率派生;双档覆盖列表常态与选中卡(白框)的放大渲染。
     """
-    global _tm_prep_cache
-    if _tm_prep_cache is None:
-        prep: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
-        for entry in iter_relic_templates(ctx):
-            img = entry.info.raw
-            mask = _fg_mask_from_rgb(img)
-            # 双档:主档(未选中卡渲染) + 选中档(选中卡白框放大 ~4%)。
-            # 相似件分数接近时,选中卡的放大差足以让次优件反超(行1列2 死水头
-            # 被透镜反超实证),双档级联为必需而非可选。
-            targets = ((_TM_TARGET_PX_ROPE, _TM_TARGET_PX_ROPE_SEL) if entry.piece.pos == 6
-                       else (_TM_TARGET_PX, _TM_TARGET_PX_SELECTED))
-            entries = []
-            for target in targets:
-                tpl = cv2.resize(img, (target, target), interpolation=cv2.INTER_AREA).astype(np.float32)
-                mask_s = (cv2.resize(mask.astype(np.uint8), (target, target),
-                                     interpolation=cv2.INTER_NEAREST) * 255).astype(np.uint8)
-                entries.append((tpl, mask_s))
-            prep[entry.piece.name] = entries
-        _tm_prep_cache = prep
-    return _tm_prep_cache
+    return ctx.relic_tpl_store.tm_prep_tpls
 
 
 def _tm_templates_all_lists(ctx: SrContext) -> tuple[list, list]:
@@ -582,12 +545,9 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
             rects.append(rect_card)
     rects.sort(key=lambda r: (r.y1 // 100, r.x1))
     return rects
-_MINI_DIR_REL = 'assets/template/character_avatar_mini'
 # 角标窗边长与匹配扩边:扩边吸收调用方定位偏差与选中卡放大溢出
 _TEMPLATE_SIZE: int = 44
 _ZONE_PAD: int = 16
-# 上采样倍率:两尺度互补(部分角色仅在其一尺度上出足特征)
-_UPSAMPLE_SCALES: tuple[int, ...] = (2, 3)
 # Lowe 比值阈值(见模块 docstring 第 2 条:0.75+ 会让假一致内点过阈)
 _LOWES_RATIO: float = 0.7
 # 内点判定阈(光锥真角标 18-61 / 无角标卡面 ≤11;遗器真 16-30 / 无角标 4-8
@@ -600,64 +560,10 @@ _AMBIG_RATIO: float = 0.75
 # 场景侧直方图采样圆半径(zone 76×76 内的角标内圆)
 _ZONE_HIST_RADIUS: int = 19
 
-_SIFT = cv2.SIFT_create(nfeatures=400)
+# 角标头像模板库及其 SIFT 特征 / HSV 直方图 = ctx 级 store 视图
+# (relic_tpl_store.icon_tpls / icon_feats / icon_hists);上采样倍率
+# 与 SIFT 实例与构建侧同参,自 store import(单一源)。
 _MATCHER = cv2.BFMatcher()
-
-_tpl_cache: dict[str, np.ndarray] | None = None
-_feat_cache: dict[str, dict[int, tuple[list, np.ndarray | None]]] | None = None
-_hist_cache: dict[str, np.ndarray] | None = None
-def _templates() -> dict[str, np.ndarray]:
-    """全部模板 RGB。avatarminiicon 为 RGBA(圆外透明),取 RGB 三通道。"""
-    global _tpl_cache
-    if _tpl_cache is not None:
-        return _tpl_cache
-    out: dict[str, np.ndarray] = {}
-    base = Path(os_utils.get_path_under_work_dir(*_MINI_DIR_REL.split('/')))
-    for f in sorted(base.glob('*.png')):
-        img = cv2_utils.read_image(str(f))
-        if img is None:
-            continue
-        if img.ndim == 3 and img.shape[2] == 4:
-            img = img[:, :, :3]
-        out[f.stem] = img
-    _tpl_cache = out
-    return out
-
-
-def _tpl_features() -> dict[str, dict[int, tuple[list, np.ndarray | None]]]:
-    """模板特征缓存:名字 → 尺度 → (关键点, 描述子);描述子 None = 该尺度特征贫乏。"""
-    global _feat_cache
-    if _feat_cache is not None:
-        return _feat_cache
-    out: dict[str, dict[int, tuple[list, np.ndarray | None]]] = {}
-    for name, img in _templates().items():
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        by_scale: dict[int, tuple[list, np.ndarray | None]] = {}
-        for k in _UPSAMPLE_SCALES:
-            g_up = cv2.resize(gray, (gray.shape[1] * k, gray.shape[0] * k),
-                              interpolation=cv2.INTER_CUBIC)
-            by_scale[k] = _SIFT.detectAndCompute(g_up, None)
-        out[name] = by_scale
-    _feat_cache = out
-    return out
-
-
-def _tpl_hists() -> dict[str, np.ndarray]:
-    """模板 HSV 色相/饱和直方图缓存(模板圆内采样,归一化)。"""
-    global _hist_cache
-    if _hist_cache is not None:
-        return _hist_cache
-    out: dict[str, np.ndarray] = {}
-    for name, img in _templates().items():
-        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        mask = np.zeros(img.shape[:2], np.uint8)
-        cv2.circle(mask, (img.shape[1] // 2, img.shape[0] // 2),
-                   int(img.shape[0] * 0.45), 255, -1)
-        hist = cv2.calcHist([hsv], [0, 1], mask, [32, 32], [0, 180, 0, 256])
-        cv2.normalize(hist, hist)
-        out[name] = hist
-    _hist_cache = out
-    return out
 
 
 def _inliers_at_scale(kp_z: list, des_z: np.ndarray | None,
@@ -675,7 +581,8 @@ def _inliers_at_scale(kp_z: list, des_z: np.ndarray | None,
     _, ransac_mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
     return int(ransac_mask.sum()) if ransac_mask is not None else 0
 def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
-                min_inliers: int = OWNER_MATCH_MIN_INLIERS) -> tuple[str | None, int]:
+                min_inliers: int = OWNER_MATCH_MIN_INLIERS,
+                *, ctx: SrContext) -> tuple[str | None, int]:
     """识别角标区的占用角色,返回**中文角色名**(如「黄泉」)。
 
     流程:角标窗扩边 → 场景 SIFT 特征(每尺度一次)→ 全库模板双尺度比对
@@ -685,6 +592,7 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
     :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量;
         窗须完整含角标圆,内部自动扩边吸收定位偏差)
     :param min_inliers: RANSAC 内点数判定阈
+    :param ctx: 模板特征 / 直方图读 ctx 级 store(relic_tpl_store,懒构建)
     :return: (中文角色名, 最高内点数);任一道判定不过返回 (None, 最高内点数) ——
         未装备 / 角标角色不在模板库 / 证据歧义,不猜测。中文映射缺失的角色
         兜底返回模板英文 id。
@@ -707,7 +615,7 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
         zone_feats[k] = _SIFT.detectAndCompute(g_up, None)
 
     per: dict[str, int] = {}
-    for name, by_scale in _tpl_features().items():
+    for name, by_scale in ctx.relic_tpl_store.icon_feats.items():
         per[name] = max(_inliers_at_scale(*zone_feats[k], *by_scale[k])
                         for k in _UPSAMPLE_SCALES)
     order = sorted(per.items(), key=lambda kv: -kv[1])
@@ -716,7 +624,7 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
         return None, best_inliers
 
     dists = {n: cv2.compareHist(h, _zone_hist(zone), cv2.HISTCMP_BHATTACHARYYA)
-             for n, h in _tpl_hists().items()}
+             for n, h in ctx.relic_tpl_store.icon_hists.items()}
     hist_rank = sorted(dists, key=dists.get).index(best_name)
     if hist_rank >= _HIST_RANK_MAX:
         return None, best_inliers
