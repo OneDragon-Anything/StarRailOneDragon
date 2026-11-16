@@ -22,6 +22,7 @@ from starlette.responses import JSONResponse, Response
 from sr_od.backend.backend_context import (
     AnalyzeScreenError,
     BackendNotReadyError,
+    RunState,
     SrBackendContext,
 )
 from sr_od.backend.http.service_routes import register_service_routes
@@ -169,17 +170,24 @@ async def handle_game_enter(backend: SrBackendContext, request: Request | None =
     return JSONResponse({'success': result.success, 'result': msg})
 
 
-async def handle_game_status(backend: SrBackendContext, _request: Request | None = None) -> Response:
+async def handle_game_status(backend: SrBackendContext, request: Request | None = None) -> Response:
     """处理 ``GET /game/status``：返回当前/最近运行状态 JSON。
 
     Args:
         backend: 提供游戏切片能力的 ``SrBackendContext``。
-        _request: Starlette 请求对象（本处理器不使用）。
+        request: Starlette 请求对象,可携带 ``include_screen`` query
+            (默认 true=运行中时截图识别当前画面,秒级耗时)。
 
     Returns:
         200 + ``RunStatusResult`` 全字段 JSON。
     """
-    return JSONResponse(asdict(backend.query_status()))
+    include_screen = True
+    if request is not None:
+        include_screen = request.query_params.get('include_screen', 'true').lower() != 'false'
+    st = backend.query_status()
+    if include_screen and st.state == RunState.RUNNING.value:
+        st.current_screen = backend.recognize_current_screen()
+    return JSONResponse(asdict(st))
 
 
 async def handle_game_stop(backend: SrBackendContext, _request: Request | None = None) -> Response:

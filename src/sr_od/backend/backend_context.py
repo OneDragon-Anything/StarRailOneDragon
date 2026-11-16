@@ -411,15 +411,25 @@ class RunSlot:
                 return RunStatusResult(state=RunState.IDLE.value, source=source)
         # 进度句柄:op 路径读 current_op,app 路径(current_op=None)读 run_context.current_application
         progress = op if op is not None else self._ctx.run_context.current_application
+        # 沿节点挂载的子 op 下钻到最深执行层:节点执行子 op 时 node.op 就是那个
+        # 阻塞中的实例(execute 同步),一条龙顶层 app 的节点只报「跑某应用」,
+        # 查询方需要的是真正在执行的子 op 与其节点;子 op 已受理未进节点时其
+        # _current_node 为 None,下钻到该层终止,当前层仍如实返回
+        while progress is not None:
+            node = getattr(progress, '_current_node', None)
+            if node is None or getattr(node, 'op', None) is None:
+                break
+            progress = node.op
         node = getattr(progress, '_current_node', None) if progress is not None else None
         current_node = getattr(node, 'cn', None) if node is not None else None
+        current_op = progress.__class__.__name__ if progress is not None else None
         retry_count = getattr(progress, 'node_retry_times', None) if progress is not None else None
         duration = (time.time() - started_at) if started_at else None
         return RunStatusResult(
             state=RunState.RUNNING.value,
             source=source, app=app,
             started_at=_iso(started_at), duration_seconds=duration,
-            current_node=current_node, retry_count=retry_count,
+            current_op=current_op, current_node=current_node, retry_count=retry_count,
         )
 
     def _stop(self) -> tuple[bool, str | None]:
@@ -710,6 +720,24 @@ class SrBackendContext:
         # 打码 UID:对齐 controller.screenshot()(框架流程截图本就经 fill_uid_black 打码,
         # backend 截图供 MCP/HTTP 落盘 / 外传,同样不能带账号信息)。
         return controller.fill_uid_black(image)
+
+    def recognize_current_screen(self) -> str | None:
+        """截图识别当前游戏画面名(运行状态查询附带的画面信息用)。
+
+        独立截图(independent=True):运行中的 op 正共享控制器截图通道,
+        走临时截图器避免争用;不落盘不外传故不打 UID 码。
+
+        Returns:
+            精确命中的画面名;窗口未就绪/截图失败/过渡帧或未建档无法识别时 None,
+            由调用方决定如何呈现。
+        """
+        controller = self._ctx.controller
+        if controller is None or not controller.is_game_window_ready:
+            return None
+        image = controller.get_screenshot(independent=True)
+        if image is None:
+            return None
+        return screen_utils.get_match_screen_name(self._ctx, image)
 
     def _resolve_game_hwnd_input(self) -> str | None:
         """解析游戏窗口的 gdigrab 输入串 ``hwnd=<句柄>``;解析不出有效窗口返回 None。

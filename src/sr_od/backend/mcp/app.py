@@ -30,7 +30,7 @@ from pydantic import Field
 
 from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.utils.log_utils import log
-from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
+from sr_od.backend.backend_context import RunState, SrBackendContext, _save_screenshot
 from sr_od.backend.mcp.character_tools import register_character_tools
 from sr_od.backend.mcp.config_app import (
     make_add_config_item,
@@ -114,13 +114,20 @@ def make_open_game(backend: SrBackendContext) -> Callable:
     return open_game
 
 
-def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusOut]:
+def make_get_run_status(backend: SrBackendContext) -> Callable[..., RunStatusOut]:
     """构造 ``get_run_status`` tool(模块级,便于独立测试)。"""
-    def get_run_status() -> RunStatusOut:
-        """查询当前/最近一次运行状态(运行中返当前节点/耗时/重试,终态返结果/失败定位)。
+    def get_run_status(
+        include_screen: Annotated[bool, Field(
+            description='True=运行中时截图识别当前画面(遍历建档画面,秒级耗时);'
+                        '识别不到(过渡帧/未建档)为 null;终态不识别')] = True,
+    ) -> RunStatusOut:
+        """查询当前/最近一次运行状态(运行中返当前 op/节点/画面/耗时/重试,终态返结果/失败定位)。
         观察类(只读,无副作用)。停止运行用 stop_run。
         """
-        return RunStatusOut.from_backend(backend.query_status())
+        st = RunStatusOut.from_backend(backend.query_status())
+        if include_screen and st.state == RunState.RUNNING.value:
+            st.current_screen = backend.recognize_current_screen()
+        return st
     return get_run_status
 
 

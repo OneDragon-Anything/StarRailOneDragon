@@ -150,10 +150,16 @@ class RunStatusOut(BaseModel):
         default=None, description='ISO 时间戳,可作 tail 日志锚点；不可用时为 null')
     duration_seconds: float | None = Field(
         default=None, description='截至查询时的耗时(秒)；不可用时为 null')
+    current_op: str | None = Field(
+        default=None, description='运行中当前实际执行(最深层)的 operation 类名;'
+                    '单 op 运行时与 app 相同；终态为 null')
     current_node: str | None = Field(
-        default=None, description='运行中当前节点名；终态为 null')
+        default=None, description='运行中当前节点名(与 current_op 同层)；终态为 null')
     retry_count: int | None = Field(
-        default=None, description='运行中当前节点重试次数；终态为 null')
+        default=None, description='运行中当前节点重试次数(与 current_op 同层)；终态为 null')
+    current_screen: str | None = Field(
+        default=None, description='运行中截图识别的当前画面名;识别不到(过渡帧/未建档)、'
+                    '窗口未就绪或未请求识别(include_screen=False)时为 null')
     last_status: str | None = Field(
         default=None, description='仅终态有值:成功描述 / 失败原因 / '
                     '已停止[来源](来源如 mcp:stop_run / hook:* / gui:*)；运行中为 null')
@@ -303,8 +309,13 @@ class RunStatusResult:
         app: operation 类名(如 "OpenAndEnterGame");终态后保留。
         started_at: ISO 时间戳,可作 tail 日志锚点;不可用时 None。
         duration_seconds: 截至查询时的耗时;不可用时 None。
-        current_node: 运行中当前节点名;终态 None。
-        retry_count: 运行中当前节点重试次数;终态 None。
+        current_op: 运行中当前实际执行(最深层)的 operation 类名——app 路径下
+            顶层 app 的节点只报「跑某应用」,本字段沿节点挂载的子 op 下钻给出
+            真正在执行的子 op;单 op 运行时与 app 相同。终态 None。
+        current_node: 运行中当前节点名(与 current_op 同层的节点);终态 None。
+        retry_count: 运行中当前节点重试次数(与 current_op 同层);终态 None。
+        current_screen: 运行中截图识别的当前画面名;识别不到(过渡帧/未建档)、
+            窗口未就绪或未请求识别时 None。
         last_status: OperationResult.status(失败原因 / "已停止[来源]"(stop_source,如 mcp:stop_run / hook:* / gui:*) / 成功描述);运行中 None。
         failed_node: 仅 failed:失败停在哪一步;否则 None。
     """
@@ -313,8 +324,10 @@ class RunStatusResult:
     app: str | None = None
     started_at: str | None = None
     duration_seconds: float | None = None
+    current_op: str | None = None
     current_node: str | None = None
     retry_count: int | None = None
+    current_screen: str | None = None
     last_status: str | None = None
     failed_node: str | None = None
 
