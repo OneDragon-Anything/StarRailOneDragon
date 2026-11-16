@@ -32,10 +32,16 @@ STORY_REMINDER_SKIP_WORD: str = '稍后再看'
 UNKNOWN_FALLBACK_ROUNDS: int = 3  # 连续全不命中达到该轮数才点:转场/加载/弹回空窗只持续 1-2 轮,计数门槛挡住瞬时误触
 LOGIN_PAGE_MARK_WORD: str = '公告'  # 登录页标志词:登录页右上角是公告等菜单按钮热区而非返回语义,与「右上角返回」坐标重叠,兜底须排除(两个登录页版式都有公告按钮)
 
+# 战斗结算页(战斗退出链中间站,确认退出后弹出的「挑战结束/积分」页)判定词。
+# 胜利结算页标题是「挑战成功」、战败页「战斗失败」,OCR 相似匹配不会误配本词;
+# 结算页右上角无按钮、无「确认」词,不正面识别会落未知兜底做无效点击循环。
+BATTLE_SETTLE_PAGE_WORD: str = '挑战结束'
+
 
 class EnterGame(SrOperation):
     """完成游戏登录直到进入大世界:处理点击进入/账号密码输入/公告与提示弹窗/
-    版本剧情提醒(点「稍后再看」跳过)/模拟宇宙残留画面等全部中途状态。
+    版本剧情提醒(点「稍后再看」跳过)/模拟宇宙残留画面/客户端重启恢复的战斗
+    退出链(暂停面板→确认弹窗→结算页主动退出)等全部中途状态。
     起点:任意登录相关画面或已在游戏;终点:大世界。
     """
 
@@ -88,6 +94,13 @@ class EnterGame(SrOperation):
         if in_game_result.is_success:  # 右上角有角色图标
             self._unknown_rounds = 0
             return self.round_success(status='大世界', wait=1)
+
+        # 战斗退出链恢复态(确认弹窗/暂停面板/结算页)的正面识别分支:客户端重启
+        # 恢复中断战斗会直接落在这三类画面,不接住会落未知兜底——兜底的右上角点击
+        # 位与暂停面板关闭X同位,会陷入「点X关面板→回战斗→再点→再弹面板」循环。
+        battle_exit_result = self.check_battle_exit_chain(screen)
+        if battle_exit_result is not None:
+            return battle_exit_result
 
         # 未知画面兜底:连续多轮全不命中才点右上角返回,处理新角色跃迁画面(每个
         # 版本更新后弹出的整屏版本宣传页:右上角关闭钮无文字、全图无稳定文本锚,
@@ -301,6 +314,97 @@ class EnterGame(SrOperation):
         log.info('[进入游戏] 命中版本剧情提醒弹窗,点击「%s」跳过', STORY_REMINDER_SKIP_WORD)
         self.ctx.controller.click(skip_mrl.max.center)
         return self.round_retry('版本剧情提醒', wait=1)
+
+    def check_battle_exit_chain(self, screen: MatLike) -> OperationRoundResult | None:
+        """
+        识别战斗退出链恢复态(确认弹窗 → 暂停面板 → 战斗结算页)并做对应退出操作。
+
+        分支序固定弹窗先于面板:弹窗态下面板的识别锚是否仍可见随玩法形态而异,
+        取防御侧排序,避免面板分支对被弹窗遮住的退出位重复点击。
+        命中任意分支即返回其结果;全不中返回 None,交由调用方走未知兜底。
+
+        :param screen: 当前画面截图
+        """
+        result = self.check_battle_exit_confirm(screen)
+        if result is not None:
+            return result
+
+        result = self.check_battle_pause_panel(screen)
+        if result is not None:
+            return result
+
+        return self.check_battle_settle_page()
+
+    def check_battle_exit_confirm(self, screen: MatLike) -> OperationRoundResult | None:
+        """
+        识别战斗退出确认弹窗(「提示」标题 + 「确认」按钮)并点「确认」。
+
+        双锚同时命中才动作:「提示」单词区分度差(出现「提示」文字的场景多),
+        与「确认」按钮同现才算本弹窗。取 area 中心点击不用 OCR 词点击——按钮
+        位置固定;pc_alt 按最坏光标态点(恢复态可能锁光标,自由光标下 Alt+点击无害)。
+        点击可能不落地,round_retry 逐帧重识别,计入节点 retry 上限有界失败;
+        不用 round_wait(不消耗 retry,弹窗没点掉会永动)。
+
+        :param screen: 当前画面截图
+        """
+        tip_result = self.round_by_find_area(screen, '战斗-退出确认弹窗', '标识-提示')
+        confirm_result = self.round_by_find_area(screen, '战斗-退出确认弹窗', '按钮-确认')
+        if not tip_result.is_success or not confirm_result.is_success:
+            return None
+
+        confirm_area = self.ctx.screen_loader.get_area('战斗-退出确认弹窗', '按钮-确认')
+        if confirm_area is None:  # 档异常防御:识别命中但取不到 area,不动作交兜底
+            return None
+        log.info('[进入游戏] 命中战斗退出确认弹窗,点击确认继续退出链')
+        self.ctx.controller.click(confirm_area.center, pc_alt=True)
+        return self.round_retry('战斗退出确认弹窗', wait=2)
+
+    def check_battle_pause_panel(self, screen: MatLike) -> OperationRoundResult | None:
+        """
+        识别战斗暂停面板并点「退出位」按钮。
+
+        退出位按位置不按文案:末日幻影/虚构叙事/货币战争的退出位按钮同位异文案
+        (结束战斗并结算/返回虚构叙事/撤退),未建档玩法的形态差异大概率在文案维度,
+        位置由同族 UI 布局保证。出口语义同确认弹窗分支(round_retry 逐帧重识别)。
+
+        :param screen: 当前画面截图
+        """
+        pause_result = self.round_by_find_area(screen, '战斗-暂停面板', '标识-战斗暂停')
+        if not pause_result.is_success:
+            return None
+
+        exit_area = self.ctx.screen_loader.get_area('战斗-暂停面板', '按钮-结束战斗并结算')
+        if exit_area is None:
+            return None
+        log.info('[进入游戏] 命中战斗暂停面板,点击退出位继续退出链')
+        self.ctx.controller.click(exit_area.center, pc_alt=True)
+        return self.round_retry('战斗暂停面板', wait=2)
+
+    def check_battle_settle_page(self) -> OperationRoundResult | None:
+        """
+        识别战斗结算页(判定词见 ``BATTLE_SETTLE_PAGE_WORD``)并点「退出」词。
+
+        结算页是退出链必经中间站:右上角无按钮、无「确认」词,不处理会落未知兜底
+        做无效点击循环。判定词与点击词同帧 OCR(复用 check_screen_to_interact 已跑
+        的全屏结果,同一帧无需重跑);「退出」词未命中(结算页形态差异)则不动作,
+        交由未知兜底有界失败。
+        """
+        if self._last_ocr_map is None:
+            return None
+
+        match_map = ocr_utils.match_all_words(self._last_ocr_map,
+                                              [BATTLE_SETTLE_PAGE_WORD, '退出'])
+        settle_mrl = match_map.get(BATTLE_SETTLE_PAGE_WORD)
+        if settle_mrl is None or settle_mrl.max is None:
+            return None
+
+        exit_mrl = match_map.get('退出')
+        if exit_mrl is None or exit_mrl.max is None:
+            log.info('[进入游戏] 命中战斗结算页但未找到退出按钮,交由兜底处理')
+            return None
+        log.info('[进入游戏] 命中战斗结算页,点击退出继续退出链')
+        self.ctx.controller.click(exit_mrl.max.center, pc_alt=True)
+        return self.round_retry('战斗退出结算页', wait=3)
 
     @node_from(from_name='画面识别', status='大世界')
     @operation_node(name='等待画面加载')
