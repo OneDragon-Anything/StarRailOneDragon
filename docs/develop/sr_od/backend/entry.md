@@ -20,6 +20,12 @@ uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001
 uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001 --mode dev
 ```
 
+运维要点（任何启动途径通用）：
+
+- **detached 启动**（如 PowerShell `Start-Process`）优于挂在会话子树下前台跑——前台进程随会话结束连坐；detached 后 server 常驻。detached 不重定向 stdout，判死活看进程列表 + `.log/mcp_server.log`（框架日志，当次现场）；`.debug/sr_od_mcp/main_server.log` 是追加模式的 stdout 兜底，尾部内容可能来自历史启动，勿作当次现场判读。
+- **重启前确认旧进程已停**（端口 24001 被占直接起会绑不上）：`Stop-Process` 按 PID，或经 daemon 的 stop 工具（daemon 有对局守卫；无 daemon 的环境自行确认无运行中 run 再停）。
+- `PYTHONPATH=<项目>/src` 注入要求见本节开头说明；这是 src-layout 的解析要求，与启动途径无关。
+
 启动流程：
 
 1. 创建 `SrContext()`。
@@ -82,28 +88,6 @@ GUI 的「开发工具 -> MCP 服务」页面提供本机 server 管理：
 
 - `mcp`：FastMCP / streamable-http。
 - `uvicorn`：ASGI server。
-
-## DSH web 本机启动
-
-DSH web 跑在游戏本机（GUI 即 `http://127.0.0.1:<port>` 的那个服务）时，其会话进程天然在 **Session 1 交互式桌面 + 管理员权限**——输入注入所需的两个条件直接满足，不依赖 daemon（daemon 是远程 SSH 落 Session 0 场景的桥，见 [remote-ssh.md](remote-ssh.md)）。在 DSH 会话（如 agent 的 shell 工具）里即可启动 / 重启 server：
-
-```powershell
-# PYTHONPATH 必须显式注入(src-layout + [tool.uv] package=false,-m 解析 sr_od 包
-# 必须 src 在 sys.path;daemon / GUI spawn 时同样显式注入,.env 不放它——DSH 启动
-# 环境校验会拒绝)。漏了它 -m 直接 ModuleNotFoundError 秒退。
-$env:PYTHONPATH = "D:\code\workspace\StarRailOneDragon\src"
-Start-Process -WindowStyle Hidden -FilePath "uv" -ArgumentList `
-  "run","--env-file",".env","python","-m","sr_od.backend.entry.server",`
-  "--port","24001","--mode","dev" `
-  -WorkingDirectory "D:\code\workspace\StarRailOneDragon"
-```
-
-注意：
-
-- **用 `Start-Process`（detached）而不是前台跑**：前台进程挂在 DSH 会话子树下，会话结束可能连坐；detached 后 server 常驻、与 DSH 生命周期无关。Start-Process 不重定向 stdout——启动失败无回显，判死活看进程列表 + `.log/mcp_server.log`（框架日志，当次现场）；**别看 `.debug/sr_od_mcp/main_server.log` 尾部**——它是追加模式的 stdout 兜底，尾部内容可能来自数日前的历史启动失败。
-- 先确认旧进程已停（端口 24001 监听中直接起会绑不上端口）：本机停旧进程可经 daemon 的 `stop_sr_od_mcp_server`，或 `Stop-Process` 按 PID。
-- DSH 直启**没有** daemon restart 的对局守卫（运行中拒绝重启）——自己确认没有运行中的对局再停旧进程。
-- daemon 与本方式并存不冲突：daemon 保留的价值 = 开机自启（server 随登录拉起，不依赖 DSH 开着）、远程 SSH 兜底、防呆守卫（端口验证 / orphan 清理 / 对局守卫）。
 
 ## 远程 SSH
 
