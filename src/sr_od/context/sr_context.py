@@ -63,6 +63,9 @@ from sr_od.screen_state.yolo_screen_detector import YoloScreenDetector
 from sr_od.sr_map.sr_map_data import SrMapData
 
 if TYPE_CHECKING:
+    from sr_od.application.cultivation.light_cone.light_cone_tpl_store import (
+        LightConeTplStore,
+    )
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         CurrencyWarMatch,
     )
@@ -268,6 +271,21 @@ class SrContext(OneDragonContext):
             if third.is_dir():
                 dirs.append((third, PluginSource.THIRD_PARTY))
         return dirs
+
+    @cached_property
+    def light_cone_tpl_store(self) -> 'LightConeTplStore':
+        """光锥域识别模板 store(卡面库单一入口 + 六个只读派生视图)。
+
+        静态资产派生懒构建:视图全部由盘上模板资产 + mys 常量表确定性派生,
+        与实例配置无关,不进 ``reload_instance_config()`` 重置(那是
+        ``cw_match`` 类每局运行态的事);生命周期随 ctx,ctx 亡则亡。
+        store 模块惰性 import 于体内,避免顶部依赖环(store 不 import SrContext);
+        返回注解用字符串(同 ``cw_match`` 先例,免运行时 import)。
+        """
+        from sr_od.application.cultivation.light_cone.light_cone_tpl_store import (
+            LightConeTplStore,
+        )
+        return LightConeTplStore(self.template_loader)
 
     def init_by_config(self) -> None:
         """
