@@ -132,7 +132,16 @@ uv run ruff check --fix src/你修改的文件.py
 - 更新 screen_info 用 MCP 工具（`upsert_screen_area` / `delete_screen_area` 等）：改对应 yml 并顺便更新合并缓存（`_od_merged.yml`）；别手改 yml（原因见「画面识别」）。
 - server 同一时间只跑一个运行（单跑道），运行中再发起会被拒绝，重启同样被拒——先查运行状态，必要时 `stop_run` 停掉再重启。
 
-## 7.开发硬约束
+## 7.Skills
+
+- 创建、修改 skill 时,需严格按照 `od-dev-writing-skills` 进行。
+- skill 分两类:
+  - **游戏玩家 skill**: 教 agent 完成游戏内容;名字无 `dev` 中缀,目标环境只有 skill 挂载 + 项目 MCP server,**不保证克隆了仓库**,只能提及项目 MCP 工具与其他玩家 skill。
+  - **开发者 skill**: 教 agent 开发本项目;名字带 `dev` 中缀,可提及源码路径 / 项目文档 / 开发者 skill。
+- SR 项目专属 skill: `skills/<name>/`
+- 挂载: junction skill 目录 → 所用 agent 读 skill 的目录(例如 `.agents/skills/`)。
+
+## 8.开发硬约束
 
 - ONNX session 的异步调用必须通过 `one_dragon.utils.gpu_executor.submit`，不要并发直调多个 session。
 - 所有函数签名、类成员变量都要有类型注解；使用 `list[str]`、`X | Y`。
@@ -148,7 +157,7 @@ uv run ruff check --fix src/你修改的文件.py
 - 模型文件（`.onnx` 等）走运行时资源下载，`.gitignore` 已忽略 `models/`，勿 `git add` 模型文件。
 - OCR 结果优先使用 `one_dragon.utils.str_utils` 和目标文本做相似匹配,避免 OCR 精度问题;识别结构已知的文本,应用规则修复识别结果,例如 x/y 场景的 `/` 会被误识别成 `1`。
 
-## 8.注释规范
+## 9.注释规范
 
 代码注释、docstring、生成文件内嵌说明同判。
 
@@ -160,7 +169,7 @@ uv run ruff check --fix src/你修改的文件.py
 - **调试过程叙事禁入**：问题何时发现、当时的错误表现、排查经过、「踩坑—修复」叙述——整体不入注释（归 commit message 与进度账本）。与「变更史」的区别：变更史说「代码从 A 改成 B」，调试叙事说「某次运行发现 X、现象是 Y」——两者同判，后者常以「出处」的形式绕过上一条，此处明令。判据：把这段删掉，剩下的约束/事实依然完整成立 → 该删。实证出处写成「实测行为 + 语义描述」（如「列表展开态下点击其他行槽位不切换选中行」），禁「日期 + 实机」式标记，禁具体角色名 / 关卡名案例叙事；可复核的标定挂持久指针（fixture / 测试文件路径）。
 - **索引/槽位字段必须带定义注释**：凡 dataclass 或函数参数中带索引、槽位、序号语义的整型字段（`idx`/`slot`/`index` 等），注释必须声明**坐标系**（哪个容器的下标 / 画面物理槽位及基）与**取值时机**（生成期快照 / 执行期现读 / 恒稳）；期望校验类防线字段（`expect`/锚定）另须注明**写入端**。新增此类字段而无定义注释 = 改完再补，不进 commit；与其它模块存在同名动作类时，须在类头声明双方坐标系差异。
 
-## 9.文档规范
+## 10.文档规范
 
 - 写文档用直白表述，禁自造黑话或项目内部缩写（行业通用术语可用），首次出现的项目术语给定义 + 例子。注释规范见上节，同判据。
 - **章节标题带序号**（`## 1.` / `### 1.1`），方便引用与区分（如「见 3.2」）；单一大节的短文档可免。
@@ -183,11 +192,11 @@ uv run ruff check --fix src/你修改的文件.py
 
   **铁律**：`changes/` 会不定期、无理由删减——**`changes/` 之外的一切长期存活物（代码含注释、正本文档、docs 其余文档、测试等）禁引其内容与路径（长期引用），正本必须自足**；迭代内工件（任务书指针/账本 criteria/验收对照）引用总纲与详设**合法**，寿命 = 迭代。迭代设计的结构、写作硬规则与模板见 [iteration-design.md](docs/develop/harness/iteration-design.md)。
 
-## 10.测试规范
+## 11.测试规范
 
 写/改任何测试前先读 [sr-od-test/README.md](sr-od-test/README.md)「测试纪律」（单一源；本节只保留最高频违错）。
 
-### 10.1.第一原则：测试只覆盖核心内容，极致运行效率
+### 11.1.第一原则：测试只覆盖核心内容，极致运行效率
 
 自动化没法靠人肉回归，测试就是质量底线——但**只测核心**。每条测试锁的都是「这段代码应该怎么表现」，来源只有两个：
 
@@ -201,31 +210,31 @@ uv run ruff check --fix src/你修改的文件.py
 3. **默认不用并行测试**，串行为准。
 4. **慢速集**：单条实测 ≥2s 的用例，登记进 `sr-od-test/slow_marks.txt`。
 
-### 10.2.测试文件组织
+### 11.2.测试文件组织
 
 - **文件镜像**：一个 src 的 py 文件对应一个测试文件，测试路径与 src 同源（`src/foo/bar.py` → `sr-od-test/test/foo/test_bar.py`）；单文件 >800 行或 >40 条测试按被测方法拆目录（`sr-od-test/test/foo/bar/test_<方法名>.py`）；批次号 / review 号禁入文件名（细则 = sr-od-test/README.md「测试文件组织（src 镜像规范）」节）。
 
-### 10.3.测试基础设施
+### 11.3.测试基础设施
 
 1. **conftest.py**——pytest 自动加载的公共设施：提供全测试共享的 `test_context`、OCR 结果缓存、日志隔离，以及防污染守卫（共享对象裸赋值自动警告并还原）。
    - `test_context` 是这次测试运行里**所有测试共用的同一个对象**：A 测试改了它的属性，B 测试拿到的就是改过的值——「单跑能过、全量必挂」的假随机失败就来自这。改它的属性必须用 `monkeypatch.setattr`（测试结束自动还原），别裸赋值。
    - 被测生产代码内部还会改模块级全局（注册的 handler、闩锁、计数器、缓存），这些不会自动还原——setup 时要把调用链上会碰到的全局一并桩掉，只桩你直接传的参数不够。
-2. **fixture_controller.py**——op / app 流程测试 harness：假游戏控制器、看门狗、运行态前置复位、`fast_sleep`（用法见 10.4）。
+2. **fixture_controller.py**——op / app 流程测试 harness：假游戏控制器、看门狗、运行态前置复位、`fast_sleep`（用法见 11.4）。
 
-### 10.4.Operation / Application 测试规范
+### 11.4.Operation / Application 测试规范
 
 1. **流程测试不连真游戏**：用 harness（`sr-od-test/test/harness/fixture_controller.py`）代替——按你写的剧本演：每步给哪张截图当画面、点击落在哪个区域就推进到下一步；op 在上面跑完整流程，所有点击/输入都有记录供断言，轮次太多会自动停（防卡死）。
 2. 框架的运行依赖 context 状态，测试必须先把状态设对，进入「运行中」状态用 `enter_running_state`，测试收尾复位用 `reset_running_state`；别直接改 `_run_state` 字段。
 3. **跳过框架等待**：跑 op 包一层 `with fast_sleep(): op.execute()`——框架的点击前/轮次间等待是给真机等画面用的，测试里画面是 mock 的、无需等待；不包的话这些等待照真实睡，一条测试大半时间耗在干等上。
 
-### 10.5.高频违错硬约束
+### 11.5.高频违错硬约束
 
 1. **测试零真实副作用**：不碰真实环境——项目目录内不写任何文件（落盘只进 pytest 的 `tmp_path`）、不发真实网络请求；断言依据一律来自测试自造的输入或提交进仓的 fixture，不读本机易失产物。
 2. **测试红了，先判断再改**：断言的是结果的「应该的样子」（结构、状态文案这类），不断言会随正常调整变动的统计数值。测试红 = 实际行为和预期不一致，先判断是代码错了还是测试过时了：代码错就修代码；确认代码是对的，才更新测试期望。禁止不加判断直接改期望值让测试变绿（细则 = sr-od-test/README.md「写测试」节）。
 3. **同步更新与提交前验证**：修改代码后同步更新 `sr-od-test/` 测试；提交前① 改常量 / 签名 / 数据字段先 grep 消费点与测试断言值；② `ruff check` + 直接受影响测试；③ 相关测试全量一次通过才提交；④ 提交后 `git show --stat` 复核入库面 = 申报面（细则 = sr-od-test/README.md「提交」节）。
 4. **源码扫描测试一律禁止**：不在测试里读取/扫描源码做断言——退役符号墓碑、依赖方向守卫、包布局守卫等同样禁止，无例外。
 
-## 11.提交流程与协作边界
+## 12.提交流程与协作边界
 
 - **自主 commit 是默认动作**：按阶段提交——每完成一个阶段（一个功能点 / 一处修复 / 一批文档），就 commit 一次，别把多个阶段攒成一大包（意外丢工作区 = 全丢）。
 - `git add` 一律逐文件点名，禁 `add -A` 和目录级 add——粗粒度 add 会静默卷入并行批的在飞改动。
@@ -234,13 +243,6 @@ uv run ruff check --fix src/你修改的文件.py
 - Review 关注逻辑错误、运行时崩溃、死循环、资源泄漏；不要为风格问题大改现有代码。
 - 提交 PR 后，review comment 需要逐条回复或修正。
 
-## 12.自维护指南
+## 13.自维护指南
 
 修改 **AI 入口文件**(`AGENTS.md` / 个人本地 `.local`),按 `od-dev-writing-agent-instructions` skill 处理。
-
-## 13.Skills
-
-开发者 skill(`od-dev-*`)全在公共仓 **OneDragon-Skills**(索引见该仓 `skills/README.md`);写 / 改 skill 按该仓 `AGENTS.md` + `od-dev-writing-skills`。
-
-- **挂载**:junction 公共仓 `skills/<name>` → 所用工具读 skill 的目录(本地建、不入库;ZCode / DSH: `.agents/skills/`、Claude Code: `.claude/skills/`)。
-- **SR 专属 skill**(星铁独有、跨项目不成立的)才进本仓 `skills/<name>/`(提交),同样 junction 挂载;名字带类型中缀:`sr-od-dev-*` = 开发者 skill,`sr-od-*`(无 dev)= 游戏玩家 skill,两类引用白名单见 `od-dev-writing-skills` §4.3。

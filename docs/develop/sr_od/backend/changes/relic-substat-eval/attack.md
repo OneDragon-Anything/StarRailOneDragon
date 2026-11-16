@@ -1,7 +1,7 @@
 # relic-substat-eval 设计对抗审查报告
 
 - 攻击对象：本目录 design.md / landing.md / README.md（迭代设计状态：草案）
-- 规范依据：`docs/develop/harness/iteration-design.md` §5 写作硬规则、§7 三核；项目 `AGENTS.md` §7/§8/§9/§10；`docs/develop/sr_od/backend/mcp-implementation.md`、`docs/develop/sr_od/backend/mys.md`、`docs/develop/sr_od/backend/mcp.md`（正本）；`skills/sr-od-game-coach/references/investment.md`（口径决定）
+- 规范依据：`docs/develop/harness/iteration-design.md` §5 写作硬规则、§7 三核；项目 `AGENTS.md` §8/§9/§10/§11；`docs/develop/sr_od/backend/mcp-implementation.md`、`docs/develop/sr_od/backend/mys.md`、`docs/develop/sr_od/backend/mcp.md`（正本）；`skills/sr-od-game-coach/references/investment.md`（口径决定）
 - 结论摘要：**攻击点 24 个——高危 4（定稿阻塞）、中 14（修订项）、低 6（建议）**。高危集中于：roster_data 类型标注与真实数据形态矛盾、正本清单残留「实现时确认」未定稿措辞、「星启候选队 12 人」无入库出处、工具描述逐字文本缺 Returns 段且信封状态语义未定义。另有核三正面结论（归层成立/修根成立）与规范遵循正面结论见文末。
 
 ---
@@ -139,8 +139,8 @@
 
 ### C3 「核对记录随提交留档于测试 fixture 注释」与注释规范有张力
 - **位置**：landing.md 3.1 完成判据第 2 条
-- **发现**：「核对记录」是验证过程性质内容；AGENTS.md §8 注释规范禁调试/验证过程叙事入注释（核对动作该做的结果是「fixture 数据 + 数据来源指针」）。若把「何时拉的名册、核对过程」写进 fixture 注释即违规。
-- **依据**：AGENTS.md §8（变更史/调试过程叙事禁入注释；可复核标定挂持久指针）。
+- **发现**：「核对记录」是验证过程性质内容；AGENTS.md §9 注释规范禁调试/验证过程叙事入注释（核对动作该做的结果是「fixture 数据 + 数据来源指针」）。若把「何时拉的名册、核对过程」写进 fixture 注释即违规。
+- **依据**：AGENTS.md §9（变更史/调试过程叙事禁入注释；可复核标定挂持久指针）。
 - **修订方向**：措辞改为「词条名全集以 fixture 数据入库 + 注释标注数据来源（mys_get_roster_detail 拉取的字段形态）」，核对过程本身不入注释。
 
 ### C4 迭代目标指针指向 gitignore 的本地待办
@@ -156,8 +156,8 @@
 
 ### C6 「断言计数与输出结构对照 design §2.2 表逐字段」措辞与测试规范有张力
 - **位置**：landing.md 3.2 完成判据第 2 条
-- **发现**：测试规范 §10.1 禁「构造完对象逐字段断言」式琐碎测试；「逐字段」若按字面执行会诱导凑断言数。按场景覆盖理解是合理的（3.2 场景清单确实覆盖各字段语义分支），但措辞应消歧。
-- **依据**：AGENTS.md §10.1（写不出锁的期望表现的一律不写）。
+- **发现**：测试规范 §11.1 禁「构造完对象逐字段断言」式琐碎测试；「逐字段」若按字面执行会诱导凑断言数。按场景覆盖理解是合理的（3.2 场景清单确实覆盖各字段语义分支），但措辞应消歧。
+- **依据**：AGENTS.md §11.1（写不出锁的期望表现的一律不写）。
 - **修订方向**：改为「每条 fixture 场景锁定其设计约定的字段表现（对照 §2.2/§2.3），不做无场景语义的逐字段遍历断言」。
 
 ---
