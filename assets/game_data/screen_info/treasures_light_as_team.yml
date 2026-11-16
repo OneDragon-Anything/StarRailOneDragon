@@ -285,7 +285,7 @@ area_list:
   goto_list:
   - 末日幻影-终焉公理
 - area_name: 04-星启模式标签
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 695
   - 85

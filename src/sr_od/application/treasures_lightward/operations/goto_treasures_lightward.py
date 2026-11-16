@@ -72,7 +72,8 @@ class GotoTreasuresLightward(SrOperation):
 
     - FORGOTTEN_HALL:终点=忘却之庭选关界面·混沌回忆视图·无弹窗(紊流更新弹窗自动关闭)。
     - PURE_FICTION:终点=虚构叙事选关画面(PF_TITLE;新期「开启故事」自动点击,分支待实测)。
-    - APOCALYPTIC_SHADOW / ANOMALY_ARBITRATION:目标画面未建档(登记成待办),点击入口按钮后显式失败。
+    - APOCALYPTIC_SHADOW:终点=末日幻影选关画面(新期先落开场介绍页,自动点前往挑战)。
+    - ANOMALY_ARBITRATION:目标画面未建档(登记成待办),点击入口按钮后显式失败。
     """
 
     def __init__(self, ctx: SrContext, mode: TLMode | str):
@@ -339,10 +340,12 @@ class GotoTreasuresLightward(SrOperation):
     def as_settle(self) -> OperationRoundResult:
         """到达验证:开场介绍页(点前往挑战)→ 选关(标题+难度条双锚)。
 
-        开场页判定双锚(标题+已更新):开场页与选关标题同文同位,同 pf_settle。"""
+        开场页判定双锚(已更新+前往挑战):开场页整屏无「末日幻影」标题文本
+        (纯美术字,OCR 不可读),标题锚失效;已更新只在开场页出现,选关页
+        有前往挑战但无已更新,双锚可区分两屏。"""
         screen = self.last_screenshot
-        if (self.round_by_find_area(screen, '末日幻影-开场', '标题-末日幻影行').is_success
-                and self.round_by_find_area(screen, '末日幻影-开场', '标签-已更新').is_success):
+        if (self.round_by_find_area(screen, '末日幻影-开场', '标签-已更新').is_success
+                and self.round_by_find_area(screen, '末日幻影-开场', '按钮-前往挑战').is_success):
             self.round_by_find_and_click_area(screen, '末日幻影-开场', '按钮-前往挑战')
             return self.round_retry('末日幻影-开场页点前往挑战', wait=2.5)
         if (self.round_by_find_area(screen, '末日幻影-选关', '标题-末日幻影行').is_success
