@@ -8,7 +8,7 @@
 接口依据:本 skill references/characters.md「国际版 HoYoWiki」;条目不含 avatarId,zh/en 条数不等(88/93),
 交集才是可连表的。国际版域名可能需代理:urllib 自动读 HTTP_PROXY/HTTPS_PROXY 环境变量
 (本机 Clash http://127.0.0.1:7890,不通就直连)。仅标准库,项目根目录运行:
-    uv run python skills/sr-od-dev-official-api/scripts/fetch_hoyowiki_en_names.py
+    uv run python skills/sr-od-dev-character-data/scripts/fetch_hoyowiki_en_names.py
 """
 import json
 import re

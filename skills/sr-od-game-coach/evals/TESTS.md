@@ -30,4 +30,4 @@
 
 - 判断者只能看到目录摘要，禁止给它会话历史或本文件以外的场景知识。
 - 「新版本适配」问法依赖 coach description 中「版本适配统筹 → adaptation」的指路句成立；改这句时须同步重测。
-- 待补：官方 wiki 接口直查指路（sr-od-dev-official-api，v16 修订新增）的双触发场景（「这期卡池 UP 是谁、概率多少」应同时命中 coach 投入决策与 official-api 取数）尚未实测。
+- 待补：官方 wiki 接口直查指路（sr-od-official-api，v16 修订新增）的双触发场景（「这期卡池 UP 是谁、概率多少」应同时命中 coach 投入决策与 official-api 取数）尚未实测。

@@ -1,11 +1,11 @@
 ---
 name: sr-od-dev-cone-data
-description: 维护崩坏:星穹铁道「光锥数据」全流程的单一入口——拉取全量光锥列表(米游社+国际服双源)、维护权威表与项目内光锥 id、生成常量模块并审阅。游戏版本更新要新光锥信息、回填/核对光锥 id、查光锥词条数据来源时都用,即使没明说。遗器套装数据归 sr-od-dev-relic-data;wiki 接口细节归 sr-od-dev-official-api。英文:maintain light cone data pipeline, version update light cone data, cone id definition。
+description: 维护崩坏:星穹铁道「光锥数据」全流程的单一入口——拉取全量光锥列表(米游社+国际服双源)、维护权威表与项目内光锥 id、生成常量模块并审阅。游戏版本更新要新光锥信息、回填/核对光锥 id、查光锥词条数据来源时都用,即使没明说。遗器套装数据归 sr-od-dev-relic-data;wiki 接口细节归 sr-od-official-api。英文:maintain light cone data pipeline, version update light cone data, cone id definition。
 ---
 
 # 光锥数据维护
 
-> 分工：wiki 接口调用细节（域名/参数/字段位置）→ `sr-od-dev-official-api`；遗器套装数据 → `sr-od-dev-relic-data`。本文只管流程编排与项目侧 id 定义；光锥图标的获取与归档见 §3。
+> 分工：wiki 接口调用细节（域名/参数/字段位置）→ `sr-od-official-api`；遗器套装数据 → `sr-od-dev-relic-data`。本文只管流程编排与项目侧 id 定义；光锥图标的获取与归档见 §3。
 
 ## 总流程（必做 checklist）
 

@@ -1,21 +1,21 @@
 ---
 name: sr-od-dev-character-data
-description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口——拉取全量角色列表(含星魂/行迹)、按列表更新项目代码文件、头像模板获取。游戏版本更新时用于获取新角色信息。数据接口细节归 sr-od-dev-official-api。英文:maintain character data pipeline, version update character data entry。
+description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口——拉取全量角色列表(含星魂/行迹)、按列表更新项目代码文件、头像模板获取。游戏版本更新时用于获取新角色信息。数据接口细节归 sr-od-official-api。英文:maintain character data pipeline, version update character data entry。
 ---
 
 # 角色数据维护
 
-> 分工:wiki 接口的调用细节(URL/字段位置/坑)→ `sr-od-dev-official-api`;本文只管流程编排与项目侧定义;头像素材的获取途径见 §3。
+> 分工:wiki 接口的调用细节(URL/字段位置/坑)→ `sr-od-official-api`;本文只管流程编排与项目侧定义;头像素材的获取途径见 §3。
 
 ## 1. 拉取全量角色列表(存临时目录)
 
 | 拉取内容 | 脚本 | 临时产物 |
 |---|---|---|
-| 角色列表 + 基础字段(中文名/avatarId/命途/属性/星级/秘技) | official-api 的 `fetch_sr_wiki_characters.py` | `.debug/game_data/character/wiki/wiki_channel18.json` + `details/<content_id>.json` |
-| 官方英文名 | official-api 的 `fetch_hoyowiki_en_names.py` | `.debug/game_data/character/wiki/hoyowiki_en_names.json` |
+| 角色列表 + 基础字段(中文名/avatarId/命途/属性/星级/秘技) | 本 skill `scripts/fetch_sr_wiki_characters.py` | `.debug/game_data/character/wiki/wiki_channel18.json` + `details/<content_id>.json` |
+| 官方英文名 | 本 skill `scripts/fetch_hoyowiki_en_names.py` | `.debug/game_data/character/wiki/hoyowiki_en_names.json` |
 | 行迹满级 + 星魂全 6 详情 | 本 skill `scripts/fetch_character_details.py` | `.debug/game_data/character/wiki/char_details.json` |
 
-- 接口细节(域名/参数/字段位置/已知坑)见 sr-od-dev-official-api `references/characters.md`,本文不重复。
+- 接口细节(域名/参数/字段位置/已知坑)见 sr-od-official-api `references/米游社/wiki-角色.md`,本文不重复。
 - 运行方式:项目根目录 `uv run python <脚本路径>`(official-api 两个脚本仅标准库;本 skill 脚本需 `PYTHONPATH=src`)。
 - **收录判据**:关键字段齐全才收录;空壳词条(有页面无 avatarId)、占位(avatarId=0)、前瞻未实装(详情行迹**模块名**带「前瞻」,正文提及不算)一律不录。
 - **wiki 映射内嵌于脚本**(2026-11-12 起废除中间权威表 JSON):数字 ID ↔ 中文名/英文名/命途/属性/星级的映射在 `scripts/_wiki_map.py`(WIKI_CHARACTERS dict),是各脚本与人工对账的锚;新角色手工加条目,跑 `align_character_ids.py` 对账验证;不刷不影响按列表录入。

@@ -16,7 +16,7 @@
 
 ## 1. 前置与语义
 
-- 底图/锚点来自官方接口 `api-static.mihoyo.com/common/srmap/sr_map/v1`(`map/info`、`map/point/list`,带 `app_sn=sr_map`),无需登录态;接口细节与坐标系见 sr-od-dev-official-api 的 references/map.md;脚本已内置缓存与 APP_VERSION。
+- 底图/锚点来自官方接口 `api-static.mihoyo.com/common/srmap/sr_map/v1`(`map/info`、`map/point/list`,带 `app_sn=sr_map`),无需登录态;接口细节与坐标系见 sr-od-official-api 的 references/米游社/大地图.md;脚本已内置缓存与 APP_VERSION。
 - 坐标三层:**点坐标**(point/list 原始值)→ **切片像素**(点坐标 + info.origin)→ **游戏帧/画布**(定标变换后,1:1 对应实机最小缩放截图)。calib.json 的 `sp` 行 lm_pos 一律是**画布坐标**;verify_gen 输出的锚点真值是**截图坐标**(画布 − off),两套勿混用。
 - 官方点坐标是米游社编辑者手标,逐点误差可达 ±25px;运行时点击靠 ±100px 窗口内图标模板匹配兜底,故可用,但**锚点巡访时应做精修**(掩码模板对齐实机渲染位)。
 

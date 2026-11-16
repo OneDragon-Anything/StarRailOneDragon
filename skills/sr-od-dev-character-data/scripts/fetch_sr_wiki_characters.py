@@ -8,7 +8,7 @@
 接口与字段依据:本 skill references/characters.md「国内米游社」。
 已知坑(详见该文档):lang 参数恒中文;空壳词条(无 avatarId);avatarId=="0" 占位;
 行迹模块名带「前瞻」= 未实装。仅标准库,项目根目录运行:
-    uv run python skills/sr-od-dev-official-api/scripts/fetch_sr_wiki_characters.py
+    uv run python skills/sr-od-dev-character-data/scripts/fetch_sr_wiki_characters.py
 """
 import json
 import sys

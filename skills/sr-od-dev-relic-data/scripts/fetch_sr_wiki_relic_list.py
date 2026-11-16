@@ -5,7 +5,7 @@
     [ {content_id, name} ]  按列表序（= 频道展示序,非实装序）
 
 接口:act-api-takumi-static.mihoyo.com content/list(官方自营 REST,
-同 sr-od-dev-official-api 管道)。仅标准库 + requests,项目根目录运行:
+同 sr-od-official-api 管道)。仅标准库 + requests,项目根目录运行:
     uv run python skills/sr-od-dev-relic-data/scripts/fetch_sr_wiki_relic_list.py
 """
 import json

@@ -157,8 +157,7 @@ MCP 通用配置接口已接入,按材料反查到的关卡分类分流:
 | 培养目标 | 40 | 6 次 |
 | 差分宇宙/模拟宇宙 | 0(不耗开拓力) | 不占日预算 |
 
-- 单价出处:项目指南数据 `assets/game_data/interastral_peace_guide_data.yml`
-  (`guide_data.py` 加载,与游戏内指南「生存索引」的挑战消耗对齐)。
+- 单价口径:与游戏内指南「生存索引」的挑战消耗一致(以指南画面实读为准)。
 - **当天要跑完的排产,总消耗 ≤ 240**:每个计划项按 `plan_times × 单价` 算,
   多个计划项并存时加总——超了当天开拓力不够,排在后面的计划项轮空。
 - 缺口大要跨天补时,单个计划项的 `plan_times` 可以大于日预算——一条龙每天
@@ -176,17 +175,5 @@ MCP 通用配置接口已接入,按材料反查到的关卡分类分流:
   ——单次调用返回晋阶分段材料表 + 满晋阶总量 + 材料→刷取副本反查(分类级
   `dungeon_by_material` + 实例级 `missions_by_material`:具体虚影/花萼区域,
   与指南关卡同名对齐,可直接规划开拓力刷本)+ 副本外途径,
-  「角色→突破材料→所属副本」一次拿全。
-- **角色晋阶需要什么**:项目常量 `src/sr_od/config/character_ascension_const.py`
-  的 `get_character_ascension('角色名')`——分段材料表(`stages[].name/materials`)
-  与满晋阶总量(`total`);解析入口 `find_character_ascension` 额外兼容角色定义
-  中文名(开拓者性别后缀归一化匹配)。
-- **材料去哪刷**:常量 `src/sr_od/config/dungeon_drop_const.py` 的
-  `find_dungeon_by_material('材料名')`(分类级)/ `find_missions_by_material('材料名')`
-  (实例级,各养成线通用);副本之外的获取途径(合成/置换/商店/任务)在同文件
-  `MATERIAL_EXTRA_SOURCES` 表,副本表查不到时查它。晋阶中高级材料(如永寿天华/
-  永寿荣枝)副本线仅差分宇宙,花萼只掉低级档,中高级靠合成机升阶——常规刷取
-  只耗开拓力,不耗快速刷取券。
-- 数据固化与禁改纪律见 basics「养成游戏数据的固化口径」节(晋阶表由
-  `skills/sr-od-dev-character-data/scripts/generate_ascension_const.py` 从官方
-  wiki 生成,版本更新重跑刷新,禁手改;表外角色/材料以游戏内界面实读为准)。
+  「角色→突破材料→所属副本」一次拿全。光锥线同口径走 `cone_lookup(光锥名, with_ascension=true)`。
+  表外角色/材料以游戏内界面实读为准。

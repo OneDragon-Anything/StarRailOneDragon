@@ -7,7 +7,7 @@
 归一化口径:intl 词条名含脏字符(前导空格/BOM/半角逗号实测)——lstrip BOM +
 半角逗号转全角 + 折叠全部空白。en 归一化 = 小写仅字母数字(符号全剥),
 与 ``sr_relic_sets.RelicSetDef.id`` 同规。
-接口依据:sr-od-dev-official-api references/characters.md 同款打法,
+接口依据:sr-od-official-api references/国际服wiki/wiki-角色.md 同款打法,
 遗器菜单 menu_id=108(2026-11-11 探测:zh 58 条/en 57 条)。国际版域名可能
 需代理:urllib 自动读 HTTP_PROXY/HTTPS_PROXY 环境变量(不通就直连)。
 仅标准库,项目根目录运行:

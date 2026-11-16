@@ -1,6 +1,6 @@
 ---
 name: sr-od-dev-relic-data
-description: 维护崩坏:星穹铁道「遗器套装数据」全流程的单一入口——拉取全量套装列表(国内 wiki + 国际服双源)、维护权威表与项目内套装英文 id、部位英文术语、生成/审阅常量、识别模板规范库。游戏版本更新要新套装信息、回填/核对套装 id、查遗器数据来源时都用,即使没明说。wiki 接口细节归 sr-od-dev-official-api;光锥同构体系归 sr-od-dev-cone-data。英文:relic set data pipeline, version update relic sets, relic set id。
+description: 维护崩坏:星穹铁道「遗器套装数据」全流程的单一入口——拉取全量套装列表(国内 wiki + 国际服双源)、维护权威表与项目内套装英文 id、部位英文术语、生成/审阅常量、识别模板规范库。游戏版本更新要新套装信息、回填/核对套装 id、查遗器数据来源时都用,即使没明说。wiki 接口细节归 sr-od-official-api;光锥同构体系归 sr-od-dev-cone-data。英文:relic set data pipeline, version update relic sets, relic set id。
 ---
 
 # sr-od-dev-relic-data:遗器套装数据

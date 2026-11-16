@@ -239,7 +239,7 @@
 
 ## 9. 官方 API 快查(给后续 agent)
 
-用法详见 skill `sr-od-dev-official-api`(references/characters.md)。速记:
+用法详见 skill `sr-od-official-api`(references/米游社/wiki-角色.md)。速记:
 
 - 列表:`GET https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/content/list?app_sn=sr_wiki&channel_id=<ID>&lang=zh-cn`;频道:18=角色(99) / 19=光锥(170) / 20=养成材料(147) / 30=遗器(62)【官方,实拉验证】
 - 详情:`GET https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info?app_sn=sr_wiki&content_id=<content_id>`

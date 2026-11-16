@@ -6,7 +6,7 @@
 
 ## checklist(必做)
 
-1. ☐ 枚举权威清单——按 sr-od-dev-official-api 的 references/map.md 拉地图树,与 `assets/game_data/world_patrol_map/` 现状逐星球 diff 出新增星球/区域/楼层;多楼层层名从树节点确定楼层列表【必做】
+1. ☐ 枚举权威清单——按 sr-od-official-api 的 references/米游社/大地图.md 拉地图树,与 `assets/game_data/world_patrol_map/` 现状逐星球 diff 出新增星球/区域/楼层;多楼层层名从树节点确定楼层列表【必做】
 2. ☐ 录入星球与区域——按「数据模型」节写 planet.yml 与区域注册表;优先用 GUI 管理界面(星球管理 / 区域管理),手改时照既有条目格式;uid 命名按「命名规则」节【必做】
 3. ☐ 大地图资产与特殊点——区域缺底图时按 `large-map-record.md` 录制(前提:用全探索账号录最终状态;条件不齐可挂起登记待录清单,见「方法」节迭代节奏);特殊点表用定标产物(cal.json 的 sp 行)落位,传送落点(tp_pos)经巡访采集回填【必做】
 4. ☐ 验证——「验证」节各项全过【必做】

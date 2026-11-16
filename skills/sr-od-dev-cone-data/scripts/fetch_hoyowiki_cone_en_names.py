@@ -5,7 +5,7 @@
     { "归一化中文名": {"en": 官方英文名, "en_normalized": 小写去符号, "hoyowiki_page_id": "<entry_page_id>"} }
 
 归一化口径:•/·/・统一为 ·、去全部空白、lower——与 build_cone_authority_table.py 连表键一致。
-接口依据:sr-od-dev-official-api references/characters.md「国际版 HoYoWiki」同款打式,
+接口依据:sr-od-official-api references/国际服wiki/wiki-角色.md「国际版 HoYoWiki」同款打式,
 光锥菜单 menu_id=107(2026-11-11 探测:total=168)。国际版域名可能需代理:urllib 自动读
 HTTP_PROXY/HTTPS_PROXY 环境变量(不通就直连)。仅标准库,项目根目录运行:
     uv run python skills/sr-od-dev-cone-data/scripts/fetch_hoyowiki_cone_en_names.py

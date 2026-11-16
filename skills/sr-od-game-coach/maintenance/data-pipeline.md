@@ -26,7 +26,7 @@
 
 ## bili cli 视频调研管线
 
-`bili --compact search video "<角色> 培养攻略" --order views` → 选片（攻略向标题+高播放+**desc 预筛**——西川柚季/法拉拉系 UP 的简介常直出全套口径，先看 desc 省 API）→ `bili --compact video summary <bvid>` 拉 AI 总结。无总结/无字幕就换关键词（「<角色> 攻略」/「<角色> 专武」）或换 UP 再搜。管道脚本：`.debug/temp/deepdig_*.py`（search/pull/list/read/apply）。
+`bili --compact search video "<角色> 培养攻略" --order views` → 选片（攻略向标题+高播放+**desc 预筛**——西川柚季/法拉拉系 UP 的简介常直出全套口径，先看 desc 省 API）→ `bili --compact video summary <bvid>` 拉 AI 总结。无总结/无字幕就换关键词（「<角色> 攻略」/「<角色> 专武」）或换 UP 再搜。
 
 ## ASR 错字归一表（AI 总结必查再入库）
 
