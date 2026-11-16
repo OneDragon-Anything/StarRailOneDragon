@@ -11,10 +11,12 @@ src/sr_od/application/cultivation/
 ├── character/operations/      # 角色线:升级/行迹/角色详情页光锥识别器
 ├── light_cone/
 │   ├── operations/            # 光锥线:装备/升级/叠影/打开替换列表/缺料刷取
-│   └── light_cone_list_recognizer.py   # 光锥替换列表自含识别器
+│   ├── light_cone_list_recognizer.py   # 光锥替换列表自含识别器
+│   └── light_cone_tpl_store.py         # 光锥识别派生模板缓存(SrContext 挂载,六视图)
 └── relic/
     ├── operations/            # 遗器线:装备/强化/背包选件导航/打开替换列表
-    └── relic_list_recognizer.py        # 遗器替换列表自含识别器
+    ├── relic_list_recognizer.py        # 遗器替换列表自含识别器
+    └── relic_tpl_store.py              # 遗器识别派生模板缓存(SrContext 挂载,五视图)
 ```
 
 - op 注册与识别器注册靠 backend 扫描根(`sr_od.operations` + `sr_od.application`
@@ -52,8 +54,12 @@ src/sr_od/application/cultivation/
   完整持有:网格定位(等级文本锚点 + 轮廓补充 + 网格补位证据门槛——遗器侧
   末行带只出锚点位,光锥侧分组末行补位须过轮廓/等级文本证据)、masked 模板
   匹配身份层(双档级联:遗器 90/96px、光锥 100/106px,各自实机标定)、角标
-  占用者匹配(SIFT)、本域模板库与缓存(遗器名称键 / 光锥 id 键卡面库单一
-  入口)。
+  占用者匹配(SIFT)、本域模板库与缓存(域 store 承载:`relic_tpl_store` /
+  `light_cone_tpl_store` 挂 `SrContext` `@cached_property`,卡面库单一入口
+  `card_faces` + 派生视图懒构建只读——卡面库读盘校验/匹配预备/头像图标
+  SIFT/直方图;构造只注入 `template_loader`,静态资产派生不进
+  `reload_instance_config` 重置;进程级模块全局与 config 层卡面库模块已
+  退役,命名约定即注册表契约随迁 store)。
 - **两域之间零 import**;差异化标定(列数/角标几何/等级文本形态)在各自
   文件内。兜底策略独立演进:遗器侧兜底重做(低置信门槛/重试标记/图像哈希
   对照三路线)不影响光锥侧。

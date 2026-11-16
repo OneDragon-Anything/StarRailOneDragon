@@ -12,7 +12,7 @@
 - `build_set_effects(relics, ornaments)` — 佩戴件分组统计 → 已激活套装效果条目
 - 索引：`PIECE_TO_SET`（件名反查）、`_SET_BY_NAME`——模块加载时各建一次
 
-**识别模板规范库**：`assets/template/relic_icon/<套装id>_<部位英文>/raw.webp`（遍历入口 `config/relic_templates.py`，空 id 套装暂缓入库）；识别用模板集一律经该入口取，不得自行扫目录或按名称键拼路径。遗器列表识别范式 = masked 模板匹配（`relic_list_recognizer`，双档级联）。
+**识别模板规范库**：`assets/template/relic_icon/<套装id>_<部位英文>/raw.webp`（遍历入口 `relic_tpl_store.py` 的 `RelicTplStore.card_faces`，空 id 套装暂缓入库）；识别用模板集一律经该入口取，不得自行扫目录或按名称键拼路径。遗器列表识别范式 = masked 模板匹配（`relic_list_recognizer`，双档级联）。
 
 **数据分层原则**：定义层（名称/图标/分类/效果文案）进常量；内容层（词条每级数值、养成数值）不固化，运行时经 mys 接口现查。wiki 词条偶有错字/缺段——effects 与件名以已固化常量为准，wiki 只作新增字段来源。
 

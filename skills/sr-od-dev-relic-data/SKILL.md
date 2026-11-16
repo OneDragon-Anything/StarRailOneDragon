@@ -32,9 +32,9 @@ wiki/米游社缺词条或缺图时,不空等外部收录——走 §6 兜底路
 
 ## 3. 识别模板规范库
 
-`assets/template/relic_icon/<template_id>/raw.webp`,template_id = `<套装id>_<部位英文归一化>`(如 `spacesealingstation_planarsphere`)。命名约定即注册表,无 config.yml;遍历入口 `src/sr_od/config/relic_templates.py::iter_relic_templates(ctx)`(未知目录/缺原图直接 raise)。空 id 套装暂缓入库,回填后补录。
+`assets/template/relic_icon/<template_id>/raw.webp`,template_id = `<套装id>_<部位英文归一化>`(如 `spacesealingstation_planarsphere`)。命名约定即注册表,无 config.yml;遍历入口 `src/sr_od/application/cultivation/relic/relic_tpl_store.py` 的 `RelicTplStore.card_faces`(未知目录/缺原图直接 raise)。空 id 套装暂缓入库,回填后补录。
 
-双库关系:名称键旧库 `assets/game_data/relic_icons/` 已随消费方迁移到 `iter_relic_templates` 删除——识别消费以规范库为唯一正库,勿再按名称键归档或寻址。
+双库关系:名称键旧库 `assets/game_data/relic_icons/` 已随消费方迁移到 `RelicTplStore.card_faces` 删除——识别消费以规范库为唯一正库,勿再按名称键归档或寻址。
 
 ## 4. 对账报告(无中间权威表)
 

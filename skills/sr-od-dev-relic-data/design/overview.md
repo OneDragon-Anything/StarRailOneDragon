@@ -25,7 +25,7 @@
 
 ## 3. 模板规范库
 
-`assets/template/relic_icon/<套装id>_<部位英文>/raw.webp`;loader = `config/relic_templates.py`(镜像 light_cone_templates:目录名校验违例 raise、ctx 级缓存)。与光锥的差异:套装多件,template_id = id + 部位段;部位英文是 6 常量映射(`RELIC_POS_EN`),不逐件存字段。
+`assets/template/relic_icon/<套装id>_<部位英文>/raw.webp`;loader = `relic_tpl_store.py`(镜像 light_cone_tpl_store:目录名校验违例 raise、ctx 级缓存)。与光锥的差异:套装多件,template_id = id + 部位段;部位英文是 6 常量映射(`RELIC_POS_EN`),不逐件存字段。
 
 ## 4. 约束
 

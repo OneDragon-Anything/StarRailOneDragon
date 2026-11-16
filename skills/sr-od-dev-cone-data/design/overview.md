@@ -16,7 +16,7 @@
 - `scripts/fetch_sr_wiki_cone_list.py`：国内 wiki 频道清单+详情抓取。
 - `scripts/fetch_hoyowiki_cone_en_names.py`：国际服英文名拉取与中英互连（连表键归一化含脏字符清理）。
 - `scripts/build_light_cones.py`：单脚本管道——直读两个 wiki 缓存产出常量模块（排序解析 + manual 行登记 + 冻结纪律 + 新增取文 + 漂移报告；无中间权威表落盘,2026-11-12 起废除 cones-full.json 中转层,对账锚 = git 历史常量版本）。
-- 项目侧配套：`src/sr_od/config/light_cone_templates.py`（识别模板库 `assets/template/light_cone_icon/<id>/raw.webp` 的遍历单一入口，id 键命名约定即注册表）。
+- 项目侧配套：`src/sr_od/application/cultivation/light_cone/light_cone_tpl_store.py`（识别模板库 `assets/template/light_cone_icon/<id>/raw.webp` 的遍历单一入口，id 键命名约定即注册表）。
 
 ## 4. 关键设计动机
 
