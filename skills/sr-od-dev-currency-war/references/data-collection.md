@@ -20,6 +20,7 @@
 | 投资策略/环境 | `gen_plaza_invest.py` | `cw_invest_data`(298+73) | 数字 id 稳定主键;效果官方全文去富文本 |
 | 羁绊 | `gen_traits.py` | `cw_traits_data`(29 条 `TRAITS` 按 trait_id + `trait_by_name` 按消费侧名;默认 dry-run 预览,`--land` 落库)+ 中间产物(traits_intermediate_v<版本>.json)+ 三源交叉/成员对拍报告(stdout) | 聚合生成器+对拍一体:官方 config 骨架过滤(trait_type 0/1/2=29 条基座,type 3 主角光环专属不进本域)→ 攻略广场 Hot 帖聚合(帖内 role_stages[].traits[] 为唯一全结构源;按 trait_id 分桶,去重 = layers 最多、并列取新帖,role_ids 跨帖并集)+ 富文本渲染 + role_ids→规范名翻译(查表契约 = 派生形态:运行期从角色注册表 CHARACTERS 派生映射,fail-closed)+ 成员对拍(官方 vs 注册表自报,差异逐条人裁)+ count_mode 判定表(带官方 desc 引文校验)+ wiki 交叉验证(27 词条,只出报告不落数据);任一对拍不一致非零退出 |
 | 装备 | `gen_equip_registry.py` | `cw_equipment_data`(116 = 官方 105 + 配方链派生简易 11) | **v4.7 起 config 单源直灌**:官方分类名直落(七分类+派生简易装备)、desc 即效果全文、compose_list 即合成链、properties 即结构化属性;旧图鉴 OCR 校正链退役(三 wiki 停旧赛季不可作数值源) |
+| 主角光环 | `gen_plaza_spot_lights.py` | `cw_spot_lights`(82) | config 单源直灌(spot_light_list + spot_light_tag_list 标签枚举);suitable_roles 生成期经角色注册表 fail-closed 翻译(依赖角色域先闭环);base 事实层落库即闭环,选光环策略建模无消费点不建 |
 | 实战阵容 | `gen_plaza_comps.py` | `cw_plaza_comps`+plaza_meta | lineup/index match_hard,过滤版本/KOL 沙盒/过期 → is_carry 聚类 |
 
 ## 二、游戏内图鉴实采(权威,需实机)
@@ -79,6 +80,7 @@
 | **comp**(`cw_comps`) | core/shared 名单二分/faction_reqs(羁绊要求优先级结构:档 0 核心、档 ≥1 加分层;原 form_tiers/sub_tiers 已合并)/flex_factions(弹性)/key_equips(可重复)/equip_assign(到人配方)/char_positions(comp 级站位覆盖)/need_star(星级目标;mechanic_attributes/countered_by_bosses 与 level_plan 曲线等评估字段已先后退役,git 可溯) | 线分/候选与锁定/成型判定/部署搜索/装备分配 |
 | **装备**(`cw_equipment_data`) | category 九类/stacking/recipes 多路/props 结构化数值 | 补给选择/合成/equip_fit |
 | **plaza 派生**(`cw_plaza_comps`) | star3_by_cost(费用档 3 星率,**客观频次仅校准交叉核对用**——费用档星目标启发式已废弃,星目标只认成型档显式要求;语义单一源 = `cw_plaza_comps` 模块注释)/labels 节奏/craft_first/transition_pool | 星级目标/等级节奏/合成优先 |
+| **主角光环**(`cw_spot_lights`) | 暂无人工增量——全字段为官方镜像;「怎么选光环」的策略建模(评序/分等)当前无决策消费点不建,消费点出现时按上方方法论另建 | (暂无;base 落库待用:光环详情查询/特殊羁绊授予面登记) |
 
 ## 钩子统一使用(产物路径与纪律;分工见 od-dev-stop-hooks)
 

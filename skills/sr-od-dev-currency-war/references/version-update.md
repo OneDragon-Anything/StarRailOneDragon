@@ -30,7 +30,7 @@
 2. ☐ **拉官方配置判型**——`uv run python skills/sr-od-dev-currency-war/scripts/plaza_fetch.py config`(项目根),按 §1 判型并与用户对齐范围【必做】
 3. ☐ **角色域**——§3.1【必做】
 4. ☐ **羁绊域**——§3.2,依赖角色注册表就绪,顺序不可倒【必做】
-5. ☐ **装备域 + 投资域**——§3.3/§3.4,与 3/4 无依赖可并行【必做】
+5. ☐ **装备域 + 投资域 + 主角光环域**——§3.3/§3.4/§3.5,与 3/4 无依赖可并行(主角光环的适配名单翻译依赖角色注册表,须在 3 之后)【必做】
 6. ☐ **识别模板面**——§3.5【必做】
 7. ☐ **版本敏感常量实机重采**——刷新概率表/升级经验门槛表/牌池副本数(方法见 data-collection.md §二);换赛季后**默认全变**,扩充按官方公告判【必做】
 8. ☐ **测试回归**——`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`;红测逐条判断代码过时还是测试过时【必做】
@@ -62,7 +62,15 @@
 - 入口:`gen_plaza_invest.py`(生成 `cw_invest_data.py` 数据层 + 人读版,内建 diff 报告)。
 - 人工建模增量(经济效果结构化/评估分/分类)在 `cw_investments.py`,diff 后逐条重审;换赛季 = 大面积重建模,量大可分期,但**注册表 base 数据必须先行落库**。
 
-### 3.5 识别模板面
+### 3.5 主角光环域
+
+- 入口:`gen_plaza_spot_lights.py`(config 单源直灌:`spot_light_list` + 官方标签枚举 `spot_light_tag_list`);产出 `cw_spot_lights.py`(id/name/desc/tags/suitable_roles 官方口径镜像,数字 id 稳定主键,desc 去富文本)。
+- 适配名单(suitable_roles)为**生成期 fail-closed 翻译**:plaza role id 经角色注册表翻译成规范名(同名多档合并),未知 id 直接报错——依赖角色注册表先就绪,角色域没闭环前必红,是顺序契约非缺陷;空名单条目 = 全局/非角色绑定型光环(金币/装备/角色奖励类),官方原样非缺数据。
+- 5 条特殊羁绊授予面(从师/连携追击/星狩誓言/四维狂潮/救世主 = trait 域 400xxx 骨架)在本表登记,桥接信息自足,不在 trait 域重复。⚠️ 按 tag 筛「特殊羁绊」只会命中 4 条——救世主的官方 tag 是「羁绊」,要按名字或 400xxx 语义找齐。
+- base 事实层落库即闭环;「怎么选光环」的策略建模(评序/分等)当前无决策消费点不建(data-collection.md §五),消费点出现时再按方法论人工增量。
+- 验收:重跑幂等(diff 全 0)+ `uv run pytest sr-od-test/test/sr_od/application/currency_war/data/` 绿。
+
+### 3.6 识别模板面
 
 - 生成器自动产:角色立绘模板(`assets/template/currency_war/character_avatar/<规范名>/`,与主游 `assets/template/character_avatar/` 同构命名;多档同名共用一目录,费用底色取起始档官方费用字段,不依赖注册表)、装备模板(字节比对幂等,官方换图自动跟上)——都在 `gen_plaza_chars.py` 内。
 - **掉出名单的旧模板不自动删**:生成器产掉出名单 diff 报告(`.debug/game_data/currency_war/plaza/dropped_v<版本>.md`,分「纯角色掉出(文档删除清单)」与「系统单位迁出」两类,掉出方向唯一出口),模板删除留给人工裁定(防误删换皮重出单位的识别资产)。
