@@ -50,8 +50,8 @@ REPO = Path(__file__).resolve().parents[3]
 DATA_PY = REPO / "src/sr_od/application/currency_war/data/cw_plaza_comps.py"
 DATA_POSTS_PY = REPO / "src/sr_od/application/currency_war/data/cw_plaza_posts.py"
 DOC_MD = REPO / "docs/game/currency_war/data/plaza_meta.md"
-CACHE = Path(".debug/temp/currency_war/plaza/lineups_HotHard.jsonl")
-CONFIG_GLOB = ".debug/temp/currency_war/plaza/config_v*.json"
+CACHE = Path(".debug/game_data/currency_war/plaza/lineups_HotHard.jsonl")
+CONFIG_GLOB = ".debug/game_data/currency_war/plaza/config_v*.json"
 
 BASE = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game"
 HEADERS = {

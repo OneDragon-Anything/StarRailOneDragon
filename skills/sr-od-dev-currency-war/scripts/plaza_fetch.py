@@ -43,7 +43,9 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 BASE = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game"
-OUT_DIR = Path(".debug/temp/currency_war/plaza")
+# 拉取缓存落点 = game_data(跨版本存活的拉取缓存统一落点;曾落 .debug/temp 被
+# 临时区清理销毁,丢 manifest 跨版本 diff 基准——落点约定见 data-collection.md §钩子统一使用)
+OUT_DIR = Path(".debug/game_data/currency_war/plaza")
 HEADERS = {
     "Content-Type": "application/json",
     "x-rpc-currencywar-tourn": "tourn",

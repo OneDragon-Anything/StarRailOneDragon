@@ -19,9 +19,9 @@
     旧帖降级快照实测存在(v4.7 千星商会旧帖仅 1 层且 desc 空串:发帖时刻服务端存
     当时配置快照,游戏数据更新后旧帖不回填);
   - role_ids 取各帖并集(成员名单跨帖互补);
-  - layers[].trait_desc / simple_desc 富文本渲染为纯文本,管线沿用旧
-    gen_factions.py 的 render_rich:<property type=X display=all> → 属性中文名 /
-    display=icon 删除 / <color> 删除;未知标签保留原文 + 警告不静默。
+  - layers[].trait_desc / simple_desc 富文本渲染为纯文本:
+    <property type=X display=all> → 属性中文名 / display=icon 删除 / <color> 删除;
+    未知标签保留原文 + 警告不静默。
 
 count_mode 判定(建模不接线):29 条默认 TOTAL;覆盖表仅千星商会 = STAR3(官方 desc
 「每上场1位3星【千星商会】角色,将激活1级羁绊效果」);覆盖表逐条带 desc 引文校验,
@@ -71,7 +71,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO / "src"))  # 翻译/成员对拍查角色注册表(先例 gen_factions.py)
+sys.path.insert(0, str(REPO / "src"))  # 翻译/成员对拍查角色注册表
 PLAZA_DIR = REPO / ".debug/game_data/currency_war/plaza"
 REPORT_SAMPLE_DIR = REPO / ".debug/temp/currency_war"
 # 落库目标(--land):src 数据层真身;模块导入路径 = sr_od.application.currency_war.data
@@ -86,8 +86,8 @@ COUNT_MODE_DEFAULT = "TOTAL"
 COUNT_MODE_OVERRIDES: dict[str, str] = {"千星商会": "STAR3"}
 STAR3_DESC_ANCHOR = "每上场1位3星"  # 三星计数句式锚,覆盖表与全集双向校验共用
 
-# 成员对拍例外清单(键 = (trait_id, role_id),值 = 裁决理由;同旧 gen_factions
-# MEMBER_EXCEPTIONS 模式)。首版为空待人裁——差异逐条人工裁决后才补行,禁自行填充:
+# 成员对拍例外清单(键 = (trait_id, role_id),值 = 裁决理由)。首版为空待人裁——
+# 差异逐条人工裁决后才补行,禁自行填充:
 #   - 官方多出(role_id 翻译名不在注册表自报集合):键 = 译出该名的非隐藏 role_id
 #     全集,放行 = 该名从 members 排除(理由须声明非成员依据,如召唤物);
 #   - 自报多出(注册表自报含、帖 role_ids 未含):键 = 该名全部档位 id,放行 =
