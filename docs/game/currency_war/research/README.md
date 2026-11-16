@@ -78,6 +78,7 @@
 | 策略命题证明(某结论为什么成立/口述直觉的数学保证) | [math_proofs.md](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 索引 → [proofs/](../../../develop/sr_od/application/currency_war/proofs/) 单篇 |
 | 单套阵容打法(入场/退场信号/counter/装备叙事) | [final_comps/](final_comps/README.md) 各类文档(2026-08-22 起单一源;原 comps/ 打法卡层已撤销合并) |
 | 投资卡效果全量分类与可建模边界(API 裁定) | [invest_effects.md](invest_effects.md) |
+| **V4.7 赛季适配**:解锁门(真珠的委托+新手关)/奇遇伙伴/武装箱补给/结算经济实证/画面适配状态 | [v47_first_match_observation.md](v47_first_match_observation.md) |
 
 ## 策略相关文档(改策略前的必读面;单一源在本节)
 
