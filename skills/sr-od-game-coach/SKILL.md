@@ -1,6 +1,6 @@
 ---
 name: sr-od-game-coach
-description: 需要崩坏:星穹铁道基础玩法知识或要做游戏决策时用——配队选人换人（「怎么配队」「这期打什么」）、角色养成（光锥/遗器/词条/练度、「词条堆什么」）、玩法规则与机制理解（角色机制/大招充能/命途规则）、新手日常指引、抽卡投入决策（「阿哈值得抽吗」「星魂怎么规划」）、练度评价（「练度够不够进队」）、养成与装备操作路由（装/换/查占用、升级/晋阶/行迹/领奖励该用哪个 op、缺料去哪刷——「这件遗器谁占着」「角色升级后的奖励怎么领」）、角色/光锥/遗器基础信息查询（是什么/什么效果/几星/怎么获得）。凡任务中出现崩铁游戏内容概念词（角色名/光锥/遗器/玩法/机制/奖励等，哪怕只作宾语、哪怕任务本体是执行或开发测试操作），或要做任何游戏决策，都先用本 skill 对齐概念与知识再动手，即使没明说。兄弟分工：逐光捡金系列的每期轮换环境增益与进副本操作 → sr-od-treasures-lightward（选人配队决策仍归本 skill）；买月卡/兑换/抽卡执行与付款 → sr-od-game-consume；货币战争自动化开发 → sr-od-dev-currency-war；版本更新的攻略知识适配统筹 → sr-od-dev-version-update-adaptation（本 skill 管具体调研与知识档内容）；op/app 实现调试测试的方法 → od-dev-write-operation 等开发 skill（其中的游戏概念与玩法知识对齐仍归本 skill）；官方 wiki 接口直查（基础信息 MCP 不可用时的兜底、当期卡池 UP 与概率）→ sr-od-official-api；知识库维护（新角色实装调研/上版本角色盖棺复核/攻略知识时效巡检——「建定时巡检任务」「跑一轮巡检」「检查攻略知识过时没有」）的流程见 references/maintenance/（patrol.md 任务书 + research-methodology.md 调研方法论）。
+description: 需要崩坏:星穹铁道基础玩法知识或要做游戏决策时用——配队选人换人（「怎么配队」「这期打什么」）、角色养成（光锥/遗器/词条/练度、「词条堆什么」）、玩法规则与机制理解（角色机制/大招充能/命途规则）、新手日常指引、抽卡投入决策（「阿哈值得抽吗」「星魂怎么规划」）、练度评价（「练度够不够进队」）、养成与装备操作路由（装/换/查占用、升级/晋阶/行迹/领奖励该用哪个 op、缺料去哪刷——「这件遗器谁占着」「角色升级后的奖励怎么领」）、角色/光锥/遗器基础信息查询（是什么/什么效果/几星/怎么获得）。凡任务中出现崩铁游戏内容概念词（角色名/光锥/遗器/玩法/机制/奖励等，哪怕只作宾语、哪怕任务本体是执行或开发测试操作），或要做任何游戏决策，都先用本 skill 对齐概念与知识再动手，即使没明说。兄弟分工：逐光捡金系列的每期轮换环境增益与进副本操作 → sr-od-treasures-lightward（选人配队决策仍归本 skill）；买月卡/兑换/抽卡执行与付款 → sr-od-game-consume；货币战争自动化开发 → sr-od-dev-currency-war；版本更新的攻略知识适配统筹 → sr-od-dev-version-update-adaptation（本 skill 管具体调研与知识档内容）；op/app 实现调试测试的方法 → od-dev-write-operation 等开发 skill（其中的游戏概念与玩法知识对齐仍归本 skill）；官方 wiki 接口直查（基础信息 MCP 不可用时的兜底、当期卡池 UP 与概率）→ sr-od-official-api；知识库维护（新角色实装调研/上版本角色盖棺复核/攻略知识时效巡检——「建定时巡检任务」「跑一轮巡检」「检查攻略知识过时没有」）的流程见 design/maintenance/（patrol.md 任务书 + research-methodology.md 调研方法论）。
 ---
 
 # 星穹铁道基础玩法教练（game-coach）
@@ -27,7 +27,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 >
 > **基础信息查询走 MCP（优先）**：角色定义/行迹满级/星魂效果 → `character_lookup`；光锥（星级/命途/特效全文/获取）→ `cone_lookup`；遗器套装（效果/单件/部位）→ `relic_lookup`。均为零 IO 常量查询，不需要登录；模糊多命中返回候选，用官方全名精确查。MCP 不可用或无对应工具（如当期卡池查询）时，直连官方接口——端点与坑见 `sr-od-official-api`；`mechanics/` 速查表兜底。
 >
-> 路由表内文档路径均相对 skill 根目录（`references/` = 知识语料，`maintenance/` = 维护者文档）。
+> 路由表内文档路径均相对 skill 根目录（`references/` = 知识语料；`design/maintenance/` = 维护者档案）。
 
 | 问题域 | 典型问题 | 路由 |
 |---|---|---|
@@ -38,7 +38,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 | **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `references/modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
 | **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `references/mechanics/INDEX.md` → 对应机制档（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance 等） |
 | **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `references/mechanics/damage-and-affix.md`（上限语义）；练度成色分层（主力输出星魂优先，0魂平民/2魂小康、角色机制断点表）→ `references/investment.md` |
-| **知识库维护** | 新角色实装调研/上版本角色盖棺复核/抽卡决策调研（这期 UP 值不值得抽）/补档/建定时巡检任务或跑一轮攻略知识巡检 | `references/maintenance/research-methodology.md`（米游社+B站 bili-cli 调研流程与入档格式）+ `references/maintenance/patrol.md`（常态化巡检任务书：周期性对照社区共识与环境修正知识库，自包含可交定时任务执行；待复核清单与调研轮次记录等维护状态存巡检工作区，位置见任务书）；角色页数据重跑与比对流程 `maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
+| **知识库维护** | 新角色实装调研/上版本角色盖棺复核/抽卡决策调研（这期 UP 值不值得抽）/补档/建定时巡检任务或跑一轮攻略知识巡检 | `design/maintenance/research-methodology.md`（米游社+B站 bili-cli 调研流程与入档格式）+ `design/maintenance/patrol.md`（常态化巡检任务书：周期性对照社区共识与环境修正知识库，自包含可交定时任务执行；待复核清单与调研轮次记录等维护状态存巡检工作区，位置见任务书）；角色页数据重跑与比对流程 `design/maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
 
 **红线**：未命中（知识库无该档）→ 如实告知，给官方 wiki 核验路径，禁止凭训练记忆编造；信息缺口项向用户转述时必须声明「未实证」。
 

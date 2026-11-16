@@ -17,8 +17,8 @@
 | 位置 | 内容 |
 |---|---|
 | `.debug/temp/game-coach-patrol/research-status.md`（巡检工作区，相对项目根） | 知识库现状 + **待复核清单**（巡检的主清单）+ 调研轮次记录。**不存在则创建**：从知识档的调研轮次节与「信息缺口」节、`references/characters/INDEX.md` 覆盖追踪表重建待复核清单 |
-| `references/maintenance/research-methodology.md` | 调研方法论：信源判据、B站/米游社流程、噪声校准、入档格式、时机差异 |
-| `maintenance/methodology.md` | 写档判断规则（证据层级/装备条件式/分层纪律） |
+| `research-methodology.md`（同目录） | 调研方法论：信源判据、B站/米游社流程、噪声校准、入档格式、时机差异 |
+| `methodology.md`（同目录） | 写档判断规则（证据层级/装备条件式/分层纪律） |
 
 当期版本状态（当前第几版本、各新内容何时实装）用官方当期卡池接口确认，打法见 skill `sr-od-official-api`——注意接口响应无版本号字段，当期版本号靠卡池开始时间 + 版本公告名对照推算。版本公告全文官方渠道不可得时可用第三方转载，须多源互证并在过程记录标注来源。项目 MCP 查询工具偶发首轮报 unknown tool（server 在跑、注册未就绪），重试即自愈；持续不可用时兜底官方 wiki 接口（`sr-od-official-api`）。
 

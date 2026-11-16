@@ -1,6 +1,6 @@
 # 数据管道（官方数据与视频调研怎么来）
 
-> 数据抓取的技术路径与解析坑；状态对账属维护进度记录不进 git，存巡检工作区（位置见 [../references/maintenance/patrol.md](../references/maintenance/patrol.md)）。拉取缓存统一落 `.debug/game_data/`（不入仓）；**不存原文快照**（结论进知识档、原文按需重拉）。
+> 数据抓取的技术路径与解析坑；状态对账属维护进度记录不进 git，存巡检工作区（位置见 [patrol.md](patrol.md)）。拉取缓存统一落 `.debug/game_data/`（不入仓）；**不存原文快照**（结论进知识档、原文按需重拉）。
 
 ## 米游社百科 API
 

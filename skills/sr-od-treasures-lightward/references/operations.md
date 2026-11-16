@@ -101,7 +101,7 @@ op `goto_treasures_lightward.GotoTreasuresLightward(mode='<枚举值>')`——�
   未实读增益时可按默认值先跑(装配的增益不对可重跑覆盖)。
 - 内部子 op 可单独跑(前置同为编队屏):`pure_fiction.team_fill.TlPfTeamFillOp(team_names)` /
   `pure_fiction.buff_equip.TlPfBuffEquipOp(buff_slot, buff_slots)` / `pure_fiction.battle.TlPfBattleOp()`。
-- 战斗失败去向:PF 按击杀数计分,失败即结算浮层,停结算画面(area
+- 战斗失败去向:PF 按击杀数计分,失败即结算浮层,停结算画面(未建档浮层,area
   「PF_AFTER_BATTLE_FAIL」),点「PF_AFTER_BATTLE_BACK_BTN」回选关后换队重跑
   (计分细节见 gameplay.md)。
 
