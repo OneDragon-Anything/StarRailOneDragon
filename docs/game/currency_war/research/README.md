@@ -54,7 +54,7 @@
    - [stage_transitions.md](stage_transitions.md) — 位面 1→2→3 阵容演化定量(加法不换件的数据边界)
    - [h3_tier_core_crosstab.md](h3_tier_core_crosstab.md) — 档位 × 核心在场 × 败率交叉(实机语料统计)
 4. **终局阵容**(位面 2/3 打什么):
-   - [final_comps/](final_comps/README.md) ★ — 终局十类分类索引 + 单套阵容打法单一源
+   - [final_comps/](final_comps/README.md) ★ — 终局阵容家族索引(19 类,V4.7 全量重建)+ 单套阵容打法单一源
 5. **方法论与证明**(怎么读阵容 / 怎么论证策略;工具篇,可穿插读):
    - [combo_methodology.md](combo_methodology.md) — 阵容理解方法论(技能 / 羁绊 / 玩法三层)+ 攻略黑话查证纪律
    - [plaza_methodology.md](plaza_methodology.md) — 玩法方法论 M1-M16(资源入口 / 核心×弹性 / 升星经济学 / 装备优先级…)
@@ -72,7 +72,7 @@
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
 | 过渡体系:位面 1 骨架/成型停买线/换人点/位面 2 保底过渡阵容(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
 | **过渡阵容逐路线定义**(引擎池/核心池/开局直奔终局阵容的结构;代码落地依据) | [transition_combos.md](transition_combos.md) ★ |
-| **终局阵容分类**(final comps 分类索引+逐类累积;核心角色/羁绊双维;**单套阵容打法知识单一源**) | [final_comps/README.md](final_comps/README.md) ★ |
+| **终局阵容分类**(final comps 家族索引+逐类打法;carry 主体优先、家族注检索;**单套阵容打法知识单一源**;V4.7 全量重建 2026-11-16) | [final_comps/README.md](final_comps/README.md) ★ |
 | 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |
 | 玩法方法论 M1-M16:资源入口/核心×弹性/多线通用角色分级/骨架拼装/升星经济学/装备优先级/站位… | [plaza_methodology.md](plaza_methodology.md) |
 | 策略命题证明(某结论为什么成立/口述直觉的数学保证) | [math_proofs.md](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 索引 → [proofs/](../../../develop/sr_od/application/currency_war/proofs/) 单篇 |
