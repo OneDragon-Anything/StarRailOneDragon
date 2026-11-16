@@ -7317,10 +7317,10 @@
   - area_name: 标识-本场对局首领
     id_mark: true
     pc_rect:
-    - 1438
-    - 738
-    - 1595
-    - 777
+    - 478
+    - 178
+    - 690
+    - 222
     text: 本场对局首领
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7331,10 +7331,10 @@
   - area_name: 按钮-下一步
     id_mark: false
     pc_rect:
-    - 1470
-    - 963
-    - 1555
-    - 1005
+    - 1197
+    - 958
+    - 1577
+    - 1006
     text: 下一步
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7345,10 +7345,10 @@
   - area_name: 区域-词缀行
     id_mark: false
     pc_rect:
-    - 260
-    - 950
-    - 970
-    - 1005
+    - 185
+    - 960
+    - 470
+    - 1002
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7359,10 +7359,10 @@
   - area_name: 区域-首领行
     id_mark: false
     pc_rect:
-    - 170
-    - 698
-    - 945
-    - 740
+    - 225
+    - 718
+    - 950
+    - 755
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7370,13 +7370,27 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
-  - area_name: 标识-敌人难度
+  - area_name: 标识-本局奇遇
+    id_mark: true
+    pc_rect:
+    - 1156
+    - 608
+    - 1264
+    - 646
+    text: 本局奇遇
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 读区-奇遇伙伴名
     id_mark: false
     pc_rect:
-    - 36
-    - 954
-    - 257
-    - 1007
+    - 1210
+    - 665
+    - 1300
+    - 706
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -9235,10 +9249,10 @@
   - area_name: 按钮-确认
     id_mark: false
     pc_rect:
-    - 1010
-    - 960
-    - 1154
-    - 1004
+    - 880
+    - 950
+    - 1040
+    - 1012
     text: 确认
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -9253,6 +9267,20 @@
     - 955
     - 1000
     - 1010
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 读区-环境名
+    id_mark: false
+    pc_rect:
+    - 870
+    - 370
+    - 1050
+    - 412
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -9342,20 +9370,6 @@
   screen_name: 货币战争-大厅
   pc_alt: false
   area_list:
-  - area_name: 标识-创业指南
-    id_mark: true
-    pc_rect:
-    - 100
-    - 268
-    - 210
-    - 306
-    text: 创业指南
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-开始货币战争
     id_mark: false
     pc_rect:
@@ -9382,6 +9396,48 @@
     template_sub_dir: currency_war
     template_id: cw_lobby_close
     template_match_threshold: 0.8
+    color_range: null
+    goto_list: []
+  - area_name: 标识-赛季名
+    id_mark: true
+    pc_rect:
+    - 95
+    - 112
+    - 265
+    - 170
+    text: 入画奇航
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-未解锁横幅
+    id_mark: false
+    pc_rect:
+    - 1330
+    - 562
+    - 1858
+    - 612
+    text: 请先完成新手关卡
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-更新内容
+    id_mark: false
+    pc_rect:
+    - 1650
+    - 48
+    - 1795
+    - 88
+    text: 更新内容
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
     color_range: null
     goto_list: []
 - screen_id: currency_war_megastar
@@ -9470,6 +9526,48 @@
     - 1750
     - 980
     text: 进入标准博弈
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-标准博弈
+    id_mark: false
+    pc_rect:
+    - 85
+    - 160
+    - 220
+    - 200
+    text: 标准博弈
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-超频博弈
+    id_mark: false
+    pc_rect:
+    - 82
+    - 347
+    - 222
+    - 397
+    text: 超频博弈
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标题-关卡名
+    id_mark: false
+    pc_rect:
+    - 585
+    - 210
+    - 790
+    - 270
+    text: 启航测试
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
