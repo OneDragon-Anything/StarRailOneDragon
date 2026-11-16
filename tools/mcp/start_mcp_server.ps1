@@ -40,6 +40,11 @@ Write-Host ""
 # 切换到项目根目录
 Set-Location $ProjectRoot
 
+# 项目 pyproject 设 [tool.uv] package=false,uv 不装包 → 模块检索靠 PYTHONPATH=src
+# 找到 src 布局源码;GUI/daemon 拉起时自行设置过,本脚本独立运行(自启快捷方式/
+# 手动)没有,缺了会 ModuleNotFoundError: sr_od。仅本脚本进程树内生效,不动系统环境
+$env:PYTHONPATH = "src"
+
 # --env-file 仅在 .env 是普通文件时传(目录或缺失都不传;缺失时 uv 启动失败导致自启起不来)
 $EnvArg = if (Test-Path ".env" -PathType Leaf) { "--env-file .env" } else { "" }
 try {
