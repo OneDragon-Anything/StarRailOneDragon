@@ -6,11 +6,11 @@ area_list:
   id_mark: true
   pc_rect:
   - 75
-  - 60
+  - 50
   - 240
   - 105
   text: 首领信息
-  lcs_percent: 0.5
+  lcs_percent: 0.7
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
