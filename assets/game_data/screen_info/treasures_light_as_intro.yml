@@ -3,7 +3,7 @@ screen_name: 末日幻影-开场
 pc_alt: false
 area_list:
 - area_name: 标题-末日幻影行
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 40
   - 35

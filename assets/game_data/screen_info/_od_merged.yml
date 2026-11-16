@@ -1796,6 +1796,112 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+- screen_id: battle_exit_confirm
+  screen_name: 战斗-退出确认弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-提示
+    id_mark: true
+    pc_rect:
+    - 890
+    - 375
+    - 1030
+    - 450
+    text: 提示
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: true
+    pc_rect:
+    - 980
+    - 635
+    - 1360
+    - 712
+    text: 确认
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: battle_pause
+  screen_name: 战斗-暂停面板
+  pc_alt: false
+  area_list:
+  - area_name: 标识-战斗暂停
+    id_mark: true
+    pc_rect:
+    - 75
+    - 40
+    - 230
+    - 72
+    text: 战斗暂停
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-关卡信息
+    id_mark: true
+    pc_rect:
+    - 75
+    - 68
+    - 230
+    - 100
+    text: 关卡信息
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-结束战斗并结算
+    id_mark: false
+    pc_rect:
+    - 1140
+    - 950
+    - 1350
+    - 1015
+    text: 结束战斗并结算/返回虚构叙事/撤退
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-继续战斗
+    id_mark: false
+    pc_rect:
+    - 1540
+    - 950
+    - 1740
+    - 1015
+    text: 继续战斗
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭X
+    id_mark: false
+    pc_rect:
+    - 1830
+    - 35
+    - 1892
+    - 98
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: calyx
   screen_name: 副本连续挑战次数
   pc_alt: false
@@ -4701,7 +4807,7 @@
     color_range: null
     goto_list: []
   - area_name: 开关-简略描述
-    id_mark: true
+    id_mark: false
     pc_rect:
     - 1730
     - 148
@@ -12229,6 +12335,14 @@
     template_match_threshold: 0.5
     color_range: null
     goto_list: []
+- screen_id: furbobocom_misclick
+  screen_name: 误触-狸猫网络
+  pc_alt: false
+  area_list: []
+- screen_id: furbobocom_page
+  screen_name: 狸猫网络页
+  pc_alt: false
+  area_list: []
 - screen_id: guide
   screen_name: 星际和平指南
   pc_alt: false
@@ -13201,7 +13315,7 @@
     - 1105
     - 430
     text: 光锥晋阶
-    lcs_percent: 0.5
+    lcs_percent: 0.75
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -13283,7 +13397,7 @@
     - 1105
     - 435
     text: 光锥叠影
-    lcs_percent: 0.5
+    lcs_percent: 0.75
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -18381,174 +18495,6 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
-  - area_name: 入口-列车补给凭证
-    id_mark: false
-    pc_rect:
-    - 48
-    - 430
-    - 262
-    - 812
-    text: 列车补给凭证
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标题-列车补给凭证
-    id_mark: false
-    pc_rect:
-    - 1235
-    - 258
-    - 1685
-    - 340
-    text: 列车补给凭证
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-购买
-    id_mark: false
-    pc_rect:
-    - 1252
-    - 848
-    - 1630
-    - 916
-    text: 购买
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标题-扫码支付
-    id_mark: false
-    pc_rect:
-    - 890
-    - 285
-    - 1040
-    - 350
-    text: 扫码支付
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-其他支付方式
-    id_mark: false
-    pc_rect:
-    - 870
-    - 740
-    - 1050
-    - 792
-    text: 其他支付方式
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-返回支付宝扫码
-    id_mark: false
-    pc_rect:
-    - 870
-    - 740
-    - 1050
-    - 792
-    text: 返回支付宝扫码
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭扫码
-    id_mark: false
-    pc_rect:
-    - 1190
-    - 272
-    - 1245
-    - 325
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 弹窗-确认放弃支付
-    id_mark: false
-    pc_rect:
-    - 770
-    - 465
-    - 1155
-    - 515
-    text: 确认放弃本次支付
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认放弃
-    id_mark: false
-    pc_rect:
-    - 725
-    - 538
-    - 955
-    - 605
-    text: 确认放弃
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-继续支付
-    id_mark: false
-    pc_rect:
-    - 963
-    - 538
-    - 1195
-    - 605
-    text: 继续支付
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-续订
-    id_mark: false
-    pc_rect:
-    - 1252
-    - 848
-    - 1630
-    - 916
-    text: 续订
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-剩余领取天数
-    id_mark: false
-    pc_rect:
-    - 555
-    - 862
-    - 890
-    - 912
-    text: 剩余领取天数
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: tab-余烬兑换
     id_mark: true
     pc_rect:
@@ -18558,6 +18504,20 @@
     - 185
     text: 余烬兑换
     lcs_percent: 0.85
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 菜单-兑换商店
+    id_mark: true
+    pc_rect:
+    - 110
+    - 175
+    - 232
+    - 215
+    text: 兑换商店
+    lcs_percent: 0.7
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -18979,6 +18939,220 @@
     - 1160
     - 318
     text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: store_recommended
+  screen_name: 商店-推荐商店
+  pc_alt: false
+  area_list:
+  - area_name: tab-推荐商店
+    id_mark: true
+    pc_rect:
+    - 120
+    - 50
+    - 272
+    - 102
+    text: 推荐商店
+    lcs_percent: 0.85
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: tab-常驻商店
+    id_mark: false
+    pc_rect:
+    - 385
+    - 50
+    - 515
+    - 102
+    text: 常驻商店
+    lcs_percent: 0.85
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-开拓助力
+    id_mark: true
+    pc_rect:
+    - 48
+    - 140
+    - 262
+    - 812
+    text: 开拓助力
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-列车补给凭证
+    id_mark: false
+    pc_rect:
+    - 48
+    - 430
+    - 262
+    - 812
+    text: 列车补给凭证
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标题-列车补给凭证
+    id_mark: false
+    pc_rect:
+    - 1235
+    - 258
+    - 1685
+    - 340
+    text: 列车补给凭证
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-购买
+    id_mark: false
+    pc_rect:
+    - 1252
+    - 848
+    - 1630
+    - 916
+    text: 购买
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标题-扫码支付
+    id_mark: false
+    pc_rect:
+    - 890
+    - 285
+    - 1040
+    - 350
+    text: 扫码支付
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-其他支付方式
+    id_mark: false
+    pc_rect:
+    - 870
+    - 740
+    - 1050
+    - 792
+    text: 其他支付方式
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-返回支付宝扫码
+    id_mark: false
+    pc_rect:
+    - 870
+    - 740
+    - 1050
+    - 792
+    text: 返回支付宝扫码
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭扫码
+    id_mark: false
+    pc_rect:
+    - 1190
+    - 272
+    - 1245
+    - 325
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 弹窗-确认放弃支付
+    id_mark: false
+    pc_rect:
+    - 770
+    - 465
+    - 1155
+    - 515
+    text: 确认放弃本次支付
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认放弃
+    id_mark: false
+    pc_rect:
+    - 725
+    - 538
+    - 955
+    - 605
+    text: 确认放弃
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-继续支付
+    id_mark: false
+    pc_rect:
+    - 963
+    - 538
+    - 1195
+    - 605
+    text: 继续支付
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-续订
+    id_mark: false
+    pc_rect:
+    - 1252
+    - 848
+    - 1630
+    - 916
+    text: 续订
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-剩余领取天数
+    id_mark: false
+    pc_rect:
+    - 555
+    - 862
+    - 890
+    - 912
+    text: 剩余领取天数
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -20561,11 +20735,11 @@
     id_mark: true
     pc_rect:
     - 75
-    - 60
+    - 50
     - 240
     - 105
     text: 首领信息
-    lcs_percent: 0.5
+    lcs_percent: 0.7
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -20694,7 +20868,7 @@
   pc_alt: false
   area_list:
   - area_name: 标题-末日幻影行
-    id_mark: true
+    id_mark: false
     pc_rect:
     - 40
     - 35
@@ -21574,10 +21748,10 @@
   - area_name: 标题-虚构叙事行
     id_mark: true
     pc_rect:
+    - 15
+    - 5
     - 140
-    - 50
-    - 280
-    - 105
+    - 38
     text: 虚构叙事
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -22325,7 +22499,7 @@
     - 1280
     - 550
     text: 星轨专票不足
-    lcs_percent: 0.5
+    lcs_percent: 0.7
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -22672,10 +22846,10 @@
   - area_name: 文本-额外获得
     id_mark: true
     pc_rect:
-    - 1495
-    - 765
-    - 1630
-    - 800
+    - 1580
+    - 770
+    - 1770
+    - 830
     text: 额外获得
     lcs_percent: 0.5
     template_sub_dir: ''

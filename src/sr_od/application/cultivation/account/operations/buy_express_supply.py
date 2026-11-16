@@ -32,7 +32,9 @@ from sr_od.operations.menu.click_phone_menu_item import ClickPhoneMenuItem
 from sr_od.operations.menu.open_phone_menu import OpenPhoneMenu
 from sr_od.operations.sr_operation import SrOperation
 
-_STORE_SCREEN: str = '商店'
+# 列车补给凭证与扫码支付弹窗都在推荐商店页(顶部「推荐商店」tab 选中态),
+# 命名空间 = 商店-推荐商店 屏;商店 屏专指常驻商店·兑换商店菜单态
+_STORE_SCREEN: str = '商店-推荐商店'
 
 PAY_CHANNEL_ALIPAY: str = 'alipay'
 PAY_CHANNEL_WECHAT: str = 'wechat'

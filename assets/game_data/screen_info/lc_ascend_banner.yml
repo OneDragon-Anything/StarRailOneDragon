@@ -10,7 +10,7 @@ area_list:
   - 1105
   - 430
   text: 光锥晋阶
-  lcs_percent: 0.5
+  lcs_percent: 0.75
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7

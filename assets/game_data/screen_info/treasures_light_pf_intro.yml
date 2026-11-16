@@ -5,10 +5,10 @@ area_list:
 - area_name: 标题-虚构叙事行
   id_mark: true
   pc_rect:
+  - 15
+  - 5
   - 140
-  - 50
-  - 280
-  - 105
+  - 38
   text: 虚构叙事
   lcs_percent: 0.5
   template_sub_dir: ''

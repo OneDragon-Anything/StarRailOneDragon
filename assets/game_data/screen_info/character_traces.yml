@@ -275,7 +275,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 开关-简略描述
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 1730
   - 148

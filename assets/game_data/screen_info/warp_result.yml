@@ -5,10 +5,10 @@ area_list:
 - area_name: 文本-额外获得
   id_mark: true
   pc_rect:
-  - 1495
-  - 765
-  - 1630
-  - 800
+  - 1580
+  - 770
+  - 1770
+  - 830
   text: 额外获得
   lcs_percent: 0.5
   template_sub_dir: ''
