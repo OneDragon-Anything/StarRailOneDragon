@@ -1,6 +1,6 @@
 # 货币战争版本适配(CW 域)
 
-> 版本更新的总流程(确认客户端 → 清点新内容 → 对齐范围 → 汇总验证 → 分阶段提交)单一源 = `sr-od-version-update-adaptation` skill,其适配项路由表指向本篇。本篇 = 总流程第 3 步「逐项适配」在货币战争(CW)域的展开:判型、按域适配顺序、各域采集入口与验收判据。读者 = 智能体。
+> 版本更新的总流程(确认客户端 → 清点新内容 → 对齐范围 → 汇总验证 → 分阶段提交)单一源 = `sr-od-dev-version-update-adaptation` skill,其适配项路由表指向本篇。本篇 = 总流程第 3 步「逐项适配」在货币战争(CW)域的展开:判型、按域适配顺序、各域采集入口与验收判据。读者 = 智能体。
 
 ## 目录
 
@@ -106,5 +106,5 @@
 
 ## 边界
 
-- 本篇只管 CW 域;本体游戏(角色录入等)适配走 `sr-od-version-update-adaptation` 自己的路由表。
+- 本篇只管 CW 域;本体游戏(角色录入等)适配走 `sr-od-dev-version-update-adaptation` 自己的路由表。
 - 生成器怎么跑、数据在哪采的细节归 [data-collection.md](data-collection.md);阵容知识重跑方法归 [compo-knowledge.md](compo-knowledge.md);画面建档归 od-dev-screen-onboarding。

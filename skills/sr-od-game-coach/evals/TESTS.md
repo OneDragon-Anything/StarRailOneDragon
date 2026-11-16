@@ -24,7 +24,7 @@
 | 「跑一下一条龙」 | 零加载 | 无游戏内容概念词、无游戏决策 |
 | 「帮我买个小月卡」 | 仅 sr-od-game-consume | 消费执行归 consume（兄弟指路） |
 | 「当前卡池来一发十连」 | 仅 sr-od-game-consume | 抽卡执行归 consume；「值不值得抽」的决策才归 coach |
-| 「新版本出了，该适配的都跟一下」 | 仅 sr-od-version-update-adaptation | 统筹入口归 adaptation，具体调研届时再载 coach |
+| 「新版本出了，该适配的都跟一下」 | 仅 sr-od-dev-version-update-adaptation | 统筹入口归 adaptation，具体调研届时再载 coach |
 
 ### 复测注意
 

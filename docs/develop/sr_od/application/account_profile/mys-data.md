@@ -16,7 +16,7 @@
 
 **数据分层原则**：定义层（名称/图标/分类/效果文案）进常量；内容层（词条每级数值、养成数值）不固化，运行时经 mys 接口现查。wiki 词条偶有错字/缺段——effects 与件名以已固化常量为准，wiki 只作新增字段来源。
 
-**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ 识别模板按规范库增量补录 → 测试锚点同步。完整工序（含内部 ID 续排与映射表同步）见 skill `sr-od-dev-relic-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
+**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ 识别模板按规范库增量补录 → 测试锚点同步。完整工序（含内部 ID 续排与映射表同步）见 skill `sr-od-dev-relic-data`；版本更新总入口 = `sr-od-dev-version-update-adaptation` skill 路由表。
 
 ## 2. 账号运行时数据（米游社）
 

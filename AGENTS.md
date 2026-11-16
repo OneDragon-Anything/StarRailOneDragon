@@ -240,7 +240,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## 13.Skills
 
-开发类 skill(`od-dev-*`)全在公共仓 **OneDragon-Skills**(索引见该仓 `skills/README.md`);写 / 改 skill 按该仓 `AGENTS.md` + `od-dev-writing-skills`(4 硬规范 / writing-craft / testing)。
+开发者 skill(`od-dev-*`)全在公共仓 **OneDragon-Skills**(索引见该仓 `skills/README.md`);写 / 改 skill 按该仓 `AGENTS.md` + `od-dev-writing-skills`。
 
-- **挂载**:junction 公共仓 `skills/<name>` → 所用工具读 skill 的目录(本地建、不入库;ZCode: `.agents/skills/`、DSH: `.dsh/skills/`、Claude Code: `.claude/skills/`)。
-- **SR 专属 skill**(星铁独有、跨项目不成立的)才进本仓 `skills/<name>/`(`sr-od-` 前缀,提交),同样 junction 挂载。
+- **挂载**:junction 公共仓 `skills/<name>` → 所用工具读 skill 的目录(本地建、不入库;ZCode / DSH: `.agents/skills/`、Claude Code: `.claude/skills/`)。
+- **SR 专属 skill**(星铁独有、跨项目不成立的)才进本仓 `skills/<name>/`(提交),同样 junction 挂载;名字带类型中缀:`sr-od-dev-*` = 开发者 skill,`sr-od-*`(无 dev)= 游戏玩家 skill,两类引用白名单见 `od-dev-writing-skills` §4.3。

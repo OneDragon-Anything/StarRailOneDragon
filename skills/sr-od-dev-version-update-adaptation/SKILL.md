@@ -1,5 +1,5 @@
 ---
-name: sr-od-version-update-adaptation
+name: sr-od-dev-version-update-adaptation
 description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适配跟进时用——清点新版本内容并逐项适配,已建档适配项见路由表(当前:地图区域信息、副本数据更新、新角色数据录入、光锥数据、遗器套装数据、攻略知识更新(game-coach 角色说明/配队说明/抽卡建议跟上版本)、货币战争玩法适配;大地图录制缓录)。凡是「新版本出了要跟」「这版本有什么要适配」「新角色出了录一下数据」「新版本的攻略知识跟上」都用,即使没明说跟哪些。英文:game version update adaptation, patch follow-up, new character data entry, game coach guide update。
 ---
 
