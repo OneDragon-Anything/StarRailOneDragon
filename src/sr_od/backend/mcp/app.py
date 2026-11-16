@@ -166,7 +166,11 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
     """
     if mode not in (MCP_MODE_PLAYER, MCP_MODE_DEV):
         raise ValueError(f"未知 MCP 运行模式: {mode}(合法值: {MCP_MODE_PLAYER} / {MCP_MODE_DEV})")
-    mcp = FastMCP(name, instructions=render_instructions())
+    # 无状态模式:server 不发 session id,每请求独立 transport。规范(MAY assign)
+    # 允许;本项目工具全一问一答、无 server 主动推送需求,而开发期改代码重启 server
+    # 是常态,有状态会话的凭证存进程内存,重启即作废且客户端(ZCode)不按规范对
+    # 404 重新握手,每次重启都要手动恢复连接——无状态从根上免疫。
+    mcp = FastMCP(name, instructions=render_instructions(), stateless_http=True)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="检查游戏窗口"))
     def check_game_window() -> WindowStatusOut:

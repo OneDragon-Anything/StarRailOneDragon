@@ -50,6 +50,7 @@ NOISY_ACCESS_LOG_PARTS = (
     '"GET /health HTTP/1.1" 200 OK',
     '"GET /game/status HTTP/1.1" 200 OK',
     '"GET /mcp HTTP/1.1" 404 Not Found',
+    '"GET /mcp HTTP/1.1" 405 Method Not Allowed',  # server 已改无状态模式,GET SSE 通道不再 404
 )
 NOISY_CONNECTION_RESET_START = 'Exception in callback _ProactorBasePipeTransport._call_connection_lost'
 NOISY_CONNECTION_RESET_END = 'ConnectionResetError:'
