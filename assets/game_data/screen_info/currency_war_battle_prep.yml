@@ -551,10 +551,10 @@ area_list:
 - area_name: 区域-部署数
   id_mark: false
   pc_rect:
-  - 820
-  - 210
-  - 1150
-  - 280
+  - 810
+  - 200
+  - 1160
+  - 310
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''

@@ -28,6 +28,7 @@ plaza 烘焙立绘库经备战执行面身份链 live 验证通过(该执行面�
 """
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -62,6 +63,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_gold,
     read_hp_opt,  # r317:模块级(monkeypatch 打桩按模块属性)
     read_level,
+    read_level_up_cost,
     read_streak,
 )
 
@@ -124,38 +126,156 @@ class _BattlePrepState:
     reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;首见机制)
 
 
+def _read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
+    """经验面板「N/M」进度(纯读):N=当前档已攒经验,M=升下一级所需;读不到 → None。
+
+    v4.7 实测样本:Lv.4 档「2/6」、Lv.5 档「0/16」(数值随档位增长)。
+    area = ``文本-升级所需经验``;读不到 / 解析失败返 None(不伪造)。
+    """
+    rect = _area_rect(ctx, '文本-升级所需经验')
+    if rect is None:
+        return None
+    blob = ''.join(r.data for r in _ocr(ctx, screen, rect))
+    m = re.search(r'(\d+)\s*/\s*(\d+)', blob)
+    if m is None:
+        return None
+    return int(m.group(1)), int(m.group(2))
+
+
+def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
+    """备战画面领域事实读取(**备战 / 备战-开商店两识别器共用**)。
+
+    并发安全同模块 docstring:纯读(不写 self. / 全局 / session);
+    装备立绘模板经 ensure_* 幂等加载。读不到的字段 None(不伪造)。
+
+    Returns:
+        dict(键集 = ``PREP_EXTRAS_DOC``;备战识别器原样返回,
+        开商店识别器在此基础上叠加 shop_cards / refresh_probs)。
+    """
+    # 装备(slot_idx → 装备名;先读,再注入 Unit.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
+    # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
+    phase0 = _read_phase_round_pure(ctx, image)
+    level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
+    # 后排装备槽按 cap 差公式选档(口述「后台格数=6+(cap−level)」;
+    # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(覆盖式保留证据在 select_back_layout)。
+    from sr_od.application.currency_war.obs.cw_back_layout import (
+        select_back_layout as _sel_bl,
+    )
+    _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)
+    templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
+    equip_grays = ensure_equip_tm_templates(ctx)
+    front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
+    # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
+    # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
+    back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
+                   if (equip_grays is not None and _back_n) else {})
+    # 角色直产状态容器形状(read_deployed_rows 已按排分域);只补 equips
+    #(按 slot 对齐注入;Unit frozen → replace 新构造)。
+    front_line: list[Unit] | None = None
+    back_line: list[Unit] | None = None
+    bench: BenchView | None = None
+    if templates is not None:
+        front_hits, back_hits = read_deployed_rows(ctx, image, templates, level=level0)
+        front_line = ([replace(u, equips=front_equips.get(s, []))
+                       for s, u in front_hits] or None)
+        back_line = ([replace(u, equips=back_equips.get(s, []))
+                      for s, u in back_hits] or None)
+        _bv = read_bench_view(ctx, image, templates)
+        # 备战席无 below icon → unit equips 保持 [];空读(零占用)→ None
+        bench = (_bv if (_bv is not None
+                         and any(s.kind != 'empty' for s in _bv.slots)) else None)
+    # owned 装备栏(右侧 区域-道具装备,read_equips SIFT;装备+消耗品混排,返名+位置,category 区分装备 vs 消耗品)
+    # 前置契约:本 reader 仅在备战族画面识别命中后生成 extras,
+    # 输入帧已是干净备战(非干净不识别的判定在外层建档识别),read_equips 无画面守卫。
+    sift_templates = ensure_equip_sift_templates(ctx)
+    owned_equips: list[dict] | None = None
+    if sift_templates is not None:
+        _owned: list[dict] = []
+        for eq_name, eq_pos, eq_inliers in read_equips(image, sift_templates):
+            eq_info = get_equip(eq_name)
+            _owned.append({
+                'name': eq_name,
+                'category': eq_info.category if eq_info is not None else '',
+                'cx': eq_pos[0],
+                'cy': eq_pos[1],
+                'inliers': eq_inliers,
+            })
+        owned_equips = _owned or None
+    phase = phase0
+    level = level0
+    #cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
+    # 后排扩展量(口述公式 6+(cap−level)),布局选档已在函数头消费。
+    # r317:read_hp 裸调用迁 read_hp_opt
+    # (miss→None;与 director 同源——消掉「MCP 报 100 而
+    # director gated=26」双真相)。extras 序列化 None→
+    # 合法 null(backend json.dumps 预校验);extras_doc
+    # 文案同步「读不到→None」。(模块级 import。)
+    state = _BattlePrepState(
+        gold=read_gold(ctx, image),
+        phase=phase,
+        hp=read_hp_opt(ctx, image),
+        streak=read_streak(ctx, image),
+        deploy_count=read_deployed_count(ctx, image),
+        deploy_cap=read_deploy_cap(ctx, image),
+        level=level,
+        board=read_board(ctx, image),
+        front_line=front_line,
+        back_line=back_line,
+        bench=bench,
+        owned_equips=owned_equips,
+        armory_boxes=([
+            {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_armory_boxes(ctx, image)
+        ] or None),
+        reward_ores=([
+            {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)
+        ] or None),
+    )
+    data = asdict(state)
+    data['xp_progress'] = _read_xp_progress(ctx, image)
+    data['levelup_cost'] = read_level_up_cost(ctx, image)
+    return data
+
+
+#: 备战族 extras 字段说明(单一源;备战识别器直接引用,开商店识别器以
+#: ``{**PREP_EXTRAS_DOC, ...}`` 叠加商店域字段——键集与 read_prep_extras
+#: 返回 dict 一致,加/改字段时同步)。
+PREP_EXTRAS_DOC: dict[str, str] = {
+    'gold': '当前金币(int;读不到→0,安全保守默认)',
+    'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
+    'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)',
+    'streak': '连胜/连败 magnitude(int;读不到→None)',
+    'deploy_count': '已部署角色数(int;读不到→None)',
+    'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
+    'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
+    'board': '{阵营名: 在场人数} dict(OCR 左面板)',
+    'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
+                  'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
+                  '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
+                  'templates 未加载→None',
+    'back_line': '后排 Unit 行 list(同 front_line 结构;templates 未加载→None)',
+    'bench': '备战席状态容器视图 dict(BenchView:slots=9 元素 BenchSlot dict'
+             '{kind: unit/supply_box/tome/bookcard/empty, unit: Unit dict 或 null}'
+             '+ capacity=9;unit 槽元素 = char_id/star/equips/slot,备战席无 below icon→equips 恒 [];'
+             '占位物品槽 kind 识别期细分;空读→None)',
+    'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};'
+                    'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
+                    'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
+    'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
+                    '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
+    'reward_ores': '奖励面板晶矿 list(read_ore_sights HoughCircles;元素 {color,cx,cy,r},'
+                      'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
+    'xp_progress': '经验面板「N/M」进度 [已攒, 升级所需](读不到→None)',
+    'levelup_cost': '购买经验按钮价格(int 金币;读不到→None)',
+}
+
+
 class BattlePrepRecognizer(ScreenRecognizer):
     """货币战争备战画面额外识别器(首个 per-screen recognizer 消费者)。"""
 
     screen_name: str = SCREEN_NAME   # '货币战争-备战'
 
-    # extras 字段说明(随analyze 响应平级返回 extras_doc;键集与 _BattlePrepState 一致)
-    extras_doc: dict[str, str] = {
-        'gold': '当前金币(int;读不到→0,安全保守默认)',
-        'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
-        'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)',
-        'streak': '连胜/连败 magnitude(int;读不到→None)',
-        'deploy_count': '已部署角色数(int;读不到→None)',
-        'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
-        'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
-        'board': '{阵营名: 在场人数} dict(OCR 左面板)',
-        'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
-                      'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
-                      '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
-                      'templates 未加载→None',
-        'back_line': '后排 Unit 行 list(同 front_line 结构;templates 未加载→None)',
-        'bench': '备战席状态容器视图 dict(BenchView:slots=9 元素 BenchSlot dict'
-                 '{kind: unit/supply_box/tome/bookcard/empty, unit: Unit dict 或 null}'
-                 '+ capacity=9;unit 槽元素 = char_id/star/equips/slot,备战席无 below icon→equips 恒 [];'
-                 '占位物品槽 kind 识别期细分;空读→None)',
-        'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};'
-                        'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
-                        'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
-        'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
-                        '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
-        'reward_ores': '奖励面板晶矿 list(read_ore_sights HoughCircles;元素 {color,cx,cy,r},'
-                          'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
-    }
+    # extras 字段说明(随analyze 响应平级返回 extras_doc;键集与 read_prep_extras 返回一致)
+    extras_doc: dict[str, str] = PREP_EXTRAS_DOC
 
     def recognize(
         self,
@@ -171,84 +291,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
             screen_info: 命中画面的 ScreenInfo(经 ``cw_obs_core._area_rect`` 读 area pc_rect)。
 
         Returns:
-            ``_BattlePrepState`` 的 dict 视图;字段含义见 ``_BattlePrepState``。
+            领域事实 dict(读取主体 = 模块级 :func:`read_prep_extras`,
+            与「货币战争-备战-开商店」识别器共用单一实现)。
         """
-        # 装备(slot_idx → 装备名;先读,再注入 Unit.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
-        # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
-        phase0 = _read_phase_round_pure(ctx, image)
-        level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
-        # 后排装备槽按 cap 差公式选档(口述「后台格数=6+(cap−level)」;
-        # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(覆盖式保留证据在 select_back_layout)。
-        from sr_od.application.currency_war.obs.cw_back_layout import (
-            select_back_layout as _sel_bl,
-        )
-        _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)
-        templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
-        equip_grays = ensure_equip_tm_templates(ctx)
-        front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
-        # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
-        # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
-        back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
-                       if (equip_grays is not None and _back_n) else {})
-        # 角色直产状态容器形状(read_deployed_rows 已按排分域);只补 equips
-        #(按 slot 对齐注入;Unit frozen → replace 新构造)。
-        front_line: list[Unit] | None = None
-        back_line: list[Unit] | None = None
-        bench: BenchView | None = None
-        if templates is not None:
-            front_hits, back_hits = read_deployed_rows(ctx, image, templates, level=level0)
-            front_line = ([replace(u, equips=front_equips.get(s, []))
-                           for s, u in front_hits] or None)
-            back_line = ([replace(u, equips=back_equips.get(s, []))
-                          for s, u in back_hits] or None)
-            _bv = read_bench_view(ctx, image, templates)
-            # 备战席无 below icon → unit equips 保持 [];空读(零占用)→ None
-            bench = (_bv if (_bv is not None
-                             and any(s.kind != 'empty' for s in _bv.slots)) else None)
-        # owned 装备栏(右侧 区域-道具装备,read_equips SIFT;装备+消耗品混排,返名+位置,category 区分装备 vs 消耗品)
-        # 前置契约:本 recognizer 仅在「货币战争-备战」画面识别命中后生成 extras,
-        # 输入帧已是干净备战(非干净不识别的判定在外层建档识别),read_equips 无画面守卫。
-        sift_templates = ensure_equip_sift_templates(ctx)
-        owned_equips: list[dict] | None = None
-        if sift_templates is not None:
-            _owned: list[dict] = []
-            for eq_name, eq_pos, eq_inliers in read_equips(image, sift_templates):
-                eq_info = get_equip(eq_name)
-                _owned.append({
-                    'name': eq_name,
-                    'category': eq_info.category if eq_info is not None else '',
-                    'cx': eq_pos[0],
-                    'cy': eq_pos[1],
-                    'inliers': eq_inliers,
-                })
-            owned_equips = _owned or None
-        phase = phase0
-        level = level0
-        #cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
-        # 后排扩展量(口述公式 6+(cap−level)),布局选档已在函数头消费。
-        # r317:read_hp 裸调用迁 read_hp_opt
-        # (miss→None;与 director 同源——消掉「MCP 报 100 而
-        # director gated=26」双真相)。extras 序列化 None→
-        # 合法 null(backend json.dumps 预校验);extras_doc
-        # 文案同步「读不到→None」。(模块级 import。)
-        state = _BattlePrepState(
-            gold=read_gold(ctx, image),
-            phase=phase,
-            hp=read_hp_opt(ctx, image),
-            streak=read_streak(ctx, image),
-            deploy_count=read_deployed_count(ctx, image),
-            deploy_cap=read_deploy_cap(ctx, image),
-            level=level,
-            board=read_board(ctx, image),
-            front_line=front_line,
-            back_line=back_line,
-            bench=bench,
-            owned_equips=owned_equips,
-            armory_boxes=([
-                {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_armory_boxes(ctx, image)
-            ] or None),
-            reward_ores=([
-                {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)
-            ] or None),
-        )
-        return asdict(state)
+        return read_prep_extras(ctx, image)
