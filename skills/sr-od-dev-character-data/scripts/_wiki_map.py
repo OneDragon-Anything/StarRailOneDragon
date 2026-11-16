@@ -376,11 +376,12 @@ WIKI_CHARACTERS: dict = {
  },
  "1211": {
   "cn": "白露",
-  "path": None,
-  "element": None,
-  "rarity": None,
+  "path": "Abundance",
+  "element": "lightning",
+  "rarity": 5,
+  "wiki_content_id": 564,
+  "source": "miyoushe-official",
   "feature_char": "bailu",
-  "source": "snapshot-fallback",
   "en": "Bailu",
   "en_normalized": "bailu",
   "hoyowiki_page_id": "29"
