@@ -78,11 +78,52 @@ class CwEntryEnter(CwOperation):
         if popup is not None:
             return popup
 
-        # 到达大厅:左菜单「创业指南」(大厅独有识别标志;lobby screen_info area 判定,替代全屏 ocr)。
+        # 到达大厅:左上角赛季名「入画奇航」(大厅独有识别标志;lobby screen_info
+        # area 判定,替代全屏 ocr)。v4.7 大厅改版:旧锚「创业指南」左菜单已不存在,
+        # 换赛季名 id_mark(赛季更替时随建档同步换锚,判据 = 画面左上标题区唯一稳定文本)。
         # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配。
-        if self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-创业指南').is_success:
+        if self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-赛季名').is_success:
             log.info('[cw-entry] 到达货币战争大厅')
             return self.round_success(CwEntryEnter.STATUS_AT_LOBBY)
+
+        # 传送确认框(地图点传送后偶发「是否传送至附近」):点确认。
+        # ⚠️ 须先于地图传送分支:确认框文案含「传送」二字,顺序颠倒会在
+        # 确认框上误点句中「传送」词(非按钮)。
+        if self.round_by_ocr(screen, '传送至附近', lcs_percent=0.7).is_success:
+            log.info('[cw-entry] 传送确认框 → 确认')
+            self.round_by_ocr_and_click(screen, '确认', success_wait=4,
+                                        retry_wait=1)
+            # round_retry 非 success:传送落地只是中转,终点仍是大厅
+            return self.round_retry('已确认传送', wait=4)
+
+        # 任务面板「前往」后的传送地图(导航/大地图):点「传送」传到任务点
+        # (朝露公馆),落地后由下方 F 分支进大厅。
+        # ⚠️ 须先于下方任务面板分支:地图右下也有「停止追踪」按钮,顺序颠倒
+        # 会在地图帧误入任务面板分支、点到两按钮间空位空转(实机 28 重试卡死根因)。
+        if self.round_by_ocr(screen, '传送', lcs_percent=0.7).is_success:
+            log.info('[cw-entry] 传送地图 → 点「传送」')
+            self.round_by_ocr_and_click(screen, '传送', success_wait=4,
+                                        retry_wait=2)
+            # round_retry 非 success:op 终点 = 大厅,传送只是链路中转
+            # (success 会提前结束整个 op,实机停在大世界 F 分支未跑,已修)。
+            return self.round_retry('已点传送,等待落地', wait=5)
+
+        # v4.7 新手任务门(实机两次卡死根因):新手关未完成时,旷宇纷争页
+        # 「前往参与」改为弹出任务面板(货币战争•入画奇航/试用货币战争新系统),
+        # 不再直接传送。面板含「货币战争」字样且无「前往参与」→ 下方旧 F 分支
+        # 误触发按 F 死循环(面板不响应 F)。处理 = 点面板内「前往」(按钮位 =
+        # 「按钮-开始追踪」area,追踪态文案变体,位置一致)→ 落传送地图 →
+        # 由上方地图传送分支接力;面板识别锚 =「停止追踪」(面板与地图右下
+        # 按钮共有,故本分支必须排在地图分支之后)。
+        if self.round_by_ocr(screen, '停止追踪', lcs_percent=0.7).is_success:
+            log.info('[cw-entry] v4.7 新手任务面板 → 点「前往」走地图传送链')
+            # 纯定位点「前往」:按钮文案随追踪态在 前往/开始追踪 间切换,
+            # find_and_click 按建档文本「开始追踪」匹配会恒 miss(实机 30 重试失败根因),
+            # 改点「按钮-开始追踪」area 中心(位置恒定);面板本身已由
+            # 「停止追踪」OCR 锚确认,不靠按钮文案复核。
+            self.round_by_click_area('任务', '按钮-开始追踪',
+                                     pre_delay=0.3, success_wait=3)
+            return self.round_retry('任务面板已点前往', wait=2)
 
         # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地,仍在加载)→ 重点击。
         # 否则停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ 下方 F 分支(NOT 前往参与)被跳过
