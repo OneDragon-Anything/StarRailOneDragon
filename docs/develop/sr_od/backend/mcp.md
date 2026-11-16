@@ -119,7 +119,7 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 
 - 当前服务只实现 streamable HTTP，不是 STDIO server；Codex 中不要选 STDIO。
 - 本机接口默认无鉴权，因此不需要 Bearer token 或额外 headers。
-- MCP 客户端只负责连接已启动的 HTTP MCP server；启动 / 停止 / 重启由 GUI「MCP 服务」页或命令行负责。
+- MCP 客户端只负责连接已启动的 HTTP MCP server；启动 / 停止 / 重启由 GUI「MCP 服务」页、命令行或 daemon 负责。DSH web 跑在游戏本机时可在 DSH 会话内直接启动 server（Session 1 + 管理员天然满足，见 [entry.md](entry.md)「DSH web 本机启动」）。
 - **运行模式随启动命令决定**（见 §1）：不带 `--mode` 即默认玩家模式；开发者要用维护类工具时启动命令加 `--mode dev`，切换模式 = 重启 + 客户端重连。经 daemon 管理时用 `start_sr_od_mcp_server(mode=...)` / `restart_sr_od_mcp_server(mode=...)`。
 - 命令行启动可用 `uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`（默认玩家模式）；开发模式加 `--mode dev`；如果项目根目录存在 `.env`，也可使用 `uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`。
 
