@@ -306,14 +306,14 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
     def click_game(
         x: float, y: float,
         press_time: Annotated[float, Field(description="按住时长(秒);默认 0.1(游戏识别下限,0=极短按可能无效)")] = 0.1,
-        pc_alt: Annotated[bool, Field(description="点击前是否按住 Alt 解锁光标;大世界等 pc_alt=true 画面必需,其余 False")] = False,
+        pc_alt: Annotated[bool, Field(description="点击前是否按住 Alt 解锁光标;锁光标画面必需(看 analyze_screen 返回的 pc_alt),其余 False")] = False,
     ) -> bool:
         """点击游戏窗口内坐标(取画面建档 pc_rect 中心)。操作类(会控制游戏),需游戏窗口就绪。
 
         鼠标点击用本 tool;键盘按键用 key_tap;拖拽用 drag。坐标经控制器缩放到
         真实屏幕。返回 False = 坐标不在窗口内、未点击(正常结果,非错误)。
         大世界等锁光标画面点击会落空,需传 pc_alt=True 解锁光标(画面是否锁
-        光标看建档的 pc_alt)。
+        光标看 analyze_screen 返回的 pc_alt)。
 
         ⚠️ 底层无内置等待:点 UI 常触发画面切换(菜单/弹窗/进画面),连续操作或
         截图前建议 sleep ~1s 等动画(否则截过渡帧)。

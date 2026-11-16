@@ -37,6 +37,7 @@ class AnalyzeScreenResult:
             精准命中且识别器声明了 ``extras_doc`` 时,原样回填该声明(字段名 → 一行语义,
             含取值格式 / 读不到时的值 / 可靠性注意);否则 None。调用方拿到 extras 的同时
             就拿到字段语义,零跳查;识别器异常时仍返回(extras=None 时可对照排障)。
+        pc_alt: 精准命中画面建档的锁光标标记;模糊候选/无命中恒 False。
     """
 
     ocr_texts: list[OcrText]
@@ -44,6 +45,7 @@ class AnalyzeScreenResult:
     screenshot_path: str | None = None
     extras: dict | None = None
     extras_doc: dict[str, str] | None = None
+    pc_alt: bool = False  # 精准命中画面建档的锁光标标记；模糊候选/无命中恒 False
 
 
 # —— analyze_screen 的 MCP 输出模型(字段描述经 outputSchema 随工具列表对模型可见;
@@ -95,6 +97,11 @@ class AnalyzeScreenOut(BaseModel):
         default=None, description='精准命中画面登记的结构化数据（未登记为 null）')
     extras_doc: dict[str, str] | None = Field(
         default=None, description='extras 各字段的语义说明，与 extras 平级对照读（未登记为 null）')
+    pc_alt: bool = Field(
+        default=False,
+        description='本画面 PC 端点击需按住 Alt 解锁光标：click_game 须带 pc_alt=True，'
+                    '否则点击落空。仅精准命中（screens 含 is_precise=True）时有意义；'
+                    '自由光标画面为 False，Alt+点击无害')
 
     @classmethod
     def from_backend(cls, result: AnalyzeScreenResult) -> 'AnalyzeScreenOut':

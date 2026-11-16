@@ -891,7 +891,8 @@ class SrBackendContext:
         Returns:
             识别结果(纯数据):OCR 文本列表(include_ocr=False 时为空)、画面匹配列表、
             screenshot_path(本次新存的截图路径,实时+save_image=True 时有值)、
-            extras / extras_doc(精准命中画面的结构化领域数据与字段说明,无注册识别器时 None)。
+            extras / extras_doc(精准命中画面的结构化领域数据与字段说明,无注册识别器时 None)、
+            pc_alt(精准命中画面建档的锁光标标记,模糊候选/无命中恒 False)。
 
         Raises:
             BackendNotReadyError: backend 未就绪。
@@ -935,6 +936,15 @@ class SrBackendContext:
             if write_back and screens and screens[0].is_precise:
                 self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
 
+            # pc_alt:精准命中画面建档的锁光标标记;模糊候选/无命中恒 False
+            # (候选画面未确认,按画面识别纪律不应直接按坐标点击)。
+            # screen_info_map 查不到按 False 防御(理论不可达:候选名来自 loader 本身)。
+            pc_alt = False
+            if screens and screens[0].is_precise:
+                screen_info = self._ctx.screen_loader.screen_info_map.get(screens[0].screen_name)
+                if screen_info is not None:
+                    pc_alt = screen_info.pc_alt
+
             # —— 精准命中 → 按画面查表跑额外识别器(无注册则 None,稳态零额外开销)——
             #    整个查表+调用都包在 try 里(含 get_recognizer 触发的惰性首扫):任一步异常 → extras=None,绝不中断 analyze。
             #    extras_doc(字段说明)在 recognize 调用前先取:识别器异常时 extras=None 但说明照常返回,调用方可对照排障。
@@ -955,7 +965,8 @@ class SrBackendContext:
 
             return AnalyzeScreenResult(ocr_texts=ocr_texts, screens=screens,
                                        screenshot_path=saved_path,
-                                       extras=extras, extras_doc=extras_doc)
+                                       extras=extras, extras_doc=extras_doc,
+                                       pc_alt=pc_alt)
         except Exception as e:  # noqa: BLE001 OCR/匹配/存盘异常兜底:转领域异常(存盘已成功的把路径带进消息排障)
             msg = f'{e}(本次截图已存: {saved_path})' if saved_path else str(e)
             raise AnalyzeScreenError(msg) from e
