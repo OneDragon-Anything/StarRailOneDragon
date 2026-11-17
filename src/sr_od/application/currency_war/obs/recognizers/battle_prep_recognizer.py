@@ -142,11 +142,17 @@ def _read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None
     return int(m.group(1)), int(m.group(2))
 
 
-def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
+def read_prep_extras(ctx: SrContext, image: MatLike,
+                     with_rows: bool = True) -> dict:
     """备战画面领域事实读取(**备战 / 备战-开商店两识别器共用**)。
 
     并发安全同模块 docstring:纯读(不写 self. / 全局 / session);
     装备立绘模板经 ensure_* 幂等加载。读不到的字段 None(不伪造)。
+
+    :param with_rows: 是否读部署行(front_line/back_line/deploy_count)。
+        开商店画面传 False——商店牌行盖住部署计数、面板遮挡使立绘比对
+        不可靠(实机:开商店态恒缺/残缺),该画面这三项**设计性不返回**
+        (None),要完整读数用备战画面(收店后);跳过还省 SIFT 开销。
 
     Returns:
         dict(键集 = ``PREP_EXTRAS_DOC``;备战识别器原样返回,
@@ -156,30 +162,36 @@ def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
     # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
     phase0 = _read_phase_round_pure(ctx, image)
     level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
-    # 后排装备槽按 cap 差公式选档(口述「后台格数=6+(cap−level)」;
-    # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(覆盖式保留证据在 select_back_layout)。
-    from sr_od.application.currency_war.obs.cw_back_layout import (
-        select_back_layout as _sel_bl,
-    )
-    _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)
-    templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
+    front_equips: dict = {}
+    back_equips: dict = {}
+    _back_n = None
+    if with_rows:
+        # 后排装备槽按 cap 差公式选档(口述「后台格数=6+(cap−level)」;
+        # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(覆盖式保留证据在 select_back_layout)。
+        from sr_od.application.currency_war.obs.cw_back_layout import (
+            select_back_layout as _sel_bl,
+        )
+        _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)
+    templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);bench 读也依赖
     equip_grays = ensure_equip_tm_templates(ctx)
-    front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
-    # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
-    # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
-    back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
-                   if (equip_grays is not None and _back_n) else {})
+    if with_rows and equip_grays is not None:
+        front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4)
+        # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
+        # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
+        back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
+                       if _back_n else {})
     # 角色直产状态容器形状(read_deployed_rows 已按排分域);只补 equips
     #(按 slot 对齐注入;Unit frozen → replace 新构造)。
     front_line: list[Unit] | None = None
     back_line: list[Unit] | None = None
     bench: BenchView | None = None
-    if templates is not None:
+    if with_rows and templates is not None:
         front_hits, back_hits = read_deployed_rows(ctx, image, templates, level=level0)
         front_line = ([replace(u, equips=front_equips.get(s, []))
                        for s, u in front_hits] or None)
         back_line = ([replace(u, equips=back_equips.get(s, []))
                       for s, u in back_hits] or None)
+    if templates is not None:
         _bv = read_bench_view(ctx, image, templates)
         # 备战席无 below icon → unit equips 保持 [];空读(零占用)→ None
         bench = (_bv if (_bv is not None
@@ -218,8 +230,8 @@ def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
         phase=phase,
         hp=read_hp_opt(ctx, image),
         streak=read_streak(ctx, image),
-        deploy_count=read_deployed_count(ctx, image),
-        deploy_cap=read_deploy_cap(ctx, image),
+        deploy_count=(read_deployed_count(ctx, image) if with_rows else None),
+        deploy_cap=(read_deploy_cap(ctx, image) if with_rows else None),
         level=level,
         board=read_board(ctx, image),
         front_line=front_line,
@@ -247,8 +259,10 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
     'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)',
     'streak': '连胜/连败 magnitude(int;读不到→None)',
-    'deploy_count': '已部署角色数(int;读不到→None)',
-    'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
+    'deploy_count': '已部署角色数(int;读不到→None)。开商店画面设计性不返回:None'
+                    '(商店牌行盖住计数,遮挡不可靠;完整读数收店后用备战画面取)',
+    'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)。'
+                  '开商店画面设计性不返回:None(同 deploy_count)',
     'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
     'board': '羁绊面板可见行原文 {羁绊名: 面板数字}(OCR 直读,快路径)。'
              '⚠️ v4.7 面板滚动+重排,本读数只是可见子集,不可当完整羁绊计数或'
@@ -257,8 +271,10 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
                   'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
                   '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
-                  'templates 未加载→None',
-    'back_line': '后排 Unit 行 list(同 front_line 结构;templates 未加载→None)',
+                  'templates 未加载→None;开商店画面设计性不返回:None'
+                  '(遮挡不可靠,完整读数收店后用备战画面取)',
+    'back_line': '后排 Unit 行 list(同 front_line 结构;templates 未加载→None;'
+                 '开商店画面设计性不返回:None)',
     'bench': '备战席状态容器视图 dict(BenchView:slots=9 元素 BenchSlot dict'
              '{kind: unit/supply_box/tome/bookcard/empty, unit: Unit dict 或 null}'
              '+ capacity=9;unit 槽元素 = char_id/star/equips/slot,备战席无 below icon→equips 恒 [];'

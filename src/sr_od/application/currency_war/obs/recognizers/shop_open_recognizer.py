@@ -88,7 +88,9 @@ class ShopOpenRecognizer(ScreenRecognizer):
         Returns:
             备战族 extras(dict,键集见 extras_doc)叠加 shop_cards / refresh_probs。
         """
-        data = read_prep_extras(ctx, image)
+        # with_rows=False:商店牌行盖住部署计数、面板遮挡使行 SIFT 不可靠(实机恒缺/残缺),
+        # 开商店画面这三项设计性不返回;完整读数用备战画面(收店后)。
+        data = read_prep_extras(ctx, image, with_rows=False)
         slots = read_shop_cards(ctx, image)
         data['shop_cards'] = _shop_slots_to_json(slots) if slots is not None else None
         probs = read_refresh_probs(ctx, image)
