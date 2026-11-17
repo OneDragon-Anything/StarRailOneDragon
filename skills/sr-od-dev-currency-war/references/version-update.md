@@ -100,6 +100,8 @@
 
 **最易漏项 = 万金油角色名单**(策略「恒囤名单」,常量 `CROSS_LINE_KEEP_NAMES`,单一源 = `strategies/impl/mandate_v1/protection.py`):它的数据依据 = `docs/game/currency_war/research/stage_transitions.md` Q1 表(三阶段阵容统计的「全程留用层」),换赛季后留场率排序必然重排——重跑 = 用新版本帖重算三阶段统计 → 对照新旧「全程留用层」 → 更新常量并同步文档依据描述。凡从 `stage_transitions.md` 派生的其他策略立场常量同批重核。
 
+**玩家 skill 玩法层同批同步**:知识层重跑(final_comps 重建、机制口径更新)收尾时,玩家 skill `sr-od-currency-war` 的三篇玩法文档(gameplay-basics / decision-guide / comps-codex)是这些知识的浓缩复制面——必须同批按新知识重新浓缩,否则玩家面拿到过期打法;同步义务与依据登记在玩家 skill 的 `design/overview.md`。
+
 ### 4.4 版本敏感注册表(扩充也要核)
 
 升级经验门槛表、牌池副本数(判据:同费种类数必须是 3 的倍数,3合1 机制决定)、刷新概率表(行和=100% 校验)——换赛季默认全变,扩充按公告判,采集方式见 data-collection.md。
