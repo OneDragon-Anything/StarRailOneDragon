@@ -1,4 +1,4 @@
-"""买商店牌 op(按物理槽位点击;MCP 手动游玩纯动作)。
+"""买商店牌 op(按物理槽位点击;公用底层动作原语)。
 与 ``cw_op/`` 域耦合动作 op 的分界见包 ``__init__`` docstring。
 """
 from __future__ import annotations

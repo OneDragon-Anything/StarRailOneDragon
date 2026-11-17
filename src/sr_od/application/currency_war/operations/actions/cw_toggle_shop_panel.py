@@ -1,4 +1,4 @@
-"""开/收商店面板 op(点击右下角面板开关;MCP 手动游玩纯动作)。
+"""开/收商店面板 op(点击右下角面板开关;公用底层动作原语)。
 与 ``cw_op/`` 域耦合动作 op 的分界见包 ``__init__`` docstring。
 """
 from __future__ import annotations

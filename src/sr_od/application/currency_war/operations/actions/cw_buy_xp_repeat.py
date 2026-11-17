@@ -1,4 +1,4 @@
-"""购买经验 op(点击购买经验按钮 N 次;MCP 手动游玩纯动作)。
+"""购买经验 op(点击购买经验按钮 N 次;公用底层动作原语)。
 与 ``cw_op/`` 域耦合动作 op 的分界见包 ``__init__`` docstring。
 """
 from __future__ import annotations

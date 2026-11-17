@@ -1,4 +1,4 @@
-"""卖出备战槽角色 op(拖拽至出售区;MCP 手动游玩纯动作)。
+"""卖出备战槽角色 op(拖拽至出售区;公用底层动作原语)。
 与 ``cw_op/`` 域耦合动作 op 的分界见包 ``__init__`` docstring。
 """
 from __future__ import annotations

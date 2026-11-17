@@ -1,4 +1,4 @@
-"""刷新商店 op(点击刷新按钮;MCP 手动游玩纯动作)。
+"""刷新商店 op(点击刷新按钮;公用底层动作原语)。
 与 ``cw_op/`` 域耦合动作 op 的分界见包 ``__init__`` docstring。
 """
 from __future__ import annotations

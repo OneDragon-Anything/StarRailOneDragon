@@ -208,7 +208,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
             time.sleep(0.3)
     except Exception:   # noqa: BLE001  焦点守卫 best-effort
         pass
-    from sr_od.application.currency_war.operations.dev.drag_cw_char import (
+    from sr_od.application.currency_war.operations.actions.drag_cw_char import (
         DragCwChar,
     )
     DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx,
@@ -476,7 +476,7 @@ class PrepActionExecutor:
             # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
             # port 检查;部署/卖上阵落位事实由后端状态副本承接)
             return
-        from sr_od.application.currency_war.operations.dev.drag_cw_char import (
+        from sr_od.application.currency_war.operations.actions.drag_cw_char import (
             DragCwChar,
         )
 
