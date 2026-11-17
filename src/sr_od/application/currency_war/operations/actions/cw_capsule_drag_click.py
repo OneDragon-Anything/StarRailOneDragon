@@ -22,7 +22,7 @@ class CwCapsuleDragClick(CwOperation):
     (用 CwToggleShopPanel 先收)。
 
     :param screen_name: 按钮所在画面档名(如 货币战争-备战 / 货币战争-补给)。
-        须为已建档画面,否则构造期拒绝。
+        须为已建档画面;运行期 area/screen 解析落空 → round_fail(显式失败非静默)。
     :param area_name: 按钮 area 名(含「按钮-」前缀,如 按钮-出战 / 按钮-确认)。
     :param move_px: 按下后的横移像素数(正=向右),缺省 4,可用值 2-12。
     """
