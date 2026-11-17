@@ -57,22 +57,25 @@ class DragCwChar(CwOperation):
 
     def __init__(self, ctx: SrContext, from_row: str, from_idx: int,
                  to_row: str, to_idx: int,
-                 back_centers: list[Point] | None = None) -> None:
+                 back_centers: list[list[int]] | None = None) -> None:
         """拖 ``(from_row, from_idx)`` → ``(to_row, to_idx)``。
 
         Args:
             from_row / to_row: ``"front"`` / ``"back"`` / ``"bench"``。
             from_idx / to_idx: 1-based 槽位号(前排 1-4 / 后排 1-6 基准 / 备战栏 1-9)。
-            back_centers: 后排实际槽位中心(覆盖 screen_info)。**财富宝钻**(团队规模 +1)致后排 >6 时,
-                screen_info「后排-1..6」不够 → 调用方传运行时检测到的实际后排槽中心(含 7+ 槽)。
-                ``None`` → 用 screen_info 后排-N(基准 6)。
+            back_centers: 后排实际槽位中心**坐标对 [[x, y], ...]**(覆盖 screen_info)。
+                **财富宝钻**(团队规模 +1)致后排 >6 时, screen_info「后排-1..6」不够 →
+                调用方传运行时检测到的实际后排槽中心(含 7+ 槽)。
+                ``None`` → 用 screen_info 后排-N(基准 6)。坐标对形态 = 包契约
+                「构造参数 JSON 简单类型」(Point 非 JSON 类型,内部转换)。
         """
         CwOperation.__init__(self, ctx, op_name='货币战争-拖动角色')
         self.from_row: str = from_row
         self.from_idx: int = from_idx
         self.to_row: str = to_row
         self.to_idx: int = to_idx
-        self.back_centers: list[Point] | None = back_centers
+        self.back_centers: list[Point] | None = (
+            [Point(c[0], c[1]) for c in back_centers] if back_centers else None)
 
     def _slot_center(self, row: str, idx: int) -> Point | None:
         """解析 ``(row, idx)`` → 槽位中心。

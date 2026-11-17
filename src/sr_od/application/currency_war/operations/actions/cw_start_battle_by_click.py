@@ -12,16 +12,14 @@ _PREP_SCREEN: str = '货币战争-备战'
 
 
 class CwStartBattleByClick(CwOperation):
-    """点击出战按钮(纯机械一段;零校验零特殊处理)。
+    """点击出战按钮(盲点机械一段;零校验零特殊处理,用户裁定)。
     起点/终点:货币战争-备战画面自身(点击后是否转场归调用方下一帧观察)。
     消耗:进入战斗(败局扣小队生命值;战斗本身无直接货币消耗)。
 
-    动作 op 契约(用户裁定):状态前置(收店/弹窗/软锁)全部由调用方负责。
-    实现注记(如实声明):点击走框架 ``round_by_find_and_click_area``——该框架
-    方法对带 text 的 area 自带「OCR 可见才点」门与至多 3 次重试(构造默认),
-    即本 op 存在**框架级目标可见性守卫**,非纯盲点;契约字面(盲点机械)与
-    此实现的取舍待用户裁决,当前按更安全形态保留。
-    其余状态前置仍零处理:不判收店、不处理弹窗、不兜底。
+    动作 op 契约(用户裁定):只管机械执行——**盲点形态**:坐标从画面档
+    「按钮-出战」静态解析后直接点击,无 OCR 可见性门、无重试、无任何
+    画面状态判断;状态前置(收店/弹窗/软锁)与误触代价全部由调用方负责
+    (编排层保证或 agent 按 skill 画面文档自查)。
 
     :param none: 无参数。
     """
@@ -32,6 +30,15 @@ class CwStartBattleByClick(CwOperation):
 
     @operation_node(name='点击出战', is_start_node=True)
     def click_start(self) -> OperationRoundResult:
-        return self.round_by_find_and_click_area(
-            self.last_screenshot, _PREP_SCREEN, '按钮-出战',
-            success_wait=1)
+        # 盲点机械:画面档坐标静态解析 → 直接点击(无 OCR 门/无重试;用户裁定)
+        si = self.ctx.screen_loader.get_screen(_PREP_SCREEN)
+        area = None
+        if si is not None:
+            area = next((a for a in si.area_list
+                         if a.area_name == '按钮-出战'), None)
+        if area is None or area.pc_rect is None:
+            return self.round_fail(
+                status='area 缺失:按钮-出战(货币战争-备战)')
+        self.ctx.controller.click(area.pc_rect.center)
+        return self.round_success(
+            status='已点击出战(盲点机械发出,零判效)', wait=1)
