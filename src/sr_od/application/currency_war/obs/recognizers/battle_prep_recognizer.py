@@ -213,12 +213,11 @@ def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
     # 合法 null(backend json.dumps 预校验);extras_doc
     # 文案同步「读不到→None」。(模块级 import。)
     # board 以算代读(用户既定口径,同 flow 层 board_from_deployed):
-    # SIFT 单位表可用 → 按单位羁绊标签计算计数(不受面板滚动/重排影响);
-    # SIFT 不可用(front/back None)或身份未知 → None,降级读
-    # board_ocr_visible(面板可见行原文,仅参考)。
+    # front/back 两行 SIFT **都**可用才计算(单行缺失算半账,比漏算更毒);
+    # 任一行不可用或身份未知 → None,降级读 board_ocr_visible(面板可见行原文,仅参考)。
     computed_board = None
-    if front_line is not None or back_line is not None:
-        computed_board = board_from_deployed(list(front_line or []) + list(back_line or []))
+    if front_line is not None and back_line is not None:
+        computed_board = board_from_deployed(list(front_line) + list(back_line))
     state = _BattlePrepState(
         gold=read_gold(ctx, image),
         phase=phase,
