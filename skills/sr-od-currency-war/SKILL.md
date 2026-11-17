@@ -14,7 +14,7 @@ description: 当要玩崩坏星穹铁道的货币战争（入画奇航赛季）�
 3. **op 偶发静默失败**：商店面板开关这类 op 可能返回成功但画面没变——每次动作后用下一帧 `analyze_screen` 对账，没生效就原样重跑一次。
 4. **拖拽部署前必须重读**：晶矿掉落物会占用备战席槽位导致槽位位移，`DragCwChar` 的 from_idx 必须来自**最新一帧**的 extras.bench。
 5. **analyze 的 board 字段只是面板可见行**：v4.7 羁绊面板会滚动+重排，OCR 只读到可视子集；羁绊计数决策以 SIFT 识别的 front_line/back_line 单位表为准，board 仅作快照参考。
-6. **开商店态读数残缺**：面板遮挡会让 front_line/deploy_count 为 null——要完整读数先收商店。
+6. **开商店画面不返回行读数（设计如此）**：商店面板开着时，analyze 的 front_line / back_line / deploy_count / deploy_cap 恒为 null（牌行盖住计数、面板遮挡使角色识别不可靠——已按设计跳过，不是识别坏了）。要这四项就收商店后用备战画面读；商店画面自己的强项（shop_cards 商店牌、refresh_probs 刷新概率、bench 备战席、gold 金币）照常返回。
 7. **未达上限弹窗**：部署未满时点出战会弹「可出战角色人数未达上限」——`CwStartBattleByClick` 会自动确认；「本局不再提示」勾选框不代点（玩家偏好）。
 
 ## 2. 一局的标准流程
