@@ -6,6 +6,7 @@
 ## 文档
 
 - 设计总纲:[design.md](design.md)
+- V4.7 结构审计(对 v2 schema 的表达力检验,5 必改/5 待裁/8+ 验证通过):[structure-audit.md](structure-audit.md)
 
 ## 范围裁定（用户 2026-11-17）
 
