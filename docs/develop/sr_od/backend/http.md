@@ -27,7 +27,7 @@
 
 - `routes.py` 放基础 game handler 与总注册入口；`service_routes.py` 放应用运行、自定义 op 和 `/health` 这组服务端点。
 - 处理器调 backend 走 `asyncio.to_thread`；`BackendNotReadyError` 统一返回 503 JSON。
-- `/game/analyze?save_image=true`（实时模式）让 backend 顺手存盘 + 响应多带 `screenshot_path`；默认 `false` 不落盘，离线模式忽略。取图统一走此入口（识别与落盘同一帧）；独立截图端点 `/game/capture` 已按此裁定退役。`/game/analyze` 的响应是**手搓 JSON dict**（显式枚举字段,非自动序列化 dataclass）,故新增 `extras` 等字段时**必须在 `handle_game_analyze` 的响应 dict 里显式补**(否则 HTTP 静默丢字段);这点与 MCP 侧（FastMCP 自动序列化 dataclass）不同 —— 两适配器序列化方式差异,MCP 自动带、HTTP 要手补（[design-principles.md](design-principles.md) P11 对称）。
+- `/game/analyze?save_image=true`（实时模式）让 backend 顺手存盘 + 响应多带 `screenshot_path`；默认 `false` 不落盘，离线模式忽略。取图统一走此入口（识别与落盘同一帧）；独立截图端点 `/game/capture` 已按此裁定退役。`/game/analyze` 的响应是**手搓 JSON dict**（显式枚举字段,非自动序列化 dataclass）,故新增 `extras` 等字段时**必须在 `handle_game_analyze` 的响应 dict 里显式补**(否则 HTTP 静默丢字段);这点与 MCP 侧（FastMCP 自动序列化 dataclass）不同 —— 两适配器序列化方式差异,MCP 自动带、HTTP 要手补（od-dev-write-backend skill §1.1 对称落层）。
 - 所有运行端点（`/game/enter`、`/game/run/one-dragon`、`/game/run/standalone`、`/game/run/operation`）经**同一个 `RunSlot`** 异步派发：op 路径（`enter` / `operation`）槽自管生命周期，app 路径（`one-dragon` / `standalone`）委托 `run_application`。
 - 自定义 op 端点：`op_id` 走 query 参数（`?op_id=...`），`args` 走 JSON body（整体 body 即 args 字典，空 body 时 `args={}`）；`block` 走 query。**业务失败一律 `200 + body 内 error/started 标志`**（`op_id` 不存在 / 非 Operation / 参数校验失败 / 并发拒绝），不引入 400/404/409；仅 `BackendNotReadyError` 返 503。
 - 配置刷新：app 路径在 `run_application` 前（槽线程内、`_start` 已赢锁后）刷新当前进程的 YAML 配置缓存，对齐 GUI 已保存设置；拒绝路径不刷新。`/game/applications` 与 `/game/operations` 是只读路径，不刷新。
@@ -43,7 +43,7 @@
 | 调用方式 | REST | tool-call |
 | 共享对象 | 同一个 `SrBackendContext` | 同一个 `SrBackendContext` |
 
-运行态三件套**对称暴露**：`/game/enter` ↔ `open_game`、`/game/status` ↔ `get_run_status`、`/game/stop` ↔ `stop_run`，两侧调同一 backend 方法（[design-principles.md](design-principles.md) P11），跨适配器状态共享同一 `RunSlot`（HTTP 触发的运行 MCP 也能查到）；应用运行端点对应 `run_one_dragon` / `run_standalone_app` / `list_applications`；自定义 op 运行入口对应 `list_operations` / `describe_operation` / `run_operation` / `describe_operation_flow`（`/game/operations` ↔ `list_operations`、`/game/operations/describe` ↔ `describe_operation`、`/game/operations/flow` ↔ `describe_operation_flow`、`/game/run/operation` ↔ `run_operation`）。
+运行态三件套**对称暴露**：`/game/enter` ↔ `open_game`、`/game/status` ↔ `get_run_status`、`/game/stop` ↔ `stop_run`，两侧调同一 backend 方法（od-dev-write-backend skill（对称落层）），跨适配器状态共享同一 `RunSlot`（HTTP 触发的运行 MCP 也能查到）；应用运行端点对应 `run_one_dragon` / `run_standalone_app` / `list_applications`；自定义 op 运行入口对应 `list_operations` / `describe_operation` / `run_operation` / `describe_operation_flow`（`/game/operations` ↔ `list_operations`、`/game/operations/describe` ↔ `describe_operation`、`/game/operations/flow` ↔ `describe_operation_flow`、`/game/run/operation` ↔ `run_operation`）。
 
 ## 路线图（尚未实现）
 

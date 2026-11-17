@@ -14,7 +14,7 @@ uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --p
 uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001
 ```
 
-以上都不带 `--mode`，默认玩家模式（MCP 工具面见 [mcp.md](mcp.md) §1）；开发模式加 `--mode dev`：
+以上都不带 `--mode`，默认玩家模式；开发模式加 `--mode dev`：
 
 ```shell
 uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001 --mode dev
@@ -57,7 +57,7 @@ CLI 参数：
 
 - `--host`：默认 `127.0.0.1`。
 - `--port`：默认 `24001`。
-- `--mode`：MCP 运行模式，`player`（默认，只暴露游戏内容工具）/ `dev`（额外暴露维护类工具，见 [mcp.md](mcp.md) §1）；进程级状态，切换需重启 + MCP 客户端重连。
+- `--mode`：MCP 运行模式，`player`（默认，只暴露游戏内容工具）/ `dev`（额外暴露维护类工具）；进程级状态，切换需重启 + MCP 客户端重连。
 
 ## GUI 启动
 
@@ -93,8 +93,24 @@ GUI 的「开发工具 -> MCP 服务」页面提供本机 server 管理：
 
 远程 SSH 场景由 daemon 管 server 启停，详见 [remote-ssh.md](remote-ssh.md)。
 
+## 接入 MCP 客户端
+
+主 server 是标准 streamable-http，任何 MCP 客户端都可挂载；先按上文启动本机 server，再在客户端新增服务器（只实现 streamable HTTP，不是 STDIO；本机接口无鉴权，不需要 token / headers）：
+
+- **Claude Code**：`claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp`
+- **Codex GUI**：名称 `sr_od`、类型 `Streamable HTTP`、URL `http://127.0.0.1:24001/mcp`，令牌 / 头 / 启动命令留空
+- **DSH**：项目根 `.dsh/mcp.servers.yml` 写 `servers: sr_od: {transport: streamable-http, url: http://127.0.0.1:24001/mcp}`（不入库，本地建）
+
+MCP 客户端只负责连接已启动的 server；启动 / 停止 / 重启由 GUI「MCP 服务」页、命令行或 daemon 负责。运行模式（player / dev）随启动命令的 `--mode` 决定。
+
+## 开机自启（主 server）
+
+- 启动脚本：`tools/mcp/start_mcp_server.ps1`（默认 host 127.0.0.1 / port 24001，stdout 日志写 `.log/stdout.log`，与 GUI / daemon start tool 同路径）。
+- 装自启快捷方式：`.\tools\mcp\create_mcp_server_startup_shortcut.ps1` —— 在 Startup 文件夹建 `SR OD MCP Server.lnk`，登录后隐藏窗口调上面脚本；卸载即删该 `.lnk`。
+- 与 daemon 开机自启（[remote-ssh.md](remote-ssh.md)）相互独立、可共存；daemon 的 start 工具按命令行检测进程已存在则跳过，不会重复拉起 / 端口冲突。
+
 ## 相关文档
 
 - [architecture.md](architecture.md) - backend 生命周期和进程模型
-- [mcp.md](mcp.md) - MCP tool
 - [http.md](http.md) - HTTP 端点
+- MCP/HTTP 开发方法论（tool 设计 / 实现 / 工具集实践 / 日志）：`od-dev-write-backend` skill（公共仓 OneDragon-Skills，本项目经 `.agents/skills/` junction 挂载）

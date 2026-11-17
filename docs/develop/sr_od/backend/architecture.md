@@ -94,7 +94,7 @@ src/one_dragon/base/screen/
 
 ## 画面额外识别器（per-screen recognizer）
 
-`analyze()` 在画面**精准命中**后,按 `screen_name` 查注册表调用该画面声明的**额外识别器（recognizer）**,做该画面特有的额外识别（如货币战争备战画面的金币 / 阶段 / 阵营在场人数）,把结构化领域事实塞进 `AnalyzeScreenResult.extras` 回传。这是 per-screen **注册机制 + 自动加载**:[design-principles.md](design-principles.md) **P2**（server 给领域事实）。
+`analyze()` 在画面**精准命中**后,按 `screen_name` 查注册表调用该画面声明的**额外识别器（recognizer）**,做该画面特有的额外识别（如货币战争备战画面的金币 / 阶段 / 阵营在场人数）,把结构化领域事实塞进 `AnalyzeScreenResult.extras` 回传。这是 per-screen **注册机制 + 自动加载**:od-dev-write-backend skill §3.1（server 给领域事实）。
 
 - **契约在公共包**:`one_dragon/base/screen/screen_recognizer.py` 的 `ScreenRecognizer`（类属性 `screen_name` + `recognize(ctx, image, screen_info) -> dict | None`）+ `ScreenRecognizerRegistry` + `RecognizerScanResult`。游戏无关,ZZZ 可复用。
 - **扫描器在 SR backend**:`screen_recognizer_scan.scan_recognizers(ctx, refresh=False)` 镜像 `operation_registry.scan_operations`（`_SCAN_ROOTS` + rglob + `__module__` 守卫 + 模块级 `_CACHE`）,扫描 `sr_od.operations` + `sr_od.application`,挑 `ScreenRecognizer` 子类 → **无参实例化** → 按 `.screen_name` 注册（唯一差异:op 扫描纯反射不实例化,recognizer 扫描会 `attr()` 实例化,故 recognizer `__init__` 必须无副作用零参数）。惰性,首次精准命中触发整树扫描,之后 `dict.get`。

@@ -1,6 +1,6 @@
 """MCP 查询类工具的自解释文本渲染层。
 
-约定（``docs/develop/sr_od/backend/mcp-implementation.md`` §3 的扩展）：
+约定（od-dev-write-backend skill §2.5 的扩展）：
 - MCP 层面向 agent 消费：查询类工具直接返回自解释 markdown 文本，不保留
   JSON 形态。text 返回没有 schema 兜底，输出里每个数据必须由文本自身回答
   「是什么、哪个工具的哪个参数消费它」——与工具清单无关的数据不输出；

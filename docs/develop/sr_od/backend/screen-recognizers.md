@@ -1,7 +1,7 @@
 # 画面额外识别器（per-screen recognizer）
 
 > `analyze_screen` / `/game/analyze` 画面**精准命中**后,按 `screen_name` 自动跑该画面声明的额外识别器,把**结构化领域事实**塞进返回的 `extras` 字段。本文讲怎么加一个识别器。
-> 原则见 [design-principles.md](design-principles.md) **P2**（server 给领域事实）。
+> 原则见 od-dev-write-backend skill §3.1（server 给领域事实）。
 
 ## 机制一句话
 
@@ -102,7 +102,7 @@ class FooRecognizer(ScreenRecognizer):
 ### 错误隔离 + JSON 可序列化
 
 - `recognize` 抛异常 → 框架兜成 `extras=None`,**不中断 analyze**（OCR + 画面匹配结果照常返回)。故识别器内部不必层层 try,但**返回的 dict 必须 JSON 可序列化**（框架会 `json.dumps` 校验;含 `datetime` / numpy 标量 / 自定义对象的值会被拦下 → `extras=None`)。
-- **保持精简**:`extras` 直接计入 MCP tool 响应 token 预算（[design-principles.md](design-principles.md) P6,MCP 客户端 tool response 有 token 上限，设计时参照 Claude Code 的 25000 tokens),只返决策需要的语义字段,别倒整张原始 OCR / 坐标表。
+- **保持精简**:`extras` 直接计入 MCP tool 响应 token 预算（计入 MCP 客户端的 tool 响应 token 预算),只返决策需要的语义字段,别倒整张原始 OCR / 坐标表。
 
 ### 不稳定字段不硬塞（避免假信号）
 
@@ -119,4 +119,4 @@ class FooRecognizer(ScreenRecognizer):
 
 - 架构:[architecture.md](architecture.md)「画面额外识别器」节
 - MCP:[mcp.md](mcp.md) `analyze_screen` / HTTP:[http.md](http.md) `/game/analyze`
-- 原则:[design-principles.md](design-principles.md) P2 / P6 / P11 / P14
+- 原则:od-dev-write-backend skill（§3.1 server 给领域事实;识别器硬约束见其 references/analyze_screen.md）

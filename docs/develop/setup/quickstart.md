@@ -90,7 +90,7 @@ uv run pytest sr-od-test/
 # 1) 起后端 server（:24001；项目根目录，另起一个常驻终端）
 $env:PYTHONPATH = "src"; uv run python -m sr_od.backend.entry.server --port 24001
 # 2) 接入你的 AI 工具（配置不入库，每人本地建）—— 按所用工具二选一：
-#    DSH:        项目根 .dsh/mcp.servers.yml 配 sr_od（yaml 见 docs/develop/sr_od/backend/mcp.md）
+#    DSH:        项目根 .dsh/mcp.servers.yml 配 sr_od（yaml 见 backend/entry.md「接入 MCP 客户端」）
 #    Claude Code: claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 ```
 

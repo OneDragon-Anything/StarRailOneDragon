@@ -62,12 +62,10 @@ GUI 启动：打开「开发工具 -> MCP 服务」，使用同一条入口命�
 
 | 文档 | 内容 |
 |---|---|
-| [design-principles.md](design-principles.md) | **设计纲领**：MCP tool 的能力边界与设计原则（agent 能力视角） |
-| [mcp-implementation.md](mcp-implementation.md) | **实现规范**：MCP tool 代码层落地（annotations / Field / 返回 / docstring / 同步 checklist，与 design-principles 配对） |
+| `od-dev-write-backend` skill | **开发方法论**：tool 设计原则 / 实现规范 / 工具集实践推荐 / 日志（公共仓 OneDragon-Skills，经 `.agents/skills/` junction 挂载） |
 | [architecture.md](architecture.md) | `SrBackendContext` 架构、生命周期、方法、资源约束、进程模型 |
-| [mcp.md](mcp.md) | MCP 适配器（传输、注册、跨工具约定） |
 | [http.md](http.md) | HTTP `/game/*` 适配器 |
-| [entry.md](entry.md) | 服务入口、运行方式 |
+| [entry.md](entry.md) | 服务入口、运行方式、接入 MCP 客户端、开机自启 |
 | [remote-ssh.md](remote-ssh.md) | 远程 SSH daemon（Session 1 常驻，管主 server 启停） |
 
 > 各文档末尾有「路线图（尚未实现）」段落，列 run-as-service / 事件桥 / 多实例 / GUI 收敛等待办。

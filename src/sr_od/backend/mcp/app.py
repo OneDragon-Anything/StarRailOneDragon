@@ -17,7 +17,7 @@
       设计见 docs/develop/sr_od/backend/changes/mcp-mode-split/design.md。
 
 tool 写法（annotations / Field / 返回 / docstring）遵循
-``docs/develop/sr_od/backend/mcp-implementation.md``。
+od-dev-write-backend skill（公共仓 OneDragon-Skills）。
 """
 
 import asyncio

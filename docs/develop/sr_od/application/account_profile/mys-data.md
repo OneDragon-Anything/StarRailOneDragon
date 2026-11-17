@@ -27,6 +27,6 @@
 
 ## 3. 查询入口（MCP）
 
-- `relic_lookup(query)` — 遗器静态定义查询（套装名/件名/子串模糊），薄壳直读常量模块，零 IO 零游戏依赖；模糊多命中返回候选不猜（`relic_tools.py`，写法遵循 [mcp-implementation.md](../backend/mcp-implementation.md)）
+- `relic_lookup(query)` — 遗器静态定义查询（套装名/件名/子串模糊），薄壳直读常量模块，零 IO 零游戏依赖；模糊多命中返回候选不猜（`relic_tools.py`，写法遵循 od-dev-write-backend skill（公共仓 OneDragon-Skills））
 - `mys_get_characters` / `mys_get_roster_detail` — 账号数据（`mys_tools.py`）
 - HTTP 适配器未对齐遗器查询（两个消费方都有需求时按 design P11 收进 backend 共享）
