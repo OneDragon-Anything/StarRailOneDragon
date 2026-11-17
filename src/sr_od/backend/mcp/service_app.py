@@ -177,8 +177,8 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         单个 operation 用本 tool;全套用 run_one_dragon;单个应用用
         run_standalone_app。短名命中多个同名类时拒绝并列出候选(防误运行);
         复杂参数先用 describe_operation 看参数与传法。单跑道,已有运行时受理
-        被拒(RunStartRefusedError)。block=True 终态的 data 字段是 op 的数据
-        通道(读数类 op 携带结果,无数据为 null)。
+        被拒(RunStartRefusedError)。读游戏状态用观察类工具(如 analyze_screen),
+        别为拿数据造读数 op——op 占单跑道,不是读数接口。
         """
         cls = operation_registry.resolve_unique_op(op_id)
         err = operation_registry.validate_args(cls, args or {})
@@ -204,8 +204,7 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         if result is None:
             return RunFinishOut.from_backend(
                 RunFinishResult(success=False, status='operation 运行结束,但未返回结果'))
-        # data 是 op 的数据通道(读数类 op 如 ReadWarpStatusOp 把结果放这里);
-        # 无数据的 op 为 None,不占输出
+        # data 是节点编排内部传值通道,偶随顶层 op 透出;非读数接口,无数据为 None,不占输出
         return RunFinishOut.from_backend(RunFinishResult(
             success=result.success,
             status='operation 运行成功' if result.success else f'operation 运行失败: {result.status}',

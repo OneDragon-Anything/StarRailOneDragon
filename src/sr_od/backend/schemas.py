@@ -432,8 +432,8 @@ class RunFinishResult:
     Attributes:
         success: 运行是否成功。
         status: 终态描述(成功描述 / 失败原因 / 已停止[来源])。
-        data: op 的数据通道(OperationResult.data 为 Any,读数类 op 携带
-            dict/list/标量等自定形态);无数据为 None。
+        data: op 结果数据(OperationResult.data 为 Any,节点编排内部传值
+            偶随顶层 op 透出;非读数接口);无数据为 None。
     """
 
     success: bool
@@ -449,8 +449,8 @@ class RunFinishOut(BaseModel):
         description='终态描述:成功描述 / 失败原因 / 已停止[来源]')
     data: Any = Field(
         default=None,
-        description='op 自定数据通道(JSON 可序列化形态:dict/list/标量,随 op 而定;'
-                    '读数类 op 携带结果,无数据为 null)')
+        description='op 结果数据(JSON 形态:dict/list/标量,随 op 而定;节点编排内部传值'
+                    '偶随顶层 op 透出,非读数接口;无数据为 null)')
 
     @classmethod
     def from_backend(cls, result: 'RunFinishResult') -> 'RunFinishOut':
