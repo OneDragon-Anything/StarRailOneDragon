@@ -31,6 +31,7 @@ from pydantic import Field
 from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from sr_od.backend.backend_context import RunState, SrBackendContext
 from sr_od.backend.mcp.character_tools import register_character_tools
+from sr_od.backend.mcp.cw_lookup_tools import register_cw_lookup_tools
 from sr_od.backend.mcp.config_app import (
     make_add_config_item,
     make_delete_config_item,
@@ -399,6 +400,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
     # 首次调用时装配，注册期不构建——backend 为测试替身时零副作用）
     register_mys_tools(mcp, backend)
     register_character_tools(mcp, backend)
+    register_cw_lookup_tools(mcp, backend)  # 货币战争静态查询(角色/羁绊/装备;玩家面,backend 参数不消费)
     register_light_cone_tools(mcp, backend)
     register_relic_tools(mcp, backend)
     register_game_config_tools(mcp, backend)
