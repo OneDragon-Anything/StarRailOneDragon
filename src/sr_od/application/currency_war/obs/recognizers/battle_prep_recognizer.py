@@ -117,7 +117,7 @@ class _BattlePrepState:
     deploy_count: int | None        # 已部署角色数(read_deployed_count,读不到→None)
     deploy_cap: int | None          # deploy cap 真值(read_deploy_cap,读不到→None)
     level: int                      # 团队规模等级(read_level,Lv.N;cap>level=钻石/宝钻加成)
-    board: dict[str, int]           # 羁绊面板可见行原文(read_board OCR 直读;v4.7 面板滚动+重排,只是可见子集,决策用 flow 层计算值)
+    bench_overflow: bool            # 「备战席已满」告警横幅在场(OCR;True=有未安置单位,出战被游戏忽略——flow 层 overflow_warning 同源口径)(read_board OCR 直读;v4.7 面板滚动+重排,只是可见子集,决策用 flow 层计算值)
     front_line: list[Unit] | None  # 前排 Unit 行(SIFT 身份 + read_star 星级 + read_row_equipped 装备按 slot 注入 equips;templates 未加载→None)
     back_line: list[Unit] | None   # 后排 Unit 行(同上)
     bench: BenchView | None        # 备战席状态容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
@@ -231,7 +231,18 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     # board = 面板 OCR 直读(快路径;可见行原文,语义与截断警示见 read_board docstring)。
     # 羁绊计数决策面用 flow 层 board_from_deployed(以算为准)——extras 不做慢的
     # SIFT 单位表计算路径(用户裁定:读要快,算的逻辑单独改对)。
+    # 告警横幅在场 = 溢出态(有未安置单位,出战被游戏忽略;flow 层 overflow_warning
+    # 同源口径,识别面 = 画面档「告警-备战席已满」OCR 区)。横幅在 y 512-555,
+    # 商店牌行(y≤330)盖不住 → 备战/开商店两态都可读,不进省略清单。
+    _ov_rect = _area_rect(ctx, '告警-备战席已满', '货币战争-备战')
+    bench_overflow = False
+    if _ov_rect is not None:
+        for _r in _ocr(ctx, image, _ov_rect):
+            if '备战席已满' in (_r.data or ''):
+                bench_overflow = True
+                break
     state = _BattlePrepState(
+        bench_overflow=bench_overflow,
         gold=read_gold(ctx, image),
         phase=phase,
         hp=(None if not full_read else read_hp_opt(ctx, image)),
@@ -270,6 +281,7 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
     'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)。开商店画面整键省略(计数被商店牌行盖住,收店后用备战画面取)',
     'streak': '连胜/连败 magnitude(int;读不到→None)',
+    'bench_overflow': '「备战席已满」告警横幅在场(bool,OCR 直读)。True = 有未安置单位,出战会被游戏忽略(锁定)——先卖角色腾位再出战;与 flow 层 overflow_warning 同源口径;横幅在商店态也可见,两态都返回',
     'deploy_count': '已部署角色数(int;读不到→None)。开商店画面整键省略(遮挡不可靠,收店后用备战画面取)'
                     '(商店牌行盖住计数,遮挡不可靠;完整读数收店后用备战画面取)',
     'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)。'
