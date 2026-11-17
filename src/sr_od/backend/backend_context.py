@@ -5,7 +5,7 @@
   传输协议（HTTP/IPC 等）无关的感知/操作方法。
 - ``BackendNotReadyError`` 在前置校验失败（SrContext 尚未就绪）时抛出。
 
-game 切片方法（``check_window``/``capture``/``analyze``）从
+game 切片方法（``check_window``/``analyze``）从
 ``SrContext`` 的控制器、OCR 服务、运行上下文中读取数据，并以 ``sr_od.backend.schemas``
 中的传输无关结构返回。运行类操作（``start_run``/``run_one_dragon``/
 ``run_standalone_app``/``query_status``/``stop``）统一委托给单个 ``RunSlot``，
@@ -469,7 +469,7 @@ def _save_screenshot(image: 'MatLike') -> str:
     """将 RGB 截图以 BGR 写盘到 ``.debug/sr_od_mcp/screenshot/``,返回绝对路径。
 
     Args:
-        image: backend ``capture`` / ``analyze`` 截到的 RGB ``ndarray``。
+        image: backend ``analyze`` 截到的 RGB ``ndarray``。
 
     Returns:
         保存后的截图文件绝对路径。
@@ -698,28 +698,6 @@ class SrBackendContext:
             width=rect.width if rect is not None else None,
             height=rect.height if rect is not None else None,
         )
-
-    def capture(self) -> 'MatLike':
-        """截取游戏当前画面。
-
-        通过控制器对游戏窗口进行截图，返回 RGB ``ndarray``。
-
-        Returns:
-            截图图像（RGB ``MatLike``）。
-
-        Raises:
-            BackendNotReadyError: ``SrContext`` 未就绪、游戏窗口未就绪或截图返回 None 时抛出。
-        """
-        self._ensure_ready()
-        controller = self._ctx.controller
-        if controller is None or not controller.is_game_window_ready:
-            raise BackendNotReadyError('游戏窗口未就绪')
-        image = controller.get_screenshot(independent=False)
-        if image is None:
-            raise BackendNotReadyError('截图返回 None')
-        # 打码 UID:对齐 controller.screenshot()(框架流程截图本就经 fill_uid_black 打码,
-        # backend 截图供 MCP/HTTP 落盘 / 外传,同样不能带账号信息)。
-        return controller.fill_uid_black(image)
 
     def recognize_current_screen(self) -> str | None:
         """截图识别当前游戏画面名(运行状态查询附带的画面信息用)。

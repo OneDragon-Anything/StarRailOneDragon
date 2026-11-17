@@ -6,7 +6,7 @@
 - 工具返回值尽量保持「可直接读」的字符串或传输无关结构，便于上层（CLI/Agent）消费。
 
 注意：
-    - 同步工具（check/capture/analyze）直接调用 backend 的同步方法；
+    - 同步工具（check/analyze）直接调用 backend 的同步方法；
     - ``open_game`` 为异步长耗时操作，基于 ``backend.start_run`` 适配，
       ``block=True`` 阻塞到完成、``block=False`` 立刻返回。
     - 运行类 tool 工厂（``make_open_game`` 等）为模块级函数，
@@ -29,8 +29,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from one_dragon.base.controller.stop_guard import StopRunInterrupted
-from one_dragon.utils.log_utils import log
-from sr_od.backend.backend_context import RunState, SrBackendContext, _save_screenshot
+from sr_od.backend.backend_context import RunState, SrBackendContext
 from sr_od.backend.mcp.character_tools import register_character_tools
 from sr_od.backend.mcp.config_app import (
     make_add_config_item,
@@ -148,7 +147,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
     """创建 MCP 服务器并注册 game 工具与 prompt。
 
     通过闭包将 ``backend`` 注入到各工具函数中，使工具调用最终落到 backend 的
-    game 切片方法（``check_window``/``capture``/``analyze``）；运行类操作
+    game 切片方法（``check_window``/``analyze``）；运行类操作
     （``open_game``/``get_run_status``/``stop_run``）经模块级工厂
     构造后用 ``mcp.tool()(...)`` 注册。
 
@@ -179,18 +178,6 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
         判断游戏是否在跑/窗口是否存在,看 is_win_valid——勿据 win_title 判断。
         """
         return WindowStatusOut.from_backend(backend.check_window())
-
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="捕获游戏截图"))
-    def capture_game_screen() -> str:
-        """捕获游戏画面并保存截图,返回截图文件绝对路径。观察类(只读,不改任何状态)。
-
-        仅在「只要截图文件本身」时用(存档证据 / 喂视觉大模型);要识别画面内容
-        直接调 analyze_screen——它自己截图自己分析,先走本 tool 再传路径是多一次
-        往返,且两次截图间画面可能已变。
-        """
-        path = _save_screenshot(backend.capture())
-        log.info(f"截图已保存到: {path}")
-        return path
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="分析游戏画面"))
     def analyze_screen(

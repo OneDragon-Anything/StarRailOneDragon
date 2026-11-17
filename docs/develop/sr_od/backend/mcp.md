@@ -22,12 +22,11 @@ MCP server 有两种运行模式，由启动参数 `--mode` 决定（默认 `pla
 
 ## 3. 跨工具约定要点
 
-- **返回契约（跨工具统一）**：多字段返回一律 MCP 层 `*Out` 模型（字段语义进 outputSchema，见 [design-principles.md](design-principles.md) P15）；原子返回（`capture_game_screen` 的路径 / `close_game` 的确认文案）直给 `-> str`，docstring 一行说明返回值；运行类工具按 `block` 参数返回受理（`RunStartOut`）或终态（`RunFinishOut`）两种业务形状；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。**失败走异常通道**（P6 三分法）：backend 异常透传 → MCP tool error / HTTP 错误响应，同文案对称——旧「返回体带 `success`/`error` 字段」模式已退役，存量 `-> dict` 工具改造中。
+- **返回契约（跨工具统一）**：多字段返回一律 MCP 层 `*Out` 模型（字段语义进 outputSchema，见 [design-principles.md](design-principles.md) P15）；原子返回（`close_game` 的确认文案）直给 `-> str`，docstring 一行说明返回值；运行类工具按 `block` 参数返回受理（`RunStartOut`）或终态（`RunFinishOut`）两种业务形状；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。**失败走异常通道**（P6 三分法）：backend 异常透传 → MCP tool error / HTTP 错误响应，同文案对称——旧「返回体带 `success`/`error` 字段」模式已退役，存量 `-> dict` 工具改造中。
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。
 - backend 实例通过闭包注入 tool，不使用全局单例，也不让 FastMCP lifespan 管 backend 生命周期。
-- `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。
 - `analyze_screen` 是 **OCR + 传统 OpenCV 模板/颜色匹配，非视觉大模型(VLM)**：只做已建档 screen_info 的客观命中，无视觉理解；tool docstring 已显式标注，防智能体把「分析」误解为「看懂画面」（要看懂 → 视觉大模型工具 / 视觉子 agent）。
-- `analyze_screen(save_image=True)`（实时模式）把已截的内存图顺手存盘 + 回传 `screenshot_path`，供调用方喂 视觉大模型 double-check；默认 `false` 不落盘，离线模式忽略。
+- `analyze_screen(save_image=True)`（实时模式）把已截的内存图顺手存盘 + 回传 `screenshot_path`，供调用方喂 视觉大模型 double-check；默认 `false` 不落盘，离线模式忽略。取图喂大模型统一走此入口（识别与读图同一帧）；独立截图工具 `capture_game_screen` 已按此裁定退役。
 - `analyze_screen` 的能力边界（仅 OCR + 模板匹配的部分识别，非画面全貌）与结果解读纪律写在 **tool docstring**（[design-principles.md](design-principles.md) P14），随工具列表必然可见；返回体只含识别数据（无成败字段）——失败（窗口未就绪 / 截图失败 / 读图失败）经异常转 tool error（MCP）/ 错误响应（HTTP），原因文本带下一步动作提示。
 - `analyze_screen` 精准命中画面时返回 `extras`：若该画面注册了**额外识别器（recognizer）**,带该画面的结构化领域事实（画面特定结构,如货币战争备战画面的金币 / 阶段 / 阵营在场人数）;无注册识别器的画面为 `null`。识别器异常不中断本结果（`extras=null`,详见日志）。这是 per-screen 注册机制,新增画面识别器见 [screen-recognizers.md](screen-recognizers.md)。MCP 侧 dataclass 由 FastMCP 序列化、加字段自动生效;但 `analyze_screen` 的 **tool docstring 属 tool 描述变更,需客户端 `/mcp` 重连**智能体才能看到 `extras` 字段描述（字段本身不重连也在返回 JSON 里）。
 - 所有运行（`open_game` / 一条龙 / 独立应用 / 自定义 op）经**同一个 `RunSlot`** 派发：op 路径（`open_game` / `run_operation`）槽自管 `start_running/execute/finish_running`（自然完成收尾不置停机中断一次性标志位），app 路径（`run_one_dragon` / `run_standalone_app`）委托 `run_application`（复用 GUI/CLI 共享入口）。`block=True` 用 `asyncio.wrap_future(future)` 阻塞 await 取结果，`block=False` 立刻返回已启动状态，后续用 `get_run_status` 查进度。
@@ -37,7 +36,7 @@ MCP server 有两种运行模式，由启动参数 `--mode` 决定（默认 `pla
 - `get_run_status` / `stop_run` 是统一入口：无论最近一次运行来自 op 路径还是 app 路径，都通过同一组工具查询和停止。
 - 单进程内已有运行时,启动类工具受理被拒（异常通道,MCP isError / HTTP 错误响应;文案区分本进程占用与跨进程窗口占用）,避免同一个 backend 内重复操作游戏资源。
 - MCP tool 不返回运行日志正文；客户端需要用 `get_run_status` 轮询是否完成，GUI 服务页负责展示日志。
-- `close_game` / `click_game` / `key_tap` / `drag` / `input_text` 是独立同步操作，不走运行槽；`click_game` / `drag` 使用 1080p 游戏空间坐标。底层 click / key_tap / drag **无内置等待**，连续操作或 `capture` 前建议 sleep 等动画（见各 tool 描述的 ⚠️ 提醒）。
+- `close_game` / `click_game` / `key_tap` / `drag` / `input_text` 是独立同步操作，不走运行槽；`click_game` / `drag` 使用 1080p 游戏空间坐标。底层 click / key_tap / drag **无内置等待**，连续操作或截图（`analyze_screen`）前建议 sleep 等动画（见各 tool 描述的 ⚠️ 提醒）。
 - `list_mcp_usage_guides` / `get_mcp_usage_guide` 把 prompt 模板以普通 tool 暴露，方便不会主动消费 MCP prompts 的客户端发现。
 - `mys_*` 三工具走 `mys_tools.py` 的 `MysAccessController` 状态机（idle/awaiting_ticket，验证循环上限 3）；会话失效只打标记不清任何本机数据；凭据纪律与协议规格见 [mys.md](mys.md)（⚠️ `mys_login` 的密码经 LLM 上下文，工具描述含知情声明）。
 - 理念：MCP 只做感知 / 操作，编码 / 调试交给 AI（[design-principles.md](design-principles.md)）。

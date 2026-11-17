@@ -83,7 +83,7 @@ server 给「**事实**」,智能体做「**决策 + 通用理解**」。server 
 - **冗余字段四删**:每个字段要能回答「删掉它模型损失了什么」——答不上就删。①可派生(`count` = 列表长度,P12);②入参回显(`x` / `app_id` 等,调用方刚传的);③恒真或恒等字段(恒 `success: True`、与另一字段恒等的冗余布尔);④成功时的占位 null(如 `error: null`)。
 
 ### P7. 三层协同(MCP / 智能体自身 / skill)
-能力分工写进 **skill**,指引智能体何时用哪层。例「调试失败运行」:`get_run_status` 拿状态 + 失败定位 → 要深入 tail 日志 → 要视觉 `capture` + 视觉大模型。
+能力分工写进 **skill**,指引智能体何时用哪层。例「调试失败运行」:`get_run_status` 拿状态 + 失败定位 → 要深入 tail 日志 → 要视觉 `analyze_screen(save_image=True)` 取图 + 视觉大模型。
 
 ### P8. 长耗时操作的运行态必须暴露
 运行态(在跑吗 / 跑到哪 / 结果 / 中断后)是活内存态,智能体无法自感 → 必须暴露(`get_run_status` / `stop_run` / `block` 参数)。
@@ -154,7 +154,7 @@ FastMCP(mcp sdk 1.28.1)实测(client-server 全往返),返回类型注解自动�
 | 操作游戏 / 触发 operation | ❌ | ✅ | — |
 | 运行状态 / 进度 / 失败定位 | ❌ 内存态 | ✅ `get_run_status` | ✅ 组合 |
 | 读日志过程 | ✅ tail | ❌ 不做 | ✅ 路径 + 过滤 |
-| 看截图细节 | ✅ 视觉大模型 | ✅ `capture` 取图 | ✅ 组合 |
+| 看截图细节 | ✅ 视觉大模型 | ✅ `analyze_screen(save_image=True)` 取图 | ✅ 组合 |
 | OCR / YOLO 推理 | ❌ 串行约束 | ✅ `analyze` | — |
 | 改用户配置 | ❌ 校验收敛 | ✅ | — |
 

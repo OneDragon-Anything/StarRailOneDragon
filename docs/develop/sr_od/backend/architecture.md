@@ -51,7 +51,6 @@ src/one_dragon/base/screen/
 | 方法 | 作用 | 返回 |
 |---|---|---|
 | `check_window()` | 查询游戏窗口状态 | `WindowStatus` |
-| `capture()` | 截取当前游戏画面 | RGB `MatLike` |
 | `analyze()` | 截图 + OCR + 画面匹配 + 精准命中跑额外识别器 | `AnalyzeScreenResult`（含 `extras`） |
 | `start_run(source, op_factory, display_name=None)` | 启动 operation（op 路径，供 `open_game` / `run_operation` 经适配器调用） | `(ok, future)` |
 | `run_one_dragon(source)` | 按当前配置启动完整一条龙（app 路径） | `(ok, future)` |

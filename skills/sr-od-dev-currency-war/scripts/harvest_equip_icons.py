@@ -7,8 +7,9 @@
 ``ICON_BOX = (1443,125,1541,223)``,跨 tab / 选中内容不变(同一图鉴画面布局)。
 
 == 采集流程(MCP 驱动;本脚本只做固定框裁切,点击由 MCP 完成)==
-1. 进数据银行 → 装备图鉴。逐格 ``click_game`` 选中 → ``capture_game_screen`` 截图
-   → ``analyze_screen``(OCR 取名 / tier / 合成公式)→ 本脚本裁固定框存 ``<名>.png``。
+1. 进数据银行 → 装备图鉴。逐格 ``click_game`` 选中 → ``analyze_screen``
+   (``save_image: true``,一次调用同时拿 OCR 取名 / tier / 合成公式与截图路径
+   ``screenshot_path``,识别与裁切同一帧)→ 本脚本按该截图裁固定框存 ``<名>.png``。
 2. tab 内滚屏(大距离 ``drag`` y900→200 翻页)后继续逐格,直到无新名。
 3. 切下一个分类 tab,重复(右侧框位置不变,无需重定)。
 

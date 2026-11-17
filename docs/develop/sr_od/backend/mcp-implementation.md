@@ -18,7 +18,7 @@
 
 | 类别 | `readOnlyHint` | `destructiveHint` | 本项目 tool |
 |---|:---:|:---:|---|
-| 纯观察(只读,不改状态) | `True` | — | `check_game_window` / `capture_game_screen` / `analyze_screen` / `get_run_status` / `list_applications` / `list_operations` / `describe_operation` / `list_mcp_usage_guides` / `get_mcp_usage_guide` / `mys_evaluate_relic_substats` |
+| 纯观察(只读,不改状态) | `True` | — | `check_game_window` / `analyze_screen` / `get_run_status` / `list_applications` / `list_operations` / `describe_operation` / `list_mcp_usage_guides` / `get_mcp_usage_guide` / `mys_evaluate_relic_substats` |
 | 操作游戏 / 触发运行 / 改配置(改状态非破坏) | 不标(默认非 read_only) | — | `click_game` / `key_tap` / `drag` / `input_text` / `open_game` / `run_one_dragon` / `run_standalone_app` / `run_operation` / `stop_run` / `upsert_screen_area` |
 | 不可逆 / 破坏性 | 不标 | `True` | `delete_screen_area`(删 screen_info area) / `close_game`(关游戏) |
 
@@ -73,7 +73,7 @@ def click_game(
 
 ## 5. 命名
 
-(通用「snake_case + 服务前缀 + 动词导向」见官方 mcp-builder。)本项目 tool 按资源分组前缀:game 感知 / 直接动作(`check_game_window` / `click_game` / `capture_game_screen`)、运行(`run_*`)、查询(`list_*` / `describe_*` / `get_run_status`)、screen_info CRUD(`upsert_screen_area` / `delete_screen_area`)。参数名无歧义(`op_id` 不写 `id`,`use_clipboard` 不写 `way`)。
+(通用「snake_case + 服务前缀 + 动词导向」见官方 mcp-builder。)本项目 tool 按资源分组前缀:game 感知 / 直接动作(`check_game_window` / `click_game`)、运行(`run_*`)、查询(`list_*` / `describe_*` / `get_run_status`)、screen_info CRUD(`upsert_screen_area` / `delete_screen_area`)。参数名无歧义(`op_id` 不写 `id`,`use_clipboard` 不写 `way`)。
 
 ## 6. 借鉴官方 Phase 4 evaluations(本项目缺口,待补)
 

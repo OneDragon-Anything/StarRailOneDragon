@@ -1,12 +1,12 @@
 """HTTP 适配器：``/game/*`` 端点，把 ``SrBackendContext`` 暴露给 web/skill。
 
 本模块在后端 game 切片（``SrBackendContext``）之上架设一层 HTTP 传输适配：
-- ``register_http_routes`` 通过 FastMCP 的 ``custom_route`` 挂 7 个端点
-  （``window``/``capture``/``analyze``/``enter``/``status``/``stop``/``close``），与 MCP ``/mcp``
+- ``register_http_routes`` 通过 FastMCP 的 ``custom_route`` 挂 6 个端点
+  （``window``/``analyze``/``enter``/``status``/``stop``/``close``），与 MCP ``/mcp``
   端点同进程共存。
-- 7 个处理器函数（``handle_game_*``）为模块级、可独立调用，便于直接测试，
-  不依赖 MCP 协议层；``capture`` 直接回传 PNG 字节，不落盘（区别于 MCP 适配器
-  的落盘返路径，避免重复的 ``_save_screenshot`` 逻辑）。
+- 处理器函数（``handle_game_*``）为模块级、可独立调用，便于直接测试，
+  不依赖 MCP 协议层；需要截图的消费者走 ``/game/analyze?save_image=true``
+  （识别与落盘同一帧，响应带 ``screenshot_path``）。
 - 同步 backend 方法通过 ``asyncio.to_thread`` 放到线程池执行，避免阻塞事件循环；
   ``enter`` 走 ``backend.start_run`` 异步派发，``block=true`` 时用
   ``asyncio.wrap_future`` 阻塞到运行结束。
@@ -79,32 +79,6 @@ async def handle_game_window(backend: SrBackendContext, _request: Request | None
     except BackendNotReadyError as e:
         return _err(str(e))
     return JSONResponse(asdict(status))
-
-
-async def handle_game_capture(backend: SrBackendContext, _request: Request | None = None) -> Response:
-    """处理 ``GET /game/capture``：直接回传 PNG 字节。
-
-    HTTP 适配器不落盘（区别于 MCP 适配器落盘返路径），将 RGB 截图转为 BGR 后
-    编码为 PNG 字节直接作为响应体返回。
-
-    Args:
-        backend: 提供游戏切片能力的 ``SrBackendContext``。
-        _request: Starlette 请求对象（本处理器不使用）。
-
-    Returns:
-        200 + ``image/png`` 字节流；backend 未就绪时返回 503，编码失败返回 500。
-    """
-    try:
-        image = await asyncio.to_thread(backend.capture)
-    except BackendNotReadyError as e:
-        return _err(str(e))
-    import cv2
-
-    bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    ok, buf = cv2.imencode(".png", bgr)
-    if not ok:
-        return _err("图像编码失败", status=500)
-    return Response(bytes(buf), media_type="image/png")
 
 
 async def handle_game_analyze(backend: SrBackendContext, request: Request | None = None) -> Response:
@@ -240,11 +214,6 @@ def register_http_routes(mcp: FastMCP, backend: SrBackendContext) -> None:
     async def _game_window(request: Request) -> Response:
         """GET /game/window 路由分发：委托 ``handle_game_window``。"""
         return await handle_game_window(backend, request)
-
-    @mcp.custom_route("/game/capture", methods=["GET"])
-    async def _game_capture(request: Request) -> Response:
-        """GET /game/capture 路由分发：委托 ``handle_game_capture``。"""
-        return await handle_game_capture(backend, request)
 
     @mcp.custom_route("/game/analyze", methods=["GET"])
     async def _game_analyze(request: Request) -> Response:
