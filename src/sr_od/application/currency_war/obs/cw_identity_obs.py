@@ -1459,63 +1459,116 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
 # 面板出现晶矿形奖励(实测 1-8 清关:1 大金晶矿[r~44] + 5 蓝晶矿[r~32] + 2 灰晶矿[r~18])。采晶矿即开启:
 # 金币/装备即时入账;角色/简易武装箱落备战席占槽;**备战席满时晶矿点不动**(先开箱腾位再采晶矿)。
 #
-# 检测 = HoughCircles(颜色分割不可行:**背景与蓝晶矿 HSV 几乎同值** —— 实测 蓝晶矿 H111-113 S195-209
-# V253-255 vs 背景 H119-120 S172-175 V224-225,mask 无分离度)。晶矿是圆形发光体,背景是点阵纹理
-# 无大圆 → 圆检测天然分离。空面板实测 0 误报(点阵/按钮均不触发)。
-# 颜色分类(圆心 HSV):金 H15-35+S>80 / 灰 S<70 / 其余=蓝。r 可辅助(金~44/蓝~32/灰~18)。
-_REWARD_HOUGH_DP: float = 1.2
-_REWARD_HOUGH_PARAM2: float = 40
-_REWARD_MIN_R: int = 15
-_REWARD_MAX_R: int = 60
-# 检测域 = screen_info「区域-奖励」rect 单一真相源;区域缺档 → 空读数
-# (不抛不猜,语义见 read_ore_sights),禁回退硬编码 rect。
-
-# ===== 幻检交叉验证(奖励域读取防幻检批;实机停机局实证:×12 礼盒蝴蝶结/
-# 扣饰被 Hough 幻检为 2 晶矿,点击零消失 → CwActionCollectOreParam 同签名死循环
-# 停机;同族第 2 件,前件 = 同族装备 icon 越界假圆误报)=====
-# 三道门全部标定自 18 样本离线交叉核对(3 真晶矿 fixture reward_spheres_4/5/8 共
-# 16 真晶矿 + 礼盒停机帧 2 幻晶矿;标定脚本口径 = 圆内 r−4 mask 的 Canny 边缘
-# 占比与 HSV V 均值):
-#: 真晶矿内部纹理:16 真晶矿样本 Canny 边缘占比 0.000-0.145(发光平滑晶矿面)
-#: / 礼盒幻晶矿 0.205-0.324(蝴蝶结缎带纹理)。阈值 0.17 双向余量 ≥0.025。
-_SPHERE_EDGE_RATIO_MAX: float = 0.17
-#: 真晶矿亮度:真晶矿为自发光体,16 样本圆内 V 均值 164-252(灰晶矿最暗 ~164)
-#: / 礼盒幻晶矿 112-116(哑光实体)。阈值 140 双向余量 ≥24,与纹理门独立维度。
-_SPHERE_V_MEAN_MIN: float = 140
-#: 真晶矿半径带(建档:gold~44/blue~32/gray~18);礼盒幻晶矿 r56
-#: 超带。上限 48 = gold 带 +1 呼吸余量;仅作第三道辅助门(纹理/亮度为主门)。
-_SPHERE_R_MAX: int = 48
-#: 两帧持存圆心/半径容差(px;Hough 亚像素抖动 + 发光呼吸效应)。
-#: POS_TOL 公开化(无下划线):kernel 侧晶矿身份容差配对
-#: (kernel/cw_ore_channel.py)函数体内 lazy import 引用同一常量——配对门
-#: 必须与观察链两帧持存门同值同源(禁复制数值,双源漂移 = 身份判定与
-#: 防幻检判定用两把尺);R_TOL 仅观察链自用,保持私有。
+# 检测 = 多尺度模板匹配(弃 HoughCircles+纹理门 的几何+启发式管线)。动机:
+# - Hough+门的参数按 v4.4 晶矿纹理标定,球面样式/尺寸带随后续版本放宽(r 17~52)
+#   后,几何带与启发式门存在误杀风险;
+# - Hough 对半透明/重叠球不稳,实帧幻检实证:邀请函 overlay 帧检出 2 圆(其一 r47
+#   大圆落卡面上,点击零消失 = 同签名死循环风险)、列表遮挡帧误检 7 圆——模板匹配
+#   在两帧均 0 检出(检测即免疫,无需事后门)。
+#
+# 为什么不用官方平面图标做模板:晶矿在实机是 3D 渲染风 UI,官方四色球图标与实机
+# 渲染球做多尺度 matchTemplate 峰值仅 0.40~0.49(远低于真球 ≥0.74),像素级不可用
+# → 模板取实机裁片 webp(惊喜盒板件同型先例,见下方模板加载函数 docstring)。
+#
+# 管线:每模板按其标定直径 ±(6,8)px 带多尺度 TM_CCOEFF_NORMED 滑扫 → 响应图 3x3
+# 局部极大(向量化 dilate)→ 跨模板合并 NMS(分数优先,中心距 > max(14, d/2) 才双
+# 保留)→ 圆心 HSV 颜色分类。单帧耗时 ~220ms(彩色三通道,采晶矿为清关后低频观察,
+# 不构成瓶颈;灰度口径 86ms 但阈值需全量重标,不换)。
+#
+# 标定(fixture 5 帧 + 存证帧离线交叉,fixture = sr-od-test/screens/货币战争-备战/
+# reward_spheres_{4,5,8,15}.* 与 reward_giftbox_phantom / reward_panel_empty):
+# - 真球匹配分 0.741~0.998(最低值出现在跨样式帧 spheres_8 × 新样式模板,同帧
+#   自源模板 ≥0.83);阈值 0.70 真侧余量 ≥0.04;
+# - 假响应(小球模板落在大球边缘渐变上的次级匹配)实测最高 0.652 —— 直径扫描
+#   下限 36 剪掉其 d34 峰(0.706)后的剩余峰;假侧余量 ≥0.048。两维(阈值+直径
+#   下限)合围,双向余量均衡。
+# - 直径下限 36 的依据:真球匹配直径实测 ≥36(spheres_4 标称 r16 灰球检出 d38、
+#   存证帧 r17 灰球检出 d38 —— 匹配直径对标称半径系统性 +2 左右,遮挡补偿);
+#   下限同时把「球边缘假响应」压到 d≥36 的低分域。
+#
+# 已知边界(结构性,设计披露):被大球夹死的重度遮挡小球(可见球面占比小)分数
+# 掉到阈值下 → 漏检。实例:存证帧 (1418,374) r19 夹在两大球之间,蓝小模板分
+# 0.17 —— Hough 靠圆弧几何拟合可检此形态,模板匹配需纹理相似,是结构性盲区。
+# 取舍 = 宁漏勿误:误检 → 点击零消失 → 采晶矿环同签名死循环(实机停机事故形态);
+# 漏检 → 该矿本轮不采(下一帧重检/下一清关周期再得),消费链代价低一个量级。
+_ORE_TMPL_NAMES: tuple[str, ...] = ('金晶矿', '蓝晶矿_大', '蓝晶矿_中', '蓝晶矿_小', '灰晶矿')
+_ORE_TMPL_THR: float = 0.70
+_ORE_TMPL_D_LO_MIN: int = 36
+_ORE_TMPL_D_PAD_LO: int = 6
+_ORE_TMPL_D_PAD_HI: int = 8
+_ORE_NMS_TOL_MIN: int = 14
+# 两帧持存圆心/半径容差(px;匹配定位亚像素抖动 + 发光呼吸效应)。
+# POS_TOL 公开化(无下划线):kernel 侧晶矿身份容差配对
+# (kernel/cw_ore_channel.py)函数体内 lazy import 引用同一常量——配对门
+# 必须与观察链两帧持存门同值同源(禁复制数值,双源漂移 = 身份判定与
+# 防幻检判定用两把尺);R_TOL 仅观察链自用,保持私有。
 SPHERE_PERSIST_POS_TOL: int = 12
 _SPHERE_PERSIST_R_TOL: int = 6
 #: 点击后幻晶矿黑名单命中容差(px;点击坐标 → 复现检测圆心的匹配带宽)。
 _ORE_PHANTOM_MATCH_TOL: int = 18
 
 
-def _ore_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
-                         r: int) -> bool:
-    """单圆幻检门(纯函数):纹理 + 亮度 + 半径三道,任一不过 = 非真晶矿。
+_ore_tmpl_cache: list[tuple[str, MatLike]] | None = None
+_ore_tmpl_loaded: bool = False
 
-    标定数字见上方常量块注释(18 样本:16 真晶矿全过 / 2 礼盒幻晶矿全杀,
-    两主门独立维度双向余量充足)。真晶矿 = 自发光平滑晶矿面;面板内非晶矿实体
-    (礼盒蝴蝶结/装备 icon 等哑光高纹理物)两主门同杀 —— 属同族幻检家族
-    通用排除,非单点补丁。
+
+def _get_ore_tmpls() -> list[tuple[str, MatLike]]:
+    """加载晶矿裁片模板(RGB 口径;module 级缓存;缺文件 → 空表,本帧不检出)。
+
+    模板 = 实机裁片 webp,``assets/template/currency_war/reward_ore/``:
+    - 金晶矿 ← fixture reward_spheres_8.webp (1329,192) r42(含金色光晕整体);
+    - 蓝晶矿_大/中/小、灰晶矿 ← fixture reward_spheres_15.png(r34/30/18/18,
+      蓝小与灰的裁片右下带少量邻球弧 —— 小球无干净裁片源,弧是模板固有噪声)。
+    ⚠️ 换模板文件需重启 server(module 级缓存;与星徽秘典/惊喜盒板件同型坑)。
     """
-    if r > _SPHERE_R_MAX:
-        return False
-    h, w = edges.shape[:2]
-    m = np.zeros((h, w), np.uint8)
-    cv2.circle(m, (ix, iy), max(3, r - 4), 255, -1)
-    n = int((m > 0).sum())
-    if n <= 0:
-        return True   # 退化(圆越界):不因门误杀,交后续逻辑
-    if float((edges[m > 0] > 0).mean()) > _SPHERE_EDGE_RATIO_MAX:
-        return False
-    return float(hsv[:, :, 2][m > 0].mean()) >= _SPHERE_V_MEAN_MIN
+    global _ore_tmpl_cache, _ore_tmpl_loaded
+    if not _ore_tmpl_loaded:
+        _ore_tmpl_loaded = True
+        cache: list[tuple[str, MatLike]] = []
+        base = (get_project_root() / 'assets' / 'template' / 'currency_war'
+                / 'reward_ore')
+        for name in _ORE_TMPL_NAMES:
+            p = base / f'{name}.webp'
+            if not p.is_file():
+                log.warning(f'晶矿模板缺失:{p}(该模板档位本帧不检出)')
+                continue
+            img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                log.warning(f'晶矿模板解码失败:{p}')
+                continue
+            # 模板归档存盘为 RGB 口径,imdecode 读出 BGR,转回 RGB 与 screen 对齐
+            cache.append((name, cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))
+        _ore_tmpl_cache = cache
+    return _ore_tmpl_cache or []
+
+
+def _ore_local_peaks(res: MatLike, thr: float) -> list[tuple[float, int, int]]:
+    """响应图局部极大提取(纯函数):3x3 邻域最大且 ≥ thr 的点。
+
+    用 dilate 做邻域最大化(向量化),避免逐像素 Python 循环(23 尺度 ×
+    405x353 响应图,逐像素循环慢数量级)。"""
+    dil = cv2.dilate(res, np.ones((3, 3), np.uint8))
+    mask = (res >= dil - 1e-6) & (res >= thr)
+    ys, xs = np.nonzero(mask)
+    return [(float(res[y, x]), int(x), int(y))
+            for y, x in zip(ys.tolist(), xs.tolist(), strict=True)]
+
+
+def _ore_nms_merge(
+        cands: list[tuple[float, int, int, int, str]],
+) -> list[tuple[float, int, int, int, str]]:
+    """跨模板贪心 NMS(纯函数):分数优先,中心距 ≤ max(14, d/2) 判同物。
+
+    中心距容差随直径缩放:同一球被多模板/多尺度命中时各响应中心重合,
+    而相邻两颗真球的最小圆心间距由面板布局保证 ≥ 球半径量级 —— 布局
+    实证:全 fixture 最紧真球对圆心距 38px(d36 检出 → tol 18,余量 20px)。"""
+    kept: list[tuple[float, int, int, int, str]] = []
+    for c in sorted(cands, key=lambda t: -t[0]):
+        ccx, ccy = c[1] + c[3] // 2, c[2] + c[3] // 2
+        if all(abs(ccx - (k[1] + k[3] // 2)) + abs(ccy - (k[2] + k[3] // 2))
+               > max(_ORE_NMS_TOL_MIN, k[3] // 2) for k in kept):
+            kept.append(c)
+    return kept
 
 
 def filter_persistent_ores(
@@ -1526,7 +1579,7 @@ def filter_persistent_ores(
 ) -> list[tuple[str, Point, int]]:
     """两帧持存交叉验证(纯函数):cur 中与 prev 某晶矿同位置同半径的才采信。
 
-    依据:真晶矿在面板停留期间逐帧稳定(位置/半径仅 Hough 抖动级浮动);
+    依据:真晶矿在面板停留期间逐帧稳定(位置/半径仅检测抖动级浮动);
     瞬态特效/动画帧的偶发假圆下一帧即消失。``prev=None``(首帧/无历史)
     → 原样返回(宁缺勿造的反向:首帧采信由纹理门 + 点击后零消失检测兜底,
     不因缺历史而漏晶矿)。"""
@@ -1552,36 +1605,45 @@ def _session_phantom_points(ctx: SrContext) -> list[Point]:
 
 
 def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point, int]]:
-    """纯 CV 核心:奖励面板内 HoughCircles 检晶矿 → ``[(颜色, center, radius)]``(采晶矿用)。
+    """纯 CV 核心:奖励面板内多尺度模板匹配检晶矿 → ``[(颜色, center, radius)]``(采晶矿用)。
 
     颜色 = 'gold' | 'blue' | 'gray'(圆心 HSV 分类;gold=高价值晶矿)。radius 可辅助优先级
     (金晶矿大)。可离线硬编码 rect 测(同 ``find_armory_boxes`` 分层约定)。
 
-    **幻检交叉验证**(三道门,标定与依据见常量块注释):纹理(圆内 Canny
-    边缘占比)+ 亮度(圆内 V 均值)+ 半径带 —— 面板内非晶矿实体(礼盒蝴蝶结
-    /装备 icon 等哑光高纹理物)被 Hough 检出的圆在此淘汰;真晶矿 16 fixture
-    样本全过。读侧消费点按 ``_session_phantom_points`` 会话黑名单过滤
-    (黑名单当前零写端,恒空不过滤)。"""
+    检测口径与标定(真球/假响应分数带、直径下限依据、遮挡小球盲区披露)见
+    常量块注释;模板清单见 ``_get_ore_tmpls``。区域缺档时上层
+    ``read_ore_sights`` 落空读数,本函数不假设 rect 有效性(空裁片 → 空表)。"""
     x1, y1, x2, y2 = panel_rect.x1, panel_rect.y1, panel_rect.x2, panel_rect.y2
     panel = screen[y1:y2, x1:x2]
     if panel.size == 0:
         return []
-    gray = cv2.medianBlur(cv2.cvtColor(panel, cv2.COLOR_RGB2GRAY), 3)  # 框架 screen RGB(⚠️ 非 BGR;HoughCircles 形状检测对权重不敏感)
-    circles = cv2.HoughCircles(
-        gray, cv2.HOUGH_GRADIENT, dp=_REWARD_HOUGH_DP, minDist=35,
-        param1=100, param2=_REWARD_HOUGH_PARAM2,
-        minRadius=_REWARD_MIN_R, maxRadius=_REWARD_MAX_R,
-    )
-    if circles is None:
+    tmpls = _get_ore_tmpls()
+    if not tmpls:
         return []
+    ph, pw = panel.shape[:2]
+    # 框架 screen 为 RGB;matchTemplate 多通道按通道对位求和,模板/搜索图
+    # 必须同口径(模板已在加载时转 RGB,与 panel 一致)
+    cands: list[tuple[float, int, int, int, str]] = []
+    for name, t in tmpls:
+        th, tw = t.shape[:2]
+        d0 = th   # 模板边长 = 源球标定直径(方裁片)
+        lo = max(_ORE_TMPL_D_LO_MIN, d0 - _ORE_TMPL_D_PAD_LO)
+        hi = d0 + _ORE_TMPL_D_PAD_HI
+        for d in range(lo, hi + 1, 2):
+            scale = d / d0
+            t2 = cv2.resize(t, (max(8, int(round(tw * scale))),
+                                max(8, int(round(th * scale)))),
+                            interpolation=cv2.INTER_AREA)
+            if t2.shape[0] >= ph or t2.shape[1] >= pw:
+                continue   # 裁片小于模板:面板边缘大球留待其他档位/其他帧
+            res = cv2.matchTemplate(panel, t2, cv2.TM_CCOEFF_NORMED)
+            for score, px, py in _ore_local_peaks(res, _ORE_TMPL_THR):
+                cands.append((score, px, py, d, name))
     hsv = cv2.cvtColor(panel, cv2.COLOR_RGB2HSV)  # RGB 输入必须 RGB2HSV(BGR2HSV 红/蓝 H 错位 → gold 分类失败,webp fixture 实测)
-    edges = cv2.Canny(gray, 80, 160)   # 幻检纹理门(与 Hough 共用同 blur 灰度)
     out: list[tuple[str, Point, int]] = []
-    for cx, cy, r in circles[0]:
-        ix, iy = int(cx), int(cy)
-        if not (0 <= ix < panel.shape[1] and 0 <= iy < panel.shape[0]):
-            continue
-        if not _ore_texture_gate(hsv, edges, ix, iy, int(r)):
+    for _score, px, py, d, _name in _ore_nms_merge(cands):
+        ix, iy = px + d // 2, py + d // 2   # 模板左上角 → 圆心(方裁片中心 = 球心)
+        if not (0 <= ix < pw and 0 <= iy < ph):
             continue
         h, s, _v = hsv[iy, ix]
         if 15 <= h <= 35 and s > 80:
@@ -1590,7 +1652,7 @@ def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point,
             color = 'gray'
         else:
             color = 'blue'
-        out.append((color, Point(ix + x1, iy + y1), int(r)))
+        out.append((color, Point(ix + x1, iy + y1), d // 2))
     out.sort(key=lambda t: (t[1].x, t[1].y))
     return out
 
@@ -1608,7 +1670,7 @@ def read_ore_sights(ctx: SrContext, screen: MatLike,
     if rect is None:
         # 区域缺档(建档漂移/档案损坏)→ 空读数:reader 既有 no-read 语义
         # (不抛不猜,采晶矿环自然无目标),禁回退硬编码 rect 对陈旧区域
-        # Hough 检测(坐标单一真相源)。
+        # 做检测(坐标单一真相源)。
         return []
     spheres = find_ore_sights(screen, rect)
     if prev is not None:
@@ -1717,7 +1779,7 @@ def find_giftbox_sight(ctx: SrContext, screen: MatLike) -> tuple[int, ...]:
     if float(res.max()) < _GIFTBOX_TM_THR:
         return ()
     # NMS:≥阈值 peak 按分降序收集,互距 > 模板宽 0.6(双盒物理间距
-    # 远超模板宽;同区晶矿 Hough minDist=35 同理念)
+    # 远超模板宽;同区晶矿模板匹配的中心距 NMS 同理念)
     min_dist = tw * 0.6
     ys, xs = np.where(res >= _GIFTBOX_TM_THR)
     ranked = sorted(zip(ys, xs, strict=True),

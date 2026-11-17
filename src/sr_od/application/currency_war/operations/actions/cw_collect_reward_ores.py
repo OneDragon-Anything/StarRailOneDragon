@@ -19,9 +19,10 @@ class CwCollectRewardOres(CwOperation):
     应清空,开出物入 owned_equips)。
     消耗:零(奖励领取;晶矿开出装备/道具为正向收益)。
 
-    识别 = ``read_ore_sights``(HoughCircles,纯读);点击 = 球心坐标。
-    **商店展开态守卫**:商店面板开着时卡面/装备栏圆形图标会被误判为晶矿
-    (实机误购实证),此时本 op 直接 round_fail 提示先收店,不点击。
+    识别 = ``read_ore_sights``(多尺度模板匹配,纯读);点击 = 球心坐标。
+    **商店展开态守卫**:商店面板开着时卡面/装备栏圆形图标有被误判为晶矿的
+    风险(实机误购实证,形状检测时代发生;模板匹配下分数带远低但守卫保留
+    作结构性防线),此时本 op 直接 round_fail 提示先收店,不点击。
     席满时部分奖励(武装箱/角色)可能无法领取(游戏侧拒绝)——机械点击
     不判断,对账以 extras 为准。
 
@@ -42,7 +43,7 @@ class CwCollectRewardOres(CwOperation):
         if screen is None:
             screen = self.screenshot()
         # 商店展开态守卫(两局实机误报实证):商店卡面/右栏装备栏的圆形图标
-        # 会被 HoughCircles 误判为晶矿,点击即误购商品(首局曾误购符玄/花火)。
+        # 与晶矿球面同构可能高分命中,点击即误购商品(首局曾误购符玄/花火)。
         # 开商店画面档的「按钮-收起」命中 = 商店展开 → 拒绝执行并提示先收店。
         shop_open = self.round_by_find_area(
             screen, '货币战争-备战-开商店', '按钮-收起')

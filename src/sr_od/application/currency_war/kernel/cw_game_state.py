@@ -3193,7 +3193,7 @@ class GameState:
     # [索引定义] ore_rewards 键 'x,y' = 矿身份**最新一次观察**的
     # (int(x), int(y)) 拼接字符串(JSON 安全,先例 = occupied_equips 键
     # 'front:1');身份连续性由挂接入口容差配对轨迹继承判定(键随轨迹
-    # 重挂,精确键会被 Hough 抖动换键)。取值时机 = 矿身份首现生成刻,
+    # 重挂,精确键会被检测抖动换键)。取值时机 = 矿身份首现生成刻,
     # 存续至开成摘除/消失清理;值类型 = OreReward(kernel/cw_ore_reward,
     # 唯一)。写入端 = kernel/cw_ore_channel.report_spheres_observed 单一
     # 写径(rekey/生成/清理三写,全部 write_logic_rand)+ 点击上报摘除
