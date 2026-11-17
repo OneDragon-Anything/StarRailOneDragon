@@ -246,6 +246,11 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         ] or None),
     )
     data = asdict(state)
+    if not with_rows:
+        # 开商店画面:行读数相关键**整键省略**(不是 null)——键缺席 = 「本画面不提供」,
+        # 与「读了但没读到」的语义区分开(用户裁定:不识别的字段不该出现在返回里)。
+        for k in ('front_line', 'back_line', 'deploy_count', 'deploy_cap'):
+            data.pop(k, None)
     data['xp_progress'] = _read_xp_progress(ctx, image)
     data['levelup_cost'] = read_level_up_cost(ctx, image)
     return data
@@ -259,10 +264,10 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
     'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)',
     'streak': '连胜/连败 magnitude(int;读不到→None)',
-    'deploy_count': '已部署角色数(int;读不到→None)。开商店画面设计性不返回:None'
+    'deploy_count': '已部署角色数(int;读不到→None)。开商店画面整键省略(遮挡不可靠,收店后用备战画面取)'
                     '(商店牌行盖住计数,遮挡不可靠;完整读数收店后用备战画面取)',
     'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)。'
-                  '开商店画面设计性不返回:None(同 deploy_count)',
+                  '开商店画面整键省略(遮挡不可靠,收店后用备战画面取)(同 deploy_count)',
     'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
     'board': '羁绊面板可见行原文 {羁绊名: 面板数字}(OCR 直读,快路径)。'
              '⚠️ v4.7 面板滚动+重排,本读数只是可见子集,不可当完整羁绊计数或'
@@ -271,10 +276,10 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
                   'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
                   '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
-                  'templates 未加载→None;开商店画面设计性不返回:None'
+                  'templates 未加载→None;开商店画面整键省略(遮挡不可靠,收店后用备战画面取)'
                   '(遮挡不可靠,完整读数收店后用备战画面取)',
     'back_line': '后排 Unit 行 list(同 front_line 结构;templates 未加载→None;'
-                 '开商店画面设计性不返回:None)',
+                 '开商店画面整键省略(遮挡不可靠,收店后用备战画面取))',
     'bench': '备战席状态容器视图 dict(BenchView:slots=9 元素 BenchSlot dict'
              '{kind: unit/supply_box/tome/bookcard/empty, unit: Unit dict 或 null}'
              '+ capacity=9;unit 槽元素 = char_id/star/equips/slot,备战席无 below icon→equips 恒 [];'
