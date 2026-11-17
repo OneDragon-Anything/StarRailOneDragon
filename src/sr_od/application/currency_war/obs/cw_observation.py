@@ -1642,10 +1642,10 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
     每个激活阵营一行:阵营名 + 其下的 "X/Y"(X=在场人数,Y=下个 tier 阈值)。详见 ``_board_pairs``。
 
-    ⚠️ v4.7 消费警示(实机 3 帧对照,正式局 1-2/1-3/1-4):激活羁绊多时面板
-    **滚动 + 重排**,本读数只是可见窗口的子集(行数 6→5→7、首行跳变),
-    **不等于完整羁绊计数,更不可当「在场人数」用于决策**——决策面用
-    :func:`board_from_deployed`(以算为准,用户既定口径)。
+    ⚠️ v4.7 已定论(实机配对实验,正式局 1-9 干净帧):面板 = 计算全集的
+    **滚动窗口**——可见行数值与 :func:`board_from_deployed` 计算值逐行精确一致,
+    但超出可视窗口的行静默不可见(实验:计算 10 行 vs 面板可视 6 行)。
+    本读数仅作快照参考;**羁绊计数决策面用 board_from_deployed(以算为准)**,
     证据帧与推导见 research/v47_first_match_observation.md §2.5。
     """
     pairs, _honest = _board_pairs(ctx, screen)
