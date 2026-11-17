@@ -130,7 +130,7 @@ uv run ruff check --fix src/你修改的文件.py
 - 固定使用 `tools/mcp/start_mcp_server.ps1` 启动、重启 MCP（默认 dev 模式）。
 - 开发/修改 MCP 工具、HTTP /game/* 端点、backend 方法 → `od-dev-write-backend` skill。
 - 改了任何 Python 代码，都要重启项目 MCP server 才生效。「改完跑、行为没变」先想到这条，别先怀疑改动没写对。
-- server 日志：运行/op 日志 `.log/mcp_server.log`；stdout 兜底（启动现场/崩溃）`.log/stdout.log`；GUI 的在 `.log/log.txt`。
+- server 日志：运行/op 日志 `.log/mcp_server.log`（**启动成功的判定标志 = 尾部出现「Uvicorn running」**，写判活/启动脚本以它为准）；stdout 兜底（启动现场/崩溃）`.log/stdout.log`；GUI 的在 `.log/log.txt`。
 - 更新 screen_info 必须用 MCP 工具（`upsert_screen_area` / `delete_screen_area` 等）。
 - server 同一时间只跑一个运行（单跑道），运行中再发起会被拒绝，重启同样被拒——先查运行状态，必要时 `stop_run` 停掉再重启。
 
