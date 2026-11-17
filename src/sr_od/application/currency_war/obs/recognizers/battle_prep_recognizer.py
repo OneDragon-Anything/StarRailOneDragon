@@ -247,7 +247,10 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'deploy_count': '已部署角色数(int;读不到→None)',
     'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
     'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
-    'board': '{阵营名: 在场人数} dict(OCR 左面板)',
+    'board': '羁绊面板可见行原文 {羁绊名: 面板数字}(OCR 左面板可见窗口)。⚠️ v4.7 语义未定:'
+             '面板行数随滚动/重排变化(实机 6→5→7 行、首行跳变),数值≠在场人数,'
+             '与 front_line/back_line/bench 的对照证据见 research/v47_first_match_observation.md §2.5;'
+             '语义厘清前,消费方不得把本字段当「在场人数」用于决策',
     'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
                   'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
                   '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
