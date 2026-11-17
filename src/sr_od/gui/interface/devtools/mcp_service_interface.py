@@ -78,7 +78,7 @@ def _status_url(port: int) -> str:
 
 def _server_log_path() -> Path:
     """返回 MCP server 子进程 stdout/stderr 日志路径。"""
-    return _project_root() / '.debug' / 'sr_od_mcp' / 'main_server.log'
+    return _project_root() / '.log' / 'stdout.log'
 
 
 def _find_server_process() -> psutil.Process | None:

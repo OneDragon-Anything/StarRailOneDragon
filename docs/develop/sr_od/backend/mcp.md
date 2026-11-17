@@ -127,7 +127,7 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 
 主 server 可在登录后自动启动（Session 1 内直接拉起，**不经 daemon 派生**），与 [daemon 开机自启](remote-ssh.md#开机自启) 相互独立、可共存：
 
-- 启动脚本：`tools/mcp/start_mcp_server.ps1`（默认 host 127.0.0.1 / port 24001，日志写 `.debug/sr_od_mcp/main_server.log`，与 GUI / daemon start tool 同路径）。
+- 启动脚本：`tools/mcp/start_mcp_server.ps1`（默认 host 127.0.0.1 / port 24001，日志写 `.log/stdout.log`，与 GUI / daemon start tool 同路径）。
 - 装自启快捷方式：`.\tools\mcp\create_mcp_server_startup_shortcut.ps1` —— 在 Startup 文件夹建 `SR OD MCP Server.lnk`，登录后自动调上面脚本（隐藏窗口）。卸载即删该 `.lnk`。
 - 幂等说明：本快捷方式与 daemon 自启快捷方式各管各的；daemon 的 `start_sr_od_mcp_server` 先按命令行检测进程已存在则跳过，不会重复拉起 / 端口冲突。
 

@@ -176,7 +176,7 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT, mode: str = 'player') ->
 
         try:
             # 输出重定向到日志文件:长驻 server 若用 PIPE 且不持续消费,buffer 满会阻塞子进程
-            log_path = PROJECT_ROOT / '.debug' / 'sr_od_mcp' / 'main_server.log'
+            log_path = PROJECT_ROOT / '.log' / 'stdout.log'
             log_path.parent.mkdir(parents=True, exist_ok=True)
             cmd = ['uv', 'run']
             # .env 存在才追加 --env-file（对齐 GUI 的 mcp_service_interface._server_command，

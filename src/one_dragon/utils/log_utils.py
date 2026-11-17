@@ -256,7 +256,7 @@ def rotate_large_stdout_log(
     """对「多写端 append 共享」的 stdout 兜底日志做 copytruncate 尺寸轮转。
 
     使用场景:被 launcher 重定向 stdout 的子进程日志(如 MCP server 的
-    main_server.log)。这类文件同时被多个进程持有打开句柄(子进程继承的
+    stdout.log)。这类文件同时被多个进程持有打开句柄(子进程继承的
     stdout fd / GUI 日志页尾读 / 哨兵 tail),Windows rename 语义要求
     无任何打开句柄,直接换名必然 PermissionError——旧实现静默吞掉后
     轮转缺位、文件无限增长。copytruncate(复制归档 + 截断源文件)用

@@ -1,7 +1,7 @@
 # SR OD Main MCP Server 启动脚本
 #
 # 直接拉起后端主 server(``sr_od.backend.entry.server``,默认端口 24001),
-# 日志重定向到 ``.debug/sr_od_mcp/main_server.log``(与 GUI / daemon start tool 同路径)。
+# 日志重定向到 ``.log/stdout.log``(与 GUI / daemon start tool 同路径)。
 # 开机自启快捷方式(``create_mcp_server_startup_shortcut.ps1``)以隐藏窗口调本脚本;
 # 主 server 在登录会话(Session 1)内直接启动,**不经 daemon 派生**。
 #
@@ -28,7 +28,7 @@ Write-Host "Listen URL: http://${HostName}:${Port}/mcp"
 Write-Host ""
 
 # 日志路径(与 GUI / daemon start tool 一致);确保目录存在
-$LogPath = Join-Path $ProjectRoot ".debug\sr_od_mcp\main_server.log"
+$LogPath = Join-Path $ProjectRoot ".log\stdout.log"
 $LogDir = Split-Path $LogPath -Parent
 if (-not (Test-Path $LogDir)) {
     New-Item -ItemType Directory -Force -Path $LogDir | Out-Null

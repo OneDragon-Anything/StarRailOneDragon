@@ -9,7 +9,7 @@ def get_logger() -> logging.Logger:
 
     为什么不挂 console handler：旧实现给本 logger 挂裸 ``StreamHandler``(stderr)，
     在 MCP server 进程里 stderr 被 daemon 重定向进 stdout 兜底日志
-    (``.debug/sr_od_mcp/main_server.log``)，而框架日志走 ``.log/mcp_server.log``
+    (``.log/stdout.log``)，而框架日志走 ``.log/mcp_server.log``
     ——同一行模型加载日志双写两文件，两文件 mtime 交替变新，哨兵按
     「mtime 最新」选活性信道时来回切换(日志信道漂移告警的直接写端)。
 

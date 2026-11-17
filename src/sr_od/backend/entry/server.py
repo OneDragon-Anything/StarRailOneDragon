@@ -38,17 +38,17 @@ DEFAULT_PORT = 24001
 # MCP server 进程的框架日志专属文件。
 # 职责划分(2026-08-24 定):一个进程一个日志文件,文件即进程身份——
 # GUI/调度器写 .log/log.txt,MCP server 写 .log/mcp_server.log,
-# main_server.log 只留 stdout 兜底(uvicorn 启动行/print/traceback)。
-# 修前:server 的框架日志默认双写(log.txt + console→main_server.log),
+# stdout.log 只留 stdout 兜底(uvicorn 启动行/print/traceback)。
+# 修前:server 的框架日志默认双写(log.txt + console→stdout.log),
 # 与 GUI 同写 log.txt 混进程身份,且轮转(midnight rename)双进程竞态;
-# main_server.log 还会被继承 stdout fd 的直驱进程混写,不可作运行日志载体。
+# stdout.log 还会被继承 stdout fd 的直驱进程混写,不可作运行日志载体。
 MCP_SERVER_LOG_FILE_NAME = 'mcp_server.log'
 
 
 def _configure_server_logging() -> None:
     """把框架 logger 切到 MCP server 专属文件并关闭 console 输出。
 
-    关 console 后,本进程框架日志不再打 stdout → 不进 main_server.log
+    关 console 后,本进程框架日志不再打 stdout → 不进 stdout.log
     (它回归 daemon 重定向的 stdout 兜底职责);查 server 的 op 运行日志
     改看 .log/mcp_server.log(prompts.py 的 AI 指引同步指向)。
     """
@@ -70,7 +70,7 @@ def _configure_root_logger_single_channel() -> None:
     handlers=[StreamHandler(stderr)])`` 给 root 挂**裸 stderr handler**。本进程
     内所有 ``logging.getLogger(__name__)`` 型业务 logger(如
     cw_screen_plane_intel,无自有 handler,记录上传 root)会以裸格式写 stderr,
-    被 daemon 重定向进 .debug/sr_od_mcp/main_server.log;而框架 logger('OneDragon',
+    被 daemon 重定向进 .log/stdout.log;而框架 logger('OneDragon',
     propagate=False)走 .log/mcp_server.log —— 同一子系统的日志按「模块抓哪个
     logger」分裂进两个文件,即哨兵观测的双信道漂移。
 
@@ -162,9 +162,9 @@ async def _serve(host: str, port: int, mode: str = MCP_MODE_PLAYER) -> None:
         mode: MCP 运行模式（player/dev），默认玩家。
     """
     # 日志分流必须在 SrContext() 之前:上下文构造期间(地图数据/实例配置加载)
-    # 就会打框架日志,分流未做时这些行走默认双写 —— console→main_server.log
+    # 就会打框架日志,分流未做时这些行走默认双写 —— console→stdout.log
     # (stdout 兜底日志混入框架日志,进程身份失真)与共享 log.txt(与 GUI 跨进程
-    # 竞态窗口)。实证:main_server.log 各次重启头部都有一段框架日志泄漏。
+    # 竞态窗口)。实证:stdout.log 各次重启头部都有一段框架日志泄漏。
     _configure_server_logging()
     # root 单一信道(见函数 docstring)也必须在 SrContext/FastMCP 构造前:
     # SrContext init 期间已有 getLogger(__name__) 型日志,晚了这段会走裸 stderr。
@@ -188,12 +188,12 @@ async def _serve(host: str, port: int, mode: str = MCP_MODE_PLAYER) -> None:
         # log_config=None 的真实因果(2026-09-02 tmp 日志探针实证):uvicorn 缺省
         # log_config 会给自己的 logger 族挂 stderr StreamHandler,每次重启的启动块
         # (Started server process/Uvicorn running 等)都写进被 daemon 重定向的
-        # main_server.log —— 该文件 mtime 每次重启都会一度变新,哨兵按「两候选
+        # stdout.log —— 该文件 mtime 每次重启都会一度变新,哨兵按「两候选
         # mtime 最新」选活性信道时随之来回切换(日志信道漂移的另一写端)。
         # None = uvicorn 不自配 logging,其 logger 族保持默认 propagate=True →
         # 经 root 的 mcp_server.log 文件 handler 落盘(探针实证主路径不失明;
         # root 被外来占位的脆弱分支由 _route_uvicorn_logs_to_mcp_log 兜底),
-        # 单一信道不破,main_server.log 保持 stdout 兜底职责。
+        # 单一信道不破,stdout.log 保持 stdout 兜底职责。
         config = uvicorn.Config(app, host=host, port=port, log_level="info",
                                 access_log=False, log_config=None)
         server = uvicorn.Server(config)
@@ -211,7 +211,7 @@ def main() -> None:
     通过 argparse 解析 ``--host`` / ``--port`` / ``--mode``（默认 ``127.0.0.1`` /
     ``24001`` / ``player``），随后 ``asyncio.run`` 驱动 ``_serve`` 完成整个生命周期。
     """
-    # stdout/stderr 被 daemon 重定向到 main_server.log 时,Windows 默认用 locale(GBK)
+    # stdout/stderr 被 daemon 重定向到 stdout.log 时,Windows 默认用 locale(GBK)
     # 编码 → 中文(op 名/OCR)写进 UTF-8 文件变 mojibake,日志不可读。强制 UTF-8。
     for _stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(Exception):

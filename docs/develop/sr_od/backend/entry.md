@@ -22,7 +22,7 @@ uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001 --mode
 
 运维要点（任何启动途径通用）：
 
-- **detached 启动**（如 PowerShell `Start-Process`）优于挂在会话子树下前台跑——前台进程随会话结束连坐；detached 后 server 常驻。detached 不重定向 stdout，判死活看进程列表 + `.log/mcp_server.log`（框架日志，当次现场）；`.debug/sr_od_mcp/main_server.log` 是追加模式的 stdout 兜底，尾部内容可能来自历史启动，勿作当次现场判读。
+- **detached 启动**（如 PowerShell `Start-Process`）优于挂在会话子树下前台跑——前台进程随会话结束连坐；detached 后 server 常驻。detached 不重定向 stdout，判死活看进程列表 + `.log/mcp_server.log`（框架日志，当次现场）；`.log/stdout.log` 是追加模式的 stdout 兜底，尾部内容可能来自历史启动，勿作当次现场判读。
 - **重启前确认旧进程已停**（端口 24001 被占直接起会绑不上）：`Stop-Process` 按 PID，或经 daemon 的 stop 工具（daemon 有对局守卫；无 daemon 的环境自行确认无运行中 run 再停）。
 - `PYTHONPATH=<项目>/src` 注入要求见本节开头说明；这是 src-layout 的解析要求，与启动途径无关。
 
@@ -66,11 +66,11 @@ GUI 的「开发工具 -> MCP 服务」页面提供本机 server 管理：
 - 探测：请求 `http://127.0.0.1:<port>/health`。
 - 启动：在项目根目录执行 `uv run python -m sr_od.backend.entry.server --port <port>`；如果项目根目录存在 `.env`，会自动补上 `--env-file .env`。不带 `--mode`，即默认玩家模式；需要开发模式时经 daemon 启动或手动命令行加 `--mode dev`。
 - 停止 / 重启：查找并管理 `sr_od.backend.entry.server` 进程。
-- 日志：`.debug/sr_od_mcp/main_server.log`，默认关闭 uvicorn access log;uvicorn logger 族经 log_config=None 不自配 handler,统一归 .log/mcp_server.log 单一信道，避免状态轮询刷屏。
+- 日志：`.log/stdout.log`，默认关闭 uvicorn access log;uvicorn logger 族经 log_config=None 不自配 handler,统一归 .log/mcp_server.log 单一信道，避免状态轮询刷屏。
 - MCP 地址：`http://127.0.0.1:<port>/mcp`。
 - 当前运行状态：请求 `http://127.0.0.1:<port>/game/status`。
 
-页面会低频轮询 `/game/status`，并尾读 `.debug/sr_od_mcp/main_server.log` 到消息框；这些日志只用于 GUI 展示，不通过 MCP tool 返回给 agent。GUI 会过滤自身轮询、`GET /mcp` 探测和 Windows 连接重置这类噪音，并限制消息框保留行数，避免长时间打开后卡顿。
+页面会低频轮询 `/game/status`，并尾读 `.log/stdout.log` 到消息框；这些日志只用于 GUI 展示，不通过 MCP tool 返回给 agent。GUI 会过滤自身轮询、`GET /mcp` 探测和 Windows 连接重置这类噪音，并限制消息框保留行数，避免长时间打开后卡顿。
 
 这个 GUI 页面管理的是一个本机 server 子进程，不是把 MCP server 嵌进 GUI 主进程。当前不做 GUI 主进程与 server 子进程之间的跨进程运行互斥。
 
