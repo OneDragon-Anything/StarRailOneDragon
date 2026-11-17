@@ -55,6 +55,7 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_row_equipped,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
+    board_from_deployed,
     parse_phase_round_text,
     phase_round_in_range,
     read_board,
@@ -117,7 +118,8 @@ class _BattlePrepState:
     deploy_count: int | None        # 已部署角色数(read_deployed_count,读不到→None)
     deploy_cap: int | None          # deploy cap 真值(read_deploy_cap,读不到→None)
     level: int                      # 团队规模等级(read_level,Lv.N;cap>level=钻石/宝钻加成)
-    board: dict[str, int]           # {阵营名: 在场人数}(read_board)
+    board: dict[str, int] | None    # 羁绊计数,以算为准(board_from_deployed 按 SIFT 单位表计算;SIFT 不可用或身份未知→None)
+    board_ocr_visible: dict[str, int] | None  # 面板 OCR 可见行原文(read_board;滚动+重排只是子集,仅参考,v4.7 实证)
     front_line: list[Unit] | None  # 前排 Unit 行(SIFT 身份 + read_star 星级 + read_row_equipped 装备按 slot 注入 equips;templates 未加载→None)
     back_line: list[Unit] | None   # 后排 Unit 行(同上)
     bench: BenchView | None        # 备战席状态容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
@@ -210,6 +212,13 @@ def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
     # director gated=26」双真相)。extras 序列化 None→
     # 合法 null(backend json.dumps 预校验);extras_doc
     # 文案同步「读不到→None」。(模块级 import。)
+    # board 以算代读(用户既定口径,同 flow 层 board_from_deployed):
+    # SIFT 单位表可用 → 按单位羁绊标签计算计数(不受面板滚动/重排影响);
+    # SIFT 不可用(front/back None)或身份未知 → None,降级读
+    # board_ocr_visible(面板可见行原文,仅参考)。
+    computed_board = None
+    if front_line is not None or back_line is not None:
+        computed_board = board_from_deployed(list(front_line or []) + list(back_line or []))
     state = _BattlePrepState(
         gold=read_gold(ctx, image),
         phase=phase,
@@ -218,7 +227,8 @@ def read_prep_extras(ctx: SrContext, image: MatLike) -> dict:
         deploy_count=read_deployed_count(ctx, image),
         deploy_cap=read_deploy_cap(ctx, image),
         level=level,
-        board=read_board(ctx, image),
+        board=computed_board,
+        board_ocr_visible=read_board(ctx, image),
         front_line=front_line,
         back_line=back_line,
         bench=bench,
@@ -247,10 +257,12 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'deploy_count': '已部署角色数(int;读不到→None)',
     'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
     'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
-    'board': '羁绊面板可见行原文 {羁绊名: 面板数字}(OCR 左面板可见窗口)。⚠️ v4.7 语义未定:'
-             '面板行数随滚动/重排变化(实机 6→5→7 行、首行跳变),数值≠在场人数,'
-             '与 front_line/back_line/bench 的对照证据见 research/v47_first_match_observation.md §2.5;'
-             '语义厘清前,消费方不得把本字段当「在场人数」用于决策',
+    'board': '羁绊计数,以算为准(board_from_deployed 按 SIFT 单位表计算;'
+             'SIFT 不可用或身份未知→None,降级参考 board_ocr_visible)。'
+             '受 SIFT 可用性影响:开商店态 front/back 常为 None → board=None',
+    'board_ocr_visible': '羁绊面板 OCR 可见行原文 {羁绊名: 面板数字}(只读可视区;'
+             'v4.7 面板滚动+重排,行数随局面变化,仅参考不作决策依据;'
+             '证据与推导见 research/v47_first_match_observation.md §2.5)',
     'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
                   'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
                   '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
