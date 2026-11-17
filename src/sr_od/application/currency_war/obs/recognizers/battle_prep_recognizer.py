@@ -143,21 +143,27 @@ def _read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None
 
 
 def read_prep_extras(ctx: SrContext, image: MatLike,
-                     with_rows: bool = True) -> dict:
+                     full_read: bool = True) -> dict:
     """备战画面领域事实读取(**备战 / 备战-开商店两识别器共用**)。
 
     并发安全同模块 docstring:纯读(不写 self. / 全局 / session);
     装备立绘模板经 ensure_* 幂等加载。读不到的字段 None(不伪造)。
 
-    :param with_rows: 是否读部署行(front_line/back_line/deploy_count)。
-        开商店画面传 False——商店牌行盖住部署计数、面板遮挡使立绘比对
-        不可靠(实机:开商店态恒缺/残缺),该画面这三项**设计性不返回**
-        (None),要完整读数用备战画面(收店后);跳过还省 SIFT 开销。
+    :param full_read: 是否做完整读(含部署行/血量/晶矿)。开商店画面传
+        False——商店牌行盖住部署计数与血量、面板遮挡使立绘与晶矿识别
+        不可靠(实机:行读恒缺/残缺,晶矿检出全是商品图标误报),这些字段
+        **整键省略**(键不出现,与「读到空」区分;用户裁定:不识别的字段
+        不该出现在返回里),要完整读数用备战画面(收店后);跳过还省 SIFT 开销。
 
     Returns:
-        dict(键集 = ``PREP_EXTRAS_DOC``;备战识别器原样返回,
+        dict(full_read=True 时键集 = ``PREP_EXTRAS_DOC``;开商店画面省略
+        front_line/back_line/deploy_count/deploy_cap/hp/reward_ores 六键,
         开商店识别器在此基础上叠加 shop_cards / refresh_probs)。
     """
+    omit_keys = frozenset() if full_read else frozenset({
+        'front_line', 'back_line', 'deploy_count', 'deploy_cap',
+        'hp', 'reward_ores',
+    })
     # 装备(slot_idx → 装备名;先读,再注入 Unit.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
     # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
     phase0 = _read_phase_round_pure(ctx, image)
@@ -165,7 +171,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     front_equips: dict = {}
     back_equips: dict = {}
     _back_n = None
-    if with_rows:
+    if full_read:
         # 后排装备槽按 cap 差公式选档(口述「后台格数=6+(cap−level)」;
         # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(覆盖式保留证据在 select_back_layout)。
         from sr_od.application.currency_war.obs.cw_back_layout import (
@@ -174,7 +180,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)
     templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);bench 读也依赖
     equip_grays = ensure_equip_tm_templates(ctx)
-    if with_rows and equip_grays is not None:
+    if full_read and equip_grays is not None:
         front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4)
         # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
         # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
@@ -185,7 +191,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     front_line: list[Unit] | None = None
     back_line: list[Unit] | None = None
     bench: BenchView | None = None
-    if with_rows and templates is not None:
+    if full_read and templates is not None:
         front_hits, back_hits = read_deployed_rows(ctx, image, templates, level=level0)
         front_line = ([replace(u, equips=front_equips.get(s, []))
                        for s, u in front_hits] or None)
@@ -228,10 +234,10 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     state = _BattlePrepState(
         gold=read_gold(ctx, image),
         phase=phase,
-        hp=read_hp_opt(ctx, image),
+        hp=(None if not full_read else read_hp_opt(ctx, image)),
         streak=read_streak(ctx, image),
-        deploy_count=(read_deployed_count(ctx, image) if with_rows else None),
-        deploy_cap=(read_deploy_cap(ctx, image) if with_rows else None),
+        deploy_count=None if not full_read else read_deployed_count(ctx, image),
+        deploy_cap=None if not full_read else read_deploy_cap(ctx, image),
         level=level,
         board=read_board(ctx, image),
         front_line=front_line,
@@ -243,13 +249,13 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         ] or None),
         reward_ores=([
             {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)
-        ] or None),
+        ] or None) if full_read else None,
     )
     data = asdict(state)
-    if not with_rows:
-        # 开商店画面:行读数相关键**整键省略**(不是 null)——键缺席 = 「本画面不提供」,
+    if omit_keys:
+        # 开商店画面:不可靠字段**整键省略**(不是 null)——键缺席 = 「本画面不提供」,
         # 与「读了但没读到」的语义区分开(用户裁定:不识别的字段不该出现在返回里)。
-        for k in ('front_line', 'back_line', 'deploy_count', 'deploy_cap'):
+        for k in omit_keys:
             data.pop(k, None)
     data['xp_progress'] = _read_xp_progress(ctx, image)
     data['levelup_cost'] = read_level_up_cost(ctx, image)
@@ -262,7 +268,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
 PREP_EXTRAS_DOC: dict[str, str] = {
     'gold': '当前金币(int;读不到→0,安全保守默认)',
     'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
-    'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)',
+    'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)。开商店画面整键省略(计数被商店牌行盖住,收店后用备战画面取)',
     'streak': '连胜/连败 magnitude(int;读不到→None)',
     'deploy_count': '已部署角色数(int;读不到→None)。开商店画面整键省略(遮挡不可靠,收店后用备战画面取)'
                     '(商店牌行盖住计数,遮挡不可靠;完整读数收店后用备战画面取)',
@@ -290,7 +296,7 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
                     '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
     'reward_ores': '奖励面板晶矿 list(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r},'
-                      'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
+                      'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None;开商店画面整键省略(晶矿在商店画面不可见,检出全是商品图标误报)',
     'xp_progress': '经验面板「N/M」进度 [已攒, 升级所需](读不到→None)',
     'levelup_cost': '购买经验按钮价格(int 金币;读不到→None)',
 }
