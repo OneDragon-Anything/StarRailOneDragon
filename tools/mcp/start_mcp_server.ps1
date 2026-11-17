@@ -6,12 +6,16 @@
 # 主 server 在登录会话(Session 1)内直接启动,**不经 daemon 派生**。
 #
 # 使用方式:
-#   .\start_mcp_server.ps1              # 默认 host 127.0.0.1 / port 24001
-#   .\start_mcp_server.ps1 -Port 24002  # 自定义端口
+#   .\start_mcp_server.ps1                       # 默认 host 127.0.0.1 / port 24001 / dev 模式
+#   .\start_mcp_server.ps1 -Mode player          # 玩家模式工具面
+#   .\start_mcp_server.ps1 -Port 24002           # 自定义端口
+# Mode 默认 dev:本脚本主要服务开发机(开机自启/手动重启),dev 面含建档/流转图/录屏。
 
 param(
     [string]$HostName = "127.0.0.1",
-    [int]$Port = 24001
+    [int]$Port = 24001,
+    [ValidateSet("player", "dev")]
+    [string]$Mode = "dev"
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,7 +54,7 @@ $EnvArg = if (Test-Path ".env" -PathType Leaf) { "--env-file .env" } else { "" }
 try {
     # 经 cmd /c 重定向:stdout/stderr 合并写同一文件为原始字节(对齐
     # daemon subprocess.Popen(stdout=file, stderr=STDOUT);规避 PS 原生重定向编码问题)
-    cmd /c "uv run $EnvArg python -m sr_od.backend.entry.server --host $HostName --port $Port > `"$LogPath`" 2>&1"
+    cmd /c "uv run $EnvArg python -m sr_od.backend.entry.server --host $HostName --port $Port --mode $Mode > `"$LogPath`" 2>&1"
     # cmd /c 的非零退出码不会触发 catch(ErrorActionPreference 对原生命令无效),手动检查避免启动失败仍报成功
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[ERROR] Main MCP Server exited with code $LASTEXITCODE" -ForegroundColor Red

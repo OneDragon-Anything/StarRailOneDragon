@@ -126,10 +126,12 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## 6.MCP
 
-项目的游戏操作能力通过 MCP server 暴露：跑 operation / application / 一条龙、截图与画面识别、screen_info 维护、点击按键等。启动脚本在 `tools/mcp/`，server 由 daemon 管理启停。
-
-- **改了任何 Python 代码，都要重启项目 MCP server 才生效**——server 进程缓存了已加载的模块与 app 实例。「改完跑、行为没变」先想到这条，别先怀疑改动没写对。
-- 更新 screen_info 用 MCP 工具（`upsert_screen_area` / `delete_screen_area` 等）：改对应 yml 并顺便更新合并缓存（`_od_merged.yml`）；别手改 yml（原因见「画面识别」）。
+- 项目的游戏理解、操作能力和一条龙相关配置能力通过 MCP server 暴露，通过 MCP+skill 让游戏玩家能畅玩游戏，让开发者可以快速迭代、调试内容。
+- 固定使用 `tools/mcp/start_mcp_server.ps1` 启动、重启 MCP（默认 dev 模式）。
+- 开发/修改 MCP 工具、HTTP /game/* 端点、backend 方法 → `od-dev-write-backend` skill。
+- 改了任何 Python 代码，都要重启项目 MCP server 才生效。「改完跑、行为没变」先想到这条，别先怀疑改动没写对。
+- server 日志：运行/op 日志 `.log/mcp_server.log`；stdout 兜底（启动现场/崩溃）`.log/stdout.log`；GUI 的在 `.log/log.txt`。
+- 更新 screen_info 必须用 MCP 工具（`upsert_screen_area` / `delete_screen_area` 等）。
 - server 同一时间只跑一个运行（单跑道），运行中再发起会被拒绝，重启同样被拒——先查运行状态，必要时 `stop_run` 停掉再重启。
 
 ## 7.Skills
