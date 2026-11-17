@@ -70,6 +70,11 @@ class DragCwChar(CwOperation):
                 「构造参数 JSON 简单类型」(Point 非 JSON 类型,内部转换)。
         """
         CwOperation.__init__(self, ctx, op_name='货币战争-拖动角色')
+        # 槽号 1 基(前排 1-4/后排 1-6 基准/备战栏 1-9),0 或负数 = 参数错误
+        #(实测传 0 曾静默无效无报错)——构造期拒绝,与 slot/max_clicks 同口径。
+        for name, idx in (('from_idx', from_idx), ('to_idx', to_idx)):
+            if not 1 <= idx <= 99:
+                raise ValueError(f'{name} 越界: {idx}(可用值 1-99,槽位 1 基)')
         self.from_row: str = from_row
         self.from_idx: int = from_idx
         self.to_row: str = to_row
