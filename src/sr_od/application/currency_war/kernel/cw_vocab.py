@@ -191,10 +191,38 @@ class CwActionSellBenchParam:
     test_shop_session_loop.py(筹资形态/兜底穷尽机会清单;原
     test_cw_sell_reason_matrix / TestFundingHoldFallback 两测试随测试批
     并入停用,expect+income 写端校验并入上述两文件)。
+
+    [记账路径总契约(第五适用者;契约正文 = action-op.md「记账路径总契约」
+    条款)]:本族对象住槽位表不住坐标伴随域,记账键 = bench_idx 槽位
+    下标、记账载荷 = 槽位反查产物/状态推导名(卖出单位身份/星级/退款 =
+    按 idx 反查槽现任单位;装备回收 = 反查产物单位的 ``sold.equips``
+    载体字段——bench 单位 equips 结构性恒空:身份识别链构造 Unit 恒
+    equips=[] + bench 读取路径零装备回填 + 穿戴面只作用于 deployed 域,
+    回收分支现役休眠,bench 装备若成游戏事实自动激活);溢出分支
+    (overflow_warning 在场卖牌 = 腾槽当帧记溢出件入位)为本 op 特有
+    面。「槽位反查」无表形态第三例(MoveUnit 第一例/SellDeployed 第二
+    例);名称字段零新增(无 item_name/char_name 形态),宪法③对本 op
+    = 空集成立;``expect`` = 提案代际防线字段,非名称语义参数。
+
+    [双域形态申报] 词表级双域共用动作:备战域 5 发出点(entry yield
+    plan 卖步骤 bench 支/_emit_sell_candidate bench 支、mandate M4
+    腾席三处)经 PrepExecEnv,商店域 2 发出点(shop.py 获取让位卖旧/
+    shop_swap 分支)经 ShopExecEnv(visit 环 guard_proposal_vs_expected
+    前置断言)。执行 op = CwActionSellBenchOp 机械面全自持(点位 op 内
+    现读),env 仅消费 executor.screen_name(域坐标权威画面分派)+
+    ledger(商店访问账卖出计数)两处元数据;MCP 直调 env=None = 缺省
+    备战画面档(单件会话直调场景 op 跑在备战画面语义正确)。
+
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``);零新增字段 → 旧帧/旧序列化
+    数据零兼容问题。
     """
     bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(定长 9 槽,空槽 None)
-    #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(定长 9 槽,空槽 empty)
+    #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 empty 不移位);
+    #             yield plan 卖步骤 bench 支 = 跨帧队列消化形态,陈旧由
+    #             发出点按名现读重推导 fail-closed(记账路径总契约②,
+    #             本类 docstring 申报)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
     reason: str = ''           # 卖出通道记录字段(记录非指令,仿 CwActionLevelUpParam.auth_basis 形态;
@@ -219,6 +247,12 @@ class CwActionSellBenchParam:
     #                            并读零双源。
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionSellBenchParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 # 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):

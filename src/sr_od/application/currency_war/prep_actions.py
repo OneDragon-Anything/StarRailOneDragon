@@ -27,9 +27,10 @@ kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit 已�
 参数面迁移批改 op 自持(op 内经模块级原语现读点位表——bench 侧 =
 备战栏-N area 序直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联
 算术,0-3=前排 1-4 / 4+=后排 1-N 动态,后排拖点按 back_slot_count 布局
-档静态解析);SellBench/SellDeployed 过渡期仍经执行器点表(各自迁移批
-自持化;bench 侧 = 备战栏 area 序;deployed 侧 = 下标→(排,排内槽号)
-换算,tracked 第二账停用后旧换算族已删)。坐标参数化
+档静态解析);SellBench 已随其参数面迁移批改 op 自持(bench 侧 =
+备战栏-N area 序直取);SellDeployed 过渡期仍经执行器点表(其迁移批
+自持化;deployed 侧 = 下标→(排,排内槽号)换算,tracked 第二账停用后
+旧换算族已删)。坐标参数化
 机械动作(开件三类 CwActionOpenBoxParam/CwActionOpenTomeParam/
 CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
 (动作参数定义,拖点直取 area,不经换算);穿装与工具原子两类已升级
@@ -270,11 +271,11 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
                        screen_name: str = SCREEN_NAME) -> None:
     """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,设计章 2.10)。
 
-    d2 卖通道生产接入调用(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
-    ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
-    像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
-    tracking 同步由调用方各自做。拖拽机械半 = ``drag_char_guarded``
-    (失焦守卫单一宿主)。
+    现役消费者 = MCP 动作原语 ``CwSellBenchBySlot`` 单一(备战域 op
+    CwActionSellBenchOp 已随其参数面迁移批改 op 内自持现读,不再经本
+    helper):「拖→出售区」机械一段(发出即职责完成,落地事实归观察侧
+    reconcile 对账);内置点表越界守卫 = MCP 直调原语面兜底。拖拽机械半
+    = ``drag_char_guarded``(失焦守卫单一宿主)。
 
     Args:
         op: 调用方 op(取 ctx.controller 操作)。
@@ -353,9 +354,10 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 槽位中心(screen_info 静态,构造时读一次;op 内参数守卫与拖拽坐标共用)。
-        # MoveUnit 已随参数面迁移改 op 内现读(零消费);SellDeployed 过渡期
-        # 仍消费 _front_pts/_back_pts(其迁移批退役)。
+        # 槽位中心(screen_info 静态,构造时读一次)。_bench_pts 现役消费 =
+        # 开件三类守卫(其迁移批退役)——MoveUnit/SellBench 已随各自参数面
+        # 迁移批改 op 内现读;SellDeployed 过渡期仍消费 _front_pts/_back_pts
+        # (其迁移批退役)。
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
         self._back_pts: list[Point] = row_area_centers(ctx, '后排')
