@@ -8,9 +8,11 @@
 
 | 限额 | 计数语义 |
 |---|---|
-| `OP_FAIL_REDISPATCH_LIMIT`(值见代码) | 连续计(任一分发 op ok 清零;异键 ok 同闭窗);同一分发 op 连续 fail 达限额 → 保留证据截图 + round_fail 显式停交上层,取代无界空转。round_fail 在 node_max_retry 预算内**不停机**——刻意:消除「静默」而非「重试」,ERROR 行进日志 = 哨兵 STALL 通道与人都能看到,停机决策留给观察者 |
+| `OP_FAIL_REDISPATCH_LIMIT`(值见代码) | 连续计(任一分发 op ok 清零;异键 ok 同闭窗);同一分发 op 连续 fail 达限额 → 保留证据截图 + round_fail 显式停交上层,取代无界空转。round_fail 的 FAIL 枚举不吃 node_max_retry 预算,直接收敛运行 FAILED——「不停机」指框架不自动重派、停机决策交上层观察者;刻意处 = 消除「静默」而非「重试」,ERROR 行进日志 = 哨兵 STALL 通道与人都能看到 |
 
 计数/判定统一在 `_dispatch_screen_op`。位面过渡的误分发根修在识别层:BOSS简报 id_mark 换装徽记模板(OCR 误读免疫),阶段一位面过渡身份分支挂 boss 判别排他。
+
+**链形 dispatch 分支契约**:一个分支体内多次 dispatch 的链形分支必须传同一 `chain_key` 归组计数(`_dispatch_screen_op` 可选参数,缺省 None = 计数键仍 journal 名),链首调用方透传防线 FAIL 出口(FAIL 枚举只从防线段产生,出口契约见包装 docstring);现役唯一多 dispatch 链形分支 = 投资环境链(环境 op → 等待 1-1),链形透传分支(3c,大厅收尾)为单发透传例外、不经本网(既有申报不变)。未按契约接线 = 绕过防线(链内交替 fail 异键归一失效的历史形态)。链形下限额计「连续 fail 分发次数」,每粘滞分发轮烧 2 次(链首+链尾;语义申报见包装 docstring)。
 
 备战交互链迁 `CwScreenPrep` 特殊流程段后的失败链形态(迭代 2026-11-18-prep-special-flow):锁定直出战未执行 = 画面 op 段3b retry 保锁(框架预算每访问 1 首跑+3 重试=4 次)→ 访问 fail 走本网,备战 op 键连续 fail 限 5 次重派发 → 至多约 20 次出战尝试,有界且 ≪ 旧形态 loop 节点原地重试预算 400 次。横幅守卫与兜底清(`_fallback_clear_pending`)留主循环识别命中后、派发前,与本网交界无变化。
 

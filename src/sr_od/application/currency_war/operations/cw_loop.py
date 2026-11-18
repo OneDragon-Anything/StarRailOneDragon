@@ -183,7 +183,8 @@ def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
     """外环 op 连续 fail 计数纯函数(计数语义 = 同值累加/异值归一,
     先例:计数语义纯函数化供测试,包装内只做状态落位)。
 
-    计数键 = 分发 op 行名(journal_name,分发身份单一源);计数窗口 =
+    计数键 = ``chain_key or journal_name``(调用方传入:单发分支缺省 =
+    journal_name 分发身份单一源;链形分支传同一链级键归组);计数窗口 =
     「连续 fail 运行」:
     - **任一** op 的 ok = 屏幕证实推进(本轮分发链把画面往前推了一步,
       同一粘滞画面的前提已破)→ 整窗归零——fail 间歇重置语义,同时消
@@ -192,9 +193,13 @@ def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
     - 同键 fail 累加;异键 fail = 粘滞对象已换,新情节从 1 起算
       (原位面过渡误分发专用计数器「仅本分支语义」的推广)。
 
-    已知边界(如实申报):同一迭代内双 op 链交替 fail(「货币战争-投资环境」→
-    等待1-1)两键各自计 1 不达限——该形态不属「同一 op 连续 fail」
-    适用范围,由两 op 内部预算 + 系统级哨兵(stall_watch/NODE-DWELL)负责。
+    已知边界(如实申报):链形分支(一个分支体内多次 dispatch)必须传同一
+    ``chain_key`` 归组计数,并由链首调用方透传防线 FAIL 出口,未按契约
+    接线 = 绕过防线(链内交替 fail 异键归一失效的历史形态——链内两 op
+    各按 journal 名计数,交替 fail 两键各自恒 1 不达限);跨分支交替 fail
+    (不同分发分支键互异)不属本网「同一粘滞对象」语义,各自从 1 起算
+    = 既有语义边界,兜底 = 未知兜底(``UNKNOWN_FAIL_THRESHOLD``)+ 系统级
+    哨兵(NODE-DWELL)。
     """
     if ok:
         return None, 0
@@ -567,6 +572,7 @@ class CwLoop(CwOperation):
         wait: float,
         on_fail_retry: bool = False,
         on_result: Callable[[bool, Any], OperationRoundResult | None] | None = None,
+        chain_key: str | None = None,
     ) -> OperationRoundResult:
         """画面分支统一 dispatch 包装(外循环唯一新增结构)。
 
@@ -586,6 +592,11 @@ class CwLoop(CwOperation):
         :param on_result: 守卫钩子回调 ``(ok, res) -> round | None``;返回
             None = 走默认映射,返回 round 对象 = 覆盖默认返回(如外环 fail 预算超限
             round_fail)。调用点 = execute 之后、[cw-op] 行落点之前。
+        :param chain_key: 链形分支的**链级计数键**——一个分支体内多次 dispatch
+            的链形分支必须传同一值,使链内各 op 的 fail 计入同一计数窗(同键
+            累加,消除按各自 journal 名交替计数的异键归一);缺省 None = 计数键
+            仍 = ``journal_name``,单发分支逐位不变。只进防线计数,不上
+            [cw-op] 日志行(journal 行消费面不变)。
         :return: 分支的轮次结果
 
         环级 fail 重派防线:任一 op 的 ok → 连续 fail 计数窗归零
@@ -594,6 +605,19 @@ class CwLoop(CwOperation):
         预算重派」的无界空转。计数/判定位于 hook 早退之后 → hook 仍可
         以自身轮次结果短路(结构性先于本网);链形透传分支(3c)不经
         本网(各有自身预算)。
+
+        FAIL 出口契约:对画面 op(经 ``execute()`` 收敛为 ``OperationResult``)
+        本包装的返回中 FAIL 枚举只从防线段产生(op 自身失败被吸收映射
+        wait/retry)——链形分支的链首调用方可以 ``result == FAIL`` 判定
+        「防线已触发」并透传出口。``on_result`` 钩子覆盖返回 FAIL 时语义
+        相同(链首显式失败应停),透传判定同样接住。
+
+        LIMIT 的链形预算语义:链形分支下 ``OP_FAIL_REDISPATCH_LIMIT`` 计的
+        是「连续 fail **分发次数**」——粘滞形态每个分发轮链首+链尾各 fail
+        一次、烧 2 次 fail 事件,达限 ≈ LIMIT/2 向上取整个分发轮
+        (LIMIT=5 ≈ 3 轮),与单发分支「LIMIT = 5 个循环轮」的标定口径不同。
+        仍显式有界停机、方向无害,但链形分支的轮数不可按单发口径推算,
+        以本申报为准。
 
         异常安全:``op`` 体或 ``on_result`` 抛异常时,补落
         outcome='error' 的 [cw-op] 行后原样上抛——异常语义归节点级重试链
@@ -628,7 +652,7 @@ class CwLoop(CwOperation):
                  self._op_fail_streak_n) = op_fail_redispatch_tick(
                     getattr(self, '_op_fail_streak_key', None),
                     getattr(self, '_op_fail_streak_n', 0),
-                    journal_name, True)
+                    chain_key or journal_name, True)
             hook_ret = on_result(ok, res) if on_result is not None else None
             _log_cw_op(journal_name, _op_pos, time.monotonic() - _op_t0,
                        'ok' if ok else 'fail')
@@ -649,7 +673,7 @@ class CwLoop(CwOperation):
              self._op_fail_streak_n) = op_fail_redispatch_tick(
                 getattr(self, '_op_fail_streak_key', None),
                 getattr(self, '_op_fail_streak_n', 0),
-                journal_name, False)
+                chain_key or journal_name, False)
             if self._op_fail_streak_n >= self.OP_FAIL_REDISPATCH_LIMIT:
                 try:
                     _cap_shot = self.save_screenshot(prefix='op_fail_cap')
@@ -1053,14 +1077,20 @@ class CwLoop(CwOperation):
                          getattr(res, 'status', ''))
 
             # 链序保留(用户裁定特殊等待):环境 op → 等 1-1 备战识别标志 op;
-            # 两 op 两对 journal 行(投资环境补行)。
-            self._dispatch_screen_op(
+            # 两 op 两对 journal 行(投资环境补行)。链形分支契约接线:两 dispatch
+            # 传同一 chain_key 归组计数(链内交替 fail 不再异键归一),链首
+            # FAIL 枚举 = 防线已触发(FAIL 出口契约见包装 docstring)即透传早退,
+            # 不空跑链尾(达限后继续等 1-1 超时无意义)。
+            _first = self._dispatch_screen_op(
                 CwScreenInvestEnv(self.ctx), journal_name='投资环境',
-                frame_tag='flow_invest_env', wait=0, on_result=_on_invest_env)
+                frame_tag='flow_invest_env', wait=0,
+                on_result=_on_invest_env, chain_key='投资环境链')
+            if _first.result == OperationRoundResultEnum.FAIL:
+                return _first   # 防线触发出口透传(达限显式停交上层)
             return self._dispatch_screen_op(
                 CwScreenWaitOneOne(self.ctx), journal_name='等待1-1',
                 frame_tag='flow_wait_one_one', wait=1.0,
-                on_result=_on_wait_one_one)
+                on_result=_on_wait_one_one, chain_key='投资环境链')
 
         if name == '货币战争-备战-角色详情':
             # 右侧面板识别标志区与大面板帧独占(与商店卡牌详情两识别标志同帧命中天然互斥);空白关+验效迁 op。
