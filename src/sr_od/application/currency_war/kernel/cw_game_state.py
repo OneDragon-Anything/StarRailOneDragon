@@ -3165,7 +3165,7 @@ class GameState:
     # uses「次数类余量(免战牌×2 等)」,同型躺平/节省工位;批次一骨架的
     # skip_battle_active/remaining 两 Field 已按权威版本归一移除,消费走
     # gs.effects 查询)。
-    equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15;开局初始值=[] 开局真值)
+    equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15;开局初始值=[] 开局真值;观察写端 = 备战入口 heavy 装配点 + MCP 直调刷新原语 CwEquipInventoryRefresh〔同通道 obs,直调会话专用〕,权威版本 = fields.md §3.2.15)
     # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,纯观察
     # 记录面——决策面零消费)。键坐标系 =
     # 'front:1'/'back:2' 形态字符串(row ∈ front|back,slot = 画面物理槽位
@@ -3180,10 +3180,13 @@ class GameState:
     occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)  # 开局初始值={} 开局真值(无穿戴),观察覆盖
     owned_equip_xy: Field[dict[str, list[tuple[int, int]]]] = field(default_factory=Field)
     # [字段定义] owned_equip_xy = 装备库存坐标伴随域(fields.md §3.2.15c):
-    # 名 → 格心坐标列表(1080p;同名多条 = 列表多元素)。观察域字段:唯一
-    # 观察写入方 = 备战入口 heavy 观察装配点(整表覆盖,实读坐标)+ sim
-    # 后端占位同步(环境快照通道,机械段不消费;先例 = sim 侧对
-    # diamond_count/back_layout 的环境快照写通道);禁策略/动作逻辑写端
+    # 名 → 格心坐标列表(1080p;同名多条 = 列表多元素)。观察域字段:观察
+    # 写入方三处(整表覆盖,实读坐标)= ①备战入口 heavy 观察装配点 +
+    # ②sim 后端占位同步(环境快照通道,机械段不消费;先例 = sim 侧对
+    # diamond_count/back_layout 的环境快照写通道)+ ③MCP 直调刷新原语
+    # CwEquipInventoryRefresh(operations/tools/cw_equip_inventory_refresh.py,
+    # 与装配点同一次 read_equips 派生〔共享读函数单一源〕,直调会话专用,
+    # 框架决策环禁消费);禁策略/动作逻辑写端
     # ——环内获得件坐标缺席 = 发出面跳过自愈,禁回填猜值(规范 screen-op
     # §2 同款)。⚠️ 与 occupied_equips(审计面,决策零消费)的语义差:本
     # 字段 = 决策消费面(发出面坐标源 + 记账面反查键,消费方 = 穿装与

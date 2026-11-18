@@ -87,9 +87,14 @@ class CwActionToolUseOp(CwOperation):
        round detail 会带拒单码)。**拒单后禁止补拖**(拖拽已发生,再拖 =
        二次拖拽)——处置 = 交还框架决策循环(由框架观察链刷新对照表后
        自然重派),勿自行换坐标重试(重读 extras 取新坐标解不了对照表
-       陈旧,恒拒单)。直调方无对照表刷新手段(观察工具只读不写状态)→
-       **按单件会话使用**(一坐标一调用一观察对账,连用交还框架决策
-       循环)。
+       陈旧,恒拒单)。直调刷新手段 = 刷新原语 ``CwEquipInventoryRefresh``
+       (operations/tools/cw_equip_inventory_refresh.py,读帧整表刷新
+       equips/owned_equip_xy 伴随域,浮层期拒写):直调口径 =
+       **「刷新 → 单用 → 再刷新」循环**(tool_cx/tool_cy 与 equip 模式
+       tgt 坐标取自原语 round data 的 owned_equip_xy——读帧→记账反查
+       天然同快照;连用多件每件之间重调原语,reflow 后旧坐标失效)。
+       原语缺席/无局时拒单属预期(机械拖拽已发生、禁补拖),处置 =
+       交还框架决策循环。
 
     MCP run_operation 示例(冶金炉 equip 模式):
       args={"target_kind":"equip","tool_cx":1660,"tool_cy":120,

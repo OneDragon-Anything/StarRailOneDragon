@@ -70,9 +70,13 @@ class CwActionWearEquipOp(CwOperation):
        刷新对照表后自然重派),勿自行换坐标重试(重读 extras 取新坐标解不了
        对照表陈旧,恒拒单);用旧坐标重试 = 盲拖错格+错账。反查命中但名单
        缺条目 = 禁消费窗口违反,以异常响亮暴露,非拒单路径。
-       直调方无对照表刷新手段(观察工具只读不写状态)→ **连穿场景每件之间
-       需要一次对照表刷新,无刷新手段则按单件会话使用**(一坐标一调用一
-       观察对账,连穿交还框架)。
+       直调刷新手段 = 刷新原语 ``CwEquipInventoryRefresh``
+       (operations/tools/cw_equip_inventory_refresh.py,读帧整表刷新
+       equips/owned_equip_xy 伴随域,浮层期拒写):直调口径 =
+       **「刷新 → 单穿 → 再刷新」循环**(坐标取自原语 round data 的
+       owned_equip_xy——读帧→记账反查天然同快照;连穿多件每件之间必须
+       重调原语,reflow 后旧坐标失效)。原语缺席/无局时拒单属预期
+       (机械拖拽已发生、禁补拖),处置 = 交还框架决策循环。
 
     MCP run_operation 示例:
       args={"src_cx":1740,"src_cy":210,"row":"front","slot":2,
@@ -80,7 +84,7 @@ class CwActionWearEquipOp(CwOperation):
 
     守卫断言:row 非法/slot 越界/back_slot_count 域外 = AssertionError,
     禁兜底坐标。同名多条:候选按 extras.owned_equips 出现序,每次调用消费
-    一个坐标;直调方按单件会话使用(连穿交还框架决策循环,见上方契约 3)。
+    一个坐标;直调方按「刷新 → 单穿 → 再刷新」循环使用(见上方契约 3)。
 
     :param param: 穿装动作参数(词表 CwActionWearEquipParam;字段语义与
         取值时机见词表类 docstring)。

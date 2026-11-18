@@ -58,6 +58,44 @@ def _bench_occ_n(view) -> int:
     return sum(1 for s in view.slots if s.kind != 'empty')
 
 
+def read_owned_equips_dual_key(ctx: SrContext,
+                               frame: MatLike) -> tuple[list[str], dict] | None:
+    """装备栏 owned **双键派生单一源**→ ``(名单, 坐标伴随域)`` | None。
+
+    消费方 = observe_full heavy 段(框架观察环)与 MCP 直调刷新原语
+    ``CwEquipInventoryRefresh``(operations/tools/cw_equip_inventory_refresh.py)
+    ——同一次 ``read_equips`` 派生双键(零额外识别开销):
+    - 名单(消费面 = 计划构造/装配点 equips 写);
+    - 坐标伴随域 owned_equip_xy(名 → 格心坐标列表,同名多条 = 列表多元素;
+      消费面 = 发出面坐标源 + 记账面反查键,见 gs.owned_equip_xy 字段注释)。
+    条目序 = 识别命中序,即发出面「同名多条按出现序游标消费」的出现序口径。
+    **禁第二份双键派生**(同名多条出现序口径必须单一源,第二份派生 = 毒化
+    框架环记账)。
+
+    Returns:
+        ``(names, xy)``;``None`` = 识别域未就绪(cw_equip 模板库未加载 /
+        screen_info 区域-道具装备 缺失,原因 log 保留证据),消费方按
+        None 走「不写保现值」守卫(宁缺勿造)。
+    """
+    sift = ensure_equip_sift_templates(ctx)
+    if sift is None:
+        log.warning('[cw][equip_dual_key] 装备观察域未就绪:'
+                    'cw_equip 模板库未加载(owned 不采集)')
+        return None
+    rect = _area_rect(ctx, '区域-道具装备', SCREEN_NAME)
+    if rect is None:
+        log.warning('[cw][equip_dual_key] 装备观察域未就绪:'
+                    'screen_info 区域-道具装备 缺失(owned 不采集)')
+        return None
+    rect4 = (rect.x1, rect.y1, rect.x2, rect.y2)
+    hits = read_equips(frame, sift, equip_rect=rect4)
+    names = [n for n, _p, _s in hits]
+    xy: dict = {}
+    for n, (cx, cy), _s in hits:
+        xy.setdefault(n, []).append((int(cx), int(cy)))
+    return names, xy
+
+
 def _rows_n(rows) -> int:
     """日志计数:上场位两行合计条目数(与旧 len(deployed_chars) 同口径)。"""
     if rows is None:
@@ -163,30 +201,11 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         # fail 通道;[]/{} = 真读到空。后排布局未知态(select_back_layout
         # 双弃权帧)→ 后排不采集,宁缺勿造(同读侧 read_deployed_rows
         # 单帧未知只返前排的跳过先例)。
-        _eq_sift = ensure_equip_sift_templates(ctx)
-        # rect 读取须 ctx.screen_loader 在场(资源缺省帧跳过,防误触)
-        _eq_rect = (_area_rect(ctx, '区域-道具装备', SCREEN_NAME)
-                    if _eq_sift is not None else None)
-        if _eq_sift is None:
-            log.warning('[cw][observe_full] 装备观察域未就绪:'
-                        'cw_equip 模板库未加载(owned 不采集)')
-        elif _eq_rect is None:
-            log.warning('[cw][observe_full] 装备观察域未就绪:'
-                        'screen_info 区域-道具装备 缺失(owned 不采集)')
-        else:
-            _eq_rect4 = (_eq_rect.x1, _eq_rect.y1, _eq_rect.x2, _eq_rect.y2)
-            # 同一次 read_equips 产出派生双键(零额外识别开销):owned_equips
-            # = 名单(消费面 = 计划构造/装配点 equips 写),owned_equip_xy =
-            # 坐标伴随域(名 → 格心坐标列表,同名多条 = 列表多元素;消费面 =
-            # 发出面坐标源 + 记账面反查键,见 gs.owned_equip_xy 字段注释)。
-            # 条目序 = 识别命中序,即发出面「同名多条按出现序游标消费」的
-            # 出现序口径。
-            _eq_hits = read_equips(frame, _eq_sift, equip_rect=_eq_rect4)
-            out['owned_equips'] = [n for n, _p, _s in _eq_hits]
-            _eq_xy: dict = {}
-            for _n, (_cx, _cy), _s in _eq_hits:
-                _eq_xy.setdefault(_n, []).append((int(_cx), int(_cy)))
-            out['owned_equip_xy'] = _eq_xy
+        # owned 双键采集 = 共享读函数单一源(与直调刷新原语同函数,
+        # 双键派生出现序口径禁第二份,函数 docstring 申报)。
+        _dual = read_owned_equips_dual_key(ctx, frame)
+        if _dual is not None:
+            out['owned_equips'], out['owned_equip_xy'] = _dual
         _eq_grays = ensure_equip_tm_templates(ctx)
         if _eq_grays is None:
             log.warning('[cw][observe_full] 装备观察域未就绪:'
