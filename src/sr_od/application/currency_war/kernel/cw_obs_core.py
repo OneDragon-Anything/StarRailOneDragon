@@ -31,6 +31,9 @@ from sr_od.context.sr_context import SrContext
 SCREEN_NAME: str = '货币战争-备战'
 # 开商店子态画面(currency_war_battle_prep_shop_open.yml):商店牌/刷新/收起 等商店态 area 迁此
 SHOP_SCREEN_NAME: str = '货币战争-备战-开商店'
+# 开拓银轨商店浮层画面(currency_war_battle_prep_pioneer_shop.yml):备战画面上的
+# 浮层,收店控件 = 左缘浮动徽记(非面板开关)
+PIONEER_SHOP_SCREEN_NAME: str = '货币战争-备战-开拓商店'
 A_GOLD: str = '文本-金币数'
 A_PHASE: str = '区域-阶段'
 A_BOARD: str = '区域-羁绊面板'
