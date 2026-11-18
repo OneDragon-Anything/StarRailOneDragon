@@ -3386,7 +3386,7 @@ class GameState:
         default_factory=Field)
 
     # —— 交互状态 ——
-    prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,写端=接管协议 §6.3)
+    prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,零现役写入方——锁定承载已迁 Match,见 fields.md §3.2.17)
     event_overlay: Field[str | None] = field(default_factory=Field)  # 'none'=确认无浮层;None=没读到(§3.6.1 双义禁令)
 
     # —— 备战席溢出(§3.2.20;2026-09-15 实机建档 prep.md 告警/溢出节)——
