@@ -39,8 +39,9 @@ CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
-runner 包络(刹车/回执登记与机械原语)与薄委托族(替身函数的接缝(stub seam):八桩零调用
-已删,``_open_bookcard`` 因单帧测试直调面保留)。
+runner 包络(刹车/回执登记与机械原语)与薄委托族(替身函数的接缝(stub seam):九桩零调用
+已删,``_open_bookcard`` 随其参数面迁移批删除——其保留理由所引单帧测试已
+不存在,全仓零消费)。
 """
 from __future__ import annotations
 
@@ -66,7 +67,6 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     CwActionLevelUpParam,
-    CwActionOpenBookcardParam,
     CwActionStartBattleParam,
 )
 from sr_od.application.currency_war.sim import cw_sim_ports
@@ -355,9 +355,10 @@ class PrepActionExecutor:
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
         # 槽位中心(screen_info 静态,构造时读一次)。_bench_pts 现役消费 =
-        # 开件三类守卫(其迁移批退役)——MoveUnit/SellBench 已随各自参数面
-        # 迁移批改 op 内现读;SellDeployed 过渡期仍消费 _front_pts/_back_pts
-        # (其迁移批退役)。
+        # 开件两类守卫(OpenBox/OpenTome,各自迁移批退役)——OpenBookcard
+        # 已随其参数面迁移批改 op 内现读并废除 slot=None 现算;MoveUnit/
+        # SellBench 已随各自参数面迁移批改 op 内现读;SellDeployed 过渡期
+        # 仍消费 _front_pts/_back_pts(其迁移批退役)。
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
         self._back_pts: list[Point] = row_area_centers(ctx, '后排')
@@ -479,19 +480,6 @@ class PrepActionExecutor:
             self._last_skip_substate = bool(getattr(env, 'skip_substate',
                                                     False))
         return (result.status or ''), bool(result.is_success)
-
-    # ===== 奖励域 =====
-
-    def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;
-        替身函数的接缝(stub seam)保留——真实保留理由 = 单帧测试直调面:
-        ``sr-od-test/test/sr_od/application/currency_war/operations/cw_op/
-        test_prep_action_ops.py::test_open_bookcard_executor_mechanical``
-        以本方法为入口驱动 op 机械行为;src 生产面零调用,分派单一形态
-        = 注册表 ``action_op_for``)。其余八桩(_collect_ore/_open_box/
-        _open_tome/_sell_bench/_sell_deployed/_deploy_move/_wear_equip/
-        _use_tool)全仓零调用含测试,已删。"""
-        return self._dispatch_action(action)
 
     # ===== 装备/工具原子域(工具按消耗品各立类;机械原语
     #       _owned_grid_locate 已随工具原子族坐标显式化退役:全仓零消费

@@ -590,19 +590,41 @@ class CwActionOpenTomeParam:
 class CwActionOpenBookcardParam:
     """开书册卡(点槽「开启」→ 弹专家邀请函五选一;开卡即腾席)。
 
-    书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;与
-    CwActionOpenBoxParam/CwActionOpenTomeParam 同签名)。选卡决策不在
+    书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件)。选卡决策不在
     本执行链——点完开启本动作即返回主循环,专家邀请函弹窗由外循环按画面分发
     ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
     ``cw_events.choose_expert_index``,选卡决策收拢 kernel 单一源)。
     动作发出点 = 策略器 entry ① prep 实体面卡片分支(状态容器 bench 槽位 kind
     'bookcard' 触发;原「备战环入口清场段 ``cw_screen_prep._clear_prep_cards``
     代发」已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。
-    终结动作(弹专家邀请函 = 引入新事实,返回主循环重新观察)。slot=None → 第一张书册卡。
+    终结动作(弹专家邀请函 = 引入新事实,返回主循环重新观察)。
+
+    **slot 必填(None 语义已废除)**:与 OpenBox/OpenTome 的 ``slot | None``
+    缺省形态不同,本类 slot 必填——None 的「op 帮调用方现算首件槽」语义已
+    随参数面迁移批废除,「哪个槽是书册卡」的现算唯一归发出点
+    ``entry._consumable_open_action``(op 机械路径与上报层零现算,机械
+    执行路径零 game state 依赖)。缺 slot 键 = ``from_dict`` 构造面
+    TypeError;显式传 null = op 守卫 AssertionError(文案指向参数契约)。
+
+    [记账路径总契约第六适用者](契约正文 = skills/sr-od-dev-currency-war/
+    references/flow/action-op.md「记账路径总契约」条款):记账键 = 槽位
+    下标,腾位 = 直址写(kind 'bookcard' → empty)零身份反查——无回金/
+    无装备回收/无 sold 内容,槽位键域退化形态;名称字段零新增(宪法③
+    空集)。MCP 直调传参 = 当帧 extras ``bench.slots`` 中 kind='bookcard'
+    槽的下标 + 1(与发出点同源口径)。
+
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``)。
     """
-    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按状态容器 bench kind 槽位现算);None = op 内按 game state 状态容器现算首件槽(双出口守卫断言:gs 缺席/状态容器无该 kind 首槽 → AssertionError)
+    slot: int   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 生成期快照(决策半 entry._consumable_open_action 按状态容器 bench kind='bookcard' 槽位现算——全仓唯一现算点;None 语义已随参数面迁移批废除,op/上报层现算分支退役);写入端 = 发出点
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionOpenBookcardParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 # ===== 动作参数 JSON 通道构造(MCP run_operation from_dict 共享形态)=====

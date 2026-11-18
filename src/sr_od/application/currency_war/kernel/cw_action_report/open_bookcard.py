@@ -41,9 +41,12 @@ def _decl(gs: GameState) -> WorldDecl:
 def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开书册卡上报:bench 槽位 kind → empty(开卡即腾位)。槽 kind 门 =
     ``'bookcard'``(kind 细分批:书册卡槽不再统一降级 supply_box,状态容器
-    bench kind 细分 = 'bookcard' 单一口径);槽不存在/类型不符 =
-    applied=False 零写零声明。applied 出口构造后果声明(:func:`_decl`,
-    纯转移)。"""
+    bench kind 细分 = 'bookcard' 单一口径);slot 必填(None 语义已随
+    参数面迁移批废除——本函数零现算直取 ``int(param.slot) - 1``,
+    「bookcard kind → 槽号」现算全仓收敛发出点
+    ``entry._consumable_open_action`` 单点);槽不存在/类型不符 =
+    applied=False 零写零声明(bookcard_slot_missing 拒单)。applied 出口
+    构造后果声明(:func:`_decl`,纯转移)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -62,10 +65,8 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
         return LogicOutcome(applied=True, reason='bench_unobserved',
                             world_decl=_decl(gs))
     slots = list(view.slots)
-    _idx = (int(param.slot) - 1 if param.slot is not None
-            else next((i for i, s in enumerate(slots)
-                       if s is not None and s.kind == 'bookcard'), None))
-    if _idx is None or not (0 <= _idx < len(slots)) \
+    _idx = int(param.slot) - 1
+    if not (0 <= _idx < len(slots)) \
             or slots[_idx] is None or slots[_idx].kind != 'bookcard':
         return LogicOutcome(applied=False, reason='bookcard_slot_missing')
     slots[_idx] = BenchSlot(kind='empty')
