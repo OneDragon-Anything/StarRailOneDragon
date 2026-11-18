@@ -198,7 +198,7 @@ class CwScreenPartner(CwOperation):
             report_screen_partner_obs(_gs, obs)
         self._obs = obs
         self._cands = cands
-        return self.round_success()
+        return self.round_success(wait=0)
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)
@@ -295,4 +295,4 @@ class CwScreenPartner(CwOperation):
         _env = OverlayPickExecEnv(op=self, idx=self._pick_idx, unselected=unselected)
         action_op_for(CwActionPickPartnerParam(idx=self._pick_idx), self.ctx,
                       _env).execute()
-        return self.round_wait()
+        return self.round_wait(wait=2.0)

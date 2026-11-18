@@ -76,7 +76,9 @@ class CwScreenWaitOneOne(CwOperation):
             if _gs is not None:
                 report_screen_wait_one_one_obs(_gs, obs)
             self._obs = obs
-            return self.round_success()
+            # 就绪 = 访问终结交回主循环(非帧内交接):1s 对齐同 op 轮询间隔
+            #(ONE_ONE_POLL_INTERVAL_S),覆盖识别标志出现到备战 UI 稳定残段
+            return self.round_success(wait=1.0)
         now = _monotonic()
         if self._first_seen_ts is None:
             self._first_seen_ts = now

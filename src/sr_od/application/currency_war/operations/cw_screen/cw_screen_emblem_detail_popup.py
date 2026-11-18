@@ -68,7 +68,7 @@ class CwScreenEmblemDetailPopup(CwOperation):
             return self.round_fail(
                 f'{self.op_name}入口识别标志未命中(交回外循环重判)')
         self._obs = CwScreenEmblemDetailPopupObs(on_screen=True, screen=screen)
-        return self.round_success()
+        return self.round_success(wait=0)
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)

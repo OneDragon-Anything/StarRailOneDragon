@@ -200,7 +200,7 @@ class CwScreenBookcard(CwOperation):
             report_screen_bookcard_obs(_gs, obs)
         self._obs = obs
         self._cards = cards
-        return self.round_success()
+        return self.round_success(wait=0)
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)

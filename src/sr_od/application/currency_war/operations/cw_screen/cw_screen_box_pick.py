@@ -149,7 +149,7 @@ class CwScreenBoxPick(CwOperation):
         self._cards = [(n, x)
                        for n, (x, _y) in zip(obs.card_names, obs.points,
                                              strict=False)]
-        return self.round_success()
+        return self.round_success(wait=0)
 
     def _observe_live(self) -> 'CwScreenBoxPickObs | OperationRoundResult':
         """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。

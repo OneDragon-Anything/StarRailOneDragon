@@ -936,7 +936,7 @@ class CwScreenPrep(CwOperation):
         #      破墙主动探测不复活——派生席满≠模态在场(持 9 席是合法
         #      运营态,按席满主动腾席会打穿策略持仓);hp 消费统一经
         #      decision_hp 门前真值+施门。
-        return self.round_success()
+        return self.round_success(wait=0)
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作')

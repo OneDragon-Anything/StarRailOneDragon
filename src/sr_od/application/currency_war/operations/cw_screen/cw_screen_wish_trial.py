@@ -108,7 +108,7 @@ class CwScreenWishTrial(CwOperation):
         if _gs is not None:
             report_screen_wish_trial_obs(_gs, obs)
         self._obs = obs
-        return self.round_success()
+        return self.round_success(wait=0)
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)

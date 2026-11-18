@@ -524,7 +524,7 @@ class CwScreenShop(CwOperation):
         # 重建,观察态 = 状态容器字段 GameState.tracked_account_observed,出口
         # 跳过留痕/熔断见 :func:`_note_shop_skip_unobserved`;连续跳过计数
         # 复位在访问终结出口。
-        return self.round_success()
+        return self.round_success(wait=0)
 
     def _entry_read_live(self,
                          match) -> 'CwScreenShopObs | OperationRoundResult':
@@ -647,7 +647,7 @@ class CwScreenShop(CwOperation):
                     f'overlay 已登记 {_pending_n} 项,交回外循环分发', wait=0.8)
             # 非终结:round_wait(帧不消费,零读屏;决策循环无防御上限,
             # 不收敛 = 策略实现 bug)。
-            return self.round_wait()
+            return self.round_wait(wait=0.8)
         # 访问终结(RefreshShop/CloseShop):访问动作日志行(plan=…,随轮
         # 累积)结束本次访问前 log;round_success 回执 detail = 执行账汇总串。结束本次访问
         # 外循环零额外动作——节点行观察归备战观察域,商店域零探针。

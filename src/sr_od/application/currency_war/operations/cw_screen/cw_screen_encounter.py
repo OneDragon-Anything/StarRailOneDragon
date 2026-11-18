@@ -133,7 +133,7 @@ class CwScreenEncounter(CwOperation):
         obs = cw_sim_ports.sim_or_live_observation(
             CwScreenEncounter.SCREEN_NAME, self._observe_live)
         self._obs = obs
-        return self.round_success()
+        return self.round_success(wait=0)
 
     def _observe_live(self) -> CwScreenEncounterObs:
         """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
