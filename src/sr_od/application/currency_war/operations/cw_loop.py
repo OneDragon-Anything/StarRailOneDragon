@@ -1233,9 +1233,9 @@ class CwLoop(CwOperation):
         # 独立建档的备战子态同理由屏名区分。穿透式两识别标志同帧命中判定
         # prep_anchors_hit(kernel/cw_obs_core)
         # 已不用于本停机位(穿透语义会把「选择伙伴」帧误判干净备战立即
-        # 交还,与路由③互踢)——其本体不动,调用点 = prep_actions
-        # _launch_screen_recheck(出战前屏态复验)与阶段二备战认领两处
-        # (语义分界 = exit_chain §3)。
+        # 交还,与路由③互踢)——其本体不动,现役调用点仅阶段二备战认领
+        # 一处(prep_actions 出战前屏态复验消费点已随防线退役删除,
+        # 挂账板 §二.7⑤;语义分界 = exit_chain §3)。
         if self._stop_at_prep and get_in_match_screen_name(
                 self.ctx, screen) in PREP_DIRECT_EXIT_SCREENS:
             return self.round_success('已到可交还退出调度的备战态(含免战)')
