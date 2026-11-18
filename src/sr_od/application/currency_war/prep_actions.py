@@ -23,12 +23,13 @@ reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 
 slot 语义(unified-action-factory 统一后):席位域动作(CwActionSellBenchParam/
 CwActionSellDeployedParam/CwActionMoveUnitParam)携**状态容器槽位表下标**(0 基,词表单一源 =
-kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit/SellDeployed
-已随各自参数面迁移批改 op 自持(op 内经模块级原语现读点位表——bench 侧 =
+kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit 已随其
+参数面迁移批改 op 自持(op 内经模块级原语现读点位表——bench 侧 =
 备战栏-N area 序直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联
 算术,0-3=前排 1-4 / 4+=后排 1-N 动态,后排拖点按 back_slot_count 布局
-档静态解析);SellBench 过渡期仍经执行器点表(其迁移批自持化;
-bench 侧 = 备战栏 area 序,tracked 第二账停用后旧换算族已删)。坐标参数化
+档静态解析);SellBench/SellDeployed 过渡期仍经执行器点表(各自迁移批
+自持化;bench 侧 = 备战栏 area 序;deployed 侧 = 下标→(排,排内槽号)
+换算,tracked 第二账停用后旧换算族已删)。坐标参数化
 机械动作(开件三类 CwActionOpenBoxParam/CwActionOpenTomeParam/
 CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
 (动作参数定义,拖点直取 area,不经换算);穿装与工具原子两类已升级
@@ -241,11 +242,10 @@ def drag_char_guarded(op: SrOperation, ctx: SrContext,
     拖拽输入静默丢,拖前验焦点先激活)→ ``DragCwChar.drag_char``(统一
     角色拖拽原语:中心拖 + hold0,机械执行零判效,发出即职责完成)。
 
-    阵型拖动动作(MoveUnit/SellDeployed)与卖出共享原语
-    ``drag_bench_to_sell`` 共用本函数 = 失焦守卫单一宿主(原散落
-    executor._drag 与 drag_bench_to_sell 两份内联副本收敛至此;
-    executor._drag 已随 SellDeployed 参数面迁移批退役——三消费者
-    MoveUnit/SellDeployed/drag_bench_to_sell 均已并入本宿主)。
+    阵型拖动动作(MoveUnit)与卖出共享原语 ``drag_bench_to_sell`` 共用
+    本函数 = 失焦守卫单一宿主(原散落 executor._drag 与
+    drag_bench_to_sell 两份内联副本收敛至此;SellDeployed 过渡期仍经
+    executor._drag,其迁移批并入本宿主)。
     """
     from sr_od.application.currency_war.sim.cw_sim_ports import (
         sim_backend_installed,
@@ -323,14 +323,14 @@ class PrepExecEnv:
 
 
 class PrepActionExecutor:
-    """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配原语)。
+    """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
-    宿主 op = CwScreenPrep(SrOperation);机械执行(点击/等待),落地
+    宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
     判定归观察侧 reconcile(用户裁定)。角色拖拽统一拖拽原语 = 模块级
-    ``drag_char_guarded``(失焦守卫 + DragCwChar.drag_char 中心拖 + hold0);
-    原过渡宿主 ``_drag`` 方法与 ``_front_pts/_back_pts`` 点表已随
-    SellDeployed 参数面迁移批退役(最后消费者迁出——全部动作 op 拖拽
-    统一走模块级原语,场上排拖点 = 各 op 内经 row_area_centers 现读)。
+    ``drag_char_guarded``(失焦守卫 + DragCwChar.drag_char 中心拖 + hold0,
+    2026-08-13 实测验证);``_drag`` 方法与 ``_front_pts/_back_pts`` 点表
+    = 席位域待迁移动作(SellDeployed 等)的过渡宿主,其 op 随各自参数面
+    迁移批退役消费。
     """
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
@@ -353,11 +353,12 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 备战栏槽位中心(screen_info 静态,构造时读一次):开件三类守卫
-        # 与 SellBench getattr 容缺守卫消费(各自迁移批退役);原
-        # _front_pts/_back_pts 已随 SellDeployed 参数面迁移批退役
-        # (最后消费者迁出——场上排拖点 = 各 op 内经 row_area_centers 现读)。
+        # 槽位中心(screen_info 静态,构造时读一次;op 内参数守卫与拖拽坐标共用)。
+        # MoveUnit 已随参数面迁移改 op 内现读(零消费);SellDeployed 过渡期
+        # 仍消费 _front_pts/_back_pts(其迁移批退役)。
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
+        self._front_pts: list[Point] = row_area_centers(ctx, '前排')
+        self._back_pts: list[Point] = row_area_centers(ctx, '后排')
 
     # ===== 执行入口(机械执行,无返回;参数守卫已收拢各动作 op 内
     #       守卫断言,flow/action_ops.md §1 决策侧参数现算契约)=====
@@ -392,7 +393,8 @@ class PrepActionExecutor:
         self._note_action_receipt(action, op_success, detail, extra=_extra)
         if isinstance(action, CwActionStartBattleParam):
             # 出战点击事实(出战域重设计):真执行链 = 注册表分派
-            # CwActionStartBattleOp 点击序列,round 结果成功态即发出事实
+            # CwActionStartBattleOp 单击(单击原子,op 内零收尾零验证),
+            # round 结果成功态即发出事实
             # (round_fail = 找不到按钮/area 缺失,已登记例外 =
             # action_ops.md §2.3);
             # 执行缝(假环境)不经真分派 = round 成功态原值透传。
@@ -494,9 +496,39 @@ class PrepActionExecutor:
     #       ——穿装批退 WearEquip 消费、工具迁移批退工具 op 消费,发出面
     #       坐标源 = 坐标伴随域 gs.owned_equip_xy。WearEquip/工具两 op 均
     #       改显式坐标 + 记账拒单;拖点权威派生式 = 模块级
-    #       row_drag_points,穿装 op 与工具 char 模式自持消费。MoveUnit/
-    #       SellDeployed 均已随各自参数面迁移改 op 内自持消费模块级
-    #       drag_char_guarded,_drag 方法随 SellDeployed 批退役)=====
+    #       row_drag_points,穿装 op 与工具 char 模式自持消费。MoveUnit
+    #       已随其参数面迁移改 op 内自持消费模块级 drag_char_guarded;
+    #       _drag 方法过渡期保留 = SellDeployed 等席位域待迁移动作宿主)=====
+
+    def _drag(self, src: Point, dst: Point) -> None:
+        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
+        源槽像素验重试已拆除)。过渡期宿主 = SellDeployed(MoveUnit 已随
+        参数面迁移改消费模块级 drag_char_guarded,失焦守卫单一宿主收敛
+        至彼;本方法随剩余席位域动作迁移批退役)。
+
+        失焦守卫语义(所有拖拽路径共享)——窗口后台化时拖拽输入静默丢
+        (r9 实证:截图正常/输入丢/连环「源槽未变」假失败),拖前验焦点,
+        失焦先激活。
+        """
+        from sr_od.application.currency_war.sim.cw_sim_ports import (
+            sim_backend_installed,
+        )
+        if sim_backend_installed():
+            # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
+            # port 检查;部署/卖上阵落位事实由后端状态副本承接)
+            return
+        try:
+            gw = self._ctx.controller.game_win
+            if not gw.is_win_active:
+                log.warning('[cw!][drag] 窗口失焦(拖拽输入将静默丢)→ 先激活')
+                gw.active()
+                time.sleep(0.3)
+        except Exception:   # noqa: BLE001  焦点守卫 best-effort
+            pass
+        from sr_od.application.currency_war.operations.actions.drag_cw_char import (
+            DragCwChar,
+        )
+        DragCwChar.drag_char(self._op, src, dst)
 
     # (tracked 随动同步三条分支(备战摘除/场上摘除/上阵落位)已随
     #tracked 第二账停用删除:动作写主域(逻辑
@@ -513,7 +545,8 @@ class PrepActionExecutor:
             action if action is not None else CwActionLevelUpParam(cost=0))
 
     # ===== 战斗域 =====
-    # StartBattleOp 现体 = 点击出战和弹窗(零判效,点击序列已执行语义);
+    # StartBattleOp 现体 = 出战单击(零判效,点击已执行语义,op 内零弹窗
+    # 收尾——点击后弹窗归主循环弹窗 op 接管);
     # 本入口保留薄委托替身函数的接缝(stub seam),返回序 (ok, detail)。
 
     def _start_battle(self) -> tuple[bool, str]:
@@ -593,8 +626,8 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
       已同步形态下零 move 即零待部署;标志只覆盖恢复局面,达标分支第二次发出
       被「每局恰一次」标志拦截 = C1 明令防的双源病)。
 
-    返回 ``(launch_ok, detail)`` = 出战**点击序列已执行**(出战域重设计
-     收缩语义:执行器 last_launch_ok 旁路;False = 找不到按钮/area
+    返回 ``(launch_ok, detail)`` = 出战**点击已执行**(出战域重设计
+     收缩语义,单击原子;执行器 last_launch_ok 旁路;False = 找不到按钮/area
     缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,结束后
     画面状态由外循环下一帧重判)。 刹车短路(停机标志
     已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
@@ -632,8 +665,8 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     except StopBrakeShortCircuit as e:
         log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
         return False, '已停止[W209j刹车]'
-    # CwActionStartBattleParam 点击序列事实(出战域重设计收缩语义;getattr 容缺 =
-    # __new__/桩形态兼容)
+    # CwActionStartBattleParam 出战点击事实(出战域重设计收缩语义,单击原子;
+    # getattr 容缺 = __new__/桩形态兼容)
     return bool(getattr(ex, 'last_launch_ok', False) or False), \
         getattr(ex, 'last_detail', '')
 
