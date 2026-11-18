@@ -1515,10 +1515,14 @@ _ore_tmpl_loaded: bool = False
 def _get_ore_tmpls() -> list[tuple[str, MatLike]]:
     """加载晶矿裁片模板(RGB 口径;module 级缓存;缺文件 → 空表,本帧不检出)。
 
-    模板 = 实机裁片 webp,``assets/template/currency_war/reward_ore/``:
+    模板 = 实机裁片 webp,``assets/template/currency_war/reward_ore/``(来源与
+    分数带见该目录 README.md):
     - 金晶矿 ← fixture reward_spheres_8.webp (1329,192) r42(含金色光晕整体);
-    - 蓝晶矿_大/中/小、灰晶矿 ← fixture reward_spheres_15.png(r34/30/18/18,
-      蓝小与灰的裁片右下带少量邻球弧 —— 小球无干净裁片源,弧是模板固有噪声)。
+    - 蓝晶矿_大/中/小 ← fixture reward_spheres_15.png(r34/30/18,蓝小裁片左下带
+      邻球碎片 —— 全档案帧无合格干净源:其余 36px 蓝球要么被邻球压边,要么为
+      灰白色系小球,对浅蓝系真球跨样式匹配分低于阈值,替换即漏检);
+    - 灰晶矿 ← fixture reward_spheres_11_sparse.png (1451,402) r19(稀疏分离
+      小球帧,裁片无邻球碎片)。
     ⚠️ 换模板文件需重启 server(module 级缓存;与星徽秘典/惊喜盒板件同型坑)。
     """
     global _ore_tmpl_cache, _ore_tmpl_loaded
