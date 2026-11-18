@@ -123,6 +123,10 @@ _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     ('未执行:找不到按钮', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-出战', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-跳过', '未执行:定位缺失(按钮-跳过)'),
+    # —— drag 类动作浮层守卫(prep_drag_overlay_gate;执行前输入契约
+    #     拒绝,动作没发出。括号族 = 守卫检查清单两族并集,标识细节
+    #     以原样 status 的「(标识)」段在日志里暴露)——
+    ('未执行:浮层在场', '未执行:浮层在场(合成确认/角色详情)'),
 )
 
 
@@ -266,6 +270,60 @@ def drag_char_guarded(op: SrOperation, ctx: SrContext,
         DragCwChar,
     )
     DragCwChar.drag_char(op, src, dst)
+
+
+# ============================================================ drag 类动作浮层守卫(执行前输入契约拒绝)
+
+#: drag 类动作发出前的浮层检查清单(轻检查,非全量浮层扫描——每动作付
+#: 逐锚 find 成本,不做全量身份分发扫描;全量门 = 出战链
+#: ``_launch_overlay_gate``,两门取舍见 ``prep_drag_overlay_gate`` docstring)。
+#: 表项 = (画面名, 识别标志 area, 在场标识, 失败指引)。初版两项实证吞面:
+#: 合成确认浮层(全局模态阻断,浮层外拖拽全吞,r9 局实证)+ 角色详情面板
+#: (拖拽退化成点卡后面板继续吞后续输入,001156 帧物证)。判定口径 =
+#: 单锚命中即拦(比分发双锚全中宽一档)——守卫要「宁可误拦」,与分发
+#: 「宁可漏派不误派」方向相反,不对称申报见消费方 docstring。
+_DRAG_BLOCK_OVERLAYS: tuple[tuple[str, str, str, str], ...] = (
+    ('货币战争-备战-合成确认', '按钮-合成浮层通过', '合成确认浮层',
+     '先收尾合成确认浮层(点 ✓;可调 CwScreenSynthesisConfirm)'),
+    ('货币战争-备战-合成确认', '按钮-合成浮层取消', '合成确认浮层',
+     '先收尾合成确认浮层(点 ✓;可调 CwScreenSynthesisConfirm)'),
+    ('货币战争-备战-角色详情', '按钮-装备推荐', '角色详情面板',
+     '先关闭角色详情面板(点面板外空白)'),
+    ('货币战争-备战-角色详情', '装备详情-合成公式', '角色详情面板',
+     '先关闭角色详情面板(点面板外空白)'),
+)
+
+
+def prep_drag_overlay_gate(op: SrOperation) -> str | None:
+    """drag 类动作发出前的浮层守卫(执行前输入契约拒绝,同
+    ``_launch_overlay_gate`` 族——prep_actions 模块头「防线边界申报」辖面:
+    拦截错误画面上的机械发出,非动作后判效)。
+
+    检查清单 = :data:`_DRAG_BLOCK_OVERLAYS`(轻检查,非全量
+    ``CW_DISPATCH_SCREENS`` 身份分发扫描——每拖付逐锚 find 成本,量级可接受;
+    框架环已有 bail 面承接全量,本门只兜「动作直调面零防线」的洞)。命中
+    返回在场标识(供 round_fail 文案与受阻码映射),``None`` = 无浮层放行。
+    帧 = 复用 ``op.last_screenshot``(当轮已截免重截;无则截一帧)。
+    调用方须置于 ``mechanical_io_allowed()`` 分支内(sim 零触及)。
+    """
+    screen = getattr(op, 'last_screenshot', None)
+    if screen is None:
+        screen = op.screenshot()
+    for screen_name, area_name, label, _hint in _DRAG_BLOCK_OVERLAYS:
+        if op.round_by_find_area(screen, screen_name, area_name,
+                                 crop_first=False).is_success:
+            return label
+    return None
+
+
+def drag_overlay_block_status(hit: str) -> str:
+    """守卫命中标识 → round_fail status(带家族指引;前缀恒
+    ``未执行:浮层在场`` = 受阻码映射表登记键)。安装点共用格式化单一源,
+    禁各 op 手拼文案(指引随清单表演进)。"""
+    for _screen, _area, label, hint in _DRAG_BLOCK_OVERLAYS:
+        if label == hit:
+            return f'未执行:浮层在场({label})——{hint}'
+    return f'未执行:浮层在场({hit})'
 
 
 def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,

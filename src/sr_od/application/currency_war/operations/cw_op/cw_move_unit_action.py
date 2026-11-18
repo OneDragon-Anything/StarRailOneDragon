@@ -31,6 +31,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import CwActionMoveUnitParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import (
     drag_char_guarded,
+    drag_overlay_block_status,
+    prep_drag_overlay_gate,
     row_area_centers,
 )
 from sr_od.application.currency_war.sim import cw_sim_ports
@@ -128,6 +130,14 @@ class CwActionMoveUnitOp(CwOperation):
         src = _pt(action.src_domain, int(action.src_slot))
         dst = _pt(action.dst_domain, int(action.dst_slot))
         if cw_sim_ports.mechanical_io_allowed():
+            # 浮层守卫(执行前输入契约拒绝):合成确认浮层/角色详情面板在场
+            # 时拖拽被游戏静默吞,先拦(动作没发出,受阻码走回执映射)。
+            # sim 门内 = sim 零触及。
+            overlay_hit = prep_drag_overlay_gate(self)
+            if overlay_hit is not None:
+                log.info('[cw][move] 浮层在场(%s)→ 拖拽未发出', overlay_hit)
+                return self.round_fail(
+                    status=drag_overlay_block_status(overlay_hit))
             # 实机机械段(失焦守卫 + 统一拖拽原语,中心拖 + hold0)。
             drag_char_guarded(self, self.ctx, src, dst)
             # 拖动触发的羁绊徽章动画口径(screen_flow_timing #10「都等 2s」

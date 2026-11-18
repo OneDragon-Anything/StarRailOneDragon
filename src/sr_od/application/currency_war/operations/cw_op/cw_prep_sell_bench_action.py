@@ -40,6 +40,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import CwActionSellBenchPara
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import (
     drag_char_guarded,
+    drag_overlay_block_status,
+    prep_drag_overlay_gate,
     row_area_centers,
     sell_point,
 )
@@ -118,6 +120,15 @@ class CwActionSellBenchOp(CwOperation):
                 f'CwActionSellBenchParam bench_idx={idx} 越界'
                 f'(0-{len(pts) - 1};画面档={_screen_name})')
         if cw_sim_ports.mechanical_io_allowed():
+            # 浮层守卫(执行前输入契约拒绝):合成确认浮层/角色详情面板在场
+            # 时拖拽被游戏静默吞,先拦(动作没发出,受阻码走回执映射)。
+            # sim 门内 = sim 零触及。
+            overlay_hit = prep_drag_overlay_gate(self)
+            if overlay_hit is not None:
+                log.info('[cw][sell-bench] 浮层在场(%s)→ 拖拽未发出',
+                         overlay_hit)
+                return self.round_fail(
+                    status=drag_overlay_block_status(overlay_hit))
             # 实机机械段(失焦守卫 + 统一拖拽原语,中心拖 + hold0;
             # 落点 = 出售区单一源,sell_point 的 area 缺失 RuntimeError
             # 上抛 = 建档漂移哨,共享原语既有形态保留)。
