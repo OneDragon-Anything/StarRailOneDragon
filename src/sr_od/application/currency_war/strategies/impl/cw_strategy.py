@@ -191,6 +191,13 @@ class CwStrategy(ABC, Generic[_TState]):
       + 重观察 CwActionObsParam(scope='in_place' 环内 / 'outer_loop' 结束本次访问,
       后者承载原 HoldFrame 空动作发出语义),无 None)。
 
+    - **流程态字段禁读**(结构性不持有):``CurrencyWarMatch`` 五个流程态
+      字段(``is_new_match``/``resume_probe_pending``/``locked_resume``/
+      ``locked_round``/``locked_sync_done``)是主循环备战交互链的流程
+      状态,非决策事实——策略器构造签名无 Match 引用(结构性不可读),
+      决策输入一律 ``self.gs`` 自取;禁把流程事实镜像进 GameState /
+      kernel StrategySession(真值域混入流程事实会脏「观察态/逻辑态」边界)。
+
     兼容裁定:注册面封闭集 {mandate_v1},第三方存量策略在新契约下不兼容 =
     显式破坏申报(flow/README §2.4)。
     """
@@ -379,6 +386,38 @@ class CurrencyWarMatch:
                                   # None=迁移期测试/防御路径旧构造容忍;
                                   # 3.5 终态切换收紧必填,生产漏斗已填充)
     performance: object | None = None
+    # ===== 流程态字段(备战交互链迁移宿主,additive):写入节奏 = per-run——
+    # 主循环 handle_init 每次 execute 重判/重置,宿主容量整局(续跑/手动多轮
+    # 语义随写入节奏不变)。消费边界 = operations/ 树与 prep_actions 发出核
+    # 读写;策略器禁读(结构性不持有,契约登记 = CwStrategy docstring 禁读
+    # 字段清单);不镜像进 GameState / kernel StrategySession(流程事实不入
+    # 真值域,防脏「观察态/逻辑态」边界)。
+
+    # 新局标记。取值时机:handle_init 逐 execute 重判写入(求值 = 当时
+    # ctx.cw_match is None;兜底建局分支先建 Match 再写)——非创建时点定值。
+    # 写入端:主循环 handle_init。消费:run 级读点(SettlementState 新局标记
+    # 注入 / 战斗帧恢复检测门 / 恢复候选判定输入)。
+    is_new_match: bool = False
+    # 恢复候选(新 match 无本局记录,待首个备战相位 round>1 时探针裁决;
+    # 续跑恒 False)。取值时机:handle_init 写 = is_new_match;撤回点两处 =
+    # 候选判定否 / 探针裁决后。写入端:handle_init + 备战分支撤回两处。
+    # 消费:备战分支探针门。
+    resume_probe_pending: bool = False
+    # 锁定确认(探针零响应 → 跳过备战交互直接出战)。取值时机:handle_init
+    # 重置 False;锁定确认置 True / 出战成功置 False(锁解除)。写入端:
+    # handle_init + 备战分支确认点与锁解除点。消费:备战分支锁定门。
+    locked_resume: bool = False
+    # 锁定确认时的相位轮次(遥测/日志对照用,不参与判定)。取值时机:与
+    # locked_resume 置 True 同帧写入;handle_init 重置 0。写入端:handle_init
+    # + 备战分支确认点。消费:日志/遥测对照。
+    locked_round: int = 0
+    # 首战前备战同步步证据位。取值时机:**不进 handle_init 重置**;置 False
+    # 与锁定确认同帧配对写、置 True 与发出核发出后写同帧配对——配对不变量:
+    # 出战段仅经 locked_resume=True 可达,该置位与置 False 同帧配对,未经
+    # 锁定确认的 Match 依赖字段初值 True。写入端:备战分支锁定确认(False)/
+    # prep_actions 发出核(True)。消费:发出核证据位门(读侧 Match 缺席按
+    # False 容缺)。
+    locked_sync_done: bool = True
 
     def __post_init__(self) -> None:
         # 策略器状态兜底附着:策略未覆写 create_session(直用裸 session)

@@ -413,21 +413,21 @@ class CwLoop(CwOperation):
         state.ensure_run_started(match=self.ctx.cw_match,
                                  difficulty=_diff_for_telemetry)
         # recovered 三字段(_run_start_ts/_first_settlement_seen/
-        # _is_new_match)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
+        # 新局标记)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
         # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,
         # __init__ 不随 execute 重入重跑(原写在 __init__ → 重入不重置:
         # 「漏标不误标」保守退化,此处根治)。
-        # _is_new_match 与 match 建立块必须**同块迁移**:_is_new_match 的求值
-        # (ctx.cw_match is None)在「match 尚未建立」时点才有意义——只迁三字段
-        # 会让首次 execute 重判时 cw_match 恒已存在(_is_new_match 恒 False,
-        # 新局标记/残留屏判定双双失活)。整块迁移后:首次 execute 时序与
-        # 原 __init__ 等价(本方法在首个节点运行前执行);execute 重入时重判
-        # ——cw_match 若已建立则不再当新局(保守方向:漏标不误标)。
+        # 新局标记与 match 建立块必须**同块迁移**:新局标记的求值
+        # (ctx.cw_match is None)在「match 尚未建立」时点才有意义——只迁
+        # 其余字段会让首次 execute 重判时 cw_match 恒已存在(新局标记恒
+        # False,新局标记/残留屏判定双双失活)。整块迁移后:首次 execute
+        # 时序与原 __init__ 等价(本方法在首个节点运行前执行);execute
+        # 重入时重判——cw_match 若已建立则不再当新局(保守方向:漏标不误标)。
 
     def handle_init(self) -> None:
         """run 级状态初始化(框架钩子:每次 execute() 开头由
         ``_init_before_execute`` 调用;见类注 R4-1 迁移说明)。"""
-        # run 启动时刻/新局标记在下方 _is_new_match 求值后注入;首见结算屏标记
+        # run 启动时刻/新局标记在下方 was_new 求值后注入;首见结算屏标记
         # (relaunch 残留结算判据)现役宿主 = CwScreenBattleWait(SettlementState,
         #  05-battle §1)。
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
@@ -438,27 +438,14 @@ class CwLoop(CwOperation):
         # 续跑支持(手动逐轮验证):cw_match 已存在(上轮 RunLoop 留下)→ 延用,不 new;否则 new(整局开始)。
         # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
         # 停 app / 手停 / 重启 server 后 cw_match 清(None)→ 下次 run 重新 new(新局)。
-        self._is_new_match: bool = self.ctx.cw_match is None
+        was_new: bool = self.ctx.cw_match is None
         # 战斗窗口驻留标志:出战成功置位 → 后续帧委托 CwScreenBattleWait 直到其
         # 完成(白名单/终局/bail);帧识别标志激活(中断恢复的对局/残留屏)为第二入口。
         self._battle_wait_active: bool = False
-        # 恢复局(locked-resume)检测状态。
-        # 候选 = 新 match(无本局记录),首个备战相位 round>1 时探针裁决;续跑恒 False。
-        self._cw_resume_candidate: bool = self._is_new_match
-        self._cw_locked_resume: bool = False   # 锁定确认(探针零响应)→ 直接出战
-        self._cw_locked_round: int = 0         # 锁定确认时的轮次(遥测/日志对照用)
         # 「返回投资策略选择」按钮出现计数(症状报警用:出现=上游策略屏处理失败)
         self._cw_back_btn_count: int = 0
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
-        # 战斗/结算链状态机 + CwScreenBattleWait 实例( 05-battle §1 并入):
-        # 结算读点/点继续/败局链/终局分叉的状态随 op 迁移,本 loop 只持引用
-        # (3c 收尾/summary 读真值)。op 实例跨场复用(状态机生命周期 = 局级;
-        # 每 execute 重handle_init → run 启动时刻/新局标记随之刷新,与原
-        # _run_start_ts/_first_settlement_seen 的 run 级语义一致)。
-        self._settle = SettlementState(
-            run_start_ts=time.monotonic(), is_new_match=self._is_new_match)
-        self._battle_wait = CwScreenBattleWait(self.ctx, self._settle, self._cw_config)
-        if self._is_new_match:
+        if was_new:
             # match 建立(兜底分支):正常路径已由 CwEntryStart 在
             # 进对局时经 establish_new_match 前移建立( §2.1,CwScreenBriefing
             # 直写 session 的时序前提);此处覆盖「绕过入口链直跑 loop」
@@ -467,6 +454,25 @@ class CwLoop(CwOperation):
                 establish_new_match,
             )
             establish_new_match(self.ctx, self._cw_config)
+        # 恢复局(locked-resume)检测状态:宿主 = CurrencyWarMatch 流程态字段
+        # (字段定义注释见其声明处)。写入节奏 = per-run(每次 execute 重判/
+        # 重置,只换宿主行为零变化);兜底建局先建 Match 再写(上方分支)。
+        match = self.ctx.cw_match
+        match.is_new_match = was_new
+        match.resume_probe_pending = was_new   # 候选 = 新 match(无本局记录),首个备战相位 round>1 时探针裁决;续跑恒 False
+        match.locked_resume = False            # 锁定确认(探针零响应)→ 直接出战;per-run 重置
+        match.locked_round = 0                 # 锁定确认时的轮次(遥测/日志对照用);per-run 重置
+        # locked_sync_done 不在此重置(配对不变量):置 False 与锁定确认同帧
+        # 配对、置 True 与发出核发出后写同帧配对;出战段仅经 locked_resume=True
+        # 可达,未经锁定确认的 Match 依赖字段初值 True。
+        # 战斗/结算链状态机 + CwScreenBattleWait 实例( 05-battle §1 并入):
+        # 结算读点/点继续/败局链/终局分叉的状态随 op 迁移,本 loop 只持引用
+        # (3c 收尾/summary 读真值)。op 实例跨场复用(状态机生命周期 = 局级;
+        # 每 execute 重handle_init → run 启动时刻/新局标记随之刷新,与原
+        # _run_start_ts/_first_settlement_seen 的 run 级语义一致)。
+        self._settle = SettlementState(
+            run_start_ts=time.monotonic(), is_new_match=match.is_new_match)
+        self._battle_wait = CwScreenBattleWait(self.ctx, self._settle, self._cw_config)
         # 入口链 ctx 中转吸收(P3b 收缩:仅剩职级难度——难度确认屏读存
         # ctx.cw_selected_difficulty,非简报信箱域)。简报词缀/boss/敌人难度
         # 的 ctx 信箱已停用( §2.1「消灭 ctx 信箱」P3 批口径):唯一写点 =
@@ -1219,7 +1225,7 @@ class CwLoop(CwOperation):
                     _gw.active()
 
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖归观察终饰/策略器内化刷新。
-        if self._iter == 1 and self._is_new_match:
+        if self._iter == 1 and self.ctx.cw_match.is_new_match:
             # 消费面只有 plane/round(恢复对局检测)。
             # on_match_start 的每局全新创建与
             # live 初值(v3_phase='FORM')由 create_session 唯一的每局全新创建入口承载
@@ -1354,7 +1360,7 @@ class CwLoop(CwOperation):
             # 执行体,内含出战后两类弹窗确认——出战域重设计同款语义),
             # 出战成功即解除(章1.5)。误判防线:候选
             # 撤回(1-1 正常新局)/探针可开(非锁定)两处都不进锁定分支。
-            if self._cw_resume_candidate:
+            if self.ctx.cw_match.resume_probe_pending:
                 # round_caps 透传( §2.5 调用方接入调用):接管 = 新进程新
                 # 状态容器,场字段结构性必 None → cap 回退默认长度,修饰局接管
                 # 首帧「1-10」拒读退现役兜底行为(披露:不比现役差,残余随
@@ -1364,8 +1370,8 @@ class CwLoop(CwOperation):
                     self.ctx, screen,
                     round_caps=(_caps_gs.node_seq_by_plane.value
                                 if _caps_gs is not None else None))
-                if not resume_candidate(self._is_new_match, _pr[0], _pr[1]):
-                    self._cw_resume_candidate = False   # 1-1 正常新局,撤回候选
+                if not resume_candidate(self.ctx.cw_match.is_new_match, _pr[0], _pr[1]):
+                    self.ctx.cw_match.resume_probe_pending = False   # 1-1 正常新局,撤回候选
                 else:
                     self._invalidate_tracked_on_takeover()   # D2:接管置观察态失效
                     self.round_by_find_and_click_area(
@@ -1373,7 +1379,7 @@ class CwLoop(CwOperation):
                     _opened = self.round_by_find_area(
                         self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
                         crop_first=False).is_success
-                    self._cw_resume_candidate = False
+                    self.ctx.cw_match.resume_probe_pending = False
                     if probe_resolve(_opened) == 'normal':
                         # 非锁定(误判防线):收起关店,清候选 → 落常规 CwScreenPrep
                         self.round_by_find_and_click_area(
@@ -1381,17 +1387,17 @@ class CwLoop(CwOperation):
                             success_wait=1.0)
                         log.info('[cw-loop] 恢复候选但商店可开 → 非锁定,走常规')
                     else:
-                        self._cw_locked_resume = True
-                        self._cw_locked_round = _pr[1]
-                        self._cw_locked_sync_done = False   # 新锁定局:首战前同步步待执行
+                        self.ctx.cw_match.locked_resume = True
+                        self.ctx.cw_match.locked_round = _pr[1]
+                        self.ctx.cw_match.locked_sync_done = False   # 新锁定局:首战前同步步待执行
                         log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
                                     '零响应)→ 直接出战', _pr[0], _pr[1])
-            if self._cw_locked_resume:
+            if self.ctx.cw_match.locked_resume:
                 # 首战前备战同步步 + CwActionStartBattleParam(组合封装,见函数 docstring;
-                # 同步步每锁定局恰一次,证据位 _cw_locked_sync_done)。
+                # 同步步每锁定局恰一次,证据位 = Match.locked_sync_done)。
                 progressed, detail = locked_resume_sync_and_battle(self, self.ctx)
                 if progressed:
-                    self._cw_locked_resume = locked_after_start_battle(progressed)
+                    self.ctx.cw_match.locked_resume = locked_after_start_battle(progressed)
                     self._battle_ts = time.monotonic()   # 战斗窗口开
                     self._battle_wait_active = True   # 战斗窗口 → 下轮委托 CwScreenBattleWait
                     log.info('[cw-loop] 锁定恢复局 → 出战成功,锁解除(恢复正常循环)')

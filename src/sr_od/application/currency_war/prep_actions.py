@@ -531,7 +531,7 @@ def locked_resume_sync_and_battle(op, ctx):
     reconcile 对账暴露(与既有 token 门「发出即写」同款裁定)。锁定
     确认分支复位证据位。
 
-    隐藏前提声明(R3):同步步的「不误卖」依赖恢复局 session 必新鲜——
+    隐藏前提声明:同步步的「不误卖」依赖恢复局 session 必新鲜——
     恢复检测链(cw_resume_lock.is_new_match)恒走新状态容器(GameState),节点未观察
     ⇒ deploy-swap 卖出通道整体跳过(board 未观察不可判),同步步实际
     只做确定性部署;若未来恢复检测放开 mid-run 复用 session,stale board
@@ -591,16 +591,20 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     try:
         _moves = []
         if sync_once:
-            if not getattr(op, '_cw_locked_sync_done', False):
-                _m_lpb = getattr(ctx, 'cw_match', None)
+            # 证据位宿主 = Match.locked_sync_done(备战交互链迁移):读侧
+            # Match 缺席/字段缺按 False 容缺(同旧 op 属性 getattr 容缺语义)。
+            _m_lpb = getattr(ctx, 'cw_match', None)
+            if not getattr(_m_lpb, 'locked_sync_done', False):
                 _sess_lpb = getattr(_m_lpb, 'session', None) \
                     if _m_lpb is not None else None
                 _moves = (_battle_chain_deploy_moves(_sess_lpb)
                           if _sess_lpb is not None else [])
                 for _mv in _moves:
                     ex.execute(_mv)   # 机械执行无返回
-                # 发出即写(申报;回执已停用,失败概念消解)
-                op._cw_locked_sync_done = True
+                # 发出即写(申报;回执已停用,失败概念消解)。写侧 Match 缺席
+                # 结构性不可达:本入口仅经 locked_resume=True 门可达,该置位
+                # 蕴含 Match 在场。
+                _m_lpb.locked_sync_done = True
                 log.info('[cw-loop] 恢复局备战同步步(部署原子×%d)已发出: %s',
                          len(_moves), getattr(ex, 'last_detail', ''))
             else:
