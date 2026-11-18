@@ -1,8 +1,0 @@
-sub_dir: character_avatar
-template_id: jiaoqiu
-template_name: 角色头像-焦丘
-template_shape: rectangle
-auto_mask: true
-point_list:
-- 46, 228
-- 160, 336
