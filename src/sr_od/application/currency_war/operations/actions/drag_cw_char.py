@@ -42,13 +42,33 @@ _ROWS: dict[str, str] = {'front': '前排', 'back': '后排', 'bench': '备战�
 class DragCwChar(CwOperation):
     """货币战争 拖动角色(通用,槽位输入;开发 / 测试用)+ 统一拖拽原语 ``drag_char``。
     起点:货币战争-备战画面;终点:原画面(角色已拖到目标槽位)。
+    消耗:零(纯界面拖拽;落地事实归调用方下一帧 analyze_screen 对账)。
+
+    槽位坐标系(本 op 恒 1 基画面物理槽位):from_idx / to_idx = 「货币战争-备战」
+    画面物理槽位号 = screen_info「前排-N / 后排-N / 备战栏-N」area 序号,1 基,
+    构造期校验 1-99;取值时机 = 调用方按当帧读数传参(本 op 零读屏不现读,坐标
+    新鲜度纪律归调用方)。与 extras 换算:extras.bench.slots 数组为 0 基下标,
+    备战栏槽位号 = 数组下标 + 1(同 CwSellBenchBySlot.slot 口径)。
+    与 CwActionMoveUnitOp(cw_op 域)基差异:其 bench 参数为 0 基状态容器
+    下标、front/back 为排内 1 基画面槽号——同族拖动动作两类基不同,跨类传参
+    前先对表,勿以本 op 口径直填其参数(反之亦然)。
 
     ``run_operation`` 调用例::
 
         run_operation('...drag_cw_char.DragCwChar',
                       args={'from_row': 'bench', 'from_idx': 9, 'to_row': 'bench', 'to_idx': 1})
+        # from_idx/to_idx 均 1 基画面物理槽位:bench 9 = 备战栏第 9 槽(extras 下标 8)
 
     生产侧(deploy / sell)直接调 ``DragCwChar.drag_char(op, src, dst)`` 静态原语(坐标输入,不走节点图)。
+
+    :param from_row: 源行:``"front"`` / ``"back"`` / ``"bench"``。
+    :param from_idx: 源槽位号,1 基画面物理槽位(前排 1-4 / 后排 1-6 基准 / 备战栏 1-9;
+        = screen_info 对应 area 序号);越界构造期拒绝。
+    :param to_row: 目标行(同 ``from_row``)。
+    :param to_idx: 目标槽位号(同 ``from_idx`` 口径)。
+    :param back_centers: 后排实际槽位中心 ``[[x, y], ...]``,1080p 画面像素坐标;
+        数组 0 基,第 N 项 = 后排物理槽位 N+1。后排 >6(财富宝钻扩容)时由调用方
+        按当帧读数传入运行时检测值;``None`` = 用 screen_info「后排-N」基准档。
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
@@ -58,17 +78,6 @@ class DragCwChar(CwOperation):
     def __init__(self, ctx: SrContext, from_row: str, from_idx: int,
                  to_row: str, to_idx: int,
                  back_centers: list[list[int]] | None = None) -> None:
-        """拖 ``(from_row, from_idx)`` → ``(to_row, to_idx)``。
-
-        Args:
-            from_row / to_row: ``"front"`` / ``"back"`` / ``"bench"``。
-            from_idx / to_idx: 1-based 槽位号(前排 1-4 / 后排 1-6 基准 / 备战栏 1-9)。
-            back_centers: 后排实际槽位中心**坐标对 [[x, y], ...]**(覆盖 screen_info)。
-                **财富宝钻**(团队规模 +1)致后排 >6 时, screen_info「后排-1..6」不够 →
-                调用方传运行时检测到的实际后排槽中心(含 7+ 槽)。
-                ``None`` → 用 screen_info 后排-N(基准 6)。坐标对形态 = 包契约
-                「构造参数 JSON 简单类型」(Point 非 JSON 类型,内部转换)。
-        """
         CwOperation.__init__(self, ctx, op_name='货币战争-拖动角色')
         # 槽号 1 基(前排 1-4/后排 1-6 基准/备战栏 1-9),0 或负数 = 参数错误
         #(实测传 0 曾静默无效无报错)——构造期拒绝,与 slot/max_clicks 同口径。
@@ -79,6 +88,7 @@ class DragCwChar(CwOperation):
         self.from_idx: int = from_idx
         self.to_row: str = to_row
         self.to_idx: int = to_idx
+        # back_centers 数组 0 基 ↔ 槽位 1 基:取用侧 idx-1(见 _slot_center)
         self.back_centers: list[Point] | None = (
             [Point(c[0], c[1]) for c in back_centers] if back_centers else None)
 
