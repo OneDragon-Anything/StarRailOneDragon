@@ -78,7 +78,16 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
     sim 后端 advance)。点击直弹登记(
      §1.7:点备战栏箱位「开启」直接弹四选一——
     统一入登记,kind = box_card;声明 next_screen 语义回归底层屏归
-    3.4 消费面,本模块不改声明)。"""
+    3.4 消费面,本模块不改声明)。
+
+    [记账路径总契约第八适用者](契约正文 = flow/action-op.md L32):
+    零写占位形态——本函数零 param 字段消费(``param`` 形参仅签名透传,
+    函数体零读)+ 零状态容器写端 + box_card 登记 + 底层屏声明,腾位归
+    下一入口 heavy 实读整表重建;与 OpenTome/OpenBookcard 的腾位直址写
+    不同构(零键域零反查,总契约三条整族退化),零拒单出口(零写族恒
+    applied=True,无 slot 校验——错槽真值归 heavy 实读对账)。slot 必填
+    口径单一源 = 词表 ``CwActionOpenBoxParam`` 类 docstring(None 语义
+    已随参数面迁移批废除,现算归发出点 entry._consumable_open_action)。"""
     from sr_od.application.currency_war.kernel.cw_overlay_register import (
         KIND_SCREEN_NAMES,
         register_screen_change,

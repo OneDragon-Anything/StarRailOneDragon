@@ -568,10 +568,43 @@ class CwActionCollectOreParam:
 
 @dataclass
 class CwActionOpenBoxParam:
-    """开补给箱(点「开启」→ 弹武装箱 overlay;开箱即腾席)。slot=None → 第一箱。"""
-    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按状态容器 bench kind 槽位现算);None = op 内按 game state 状态容器现算首件槽(双出口守卫断言:gs 缺席/状态容器无该 kind 首槽 → AssertionError)
+    """开简易武装箱(点「武装箱开启位-N」开启钮 → 弹武装箱四选一;开箱即腾席)。
+
+    选卡决策不在本执行链——点完开启本动作即终结返回主循环,武装箱选择
+    画面由外循环按 box_card 登记分发 ``CwScreenBoxPick`` 选卡。终结动作
+    (弹选卡画面 = 引入新事实,返回主循环重新观察)。
+
+    **slot 必填(None 语义已废除)**:开件三类(OpenBox/OpenTome/
+    OpenBookcard)已全量必填——None 的「op 帮调用方现算首件槽」语义已
+    随参数面迁移批废除,「哪个槽是武装箱」的现算唯一归发出点
+    ``entry._consumable_open_action``(op 机械路径零现算,机械执行路径
+    零 game state 依赖)。缺 slot 键 = ``from_dict`` 构造面 TypeError;
+    显式传 null = op 守卫 AssertionError(文案指向参数契约)。
+
+    [记账路径总契约第八适用者](契约正文 = skills/sr-od-dev-currency-war/
+    references/flow/action-op.md「记账路径总契约」条款):**零写占位形态**
+    ——状态容器零写 + box_card 登记 + ``_decl_bottom(gs,'open_box')``
+    转移声明,腾位归下一入口 heavy 实读整表重建(与前两件 OpenTome/
+    OpenBookcard 的腾位直址写不同构:零键域零反查,总契约三条在本域
+    整族退化);零拒单出口(零写族无 slot 校验,错槽开空由外循环按实读
+    重派);名称字段零新增(宪法③空集——参数面零名称字段 + 记账面零
+    param 消费)。MCP 直调传参双口径任一:①当帧 extras ``bench.slots``
+    中 kind='supply_box' 槽的下标 + 1(与发出点同源口径);②当帧 extras
+    ``armory_boxes`` 元素的 ``slot`` 字段直接传(无需 +1——``_ctx_slots``
+    1 基实证,与口径①同一物理槽位号语义等价)。
+
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``)。
+    """
+    slot: int   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 生成期快照(决策半 entry._consumable_open_action 按状态容器 bench kind='supply_box' 槽位现算——全仓唯一现算点;直调 = 双口径任一,见类 docstring;None 语义已随参数面迁移批废除,op/上报层现算分支退役);写入端 = 发出点
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionOpenBoxParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
@@ -583,8 +616,8 @@ class CwActionOpenTomeParam:
     非终结动作(星徽四选一弹窗经 director 环 overlay-pending 通用路径交回
     外循环分发)。
 
-    **slot 必填(None 语义已废除)**:与 OpenBox 的 ``slot | None`` 缺省
-    形态不同,本类 slot 必填——None 的「op 帮调用方现算首件槽」语义已
+    **slot 必填(None 语义已废除)**:开件三类(OpenBox/OpenTome/
+    OpenBookcard)已全量必填——None 的「op 帮调用方现算首件槽」语义已
     随参数面迁移批废除,「哪个槽是典籍」的现算唯一归发出点
     ``entry._consumable_open_action``(op 机械路径与上报层零现算,机械
     执行路径零 game state 依赖)。缺 slot 键 = ``from_dict`` 构造面
@@ -626,8 +659,8 @@ class CwActionOpenBookcardParam:
     代发」已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。
     终结动作(弹专家邀请函 = 引入新事实,返回主循环重新观察)。
 
-    **slot 必填(None 语义已废除)**:与 OpenBox/OpenTome 的 ``slot | None``
-    缺省形态不同,本类 slot 必填——None 的「op 帮调用方现算首件槽」语义已
+    **slot 必填(None 语义已废除)**:开件三类(OpenBox/OpenTome/
+    OpenBookcard)已全量必填——None 的「op 帮调用方现算首件槽」语义已
     随参数面迁移批废除,「哪个槽是书册卡」的现算唯一归发出点
     ``entry._consumable_open_action``(op 机械路径与上报层零现算,机械
     执行路径零 game state 依赖)。缺 slot 键 = ``from_dict`` 构造面

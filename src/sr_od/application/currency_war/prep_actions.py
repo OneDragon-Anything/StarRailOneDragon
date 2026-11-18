@@ -28,9 +28,10 @@ kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit 已�
 备战栏-N area 序直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联
 算术,0-3=前排 1-4 / 4+=后排 1-N 动态,后排拖点按 back_slot_count 布局
 档静态解析);SellBench 已随其参数面迁移批改 op 自持(bench 侧 =
-备战栏-N area 序直取);SellDeployed 过渡期仍经执行器点表(其迁移批
-自持化;deployed 侧 = 下标→(排,排内槽号)换算,tracked 第二账停用后
-旧换算族已删)。坐标参数化
+备战栏-N area 序直取);SellDeployed 已随其参数面迁移批改 op 自持
+(deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排 1-4 /
+4+=后排 1-N 动态,后排拖点按 back_slot_count 布局档静态解析;tracked
+第二账停用后旧换算族已删)。坐标参数化
 机械动作(开件三类 CwActionOpenBoxParam/CwActionOpenTomeParam/
 CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
 (动作参数定义,拖点直取 area,不经换算);穿装与工具原子两类已升级
@@ -245,8 +246,8 @@ def drag_char_guarded(op: SrOperation, ctx: SrContext,
 
     阵型拖动动作(MoveUnit)与卖出共享原语 ``drag_bench_to_sell`` 共用
     本函数 = 失焦守卫单一宿主(原散落 executor._drag 与
-    drag_bench_to_sell 两份内联副本收敛至此;SellDeployed 过渡期仍经
-    executor._drag,其迁移批并入本宿主)。
+    drag_bench_to_sell 两份内联副本收敛至此;executor._drag 已随开件族
+    收官批物理退役,全部拖拽消费 op 均走本宿主)。
     """
     from sr_od.application.currency_war.sim.cw_sim_ports import (
         sim_backend_installed,
@@ -329,9 +330,10 @@ class PrepActionExecutor:
     宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
     判定归观察侧 reconcile(用户裁定)。角色拖拽统一拖拽原语 = 模块级
     ``drag_char_guarded``(失焦守卫 + DragCwChar.drag_char 中心拖 + hold0,
-    2026-08-13 实测验证);``_drag`` 方法与 ``_front_pts/_back_pts`` 点表
-    = 席位域待迁移动作(SellDeployed 等)的过渡宿主,其 op 随各自参数面
-    迁移批退役消费。
+    2026-08-13 实测验证);机械动作执行体已逐个迁 ``operations/cw_op/``
+    各 op 文件(点表属性与 ``_drag`` 方法已随开件族收官批物理退役——
+    全部消费 op 已随各自参数面迁移批改 op 内现读 ``row_area_centers``
+    /消费模块级拖拽原语)。
     """
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
@@ -354,15 +356,6 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 槽位中心(screen_info 静态,构造时读一次)。_bench_pts 现役消费 =
-        # 开件一类守卫(OpenBox,其迁移批 = 开件族收官批退役)——OpenBookcard/
-        # OpenTome 已随各自参数面迁移批改 op 内现读(OpenTome 并废除
-        # slot=None 现算);MoveUnit/SellBench 已随各自参数面迁移批改 op 内
-        # 现读;SellDeployed 过渡期仍消费 _front_pts/_back_pts(其迁移批
-        # 退役)。
-        self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
-        self._front_pts: list[Point] = row_area_centers(ctx, '前排')
-        self._back_pts: list[Point] = row_area_centers(ctx, '后排')
 
     # ===== 执行入口(机械执行,无返回;参数守卫已收拢各动作 op 内
     #       守卫断言,flow/action_ops.md §1 决策侧参数现算契约)=====
@@ -489,37 +482,8 @@ class PrepActionExecutor:
     #       改显式坐标 + 记账拒单;拖点权威派生式 = 模块级
     #       row_drag_points,穿装 op 与工具 char 模式自持消费。MoveUnit
     #       已随其参数面迁移改 op 内自持消费模块级 drag_char_guarded;
-    #       _drag 方法过渡期保留 = SellDeployed 等席位域待迁移动作宿主)=====
-
-    def _drag(self, src: Point, dst: Point) -> None:
-        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
-        源槽像素验重试已拆除)。过渡期宿主 = SellDeployed(MoveUnit 已随
-        参数面迁移改消费模块级 drag_char_guarded,失焦守卫单一宿主收敛
-        至彼;本方法随剩余席位域动作迁移批退役)。
-
-        失焦守卫语义(所有拖拽路径共享)——窗口后台化时拖拽输入静默丢
-        (r9 实证:截图正常/输入丢/连环「源槽未变」假失败),拖前验焦点,
-        失焦先激活。
-        """
-        from sr_od.application.currency_war.sim.cw_sim_ports import (
-            sim_backend_installed,
-        )
-        if sim_backend_installed():
-            # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
-            # port 检查;部署/卖上阵落位事实由后端状态副本承接)
-            return
-        try:
-            gw = self._ctx.controller.game_win
-            if not gw.is_win_active:
-                log.warning('[cw!][drag] 窗口失焦(拖拽输入将静默丢)→ 先激活')
-                gw.active()
-                time.sleep(0.3)
-        except Exception:   # noqa: BLE001  焦点守卫 best-effort
-            pass
-        from sr_od.application.currency_war.operations.actions.drag_cw_char import (
-            DragCwChar,
-        )
-        DragCwChar.drag_char(self._op, src, dst)
+    #       _drag 方法已随开件族收官批物理退役——全部拖拽消费 op = 模块级
+    #       drag_char_guarded 单一宿主)=====
 
     # (tracked 随动同步三条分支(备战摘除/场上摘除/上阵落位)已随
     #tracked 第二账停用删除:动作写主域(逻辑

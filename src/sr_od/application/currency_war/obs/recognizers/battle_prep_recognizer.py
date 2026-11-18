@@ -455,8 +455,9 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};开商店画面整键省略(用户裁定:商店态无需装备栏,完整读数收店后取);'
                     'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
                     'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
-    'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
-                    '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
+    'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=槽 rect 几何中心'
+                    '(slot = 备战栏物理槽位 1 基;开箱点击坐标另走建档「武装箱开启位-N」直查,'
+                    '本坐标供交叉定位);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
     'reward_ores': '奖励面板晶矿 list(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r},'
                       'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None;开商店画面整键省略(晶矿在商店画面不可见,检出全是商品图标误报)',
     'rail_shop': '左侧开拓银轨商店入口域 dict {present, cx, cy, balance, buyable}'

@@ -1312,6 +1312,9 @@ def _get_armory_box_gray() -> MatLike | None:
 def find_armory_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
     """纯 CV 核心:槽位 rect 列表内 TM 匹配简易武装箱 → ``[(slot_idx, 槽 center)]``(点「开启」用)。
 
+    ``slot_idx`` = 备战栏物理槽位 1 基(调用方 slots 元素原样透传,
+    ``_ctx_slots`` ``range(1, count+1)`` 产,缺失档跳过不压缩——与
+    ``row_area_centers`` 的按序压缩不同构);center = 槽 rect 几何中心。
     历史名 find_supply_boxes(「补给箱」)已废,语义 = 简易武装箱(名称权威见区块注释)。
     模板 90x80 < 槽 rect ~113x134 → 逐槽 matchTemplate。空槽/角色槽远低于阈值不命中。
     可离线硬编码 rect 测(同 ``identify_slots`` 分层约定)。
@@ -1334,13 +1337,21 @@ def find_armory_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tu
 
 
 def read_armory_boxes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
-    """备战栏简易武装箱(``备战栏-1..9``)→ ``[(slot_idx, 开启 center)]``(开箱 op 用;首见机制)。"""
+    """备战栏简易武装箱(``备战栏-1..9``)→ ``[(slot_idx, 槽 center)]``。
+
+    ``slot_idx`` = 备战栏物理槽位 1 基(``_ctx_slots`` ``range(1, count+1)``
+    产,缺失档跳过不压缩——与 ``row_area_centers`` 的按序压缩不同构);
+    center = 槽 rect 几何中心(历史表述「开启 center」已勘误——点开箱
+    动作的点击坐标恒走建档「武装箱开启位-N」直查,非本读数)。"""
     return find_armory_boxes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
 def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
     """纯 CV 核心:槽位 rect 内 TM 匹配星徽秘典(双渲染取最高分)→ ``[(slot_idx, 槽 center)]``(点开启用)。
 
+    ``slot_idx`` = 备战栏物理槽位 1 基(调用方 slots 元素原样透传,
+    ``_ctx_slots`` ``range(1, count+1)`` 产,缺失档跳过不压缩——与
+    ``row_area_centers`` 的按序压缩不同构);center = 槽 rect 几何中心。
     与 ``find_armory_boxes`` 同法,外加**互斥判定**(r11 修,M55 P2 活锁根因):秘典命中需
     同时 ①秘典 TM ≥ 0.6 且 ②秘典分 > 箱分(同槽双模板交叉核对)。实测误检帧(武装箱槽):
     秘典 0.558/箱 0.926 —— 旧版 0.558<0.6 本就该拦,但光照/选中态可抬分,双条件保证

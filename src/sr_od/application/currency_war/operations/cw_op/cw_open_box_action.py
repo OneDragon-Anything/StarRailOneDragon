@@ -1,19 +1,40 @@
-"""开补给箱动作 op(CwActionOpenBoxOp)——状态容器槽位直点形态:op 对画面
-零识别(动作 op 无论执行前还是执行后都不做观察识别,规范 =
-flow/action_ops.md 用户裁定),机械链 = 参数校验 → 槽号解析 → 建档坐标
-直查 → mouse_move+click → 自上报 → round_success。机械执行后 **op 内
-直调自己的上报函数** ``report_action_open_box_param``(零写族),零分派,
-op-layer.md §1.2 动作 op 契约。
+"""开简易武装箱动作 op(CwActionOpenBoxOp)——参数面迁移形态:op 机械面
+全自持(守卫上界 op 内现读 ``row_area_centers(ctx,'备战栏')`` 静态档,
+点击点 = ``area_center`` 按名直查建档坐标;机械执行路径零 game state
+依赖零 executor 点表窥探),单击族形态(mouse_move 防吞点击 + click,
+与 OpenTome/OpenBookcard/CollectOre 同族口径,零拖拽原语消费)。机械
+执行后 **op 内直调自己的上报函数** ``report_action_open_box_param``,
+零分派(op-layer.md §1.2 动作 op 契约)。
+
+参数面(slot 必填,None 语义已废除——参数面迁移批申报,词表类 docstring
+为单一源):slot = 备战栏物理槽 1 基;MCP ``run_operation`` 直调传
+``{"slot": N}``,N 双口径任一:当帧 extras ``bench.slots`` 中
+kind='supply_box' 槽的下标 + 1(与发出点 entry._consumable_open_action
+同源口径),或当帧 extras ``armory_boxes`` 元素的 ``slot`` 字段直接传
+(无需 +1——``_ctx_slots`` 1 基实证,与前一口径同一物理槽位号语义
+等价);env 缺省 None = 缺省备战画面档(OpenBox 单域备战动作,op 体零
+env 消费)。缺 slot 键 = from_dict 构造面 TypeError;显式传 null = op
+守卫 AssertionError(文案指向参数契约)。
+
+[记账路径总契约第八适用者](契约正文 = flow/action-op.md L32「记账路径
+总契约」条款):**零写占位形态**——状态容器零写 + box_card 登记 +
+``_decl_bottom(gs,'open_box')`` 转移声明,腾位归下一入口 heavy 实读
+整表重建。与 OpenTome/OpenBookcard 的「腾位直址写零身份反查」不同构:
+本件零键域零反查(上报函数零 param 字段消费、零状态容器写端),总契约
+三条(反查时序/陈旧窗口/反查唯一性)在本域整族退化——陈旧窗口由终结
+转移结构性消除(上报后 op 立即经终结口交回主循环,武装箱选择模态压住
+备战画面期间决策环不再消费 bench 槽位表)。**零拒单出口**(零写族恒
+applied=True,无 slot 校验):直调错传 slot 的后果 = 点错槽开启失败,
+外循环按实读重派,非静默错账。
 
 终结动作(R7 终结化):点完「开启」本动作即返回主循环,武装箱选择
-画面由外循环按画面分发独立画面 op 选卡。terminal_wait = 开箱动画等待,
-与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试 =
+画面由外循环按 box_card 登记分发独立画面 op 选卡。terminal_wait = 开箱
+动画等待,与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试 =
 test_action_registry 终结集测试)。
 """
 from __future__ import annotations
 
 import time
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from one_dragon.base.operation.operation_node import operation_node
@@ -26,32 +47,36 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    SCREEN_NAME,
+    area_center,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenBoxParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.prep_actions import row_area_centers
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
-#: slot=None 现算消费的状态容器占席 kind(坐标系 = 状态容器 BenchSlot.kind,
-#: 简易武装箱历史代号保留)。现算规则 = 状态容器 bench 首个该 kind 槽
-#: (下标 + 1);决策层(mandate_v1/entry.py 消耗品臂)与上报层
-#: (kernel/cw_action_report/open_tome.py 等)各有一份同型现算,三处
-#: 语义必须一致(同状态容器同规则),提取公共函数归另批。
-_BOX_BENCH_KIND = 'supply_box'
-
 
 class CwActionOpenBoxOp(CwOperation):
-    """开箱:槽号解析 → 点「开启」建档坐标 → 固定动画等待(纯机械执行)。
-    起点:货币战争-备战画面(动作执行时);终点:点击开启武装箱;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
+    """开简易武装箱:slot 必填/越界双形守卫 → 点「武装箱开启位-N」开启钮
+    (建档坐标)→ 固定动画等待。
+    起点:货币战争-备战画面(动作执行时);终点:点击开启武装箱;动作已
+    发出并上报逻辑态,停留原画面(判效归下一帧观察)。终结动作(动作发出
+    点 = 策略器 entry ① prep 实体面卡片分支与第 0 步溢出自救态共用
+    ``_consumable_open_action``;武装箱选择画面由外循环按画面分发
+    :mod:`cw_screen_box_pick` 选卡,选卡决策单一源 = 策略 ``decide_box_card``
+    契约)。
 
-    选卡动作不在本执行链(R7 定形):点完开启本动作即终结
-    ——武装箱选择画面由外循环按画面分发独立画面 op(:mod:`cw_screen_box_pick`)
-    选卡(选卡决策单一源 = 策略 ``decide_box_card`` 契约 / 局外 kernel
-    ``pick_equipment`` 机器)。等待归产生动画的操作,弹窗就位与否交
-    下一帧观察。
+    :param param: 开简易武装箱动作参数(slot 必填,字段语义与取值时机见
+        词表类 docstring;直调传参双口径 = 当帧 extras ``bench.slots`` 中
+        kind='supply_box' 槽的下标 + 1,或 extras ``armory_boxes`` 元素的
+        ``slot`` 字段直接传)。
+    :param env: 执行环境(代码内组装传入;可省 = 缺省 None,按缺省备战
+        画面档解析坐标——单件会话直调场景 op 跑在备战画面语义正确)。
     """
 
     #: 终结动作(开箱即引入新事实,返回主循环分发选卡)。
@@ -62,7 +87,7 @@ class CwActionOpenBoxOp(CwOperation):
     terminal_wait = 1.8
 
     def __init__(self, ctx: SrContext, param: CwActionOpenBoxParam,
-                 env: PrepExecEnv):
+                 env: PrepExecEnv | None = None):
         CwOperation.__init__(self, ctx, op_name='CwActionOpenBoxOp',
                              need_check_game_win=False)
         self.param = param
@@ -70,63 +95,66 @@ class CwActionOpenBoxOp(CwOperation):
 
     @operation_node(name='open_box', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行;终结动作(返回等待归消费点按 ``terminal_wait`` 读)。"""
+        """开简易武装箱:slot 必填/越界双形守卫 → 点开启钮 → 固定动画等待。
+
+        守卫两形(校验落点契约 = flow/action-op.md L55;缺席与越界同款
+        守卫,gate 外 = sim/实机两执行面同守):slot=None 显式拒绝(废除
+        语义申报,文案自教新契约含 kind='supply_box' 双口径指引)与越界
+        (下界 1 显式闭合禁负下标回环;空点表 = 建档漂移哨同断言)。守卫
+        上界取备战栏点表(槽位域),点击点走「武装箱开启位-{slot}」直查
+        (有意不并入点表下标直取:点表下标在 area 族缺档时静默错位,按名
+        直查缺档自然异常更防建档漂移误点;守卫读表长、点击读单名,两读
+        并存 = 有意形态)。点完开启本动作即终结——武装箱选择画面由外循环
+        按 box_card 登记分发 ``CwScreenBoxPick`` 选卡(选卡决策不在本执行
+        链);弹窗就位与否交下一帧观察。
+        """
         action: CwActionOpenBoxParam = self.param
-        env = self.env
-        ex = env.executor
-        if action.slot is not None and not (1 <= action.slot <= len(ex._bench_pts)):
-            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
-            # 契约):slot = 画面物理槽 1 基(可选参数,None = 状态容器现算
-            # 首件槽),越界响亮暴露零点击。
-            raise AssertionError(
-                f'CwActionOpenBoxParam slot={action.slot} 越界'
-                f'(1-{len(ex._bench_pts)})')
-        gs = None
         if action.slot is None:
-            # slot=None 缺省语义 = game state 状态容器现算首件槽号(消费决策
-            # 数据,与决策层同源,非画面识别);双出口守卫断言(gs 缺席 /
-            # 状态容器无该 kind 首槽)与越界同款响亮暴露零点击。
-            gs = game_state_from_ctx(self.ctx)
-            if gs is None:
-                raise AssertionError(
-                    'CwActionOpenBoxParam slot=None 现算失败:game state '
-                    '缺席(无局/状态容器供给 None),零点击')
-            view = gs.bench.value
-            slots = list(view.slots) if view is not None else []
-            idx = next((i for i, s in enumerate(slots)
-                        if s is not None and s.kind == _BOX_BENCH_KIND), None)
-            if idx is None:
-                raise AssertionError(
-                    'CwActionOpenBoxParam slot=None 现算失败:状态容器 bench 无 '
-                    f'kind={_BOX_BENCH_KIND} 首件槽,零点击')
-            slot = idx + 1
-            # 落地机制 = 以现算 resolved slot 重建 param(不改写入参对象):
-            # 上报/journal/round 摘要显示显式槽号。
-            action = replace(action, slot=slot)
-        else:
-            slot = action.slot
-        # 建档坐标直查(「点哪能开」= 开启按钮位置,实测定准进建档;
-        # screen_info 单一真相源,禁 fallback 推算——area 缺失 = 取值
-        # 直接使用,点击消费点自然异常,零防御口径)。
-        open_point = area_center(ex._ctx, f'武装箱开启位-{slot}')
+            raise AssertionError(
+                'CwActionOpenBoxParam slot 必填(备战栏物理槽 1-9 基 1;'
+                '直调按当帧 extras bench.slots kind=supply_box 槽下标+1 或 '
+                'extras.armory_boxes 元素 slot 字段直传;slot=None 现算语义'
+                '已随参数面迁移批废除,现算归发出点 '
+                'entry._consumable_open_action),零点击')
+        slot = int(action.slot)
+        # 守卫上界 op 内现读(screen_info 静态档;原 executor 构造期缓存
+        # → op 执行期现读同一档案,值逐位同,零 env 消费)。
+        pts = row_area_centers(self.ctx, '备战栏')
+        if not (1 <= slot <= len(pts)):
+            # 参数违法由 op 自判(flow/action-op.md L55 校验落点契约):
+            # 越界 = 决策逻辑 bug,守卫断言响亮暴露零点击(禁兜底坐标/禁
+            # 负下标回环——下界 1 显式闭合)。
+            raise AssertionError(
+                f'CwActionOpenBoxParam slot={slot} 越界'
+                f'(1-{len(pts)};画面档={SCREEN_NAME})')
+        # 建档坐标直查(点击点 = 武装箱开启位-N 开启按钮区,与备战栏-N
+        # 槽位本体是两族 area——箱体占槽、开启钮独立布局,area 族不同名
+        # 是游戏交互结构的如实镜像;screen_info 单一真相源,禁 fallback
+        # 推算——area 缺失 = 取值直接使用,点击消费点自然异常,零防御
+        # 口径)。
+        open_point = area_center(self.ctx, f'武装箱开启位-{slot}')
         if cw_sim_ports.mechanical_io_allowed():
-            ex._ctx.controller.mouse_move(open_point)   # 防吞点击
-            ex._ctx.controller.click(open_point)
+            # 实机机械段(点击 + 固定动画等待同 gate:sim 局零白睡;等待
+            # 归产生动画的操作,固定等待族 = flow/action-op.md §3;判效
+            # 交下一帧观察)。
+            self.ctx.controller.mouse_move(open_point)   # 防吞点击
+            self.ctx.controller.click(open_point)
+            from sr_od.application.currency_war.prep_actions import (
+                _OVERLAY_ANIM_WAIT_S,
+            )
+            time.sleep(_OVERLAY_ANIM_WAIT_S)
         # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
-        # 固定动画等待(等待归产生动画的操作;弹窗就位与否交下一帧观察)
-        from sr_od.application.currency_war.prep_actions import (
-            _OVERLAY_ANIM_WAIT_S,
-        )
-        time.sleep(_OVERLAY_ANIM_WAIT_S)
-        log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(交回外循环,武装箱'
-                 '选择画面分发选卡)')
-        # —— 自上报(机械发出后;零写族,op-layer.md §1.2)——
-        # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
-        # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端 open_box);
-        # round data 携带声明(journal 记账面)。
+        detail = (f'开箱槽{slot} ✓(发出即上报:零写族+登记+声明,'
+                  '落地归下一入口heavy实读)')
+        # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):零写族
+        # ——box_card 登记 + 底层屏声明(trigger='open_box'),状态容器
+        # 零写,腾位归下一入口 heavy 实读。上报后一行声明喂入(实机端口
+        # 未装 = no-op,sim 装配后驱动后端 open_box 分派);round data 携
+        # 声明(journal 记账面)。gs 缺席 = 无处记账跳过(零上报零声明零
+        # 异常,既有行为保留)。零拒单段(零写族恒 applied=True,无 slot
+        # 校验出口)。
         world_decl = None
-        if gs is None:
-            gs = game_state_from_ctx(self.ctx)
+        gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             outcome = report_action_open_box_param(
                 gs, action,
@@ -134,4 +162,5 @@ class CwActionOpenBoxOp(CwOperation):
                            actor=type(self).__name__, mode='compute'))
             world_decl = outcome.world_decl
             cw_sim_ports.declare_world(world_decl)
-        return self.round_success(f'开箱槽{slot}', data=world_decl)
+        log.info(f'[cw][box] {detail}')
+        return self.round_success(detail, data=world_decl)

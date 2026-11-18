@@ -941,8 +941,8 @@ class CwScreenPrep(CwOperation):
             # CwActionOpenBoxParam 终结化:开箱即引入新事实(武装箱选择画面
             # 出现,与刷新终结结构语义同构)→ 本访问返回主循环,外循环按
             # 武装箱选择画面分发新画面 op 选卡。返回等待 =
-            # CwActionOpenBoxOp.terminal_wait(与 ``_open_box`` 动画等待
-            # ``_OVERLAY_ANIM_WAIT_S`` 等价,等价测试 =
+            # CwActionOpenBoxOp.terminal_wait(与 ``prep_actions.
+            # _OVERLAY_ANIM_WAIT_S`` 逐字等价,等价测试 =
             # test_action_registry 终结集测试)。
             return self.round_success(f'{key} ✓(交回:武装箱选择画面分发)',
                                       wait=op_cls.terminal_wait)
