@@ -173,9 +173,14 @@ _RAIL_BADGE_TM_THR: float = 0.7
 # 前排-1 卡左缘 677 —— 带内唯一文本源即横幅自身,不引入徽记/卡面数字噪声。
 _RAIL_BANNER_RECT: tuple[int, int, int, int] = (330, 270, 660, 470)
 
-# 「有商品可购买」胶囊条 OCR 搜索带(横幅带下缘内的固定状态条;同区配套指示,
-# x 沿用横幅带)。带内无其他文本源,OCR 锚「有商品可购买」区分。
-_RAIL_CAPSULE_RECT: tuple[int, int, int, int] = (330, 438, 660, 478)
+# 「有商品可购买」胶囊条 OCR 搜索带(1080p x1,y1,x2,y2)。胶囊 y 随局浮动(两局实测:
+# 一局紧贴横幅下方 y≈345-375,另一局 y≈445-470)→ 带覆盖两实测域(330-478);
+# x 沿用横幅带(同区配套指示,两局实测胶囊 x 均落 360-540)。x 边界同横幅带论证:
+# 下限 330 > 徽记带右缘 310,上限 660 < 前排-1 卡左缘 677,不引入卡面数字噪声。
+# 带内文本源 = 横幅(浮动低位布局时与胶囊同带)+ 胶囊,buyable 锚「有商品可购买」
+# 与横幅文本天然区分。胶囊在场正样本 fixture = 测试仓 rail_badge_capsule_prep_r4
+# (端到端 OCR 依赖 ctx 单测覆盖不到,离线 analyze 验证兜底)。
+_RAIL_CAPSULE_RECT: tuple[int, int, int, int] = (330, 330, 660, 478)
 
 _rail_badge_gray: MatLike | None = None
 _rail_badge_loaded: bool = False
