@@ -40,9 +40,10 @@ GOLD_DROP_MAX: int = 5
 #: 披露键 ore_char_star1)
 CHAR_DROP_STAR: int = 1
 
-#: 简易装备池(category='简易' 全集,字母序确定性;池口径随装备注册表传导)
+#: 简易装备池(category='简易装备' 全集,字母序确定性;池口径随装备注册表传导
+#: ——注册表派生值落「简易装备」,见 cw_equipment_data.Equipment.category 注释)
 _SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
-    name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
+    name for name, eq in EQUIPMENTS.items() if eq.category == '简易装备'))
 
 #: 建模假设档披露键纯登记清单(零发射接入调用、不进随局披露输出——登记辖域仅本常量,键按死键备案)
 ORE_ASSUMPTION_KEYS: tuple[str, ...] = (
