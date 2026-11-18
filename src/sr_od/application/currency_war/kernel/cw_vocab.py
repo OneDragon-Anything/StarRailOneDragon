@@ -870,8 +870,9 @@ class CwActionOpenShopParam:
 
 @dataclass
 class CwActionStartBattleParam:
-    """出战(环出口;含未达上限确认)。零转移验证机械单发:点击序列发出即返回主循环
-    (未发出 = 找不到按钮返 False),转移与否由返回后下一帧观察裁决。CwActionStartBattleParam 豁免屏蔽。"""
+    """出战(环出口;单击原子)。零收尾零验证机械单发:定位按钮后点击一次即
+    返回主循环(未发出 = 找不到按钮返 False),点击后的弹窗渲染与画面转移
+    归返回后下一帧观察裁决(弹窗处理归独立弹窗 op)。CwActionStartBattleParam 豁免屏蔽。"""
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
