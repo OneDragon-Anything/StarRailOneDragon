@@ -9,7 +9,7 @@
 
 > 「动作 op 上报坐标，game state 里根据坐标找到具体的内容，自然就知道是什么了，动作 op 依然保持机械执行。」——用户裁定原文
 
-落地含义（**全部 22 个动作 op 迁移的记账路径总契约**，本稿成文为一般性契约，后续 op 迁移继承不再逐个报批；wear-equip = 第一个适用者）：
+落地含义（**动作注册表全集（`cw_action_registry.py` 全行）迁移的记账路径总契约**，本稿成文为一般性契约，后续 op 迁移继承不再逐个报批；wear-equip = 第一个适用者）：
 
 1. op 上报它实际动过的坐标（`src_cx/src_cy`），kernel 记账层用观察产出的坐标伴随域对照表（`owned_equip_xy`，名字↔坐标）**反查**出具体内容再记账——名字从「记账键」降级为「反查产物」。
 2. 名称校验移除：`wear_item_not_owned`（owned 名单校验）与 `_locate_unit` 的 char_name 身份核对整个删掉，换「反查不到 → 拒单零写 → 跳过自愈通道」。目标单位身份改由槽位反查（gs 知道该槽现任是谁；槽空 = 拒单）。
@@ -17,7 +17,7 @@
 4. 反查前提与窗口纪律 = 三条一句话级申报（§1.5 契约段 + op docstring 双落点）：
    - **反查时序不变式**：上报反查消费拖前快照；重观察刷新必须晚于上报；
    - **陈旧窗口禁消费**：记账后 → 重观察前的坐标伴随域陈旧条目窗口禁消费——由 `cw4_wear_pending` 交替保证（§1.5）；
-   - **反查唯一性前提**：同一快照内坐标↔名一一对应（单格单件）；MCP 直调陈旧坐标反查不到 = 拒单走跳过自愈。
+   - **反查唯一性前提**：同一快照内坐标↔条目一一对应（单格单件）；MCP 直调陈旧坐标反查不到 = 拒单（round detail 带拒单码），**拒单后禁止补拖、连穿无对照表刷新手段则按单件会话使用**（§1.5 契约 3 + MCP 直调形态边界）。
 
 ## 1. 新参数面定稿
 
@@ -79,11 +79,13 @@ def from_dict(cls, d: dict) -> 'CwActionWearEquipParam':
 - **跳过自愈通道（保留，与方案 A 正交）**：环内新获得件（采晶矿/买牌获得装备）在坐标伴随域无条目 → 发出面跳过该步（计数）→ 该帧无穿戴动作，由既有的「帧稳定截断 → Obs(outer_loop)」通道终结访问重观察后重派。方案 A 管已观察件的 reflow 陈旧；跳过通道管从未观察到的件——两者覆盖不同失效形态，都保留。
 - **对「禁逻辑写端」申报的影响**：无。方案 A 不给 `owned_equip_xy` 开任何策略/动作侧写端（r2 方案 B = 上报置 None 失效标记的备选已随 r3 架构裁定作废——新记账路径下反查拒单 + 跳过自愈天然覆盖失效形态，无需失效写端）。
 
-**r3 契约段（三条一句话级申报，双落点 = 本节 + op docstring §6.1；复审已核现时序满足，成文防未来重排破坏）**：
+**契约段（三条一句话级申报，双落点 = 本节 + op docstring §6.1；r4 修订含拒单处置指引改写）**：
 
 1. **反查时序不变式**：上报反查消费**拖前快照**（op 执行拖拽所用的坐标伴随域快照 = 上报反查所读的同一份）；重观察刷新必须**晚于**上报（先记账后刷新——反读到的是「拖拽当时语义上的那件」）。
 2. **陈旧窗口禁消费**：记账（上报）完成 → 重观察刷新之间，坐标伴随域存在陈旧条目窗口；该窗口内的条目**禁被任何发出/记账消费**——由 `cw4_wear_pending` 交替保证（标志帧只产 Obs 不产穿戴，窗口内无第二次消费）。新架构下该纪律加重：窗口内陈旧条目若被反查消费即错账（拖的是 reflow 前的格、账记的是反查产物），非仅拖错格。
-3. **反查唯一性前提**：同一快照内坐标↔名一一对应（单格单件——逐格分类器 28 固定格每格至多一件产出）；MCP 直调陈旧坐标反查不到 = `wear_item_xy_unresolved` 拒单 → 跳过自愈（重读 extras 重试）。
+3. **反查唯一性前提与拒单处置**：同一快照内坐标↔条目一一对应——**观察路径由逐格分类器保证**（28 固定格单格单件产出）、**sim 占位路径由唯一化方案保证**（§2.13 基值+序号偏移，同值即冲突）。反查不到（坐标不在表/伴随域未就绪）= `wear_item_xy_unresolved` 拒单零写；**拒单发生在拖拽之后，拒单后禁止补拖**（拖拽已发生，再拖 = 二次拖拽事故）——处置 = 刷新对照表后重试（刷新手段 = 重跑备战观察链，框架路径即交还决策循环经观察链自然重派；直调方无刷新手段，见下方形态边界）；**连穿场景每件之间需要一次对照表刷新，无刷新手段的调用方（MCP 直调，见 §6.1）按单件会话使用**。形态归类补充：反查**命中**但名单缺条目 = 禁消费窗口违反（契约 2），以异常响亮暴露（零防御纪律，`owned.remove` ValueError），非拒单路径。
+
+**MCP 直调路径的形态边界（M-r3-1 申报）**：直调方无对照表刷新手段——`CwActionObsOp` 直调 = 宿主能力缺失 AssertionError（`cw_action_registry.py` L192-195 注册行注释明示），`analyze_screen` 为只读工具不写 gs。因此直调路径：①第二件连穿的「重读 extras 取新坐标」**解不了表陈旧**（坐标新、表旧 → 反查恒不中拒单，且永远拒单）；②唯一安全用法 = 单件会话（一坐标一调用一观察对账，连穿交还框架决策循环——框架路径有交替机制保证表刷新）；③拒单感知 = round detail 拒单事实（§2.2/§4.2 步骤 6，直调方按 detail 拒单码停手，禁止按旧坐标重试 = 盲拖错格 + 错账）。
 
 **A1 假设申报（入口观察后、首穿前的环内动作用隔）**：交替机制只覆盖「穿戴帧之后」的 reflow；入口观察后、首穿前若有改变 owned 网格的环内动作（采晶矿获得件最常见），首穿仍用入口快照坐标。**申报假设：获得件插入只占空格、已登记条目格位不动**（逐格分类器 28 固定格结构支持——新件落空格、旧件格位不变——但**无实机背书**）。验收实机验证（§8.6「采晶矿→穿装」序列）；实测不成立的回退方案 = 获得类动作（CollectOre 等）发出帧后也置 `cw4_wear_pending`（交替机制扩展到获得类 aftermath，机制零新增）。
 
@@ -99,7 +101,20 @@ def from_dict(cls, d: dict) -> 'CwActionWearEquipParam':
 
 ### 2.2 `operations/cw_op/cw_wear_equip_action.py` — op 执行体重写
 
-见 §4 执行语义。签名改 `env: PrepExecEnv | None = None`；机械半全部自持（守卫断言/拖点静态派生/显式起点/park_cursor 自持）；`_owned_grid_locate` 消费删除；docstring 按 §6.1 重写（含三条契约申报）。**op 侧 r3 零新增改动**——上报函数签名不变（`param: Any` duck），op 机械半与 r2 形态一致。
+见 §4 执行语义。签名改 `env: PrepExecEnv | None = None`；机械半全部自持（守卫断言/拖点静态派生/显式起点/park_cursor 自持）；`_owned_grid_locate` 消费删除；docstring 按 §6.1 重写（含三条契约申报）。
+
+**op 侧唯一新增改动（M-r3-1 修法①）：round detail 携带记账拒单码**——现状 op 丢弃 `report_action_wear_equip_param` 返回的 `LogicOutcome`（L96-101），r3 后上报函数可拒单（`wear_item_xy_unresolved`，拖拽已发生账未落），round detail 恒「已发」会让直调方无从感知拒单。改法：op 消费 outcome，`applied=False` 时 detail 追加拒单事实（机械 `round_success` 语义不变——拖拽确实已发生；不分支重试、不读屏验证，仅如实上报动作事实，零判效/零重试纪律不受触及；`gs is None` 无 outcome 时 detail 不变）：
+
+```python
+        outcome = report_action_wear_equip_param(gs, action, ChannelSig(...))
+        detail = f'穿戴 → ({action.row}-{action.slot}) 已发(发出即记账,落地归观察对账)'
+        if outcome is not None and not outcome.applied:
+            detail += f'；记账拒单:{outcome.reason}(拖拽已发生,账未落)'
+        log.info(f'[cw][wear] {detail}')
+        return self.round_success(detail)
+```
+
+除此外机械半与 r2 形态一致（上报函数签名不变，`param: Any` duck）。
 
 ### 2.3 `operations/cw_op/cw_action_registry.py` — 零改动
 
@@ -149,7 +164,7 @@ def wear_param_steps_of(build: EquipPlanBuild, gs: Any
     return params, skipped
 ```
 
-**与记账面反查的两道防线关系（r3 申报）**：发出面预检（本 helper 坐标缺席跳过）与记账面反查拒单（`wear_item_xy_unresolved`，§2.10）= 同一失效形态的两道防线——发出面用同一坐标伴随域预检，正常流反查必命中（同源同帧）；预检漏网（环内获得件竞态等边缘时序）= 记账面拒拦零写 + 跳过自愈，账不落错。
+**与记账面反查的两道防线关系（r3 申报；r4 精确化）**：发出面预检（本 helper 坐标缺席跳过）与记账面反查拒单（`wear_item_xy_unresolved`，§2.11）= 同一失效形态的两道防线——发出面用同一坐标伴随域预检，同帧下反查必命中。**kernel 生产路径预检漏网不可达**（emit 与 report 同宿主迭代内同步执行、零中间写端，复审已核）——第二道防线的实际生效面 = **MCP 直调路径**（直调坐标脱离发出面预检，由反查拒单 + round detail 拒单码承接，§6.1），勿据本段误判 kernel 存在竞态面。
 
 - 模块 docstring L6-8 机械原语引用更新：机械半宿主描述改为「op 自持静态派生」，`_owned_grid_locate` 引用删除、`_equip_slot_drag_point` 引用改为「已随本批退役」（§2.11）；补「坐标伴随域单一源 = gs.owned_equip_xy（观察装配点写入），本函数 = 发出面唯一消费口」。
 - `EquipWearStep` docstring 补一行：「本步不带坐标；坐标 = 发出点经 `wear_param_steps_of` 从状态容器坐标伴随域取（入口观察快照，穿戴帧间经环内重观察刷新，§1.5）」。
@@ -319,19 +334,26 @@ def row_drag_points(ctx: SrContext, prefix: str,
 
 参数面变更落本批，sim 停摆也落本批——占位同步**纳入本批必做**。复审注：新记账路径下 sim 占位坐标进表 = 反查可命中 = 记账全链通，比 r2 形态更干净。
 
-- **写通道消歧（A2）**：sim 写端 = **环境快照通道**（sim 后端模拟环境的一部分），非策略/动作逻辑写端——§2.8 字段申报「禁策略/动作逻辑写端」的措辞与之对齐（先例 = sim 后端环境条件发放回调对 `diamond_count`/`back_layout` 的 sim 侧写通道，`cw_sim_backend.py` L2802-2817 邻域）。
+- **写通道消歧（A2 + m-r3-2）**：sim 写端 = **环境快照通道，写通道 = `gs.observe`**（先例同款——sim 环境快照写也是 observe 形态，`cw_sim_backend.py` L2808-2809「三写 observe 通道 sig 由回调内构」即 `diamond_count`/`back_layout` 环境快照写）；**禁 `write_logic`**（会把伴随域写成逻辑态，破坏 observe-vs-logic 失配告警语义）。
 - **落点** = sim 后端 tick 层（实施角色按 `cw_sim_backend` 主循环现行结构选位），逻辑 = 名单覆盖差 reconcile（**按计数差 append，非按名存在性跳过**——同名 2 件只 append 1 条会让第二条反查/记账消费缺位）：
 
 ```python
 # 语义:名单(gs.equips)中每名的条目数 − 坐标伴随域该名条目数 = 差额,
 # 差额 > 0 → 逐差额 append 占位坐标(同名 2 件 1 坐标场景 = 差 1 补 1,
-# 非存在性跳过)。占位常量 = 装备区 rect 中心附近固定值(如 (1769, 400));
-# sim 环境快照,机械段静默不消费(反查可命中,记账正常),禁实机消费占位
-# (实机恒观察写真值)。伴随域 None(未就绪) → 跳过(等观察/名单就绪)。
+# 非存在性跳过)。
+# [占位唯一化(M-r3-2):占位亦须满足坐标↔条目一一对应——反查按坐标
+#  首中语义,同值占位会反查错名污染 sim 逻辑账。形态 = 基值 + 全局
+#  占位序号偏移:(1769, 400 + 13*k),k = sim 后端维护的占位递增序号
+#  (伴随域 sim 局只增不减,序号恒新,无重排冲突面)。
+#  占位 = sim 环境快照,机械段静默不消费(反查可命中,记账正常),
+#  禁实机消费占位(实机恒观察写真值)。
+#  伴随域 None(未就绪) → 跳过(等观察/名单就绪)。
+#  写通道 = gs.observe(见上,禁 write_logic)。]
 # 申报语义 = sim-design §6.5 环境快照族。
 ```
 
-- `docs/develop/sr_od/application/currency_war/sim/sim-design.md` §6.5 邻域补申报行：「owned_equip_xy = 环境快照字段，sim 后端按名单计数差 append 占位（环境快照通道，先例 diamond_count），机械段静默不消费，禁实机消费占位」。
+- **sim 形态下 Obs(in_place) 帧的影响申报（m-r3-6②，r2 收割遗留补齐）**：sim 局交替机制的重观察帧行为 = 若 sim 局观察链不产 `owned_equip_xy`（无真机识别产出），伴随域恒占位态——重观察帧退化为无害空帧（占位表不被刷新也不被破坏，反查恒命中占位，交替机制语义自洽）；若 sim 侧行为产实读键（宿主观察链的 sim 侧形态归 sim-design 辖域），亦为合法整表覆盖刷新。两分支均不破坏 §1.5 契约，无需 sim 侧特判。
+- `docs/develop/sr_od/application/currency_war/sim/sim-design.md` §6.5 邻域补申报行：「owned_equip_xy = 环境快照字段，写通道 = gs.observe，sim 后端按名单计数差 append 占位（占位按基值+序号唯一化，先例 diamond_count 环境快照写），机械段静默不消费，禁实机消费占位」。
 
 ### 2.14 `data/cw_equipment_data.py` — 注释同步（m6）
 
@@ -372,7 +394,7 @@ L49 注释「与执行边定位读（`prep_actions._owned_grid_locate`，全库�
 3. sim 分支：`mechanical_io_allowed()` 为假 → 机械段静默跳过（现状保留；sim 占位坐标不被机械消费，反查记账照走）。
 4. 实机机械段：`mouse_move((src_cx, src_cy))` 防吞点击 → `PREP_DRAG_SETTLE_WAIT_S` 固定等待（非判效）→ `controller.drag_to(start=(src_cx, src_cy), end=target, hold_time=0.5, duration=1.5)` → 1.5s 固定等待（MCP drag 异步落地）——等待常量与拖拽参数逐字沿用现状。
 5. `self.park_cursor(after_wait=0.1)`（`CwOperation` 基类方法自带 sim 零光标静默，剥 `ex._op` 依赖）。
-6. 自上报：`gs = game_state_from_ctx(...)`；`report_action_wear_equip_param(gs, action, ChannelSig(...))`——签名不变；kernel 侧坐标反查记账（§2.11，op 零感知）；round detail 日志含 `item_name/char_name`（名称唯一机械面消费 = 日志）。
+6. 自上报：`gs = game_state_from_ctx(...)`；`outcome = report_action_wear_equip_param(gs, action, ChannelSig(...))`——签名不变；kernel 侧坐标反查记账（§2.11，op 零感知）；**outcome.applied=False 时 round detail 追加拒单事实**（「记账拒单:<码>(拖拽已发生,账未落)」——M-r3-1 修法①，直调方经 round 结果感知拒单；机械成功语义不变）；round detail 日志含 `item_name/char_name`（名称唯一机械面消费 = 日志）。
 7. round 结果：`round_success(detail)`。**「owned 网格未定位到 …」round_fail 通道消失**；`prep_actions._PREP_RECEIPT_BLOCK_CODES` L98-102 泛化行保留（工具原子族仍产出），注释补声明「WearEquip 侧供给已随坐标显式化退役」。
 
 ### 4.3 「体内零 CV-diff 验穿」对账语义安置
@@ -398,10 +420,12 @@ L49 注释「与执行边定位读（`prep_actions._owned_grid_locate`，全库�
    - 实机形态（fixture_controller，screen_info 真档案 → 期望值从同源 yml 派生）：拖拽调用记录断言 `start == (src_cx, src_cy)`、`end == 前排-N rect 中心 x + y1+21`。
    - **后排 slot > 6 新行为**：`back_slot_count=7/8/9` + 对应档 area → 拖点落 `后排7槽-N` 族（§7.5 行为修复锁测）。
    - `env=None` 形态全链；sim 形态（port 关闭 → 机械零调用 + 自上报照走）；`with fast_sleep(): op.run()`。
+   - **round detail 拒单码（M-r3-1①）**：种子使上报拒单（坐标不在伴随域）→ 断言 round_success 且 detail 含「记账拒单:wear_item_xy_unresolved（拖拽已发生,账未落）」；正常记账帧 detail 不含拒单段（锁 §2.2 detail 组装形态）。
 4. `test/sr_od/application/currency_war/kernel/cw_action_report/test_wear_equip.py`（r3 重写重点）
    - **反查命中**：种子坐标伴随域（名+坐标）+ 名单 + deployed 单位 → 上报 → 记账消费反查产物断言（owned −1 + `unit.equips` 合成链 + evidence 含反查名）。
    - **反查不到**：坐标不在表 / 表 None → `wear_item_xy_unresolved` 拒单零写断言。
    - **名称零消费锁测（r3 核心新测）**：同一 (src_cx, src_cy, row, slot) × `item_name`/`char_name` 取不同值（''/'任意名'/'与反查产物不同的名'）→ 记账结果逐位相同（锁「名称在记账面零消费」，宪法③对齐）。
+   - **禁消费窗口违反锁测（m-r3-5）**：种子坐标伴随域含坐标、名单**缺**该反查产物名 → 断言 `owned.remove` 抛 ValueError（锁零防御纪律——防未来有人加静默守卫把错账洗成静默）。
    - **槽位定位收窄**：slot 越界 / 空槽 → `wear_target_unit_missing` 拒单；`char_name` 任意值不再影响定位（身份核对删除回归）。
    - 既有合成链回归：穿着即合成 / 融合召唤 / 刃锻支照走（输入改反查产物后行为不变）。
 5. `test/sr_od/application/currency_war/operations/cw_screen/`（装配点，源在则改）
@@ -430,8 +454,8 @@ L49 注释「与执行边定位读（`prep_actions._owned_grid_locate`，全库�
   analyze_screen extras.owned_equips 元素 cx/cy 取(读完立刻用;连穿
   多件时框架侧每件穿后重观察刷新,读数以最近一帧 extras 为准);
   记账 = 按此坐标反查(用户裁定「动作 op 上报坐标,game state 根据坐标
-  找到内容」)——反查不到 = 记账拒单(wear_item_xy_unresolved),账不落,
-  重读 extras 换新坐标重试;
+  找到内容」)——反查不到 = 记账拒单(wear_item_xy_unresolved),账不落
+  (处置见下方契约 3:禁止补拖,交还框架决策循环);
 - 半固定槽位:row('front'|'back') + slot(排内画面物理槽位 1 基,
   前排 1-4/后排 1-N,记账目标定位键 = 该槽现任单位) + back_slot_count
   (后排槽数 6-9,front 行可省);
@@ -441,30 +465,40 @@ L49 注释「与执行边定位读（`prep_actions._owned_grid_locate`，全库�
 [记账反查契约(三条,迁移设计稿 §1.5 成文)]
 1. 反查时序不变式:上报反查消费拖前快照;重观察刷新必须晚于上报;
 2. 记账后→重观察前的坐标伴随域陈旧条目窗口禁消费(框架侧由穿戴/
-   重观察交替保证;直调方每件穿后重读 extras 即遵守);
-3. 反查唯一性前提:同一快照内坐标↔装备一一对应(单格单件);陈旧坐标
-   反查不到 = 拒单,重读重试即可。
+   重观察交替保证);
+3. 反查唯一性前提:同一快照内坐标↔装备一一对应(观察路径 = 单格单件
+   逐格分类保证);反查不到 = 记账拒单(wear_item_xy_unresolved,拖拽
+   已发生、账未落;round detail 会带拒单码)。**拒单后禁止补拖**(拖拽
+   已发生,再拖 = 二次拖拽)——处置 = 交还框架决策循环(由框架观察链
+   刷新对照表后自然重派),勿自行换坐标重试(重读 extras 取新坐标解不了
+   对照表陈旧,恒拒单);用旧坐标重试 = 盲拖错格+错账。反查命中但名单
+   缺条目 = 禁消费窗口违反,以异常响亮暴露,非拒单路径。
+   直调方无对照表刷新手段(观察工具只读不写状态)→ **连穿场景每件之间
+   需要一次对照表刷新,无刷新手段则按单件会话使用**(一坐标一调用一
+   观察对账,连穿交还框架)。
 
 MCP run_operation 示例:
   args={"src_cx":1740,"src_cy":210,"row":"front","slot":2,
         "back_slot_count":6,"item_name":"量产型装甲","char_name":"银狼"}
 
 守卫断言:row 非法/slot 越界/back_slot_count 域外 = AssertionError,
-禁兜底坐标。同名多条:候选按 extras.owned_equips 出现序,逐件分次调用
-(每次消费一个坐标,连穿时逐件间读最新 extras)。
+禁兜底坐标。同名多条:候选按 extras.owned_equips 出现序,每次调用消费
+一个坐标;直调方按单件会话使用(连穿交还框架决策循环,见上方契约 3)。
 """
 ```
 
 ### 6.2 skill 文档 `skills/sr-od-currency-war/references/screens/货币战争-备战.md` 条目 8 更新
 
-> 8. 穿装备：`CwActionWearEquipOp {"src_cx":N,"src_cy":N,"row":"front|back","slot":M,"back_slot_count":6,"item_name":"件名","char_name":"角色名"}`——拖装备栏指定装备到场上角色槽位。`src_cx/src_cy` = extras.owned_equips 里目标件元素的 cx/cy（**读最新一帧 extras 就传**——记账按坐标反查，陈旧坐标会记账拒单；同名件多条时逐件分次调用，每次用一个坐标，连穿多件时每件穿完重读一次 extras 再取下一个坐标）；`slot` = 目标排槽位 1 基（前排 1-4 / 后排 1-N），`back_slot_count` = 后排槽数（extras deploy_cap−4，front 行可省）；`item_name`/`char_name` 可省（纯日志）。穿完**重读一次 analyze** 对账（owned 少一件 / 目标角色详情装备栏多一件；穿着即合成时合成产物入角色装备栏）。
+> 8. 穿装备：`CwActionWearEquipOp {"src_cx":N,"src_cy":N,"row":"front|back","slot":M,"back_slot_count":6,"item_name":"件名","char_name":"角色名"}`——拖装备栏指定装备到场上角色槽位。`src_cx/src_cy` = extras.owned_equips 里目标件元素的 cx/cy（**读最新一帧 extras 就传**——记账按坐标反查，陈旧坐标会记账拒单）；`slot` = 目标排槽位 1 基（前排 1-4 / 后排 1-N），`back_slot_count` = 后排槽数（extras deploy_cap−4，front 行可省）；`item_name`/`char_name` 可省（纯日志）。**按单件会话使用**：一次调用穿一件，穿完重读一次 analyze 对账（owned 少一件 / 目标角色详情装备栏多一件；穿着即合成时合成产物入角色装备栏）；要连穿多件就每件走一轮「读 extras → 调用 → 重读对账」，下一件的坐标必须来自穿完并**经框架重观察刷新后**的读数——round detail 出现「记账拒单:wear_item_xy_unresolved」= 拖拽已发生但账未落，**禁止补拖**（再拖 = 二次拖拽），交还框架决策循环重派即可。
 
 （实施角色按现行 skill 写作规范润色；玩家 skill 只提 MCP 工具。）
 
 ### 6.3 开发侧文档
 
 - `docs/develop/sr_od/application/currency_war/game_state/fields.md`：新增 `#### 3.2.15c 装备库存坐标伴随域 owned_equip_xy`（语义 = 名→格心坐标列表 dict、同名多条列表多元素、1080p、决策消费面（发出面坐标源 + **记账面反查键** r3）与 occupied_equips 审计面的语义差；写入方 = 备战入口 heavy 观察装配点整表覆盖 + sim 环境快照通道按名单计数差 append 占位（先例 diamond_count）；禁策略/动作逻辑写端申报；**记账反查键用途申报** = §0 总契约首例）；同文件回执契约节补拒绝码三行变更（§2.11 词表表）。
-- 开发 skill `skills/sr-od-dev-currency-war/references/flow/action-op.md`：L122 WearEquip 行改写（显式起点/静态拖点/守卫三形/自上报坐标反查记账/交替+跳过双通道）；§1 或合适节补「**记账路径总契约（用户裁定）**：动作 op 上报实际动过的坐标，kernel 记账层用坐标伴随域反查具体内容记账，名称字段机械面与记账面均零消费；后续动作 op 迁移继承，不再逐个报批（首例 = WearEquip，changes/wear-equip-param-surface/design.md §0）」。
+- 开发 skill `skills/sr-od-dev-currency-war/references/flow/action-op.md`：L122 WearEquip 行改写（显式起点/静态拖点/守卫三形/自上报坐标反查记账/交替+跳过双通道）；新增**记账路径总契约条款（用户裁定，自足成文，m-r3-3：不引 changes/ 路径，长期存活物铁律）**，草文：
+
+> **记账路径总契约（用户裁定）**：动作 op 上报它实际动过的坐标，kernel 记账层用观察产出的坐标伴随域对照表反查出具体内容再记账——名称从「记账键」降级为「反查产物」；名称字段在 op 机械面与 kernel 记账面均零消费（宪法③原样成立）。三条契约：①反查时序不变式——上报反查消费拖前快照，重观察刷新必须晚于上报；②记账后→重观察前的坐标伴随域陈旧条目窗口禁消费（框架侧由动作/重观察交替保证）；③反查唯一性前提 = 同一快照内坐标↔条目一一对应（观察路径逐格分类保证，sim 占位路径唯一化保证）；反查不到 = 拒单零写（拒单发生在拖拽后，禁止补拖，处置 = 交还框架决策循环刷新对照表重派）；反查命中但名单缺条目 = 禁消费窗口违反，以异常响亮暴露（零防御），非拒单路径。全动作 op 迁移继承本契约，不再逐个报批；首例 = WearEquip。逐 op 差异（如坐标伴随域字段名/反查目标域）随各 op 迁移设计稿在迭代内申报，收尾随正本条款承载。
 - `flow/prep-contract.md` 三处：§1 坐标系节 L9 族描述收窄（WearEquip 升级动态坐标形态）；**L27-28 §3 取值时机节**：坐标参数化动作取值时机申报表补 WearEquip 行（src_cx/src_cy = 入口观察快照 + 环内重观察刷新；row/slot/back_slot_count = 生成期快照）；§6 活缺口 G1 行补注（WearEquip 已随坐标伴随域 + 重观察交替补防线，G1 现役辖域收窄为工具原子/开件族）。
 - `flow/strategy-contract.md` §4 / `flow/screen-op.md` §2（坐标伴随域规范条款，并行批 44297f855）：无需改动（该规范已引 owned_equip_xy 为先例）；本设计稿全文术语已对齐「坐标伴随域」定名（A3）。
 - `docs/develop/sr_od/application/currency_war/sim/sim-design.md` §6.5 邻域：补环境快照通道申报（§2.13）。
@@ -472,7 +506,7 @@ MCP run_operation 示例:
 
 ## 7. 风险与行为变化清单
 
-1. **行为变化：实机环内新获得件穿戴延后一帧**（现状按名现读可同帧穿；迁移后坐标伴随域无该件条目 → 发出面跳过 → 帧终结重观察后重派）。遥测分键基线变化（新增 `m7_equip_xy_pending`/`equip_plan_xy_all_pending`/`m7_equip_reobserve`），首局对照判读。
+1. **行为变化：实机环内新获得件穿戴延后一帧**（现状按名现读可同帧穿；迁移后坐标伴随域无该件条目 → 发出面跳过 → 帧终结重观察后重派）。遥测分键基线变化（新增 `m7_equip_xy_pending`/`equip_plan_xy_all_pending`/`m7_equip_reobserve` + **round detail 拒单文案**（「记账拒单:…」段，M-r3-1 修法①——journal 判读面新增段，§5.3 锁测），首局对照判读。
 2. **行为变化：每件穿戴 +1 环内重观察帧**（方案 A 交替）。末件穿戴后仍发一帧重观察 = 每访问一次冗余 heavy（A4：保留不改，成本申报即此——换取时序不变式 1 的无条件成立，不做「末件免观察」优化，避免计划尾部判定复杂化）；visit 动作数预算内自收敛。
 3. **sim 穿装链保活（M3，本批必做）**：占位坐标同步随批落（复审注：新记账路径下占位进表 = 反查命中 = 记账全链通）；实施顺序 §8 强制同 commit，缺一不合。
 4. **MCP agent 拖拽可靠性待实机验证**：op 化走框架拖拽原语与手动路径不同（skill 条目 8 手动 4 连败），首次实机验证是硬验收；同症状复现属执行层拖拽链可靠性问题（修参数不回退设计）。
@@ -503,5 +537,5 @@ MCP run_operation 示例:
 
 - **裁定落地形态**：op 上报它实际动过的坐标（`src_cx/src_cy`），kernel 记账层用观察产出的坐标伴随域对照表（`owned_equip_xy`）反查出具体内容再记账；名称校验（`wear_item_not_owned`）与 char_name 身份核对（`_locate_unit` L257）整个删除，换「反查不到 → 拒单零写（`wear_item_xy_unresolved`）→ 跳过自愈通道」；目标单位身份改由槽位反查（row/slot → 槽现任单位，槽空 = 拒单）。
 - **宪法③逐面核验**：名称字段（`item_name`/`char_name`）在 **op 机械面**零消费（不定位、不校验、零分支，仅日志）——原条文「不参与校验与定位、仅日志」成立；在 **kernel 记账面**亦零消费（r3 重写后 `param.item_name`/`param.char_name` 于 `cw_action_report/wear_equip.py` 零残留，记账键 = 坐标、记账载荷 = 反查产物）——r2 曾申报的「记账面事实消费例外」随重写消除，无例外需要申报。
-- **总契约成文**：本裁定 = 全部 22 个动作 op 迁移的记账路径总契约（动作 op 上报坐标 → kernel 坐标伴随域反查 → 名称降级为反查产物/日志语义），已按产出要求成文于 §0 与 §6.3（action-op.md 补条），后续 op 迁移直接继承、不再逐个报批；wear-equip = 第一个适用者。
+- **总契约成文**：本裁定 = 动作注册表全集迁移的记账路径总契约（动作 op 上报坐标 → kernel 坐标伴随域反查 → 名称降级为反查产物/日志语义），已按产出要求成文于 §0 与 §6.3（action-op.md 补条款，自足成文不引 changes/ 路径），后续 op 迁移直接继承、不再逐个报批；wear-equip = 第一个适用者。
 - **迭代收尾义务**：本节与 §0 总契约在迭代收尾（代码落地后）随正本区承载（action-op.md 正本条款 = §6.3 已列；本 changes/ 文档寿命 = 迭代，正本自足后本稿可删）。
