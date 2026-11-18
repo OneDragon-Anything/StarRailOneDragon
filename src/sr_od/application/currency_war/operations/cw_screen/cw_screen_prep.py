@@ -927,9 +927,8 @@ class CwScreenPrep(CwOperation):
                 f'{key} 终结动作未发出(终结口失败透传):'
                 f'{round_result.status or ""}')
         if op_cls is CwActionStartBattleOp:
-            # 出战提前终结(发出即终结——点击序列完成即返回主循环
-            # 战斗分支;点击序列事实经执行器 last_launch_ok 旁路供 cw_loop
-            # 动作发出核)。
+            # 出战提前终结(发出即终结——出战单击完成即返回主循环战斗
+            # 分支;单击事实经执行器 last_launch_ok 旁路供动作发出核)。
             return self.round_success('出战(交回外循环战斗分支)',
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionOpenShopOp:
