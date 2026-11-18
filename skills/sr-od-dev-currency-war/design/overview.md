@@ -2,7 +2,7 @@
 
 ## 定位
 
-货币战争(Currency War)自动化的**开发·维护·自主推进操作手册**,项目内 dev skill(跟仓库走,不独立发布)。回答三件事:知识在哪(单一源地图)、按什么纪律改(设计先行+三份文档前置)、用什么验证与运维(反馈梯度+实机运维)。
+货币战争(Currency War)自动化的**开发·维护·自主推进操作手册**,项目内 dev skill(跟仓库走,不独立发布)。回答三件事:代码架构与铁律是什么(SKILL.md §1)、任务从哪个门进(§2 入口分诊)、知识在哪与行为变更怎么同步文档(§3 单一源地图+§4)。
 
 ## 边界
 
@@ -13,18 +13,23 @@
 ## 构成
 
 - `SKILL.md`:导读 + 入口分诊表(任务→门,路由到各域 references 主线)+ 单一源地图(全部指针的集中地)+ 文档同步(细则按节下沉 references)。
-- `references/sim-testing.md`:模拟测试专属说明(边界+找问题三步主线(统计→筛坏指标→挑局复盘);A/B 归 strategy-work「验证」;批组织在 autonomous-loop的分诊与固化)。
+- `references/sim-testing.md`:模拟测试专属说明(边界+找问题三步主线(统计→筛坏指标→挑局复盘);A/B 归 strategy-work「验证」)。
 - `references/telemetry-reading.md`:实机局数据判读方法论(判读流程与先取尺子门、查询工具、观察面全量清单、视图覆盖矩阵、采集缺口)。
 - `references/runtime-ops.md`:实机运维细则(启动与重启、早停判据、局间交接序、残局画面清单、监控栈与哨兵脚本组)。
 - `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层、钩子统一使用与产物路径)。
 - `references/version-update.md`:版本更新 CW 域适配方法(场景判型扩充/换赛季重做、按域依赖顺序的 checklist 与验收判据、换赛季特有面、已知坑;总流程挂 sr-od-dev-version-update-adaptation 路由表)。
 - `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
 - `references/strategy-work.md`:策略工作统一说明(策略是什么与骨架、改前、开关落地、验证、单帧测试)。
-- `references/autonomous-loop.md`:CW 编排资产(定时任务提醒网角色与提示词模板/实机监控自执行模板/策略审查/哨兵报警消费;定时任务消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode)。
+- `references/autonomous-loop.md`:CW 实机探索期编排细则(实机探索 agent 协议/窗口所有权串行/问题处置循环/传话纪律;开启停止仪式与通用编排原则单一源=od-dev-agent-autonomous-mode)。
 - `design/`:本文件;ADR(why)仅经用户命令创建(默认无)。
 
 ## 与其它约定层的分工
 
 - 全局/项目 AGENTS:always-on 通用纪律(工作流级);本 skill 只管 CW 特定操作,通用部分不复述。
 - `docs/`:知识与设计本体;本 skill 是「怎么消费/维护它们」的操作规程。
-- `.debug/progress/` 当前活跃迭代目录的入口 `进度.md`:运行状态;本 skill 的操作对象(读写),不是知识源(多迭代三层结构,规范=od-dev-progress-tracking §2.5)。
+- `.debug/progress/` 根下的当前活跃迭代目录:运行状态;本 skill 的操作对象(读写),不是知识源(账本规范单一源=od-dev-progress-tracking)。
+
+## 动机记录
+
+- **§1.4 参数面规范(用户裁定)**:动作原语最初按 kernel 会话语义设计参数面(名称定位/槽位缺省走 gs 现算),暴露三类缺口——名称在重复实体下定位歧义(实拍:装备栏同名多条)、个别分支 gs 缺席即断言崩溃、参数 dataclass 缺 `from_dict` 导致 MCP JSON 通道构造不出(实机局 agent 无法调用穿装 op)。裁定:执行路径零 gs 依赖、参数面三分法(固定槽位/半固定/动态坐标)、名称降级语义参数、坐标新鲜度归调用方、迁移按 op 切四角色子代理流水线(设计→review→实施→review)。刻意不采纳:op 落点前校验(违反动作 op 纯机械契约,新鲜度归调用方纪律)、按名称定位(重复实体歧义不可解)。
+- **自主推进形态重写为实机探索期(用户裁定)**:旧形态(定时任务提醒网+实机监控角色+哨兵报警消费接入+模拟常开+局终自动派复盘)服务 server 自动跑局时代,随阶段切换整体废弃;新形态 = 编排者派实机探索 agent 按游玩 skill 亲自玩、遇问题停车汇报走诊断→设计→对抗评审(每轮全新子 agent)→实现→终审→实机验证循环,编排者全程只调度与传话不做技术判断。刻意不采纳:在旧文档上保留定时任务模板待将来恢复使用(用户裁定需要时重写,不留尾巴)。

@@ -122,7 +122,7 @@ $env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.telemetry
 5. **events** 视图观察事件行(obs_event)逐条定位根因（定位不了不进下一局）——旧 anomalies 视图已随旧流拆除；冲突/异常证据面 = journal 行型 2 在账直读（obs_conflicts 历史行 = 冻结档案只读）；
 6. 视图外维度按需取:优先 journal 行间差分(行行自足,直查 `state/journal.jsonl`);「决策流程明细」(pair/意向/姿态)旧流已停写、新数据面未落地,暂只能从回执 `reason`/`detail` 与状态变化时序侧面读;仍不够的「为什么/如果」问题走**回放**(用当期代码对档案状态现算,单帧测试同款机制)——不为此读流;
 7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度账本中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
-8. **局终的深度复盘不在本流程**——实机监控局终派单走 [match-review.md](match-review.md)「单局复盘协议」(干净子 agent,逐节点玩家打法对照);本流程管流程卫生与视图判读,协议管「打得对不对」。
+8. **局终的深度复盘不在本流程**——编排者按需派单走 [match-review.md](match-review.md)「单局复盘协议」(干净子 agent,逐节点玩家打法对照);本流程管流程卫生与视图判读,协议管「打得对不对」。
 
 ## 已知缺口(判读时心里有数)
 
@@ -146,7 +146,7 @@ $env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.telemetry
 - **名×帧粒度键(逐帧累加型,状态暴露计数)禁按事件频度判读**:绝对值只作跨局带对照;时滞/摩擦类问题盯轮差分键;判「某键异常」前先核写入语义(事件计数 vs 状态暴露),单一源 = 写入点注释——按事件频度误读状态暴露键会立一轮假排查。
 - 改动效果对照:改策略后下一局 `--recent 5` 并列对比(测试绿≠实跑行为对)。
 - **sim 批次同法可查**:sim 批判读走 skills 侧 `cw_batch_stats`(sim 自写账本;判读 CLI `--sim-batch` 入口已随旧流停用,journal 侧 sim 视图待统一账迁移后续批补建),详见 [sim-testing.md](sim-testing.md)——本文档案判读手法按各账本面对应成立,生产判读 CLI 不指向 sim 产物目录。
-- 判读定位的策略行为病**必须固化 sim**(检查项/单帧测试),闭环纪律见 [autonomous-loop.md](autonomous-loop.md) 实机监控第 4 步;需要锁死的确定行为固化成单帧测试,见 [strategy-work.md](strategy-work.md)「单帧测试」。
+- 判读定位的策略行为病**必须固化 sim**(检查项/单帧测试)——只修不复盘,同类问题还会再犯;需要锁死的确定行为固化成单帧测试,见 [strategy-work.md](strategy-work.md)「单帧测试」。
 
 ## 数据侧纪律(先查档,再动手)
 

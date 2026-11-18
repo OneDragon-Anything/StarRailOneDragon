@@ -1,4 +1,4 @@
-"""r229c 事件哨兵 v5.4(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留 + v5.3 备战环空转 + v5.4 推进判据收敛)。
+"""事件哨兵 v5.4(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留 + v5.3 备战环空转 + v5.4 推进判据收敛)。
 
 ## 检测面(当前语义)
 
@@ -14,7 +14,7 @@
   整体重写证据文件(cw_hit_alert.md,内容=本纪元全部已报签名+首见行摘录+
   首见时刻)后**驻留续侦不退进程**;纪元内同签名只报一次(复发升级由 STALL
   独立承担,续侦面重复报无增量信息)。非退出事件:消费方核读证据即可,
-  不重武——重武三步会杀掉在岗实例(见 autonomous-loop §3)。
+  不重武——重武三步会杀掉在岗实例(见 runtime-ops.md「哨兵脚本组」试用期纪律)。
   回退开关 CW_SENTINEL_HIT_EXIT_ALL=1 恢复 v5 全即退。--replay 下『执行失败』
   『stall_watch』的打印标签同为 HIT-CONT(replay 本就不退出,观察面)。
 - [SENTINEL-STALL]:近 STALL_WIN 秒同特征 WARNING/ERROR 行 ≥ STALL_N 次
