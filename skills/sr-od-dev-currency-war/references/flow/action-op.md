@@ -60,7 +60,7 @@
 - **注册表单一源** = `operations/cw_op/cw_action_registry.py`(动作类型清单条目类 → 动作 op 类一张表;`action_op_for`/`action_op_class_for` 全动作唯一注册点;行序 isinstance 首中即返)。清单外类型 = AssertionError 显式报错(非法返回 = 策略器 bug,禁静默跳过)。
 - **备战域动作全集**(参数面单一源 = `kernel/cw_vocab.py` 词表):`CollectOre(points)`(有序晶矿心坐标点击列,挑选逻辑归决策侧)/`OpenBox(slot)`/`OpenTome(slot)`/`OpenBookcard(slot)`(开件三类 slot 必填,备战栏物理槽 1 基,None 语义已随参数面迁移废除)/`SellBench(bench_idx, income?, reason)`(bench_idx = 状态容器槽表下标 0-8 基 0;income = 预期回金记录字段)/`SellDeployed(deployed_idx, back_slot_count, income?, reason)`/`MoveUnit(src_domain, src_slot, dst_domain, dst_slot, back_slot_count)`(统一拖动,部署统一批:front/back/bench 任意源 → 任意目标四元组,单坐标系——front 槽 1-4 基 1 / back 槽 1-N 动态基 1(N=`back_capacity_of`;op 参数 = `back_slot_count` 布局档快照 6-9,非 back 域忽略)/ bench 槽 0-8 基 0,越界 fail-closed)/`WearEquip(src_cx, src_cy, row, slot, back_slot_count)`(坐标参数化穿装单步)/工具原子七类(`tool_cx, tool_cy` 源坐标七类通用;双模类冶金炉/特权赋予卡另带 `tgt_cx, tgt_cy`,char 模式另带 `row, slot`)/`LevelUp`/`OpenShop`/`StartBattle`/`Obs(scope)`(重观察动作:in_place = 环内重观察零点击零拖拽;outer_loop = 返回主循环重观察,分支拦截型;现役接入调用域 = 备战决策环)。
 - `SellBench.reason` = 卖出原因备注字段,仅供日志归因、执行代码不读(**记录非指令**);发出侧取值封闭集 = `cw_prep_actions.SELL_BENCH_REASONS`。
-- 动作实例键 `action_key(action)` = 类型+行为参数——屏蔽/失败计数的幂等粒度。
+- 动作实例键 `action_key(action)` = 类型 + 参数字段(词表 `action_key_exclude` 排除面除外:全族 `route_tag` 与 pick 族归因载荷字段);现役消费 = 备战决策环日志标识与终结口透传(屏蔽计数消费者已退役,幂等键语义保留)。
 - 三刷新建议动作(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)不经注册表(分屏形态各异,刷新链由画面 op 内置动作承载);执行语义全域规范 = **刷新即终结、结束本次访问返回主循环重观察 + 闸 = 剩余次数观察真值**。
 
 ## 3. 上报函数族与回执契约

@@ -153,7 +153,8 @@ class ShopCard:
 # 单一源 = sell_gate 装配 A)、非放行证据(禁检查器采信)。值域现役 =
 # m4_fuel_sell / interest_prep(单帧测试 test_route_tag_whitelist 校验映射表);
 # kw_only 缺省 '' ⇒ 构造调用全向后兼容;action_key_exclude metadata =
-# 不入动作实例键,幂等粒度 = 行为参数(route_tag 与归因字段同规)。
+# 不入动作实例键——仅 route_tag 自身不入键,归因字段入键为现役实态
+# (键面单一源 = action_key docstring)。
 
 
 @dataclass
@@ -1030,7 +1031,7 @@ class CwActionOpenShopParam:
 class CwActionStartBattleParam:
     """出战(环出口;单击原子)。零收尾零验证机械单发:定位按钮后点击一次即
     返回主循环(未发出 = 找不到按钮返 False),点击后的弹窗渲染与画面转移
-    归返回后下一帧观察裁决(弹窗处理归独立弹窗 op)。CwActionStartBattleParam 豁免屏蔽。"""
+    归返回后下一帧观察裁决(弹窗处理归独立弹窗 op)。"""
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -1384,12 +1385,19 @@ PICK_ACTION_TYPES: tuple = (
 
 
 def action_key(action: CwAction) -> str:
-    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;CwActionSellBenchParam(3) 与 CwActionSellBenchParam(5) 各自计数)。
+    """动作实例键 = ``类型名(排除后字段 dict)``;带 ``action_key_exclude``
+    metadata 的字段不入键。
 
-    带 ``action_key_exclude`` metadata 的字段不入键(现役 =
-    CwActionSellBenchParam.reason 卖出归因 + CwAction.route_tag 发出分支路线标签
-    [旗标状态机 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
-    身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
+    排除面现役清单(符号名,grep 可复核):全族 ``route_tag`` +
+    ``CwActionPickSupplyParam.char_name/norm_item/extra_norm_items`` +
+    ``CwActionPickInvestStrategyParam/PickInvestEnvParam.norm_name/margin``。
+
+    入键面口径:行为参数与归因/记录类字段(reason/income/expect/
+    convert_reason/auth_basis)均入键——键携带归因供日志判读;名称字段
+    入键 = 测试锁定形态(指针 = sr-od-test test_cw_vocab.py 镜像测试)。
+
+    现役消费 = 备战决策环日志标识与终结口 key 透传(cw_screen_prep.py);
+    屏蔽/失败计数消费者已退役,幂等键语义保留作调用方约定。
     """
     import dataclasses
 
