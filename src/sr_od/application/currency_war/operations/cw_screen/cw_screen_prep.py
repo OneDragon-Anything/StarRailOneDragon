@@ -804,7 +804,7 @@ class CwScreenPrep(CwOperation):
         既有路径一步不动。"""
         match = self._match()
         # ===== 段1 子态识别四查(特殊流程;处置在决策动作 node 段3)=====
-        # Match 缺席(局外/桩):第 0 查与 b 查按否处理,落到下方 match
+        # Match 缺席(局外/桩):四查全部按否处理,落到下方 match
         # 缺席门(迭代设计 §2.3 缺席防御申报)。
         if match is not None and match.locked_resume:
             # 第 0 查:锁定确认态(含段3b retry 耗尽 → 主循环重派发的
@@ -812,8 +812,8 @@ class CwScreenPrep(CwOperation):
             # 动作 node,访问内零额外载体。
             return self.round_success('锁定确认态直达出战段(段3b)', wait=0)
         screen = self.last_screenshot
-        if self.round_by_ocr(screen, '返回投资策略选择',
-                             lcs_percent=0.9).is_success:
+        if match is not None and self.round_by_ocr(
+                screen, '返回投资策略选择', lcs_percent=0.9).is_success:
             # a 查:返回按钮子态(上游投资策略屏处理失败的 symptom,用户
             # 定性随迁)。lcs_percent=0.9 防线(随迁):与「请选择投资策略」
             # 共享「选择投资策略」子串(6/8=0.75)在默认阈值之上,误匹配会
@@ -876,7 +876,8 @@ class CwScreenPrep(CwOperation):
         # (死循环面);恢复局例外:商店锁死只能出战,出战链照常完成节点
         _cur_slot = next((s for s in (read_node_sequence(self.ctx, screen) or [])
                           if s.state == 'current'), None)
-        if _cur_slot is not None and _cur_slot.node_type == 'supply':
+        if (match is not None and _cur_slot is not None
+                and _cur_slot.node_type == 'supply'):
             _gs_c = None
             try:
                 _gs_c = game_state_from_ctx(self.ctx)
@@ -966,6 +967,12 @@ class CwScreenPrep(CwOperation):
         (现状同语义)。
         """
         match = self._match()
+        # 缺席门:谓词判 session(非观察门的 strategy)——act 下游首消费 =
+        # session(下方裸解崩溃点),门判消费面直击;与观察门同文案不同谓词
+        # 是刻意选择,禁按文案对齐谓词(局外 session 空 ∧ strategy 意外非空
+        # 形态下两门行为必须分叉)。
+        if match is None or match.session is None:
+            return self.round_fail(status='无 cw_match(对局未初始化)')
         session = match.session
         # ===== 段3 特殊流程三处置(先于段序号置位,子态帧不动 serial)=====
         if match.locked_resume:
