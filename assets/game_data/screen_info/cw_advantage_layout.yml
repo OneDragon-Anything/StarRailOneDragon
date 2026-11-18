@@ -1,0 +1,201 @@
+screen_id: cw_advantage_layout
+screen_name: 货币战争-优势布局
+pc_alt: false
+area_list:
+- area_name: id_mark-标题-优势布局
+  id_mark: true
+  pc_rect:
+  - 95
+  - 55
+  - 205
+  - 95
+  text: 优势布局
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: id_mark-页签-常驻优势
+  id_mark: true
+  pc_rect:
+  - 598
+  - 103
+  - 958
+  - 150
+  text: 常驻优势
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 页签-赛季优势
+  id_mark: false
+  pc_rect:
+  - 963
+  - 103
+  - 1332
+  - 150
+  text: 赛季优势
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 代币-布局代币计数
+  id_mark: false
+  pc_rect:
+  - 1650
+  - 45
+  - 1810
+  - 85
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-返回
+  id_mark: false
+  pc_rect:
+  - 1836
+  - 44
+  - 1892
+  - 92
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: currency_war
+  template_id: cw_adv_layout_back
+  template_match_threshold: 0.8
+  color_range: null
+  goto_list:
+  - 货币战争-大厅
+- area_name: 按钮-重置布局
+  id_mark: false
+  pc_rect:
+  - 1848
+  - 148
+  - 1892
+  - 190
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 计数-已布局优势
+  id_mark: false
+  pc_rect:
+  - 1560
+  - 148
+  - 1740
+  - 185
+  text: 已布局优势
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 节点-攻击强化
+  id_mark: false
+  pc_rect:
+  - 370
+  - 340
+  - 460
+  - 435
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 节点-生命强化
+  id_mark: false
+  pc_rect:
+  - 553
+  - 477
+  - 643
+  - 570
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 节点-击破强化
+  id_mark: false
+  pc_rect:
+  - 365
+  - 617
+  - 455
+  - 712
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 详情-强化名
+  id_mark: false
+  pc_rect:
+  - 395
+  - 872
+  - 700
+  - 920
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 详情-描述
+  id_mark: false
+  pc_rect:
+  - 395
+  - 925
+  - 1520
+  - 992
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 详情-分类标签
+  id_mark: false
+  pc_rect:
+  - 112
+  - 962
+  - 328
+  - 1005
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-布局
+  id_mark: false
+  pc_rect:
+  - 1608
+  - 905
+  - 1848
+  - 968
+  text: 布局
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
