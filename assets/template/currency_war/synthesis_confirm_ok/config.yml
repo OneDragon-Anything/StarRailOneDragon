@@ -1,0 +1,8 @@
+sub_dir: currency_war
+template_id: synthesis_confirm_ok
+template_name: 按钮-合成浮层通过
+template_shape: rectangle
+auto_mask: true
+point_list:
+- 1772, 374
+- 1871, 430

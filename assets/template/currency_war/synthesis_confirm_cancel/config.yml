@@ -1,0 +1,8 @@
+sub_dir: currency_war
+template_id: synthesis_confirm_cancel
+template_name: 按钮-合成浮层取消
+template_shape: rectangle
+auto_mask: true
+point_list:
+- 1657, 374
+- 1758, 430
