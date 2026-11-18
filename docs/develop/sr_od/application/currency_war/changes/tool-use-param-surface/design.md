@@ -45,7 +45,7 @@
 
 字段集定稿（`kernel/cw_vocab.py` 七类重写，L558-659 现值）：
 
-- **双模类**（冶金炉/特权赋予卡）：`target_kind: str`（'equip'|'char'，值域封闭）、`tool_cx: int`、`tool_cy: int`（必填位置参数）；`tgt_cx: int = 0`、`tgt_cy: int = 0`（equip 模式目标件格心；**0 = 未传哨兵**，1080p 装备区真实坐标恒非零、sim 占位为负值哨兵（`cw_sim_backend.py:5240`），0 只表达缺省——守卫见 §1.2）、`row: str = ''`、`slot: int = 0`、`back_slot_count: int = 6`（char 模式目标，front 行 back_slot_count 忽略——与 `CwActionWearEquipParam.back_slot_count`（`cw_vocab.py:542`）同口径）；`item_name: str = ''`（equip 模式目标件名，**降级为可选语义参数**——现形态 `cw_vocab.py:571/592` 是必填语义位，迁移后纯日志）；`char_name: str = ''`（char 模式目标角色名，可选语义参数，新增）；`route_tag` 保留（kw_only + `action_key_exclude`，`cw_vocab.py:574-575` 全族契约不变）。
+- **双模类**（冶金炉/特权赋予卡）：`target_kind: str`（'equip'|'char'，值域封闭）、`tool_cx: int`、`tool_cy: int`（必填位置参数）；`tgt_cx: int = 0`、`tgt_cy: int = 0`（equip 模式目标件格心；**0 = 未传哨兵**，1080p 装备区真实坐标恒非零、sim 占位为负值哨兵（`cw_sim_backend.py:5240`），0 只表达缺省——守卫见 §1.2）、`row: str = ''`、`slot: int = 0`、`back_slot_count: int = 6`（char 模式目标，front 行 back_slot_count 忽略——与 `CwActionWearEquipParam.back_slot_count`（`cw_vocab.py:542`）同口径）；`item_name: str = ''`（equip 模式目标件名；现形态 `cw_vocab.py:571/592` 已带缺省、本就可选——本批改造 = 加 tgt 坐标键后，item_name 定格纯日志语义位：现役 equip 分支在库检查（`tool_use.py:233/390`）退役后其非日志消费归零）；`char_name: str = ''`（char 模式目标角色名，可选语义参数，新增）；`route_tag` 保留（kw_only + `action_key_exclude`，`cw_vocab.py:574-575` 全族契约不变）。
 - **char 单模类**（扳手/精密扳手/两投影仪/令牌）：`tool_cx: int`、`tool_cy: int`、`row: str`、`slot: int`（必填位置参数）；`back_slot_count: int = 6`、`char_name: str = ''`（可选语义参数，新增）、`route_tag` 保留。
 
 [索引/坐标定义]（逐字段注释三要素，随类 docstring 落）：`tool_cx/tool_cy` 坐标系 = 1080p 全局像素 owned 工具条目格心，取值时机 = 发出面决策帧坐标伴随域快照；`tgt_cx/tgt_cy` 同域 owned 目标件格心；`row/slot` = 画面物理排槽位（词表通用声明 `cw_vocab.py:11-14`），生成期快照，记账面兼目标定位键（`_resolve_row_unit` 按 row/slot 反查槽现任单位）；`back_slot_count` = 后排槽位画面物理总数 n（值域 6-9 = `obs.cw_back_layout._LAYOUT_PREFIX` 键域）。
@@ -96,7 +96,7 @@ run_operation args 示例（冶金炉 equip 模式）：
 
 ### 2.3 机制设计（发出点逐处）
 
-- **entry 第 7 步（唯一工具发出点 + 穿装发出点之一，`entry.py:1116-1243`）**：标志检查**上提至步首**（现-flag 检查在穿戴门 `entry.py:1138-1148` 内层，工具段在门外 `entry.py:1175`——「标志置位（上帧发的是工具）∧ 本帧无穿戴候选」时穿门不进、工具段照跑 = 陈旧消费漏洞）。上提后置位帧：清标志 → 产 `Emitted(CwActionObsParam(scope='in_place'), True, 'm7_equip_reobserve')` → **提前 return**（穿戴与工具两段全跳过，置位帧零参数构造 = 「窗口内无第二次消费」的强保证；现状穿-标志分支不 early-return、工具段照构造的形态随批收紧，行为申报 §9 条 7）。tag 字符串 `m7_equip_reobserve` 保留不改（遥测分键零 churn；语义注释补「穿装与工具 aftermath 共用」）。
+- **entry 第 7 步（唯一工具发出点 + 穿装发出点之一，`entry.py:1116-1243`）**：标志检查**上提至步首**。现状漏洞 = flag 检查缩在穿戴门内层（`entry.py:1138-1148`）而工具段在门外（`entry.py:1175`），按「标志置位 ∧ 本帧穿戴门过不过」拆两子形态：**门外子形态**（本帧无穿戴候选，穿戴门整体不进）= 标志无人消费、工具段带陈旧伴随域坐标直发——盲拖 + 错账实锤；**门内子形态**（本帧有穿戴候选）= Obs 占住首位、清标志后落入工具段照构造——陈旧坐标工具原子被 Obs 挡住丢弃 = 白构造/白计数 + 多一帧冗余 Obs 形态（不炸账，纯浪费；该子形态的盲拖链仅被「Obs 排首位」这一列表序事实挡住，非结构保证，序动即实链）。上提后置位帧：清标志 → 产 `Emitted(CwActionObsParam(scope='in_place'), True, 'm7_equip_reobserve')` → **提前 return**（穿戴与工具两段全跳过，置位帧零参数构造 = 「窗口内无第二次消费」的强保证，两子形态一并封死；现状不 early-return 的形态随批收紧，行为申报 §9 条 7）。tag 字符串 `m7_equip_reobserve` 保留不改（遥测分键零 churn；语义注释补「穿装与工具 aftermath 共用」）。
 - **entry 工具段置位**：工具原子参数列表非空 → `st.cw4_equip_xy_pending = True`（与穿戴段 `entry.py:1160-1161` 同形）。
 - **mandate M7（穿装发出点之一，`mandate.py:1031-1068`）**：仅字段更名，结构零改动——该路径不产工具原子（工具发出点已物理移出 mandate，`mandate.py:1070-1073`），其标志检查在穿戴门内的形态无漏洞（门不进 = 不产穿装参数 = 零坐标消费，不变式不破；标志留置到下一帧 entry 第 7 步上提检查位自然承接 Obs）。
 - **覆盖域裁定**：六个可发出工具类全部置位（冶金炉/特权卡/扳手/精密扳手/两投影仪）。好运令牌永不上桌（判据面 fail-closed `cw_equip_env.py:601-603`），无置位面。逐工具细粒度白名单（「该类 aftermath 不 reflow 故免观察」）= 无实机背书的优化，弃——uniform 置位方向 fail-safe（多余帧 = 无害重观察），各类 aftermath 的 reflow 行为差异留实机采证后再裁。
@@ -119,7 +119,7 @@ run_operation args 示例（冶金炉 equip 模式）：
 | `_furnace_equip_branch`（`tool_use.py:222-262`） | `param.item_name`：在库检查（L233）、采样池键（L241）、移除（L253）、evidence（L257）、后果采证（L258）、reason（L262） | **全改反查产物** `item = resolve_item_by_xy(gs, param.tgt_cx, param.tgt_cy)`：L233 在库检查删除（反查命中即视为在库，同穿装批 `owned.remove` 自然异常防线，见 §3.3）；L241/253/257/258/262 用 `item`；工具端移除 `_remove_one(new_inv, '冶金炉')`（L252）改 `item_tool = resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)` 后严格移除（§3.3） |
 | `_furnace_char_branch`（`tool_use.py:265-337`） | 工具端字面 `'冶金炉'`（L320）；穿戴件名自 `unit.equips` 状态推导（L279，合法非参数名） | 工具端改 `resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)` 严格移除；穿戴件名消费维持状态推导不动（宪法③管参数名，不管状态产物名） |
 | `report_action_privilege_card_use_param`（`tool_use.py:357-408`） | `param.item_name`：在库检查（L390）、映射键（L398）、变换（L403）、evidence（L405）；工具端字面 `'特权赋予卡'`（L402） | 目标件全改反查产物（在库检查 L390 删除，变换 L403 前置 `inv.index(item)` 自然 ValueError 防静默空变换，§3.3）；工具端改反查严格移除 |
-| `_wrench_report`（`tool_use.py:413-449`） | 工具端字面 `tool_name` 形参（L440 consume 移除；evidence L429/444） | 改 `resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)`：consume=True 严格移除反查产物；consume=False（精密扳手）反查命中仅作 evidence，**反查不到同样拒单**（拖拽已发生但伴随域无法归因，契约③统一处置）；`param.row/slot` 槽位定位保留（`_resolve_row_unit` L419） |
+| `_wrench_report`（`tool_use.py:413-449`） | 工具端字面 `tool_name` 形参（L440 consume 移除；evidence L429/444） | 改 `resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)`，按 consume 分支分裂：**consume=True（拆装扳手）**反查不到 = `tool_xy_unresolved` 拒单零写（工具消耗笔是反查产物辖域，总契约处置）；**consume=False（精密扳手）**反查仅作 evidence 归因、**反查不到不拒单**——equips 追加穿戴件与行域清空照写，evidence 注记 `tool_xy_unresolved` 形态（精密扳手无消耗笔可拒，拒单反而造成「物理卸装无账」——行域清空写不落、账实分裂靠 reconcile 兜底，且对照表未刷新前恒拒 = 语义倒退）；`param.row/slot` 槽位定位保留（`_resolve_row_unit` L419） |
 | `_projector_report`（`tool_use.py:469-515`） | 工具端字面 `tool_name`（L506 consume 移除）；角色名自 `unit.char_id` 状态推导（L486，合法） | 工具端同扳手改反查严格移除；费用门/获得链不动 |
 | `report_action_lucky_token_use_param`（`tool_use.py:534-546`） | 零写留存证据（L543 打印 row/slot） | 不变（永不发出，反查不适用） |
 
@@ -129,7 +129,7 @@ run_operation args 示例（冶金炉 equip 模式）：
 
 | 码 | 处置 |
 |---|---|
-| `tool_xy_unresolved` | **新增**（源工具坐标反查不到：坐标不在表/伴随域 None——七类通用；拒单零写 + 留存证据，处置 = 交还框架决策循环刷新对照表重派，禁补拖） |
+| `tool_xy_unresolved` | **新增**（源工具坐标反查不到：坐标不在表/伴随域 None——拒单辖域 = 工具消耗笔（冶金炉/特权卡/投影仪/扳手 consume=True），拒单零写 + 留存证据，处置 = 交还框架决策循环刷新对照表重派，禁补拖；**精密扳手 consume=False 例外** = 不拒单、evidence 注记本码形态（§3.1 豁免——无消耗笔可拒，拒单 = 物理卸装无账）） |
 | `tool_target_xy_unresolved` | **新增**（equip 模式目标件坐标反查不到——冶金炉/特权卡 equip 分支） |
 | `furnace_target_missing`（`tool_use.py:240`） | **退役**（名称在库检查删除，反查路径取代） |
 | `privilege_target_missing`（`tool_use.py:397`） | **退役**（同上） |
@@ -224,14 +224,14 @@ L49-50「现役按名定位读仅剩工具原子族 `prep_actions._owned_grid_lo
 
 ## 6. sim 形态自洽结论（设计问题④）
 
-**结论：现有哨兵方案对工具域自洽，零 sim 改动。**逐语义核验：
+**结论：现有哨兵方案对工具域自洽，零 sim 改动。**[跨批前提申报] 本节全部论证以穿装批终审 F1 返修落地为前提——`_sync_owned_equip_xy_placeholders` None 分支引导初始化 `{}`（占位同步自身 = 环境快照首写端，`cw_sim_backend.py:5224-5226`；主仓 commit `57190272c` 已落地）；该返修未落地前伴随域恒 None → 工具域发出面 helper 恒全跳过（自愈通道兜底不炸），sim 论证整体不生效但无错账面。逐语义核验：
 
 1. **占位坐标可反查**：sim 占位 = `(-1000-k, -1000)` 界外哨兵（`cw_sim_backend.py:5240`），`resolve_item_by_xy` 按精确 (int,int) 匹配，占位命中正常返回名——机械段静默跳过不消费坐标，记账全链通（穿装批已申报语义 §2.13 复用）。
 2. **唯一性前提保持**：哨兵序号局内只增不减（L1693/5238-5239），坐标↔条目一一对应在占位路径恒成立；源键 ≠ 目标键由序号唯一化保证（同格双键守卫 §1.2-2 在 sim 生产路径不可触发）。
 3. **合成消耗占位件**：冶金炉变异后 owned 净变（消耗 2 追加 1），占位同步按计数差 append（L5235-5241）在下一 advance 步界补新件占位；被消耗名的**陈旧占位残留**（同步只增不删）语义 benign——伴随域以名为键，残留条目反查恒返回该名，不污染他名；发出面按名取坐标，残留只在「该名重新入库」时被复用，此时名单确含该名，`owned.remove` 类严格移除正常落账。
 4. **卸装占位件**：扳手/炉 char 分支卸下的穿戴件入 owned（逻辑写）→ 下一 advance 补占位——「获得」方向本就是同步函数的主路径。
 5. **陈旧窗口**：sim 局 `Obs(in_place)` 重观察帧对伴随域退化为无害空帧（sim 观察链不产该键，穿装批 m-r3-6② 申报继承）；占位同步挂 advance 步界 = 事实上的伴随域增量刷新点，与交替标志叠加后窗口纪律在 sim 形态同样闭合（置位帧零消费 + advance 补占位）。
-6. **直调路径**：MCP 直调传任意坐标 → 反查不到 = `tool_xy_unresolved` 拒单（round detail 感知），与实机同语义。
+6. **直调路径**：MCP 直调传任意坐标 → 反查不到 = `tool_xy_unresolved` 拒单（round detail 感知），与实机同语义（精密扳手 consume=False 例外 = §3.1 注记形态不拒单）。
 
 sim-design.md §6.5 邻域补申报行（§8.4）：工具原子消费本伴随域（源键 + equip 目标键），占位语义不变、零 sim 改动，陈旧占位残留按名键反查恒正确（哨兵唯一化）。
 
@@ -249,7 +249,7 @@ sim-design.md §6.5 邻域补申报行（§8.4）：工具原子消费本伴随�
 - **名称零消费锁测（宪法③对齐）**：同一 (tool_cx, tool_cy, tgt_cx, tgt_cy) × `item_name` 取不同值（''/'任意名'/'与反查产物不同的名'）→ 记账结果逐位相同。
 - **禁消费窗口违反锁测**：伴随域含坐标、名单缺该反查产物 → 断言严格移除抛 ValueError（锁 §3.3 严格语义，防未来静默守卫洗错账）。
 - **混合语义锁测**：冶金炉 char 分支——工具端（反查产物）缺席名单 → ValueError；穿戴件端（状态推导名）缺席名单 → `_remove_one` 容错零移除不抛（锁 §3.3 分裂语义的两族边界）。
-- **扳手族**：consume=True 移除反查产物 + 追加穿戴件 + 行域清空；consume=False 不移除；源坐标反查不到 → `tool_xy_unresolved` 拒单（含精密扳手）。
+- **扳手族**：consume=True 移除反查产物 + 追加穿戴件 + 行域清空；consume=False 不移除；源坐标反查不到：拆装扳手 → `tool_xy_unresolved` 拒单零写；**精密扳手 → 不拒单**，equips 追加穿戴件与行域清空照写且 evidence 含 `tool_xy_unresolved` 形态注记（§3.1 豁免语义锁测）。
 - **槽位定位**：row/slot 越界/空槽 → `tool_target_unit_missing` **applied=False** 拒单（升格锁测 §3.2）。
 - **投影仪**：费用门超门 → 零写分支不变；反查命中 → 移除工具 + `gain_character` 走链。
 - **特权卡**：equip 分支反查改造回归（变换同笔）；char 分支 fail-closed 不变；令牌零写不变。
@@ -309,7 +309,7 @@ sim-design.md §6.5 邻域补申报行（§8.4）：工具原子消费本伴随�
 
 1. **工具条目在坐标伴随域的观察覆盖（假设申报，验收门）**：工具 icon 的 SIFT 模板在装备注册表内、`read_equips` 对其产出坐标——本设计成立前提，无实机背书（观察链按注册表模板逐格分类，工具件在 `gs.equips` 与网格中，逻辑上应产出；但 v4.7 工具类判据已登记待裁，`cw_equipment_data.py:53-57`）。验收序列 0 = 实机核对 extras.owned_equips 含工具条目坐标；不成立 = 发出面恒跳过（自愈通道兜底不炸），本批停等数据域裁定。
 2. **遥测基线变化**：标志更名 + `m7_5_evaluated` 口径收窄 + 新增两计数键 + `m7_5_tool_consume` 帧的参数构造内容变化——首局对照判读申报。
-3. **工具域拒单语义收紧**：`tool_target_unit_missing` 从缺陷留存升格拒单、反查产物移除从容错转严格——行为变化面 = 判读台账行形态（applied/reason）与窗口违反暴露方式；bug 面零写族（库存未观察/费用门/特权 char 分支）不变。
+3. **工具域拒单语义收紧**：`tool_target_unit_missing` 从缺陷留存升格拒单、反查产物移除从容错转严格（精密扳手 consume=False 反查不到不拒单 = §3.1 豁免除外）——行为变化面 = 判读台账行形态（applied/reason）与窗口违反暴露方式；bug 面零写族（库存未观察/费用门/特权 char 分支）不变。
 4. **直调路径形态边界**：与穿装批同款——直调无对照表刷新手段，第二件连用解不了表陈旧（恒拒单），按单件会话使用；拒单感知 = round detail 拒单码。
 5. **拖拽链参数统一风险**：工具拖拽 duration 1.2 → 1.5 + settle 后置（§5.1-4）——无实机背书的参数迁移，实机验收①硬验收；同症状复现属执行层拖拽链可靠性（修参数不回退设计）。
 6. **行为修复：char 模式工具后排 slot 7-9 从必拒变可用**（现状守卫表长只匹配基线 6 槽 §1.2-3）；判读基线：后排扩展局工具计划完成率预期上升。
