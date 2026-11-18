@@ -919,7 +919,9 @@ class CwScreenBattleWait(CwOperation):
             settle_frame_collect(screen)
             # 面板渲染延迟门(SETTLE_PANEL_WAIT_S;1f 是失败页主通道)
             _pnl = read_settle_damage_breakdown(self.ctx, screen)
-            if (self.round_by_ocr(screen, '点击空白加速').is_success
+            # 点击空白加速 lcs 0.8:拒「点击空白处继续」互串(4/6≈0.67 过默认)
+            if (self.round_by_ocr(screen, '点击空白加速',
+                                  lcs_percent=0.8).is_success
                     and not _pnl['visible']):
                 _now = time.monotonic()
                 if self._st.settle_p1_ts is None:
@@ -970,8 +972,10 @@ class CwScreenBattleWait(CwOperation):
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=1)
 
-        # ②段:点空白加速(结算页1 动画帧/强敌来袭横幅)
-        _accel_hit = self.round_by_ocr(screen, '点击空白加速')
+        # ②段:点空白加速(结算页1 动画帧/强敌来袭横幅);lcs 0.8 拒「点击
+        # 空白处继续」互串(4/6≈0.67 过默认),容忍 1 字误读(5/6≈0.83)
+        _accel_hit = self.round_by_ocr(screen, '点击空白加速',
+                                       lcs_percent=0.8)
         if _accel_hit.is_success:
             self._unknown_streak = 0
             from sr_od.application.currency_war.operations.settle_collect_hooks import (
@@ -1029,7 +1033,12 @@ class CwScreenBattleWait(CwOperation):
                     if self._st.last_loss_fp != _fp:
                         self._st.last_loss_fp = _fp
                         self._record_round_outcome(screen)
-                if btn == '下一步' and self.round_by_ocr(screen, '挑战失败').is_success:
+                if btn == '下一步' and self.round_by_ocr(
+                        screen, '挑战失败',
+                        lcs_percent=0.8).is_success:
+                    # 挑战失败 4 字词 lcs 0.8 全等语义:拒失败页「挑战结束」
+                    # 互串(2/4=0.5 恰过默认 → hp=0 补录时序错位);1 字误读
+                    # miss = 补录漏一轮下轮重判,有界。
                     self._st.last_outcome_hp = 0
                     self._st.saw_defeat_settlement = True
                     log.info('[cw-bwait] 战败结算屏 → hp=0 补录 outcomes 真值源')
@@ -1044,8 +1053,9 @@ class CwScreenBattleWait(CwOperation):
                 self.park_cursor(after_wait=0.1)
                 return self.round_wait(wait=1)
 
-        # ①段:战斗/过场屏(总伤害/数据统计)→ 点空白推进
-        if (self.round_by_ocr(screen, '总伤害').is_success
+        # ①段:战斗/过场屏(总伤害/数据统计)→ 点空白推进;总伤害 3 字词
+        # lcs 0.8 全等语义,拒他屏「伤害」词形误命中(白点空白)
+        if (self.round_by_ocr(screen, '总伤害', lcs_percent=0.8).is_success
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self._unknown_streak = 0
             self.ctx.controller.click(CwScreenBattleWait.BLANK.center)

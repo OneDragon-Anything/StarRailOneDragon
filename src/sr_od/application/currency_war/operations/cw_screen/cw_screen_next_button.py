@@ -5,7 +5,7 @@
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口门(OCR「下一步」,与外循环分支 5 判定同源同参、默认 lcs 0.5;
+入口门(OCR「下一步」,与外循环分支 5 判定同源同参、lcs 0.8;
 miss 未发 = round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+
 obs{on_screen} 挂实例属性(空决策形态无 report:本屏零状态容器写点,obs 类
 住 kernel/cw_screen_report/next_button.py,import 构造即可)。决策动作
@@ -43,8 +43,8 @@ class CwScreenNextButton(CwOperation):
         self._obs: CwScreenNextButtonObs | None = None
 
     def entry_ok(self, screen: MatLike | None) -> bool:
-        """入口观察:OCR「下一步」(与外循环分支 5 判定同源同参,默认 lcs)。"""
-        return self.round_by_ocr(screen, '下一步').is_success
+        """入口观察:OCR「下一步」(与外循环分支 5 判定同源同参,lcs 0.8)。"""
+        return self.round_by_ocr(screen, '下一步', lcs_percent=0.8).is_success
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:

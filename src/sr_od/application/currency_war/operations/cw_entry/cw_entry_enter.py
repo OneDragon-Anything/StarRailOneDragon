@@ -137,8 +137,10 @@ class CwEntryEnter(CwOperation):
         if self.round_by_ocr(screen, '前往参与', lcs_percent=0.7).is_success:
             return self.round_by_ocr_and_click(screen, '前往参与', success_wait=2)
 
-        # 「点击空白处关闭」类弹窗(如新内容解禁)→ 点空白
-        if self.round_by_ocr(screen, '点击空白处关闭').is_success:
+        # 「点击空白处关闭」类弹窗(如新内容解禁)→ 点空白;lcs 0.8 拒
+        # 「点击空白处继续」互串(5/7≈0.71 过默认),容忍 1 字误读(6/7≈0.86)
+        if self.round_by_ocr(screen, '点击空白处关闭',
+                             lcs_percent=0.8).is_success:
             self.ctx.controller.click(CwEntryEnter.BLANK_CLICK.center)
             return self.round_retry(wait=1)
 

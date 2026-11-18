@@ -143,8 +143,11 @@ class CwScreenFortune(CwOperation):
         条款)。"""
         if self._confirm_pending:
             self._confirm_pending = False
+            # 命运卜者 4 字词 lcs 0.8 全等语义:收紧使失败形态从「误留访
+            # (假阳 hit 烧轮)」移向「早退交回重判」,两态均有界,后者更贴
+            # 「确认已落地」真实语义;标题大字清晰,1 字误读率低。
             if not self.round_by_ocr(self.last_screenshot, '命运卜者',
-                                     lcs_percent=0.5).is_success:
+                                     lcs_percent=0.8).is_success:
                 return self.round_success('命运卜者强化已确认(重入观察裁决)',
                                           wait=2.0)
         texts = self._obs.options if self._obs is not None else []

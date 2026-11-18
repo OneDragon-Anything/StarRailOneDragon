@@ -1441,8 +1441,12 @@ class CwLoop(CwOperation):
             return self._dispatch_screen_op(
                 self._battle_wait, journal_name='战斗等待',
                 frame_tag='flow_battle_wait', wait=1.0, on_result=_on_battle_wait)
-        # 5. 前进按钮(简报等):OCR 判定留外循环,点击迁入 op(无验效)
-        if self.round_by_ocr(screen, '下一步').is_success:
+        # 5. 前进按钮(简报等):OCR 判定留外循环,点击迁入 op(无验效)。
+        # 本分支居序尾(身份/战斗窗/备战全 miss 才轮到)= 未知帧末位兜底:
+        # lcs 0.8 收紧为「确为下一步」语义,防任何含同词形的未知/过渡帧触发
+        # 命中位盲点击——与 _frame_in_battle_window「简报下一步不列标志集」
+        # 同款宁缺勿造(flow/loop.md 兜底 OCR 判定须收紧 lcs 条款)。
+        if self.round_by_ocr(screen, '下一步', lcs_percent=0.8).is_success:
             return self._dispatch_screen_op(
                 CwScreenNextButton(self.ctx), journal_name='前进按钮',
                 frame_tag='flow_next_button', wait=1.5)
@@ -1498,8 +1502,13 @@ class CwLoop(CwOperation):
                                        crop_first=False).is_success
             or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计',
                                        crop_first=False).is_success
-            or self.round_by_ocr(screen, '点击空白加速').is_success
-            or self.round_by_ocr(screen, '总伤害').is_success
+            # 点击空白加速:lcs 0.8 拒「点击空白处继续」互串(4/6≈0.67 过
+            # 默认阈值),容忍 1 字误读(5/6≈0.83)
+            or self.round_by_ocr(screen, '点击空白加速',
+                                 lcs_percent=0.8).is_success
+            # 总伤害:3 字词 lcs 0.8 全等语义,拒他屏「伤害」词形误命中
+            # (误入代价 = 白点空白/白跑一窗)
+            or self.round_by_ocr(screen, '总伤害', lcs_percent=0.8).is_success
             or self.round_by_ocr(screen, '前往结算', lcs_percent=0.9).is_success
             or self.round_by_ocr(screen, '返回货币战争', lcs_percent=0.9).is_success
         )

@@ -339,10 +339,11 @@ class CwEntryStart(CwOperation):
         #    备战会误弹「中断挑战」bug#2,空白点在弹窗未开时是无害空点)。
         #    ⚠️ 待实机核:该 overlay 帧上「区域-空白关闭」坐标未实机复点
         #    (关闭机制经建档 live 验,见 CwScreenRoleDetailOverlay 模块头)。
-        # ⚠️ lcs 默认 0.5 风险提示(清点定级提示级,不改值):「可合成列表」
-        # 5 字全屏 OCR 低阈值有子序列误匹配面;此处靠入口链序位保护(本分支
-        # 在弹窗守卫/残留大厅分支之后的推进段尾)独占消费。收紧留待触碰本分支。
-        if self.round_by_ocr(screen, '可合成列表').is_success:
+        # 「可合成列表」5 字词 lcs 0.8:容忍 1 字误读(4/5=0.8),拒子序列
+        # 误匹配面;序位保护仍在(本分支在弹窗守卫/残留大厅分支之后的推进段尾)
+        # 独占消费(flow/loop.md 兜底 OCR 判定须收紧 lcs 条款)。
+        if self.round_by_ocr(screen, '可合成列表',
+                             lcs_percent=0.8).is_success:
             _blank = area_center(self.ctx, '区域-空白关闭', CwEntryStart.PREP_SCREEN)
             if _blank is not None:
                 self.ctx.controller.click(_blank)
@@ -449,8 +450,10 @@ class CwEntryStart(CwOperation):
             )
             CwScreenInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
-        # 3) 位面教程叠层 → 点空白
-        if self.round_by_ocr(screen, '点击空白处继续').is_success:
+        # 3) 位面教程叠层 → 点空白;lcs 0.8 拒「点击空白处关闭」互串
+        # (5/7≈0.71 过默认,同 wait_lobby 分支对称面),容忍 1 字误读(6/7≈0.86)
+        if self.round_by_ocr(screen, '点击空白处继续',
+                             lcs_percent=0.8).is_success:
             self.ctx.controller.click(CwEntryStart.BLANK_CLICK.center)
             return self.round_wait(wait=1)
         # 3b) 积分奖励页( M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
