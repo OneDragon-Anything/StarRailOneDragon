@@ -108,7 +108,8 @@
 | 卖上阵(拖上阵位→出售区) | 同上 | `CwActionSellDeployedOp`(换人判定单一源 = `swap_sell_exclusion_reason`,转型域 = `swap_bond_gate_domain` 判别子分派的双门资格面) | 备战期/部署期换人(24 号篇) | 非终结 |
 | 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `CwActionLevelUpOp` 备战连点 | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`;编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:执行 = 商店访问编排(open_shop → 商店画面 op 两 node 访问 → 收店),完成后返回主循环重识别 |
-| 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`;发出意图 = mandate_v1 决策链最先检查的发出点(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:返回主循环战斗分支 |
+| 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`(单击原子);发出意图 = mandate_v1 决策链最先检查的发出点(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `prep_actions.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:返回主循环战斗分支 |
+| 出战被拒确认弹窗(前台无角色) | 出战时前台区无角色,游戏弹确认提示阻塞战斗开始(`data/gameplay.md`) | `cw_screen_no_front_hint.py::CwScreenNoFrontHint`(阶段一身份分发,空决策形态;单篇 = [toast_no_front.md](toast_no_front.md)) | 无策略归属(推进为流程义务) | 点确认即终结(零恢复动作:不重部署不补发出,重判归主循环下一帧) |
 | 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→固定等待 2s→自上报结束本次访问;席满未点开的晶矿由下一帧观察回补;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱即腾位(武装箱 overlay) | `OpenBox`(点「开启」即结束本次访问;选卡弹窗由画面 op `CwScreenBoxPick` 闭环、武装箱获得说明弹窗由 `CwScreenArmoryBox` 点 × 关闭,均非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
 | 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(点槽一次开启;星徽四选一弹窗由外循环阶段一身份分发 `CwScreenBookcard` 接管选卡,非本动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
@@ -160,7 +161,7 @@
 | 备战无动作(None) | 合法结束本次访问 | None = 本帧无动作,返回主循环重新观察(商店域无此通道,该通道已由 CloseShop 终结取代) |
 | 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏);投资两屏/补给/遭遇/策划/装备 = **发出确认链(或点卡即选)即 round_success 结束本次访问**(即时上报形态,确认未生效由外循环重识别重派) |
 | 推进型画面(简报/过渡/详情/弹窗) | 画面终结 | 点推进/关闭即终结(空决策形态) |
-| 中断恢复的对局锁定态 | 例外约束 | 进过战斗后异常重启的对局,商店交互被游戏禁用(只能出战;`research/economy.md` §2.1 恢复态限制),外循环锁定态直通出战(`operations/cw_loop.py::locked_resume_sync_and_battle`) |
+| 中断恢复的对局锁定态 | 例外约束 | 进过战斗后异常重启的对局,商店交互被游戏禁用(只能出战;`research/economy.md` §2.1 恢复态限制),外循环锁定态直通出战(`prep_actions.py::locked_resume_sync_and_battle`) |
 
 ## 7. 先例与边界
 
@@ -169,11 +170,11 @@
 - **SwapDeploy**:动作类型清单/状态容器逻辑态直写/sim 消费在用,生产执行器未接入调用——能力面按动作类型清单完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为识别标志(`research/economy.md` §2.1)。
 
-## 8. 文档索引(34 篇)
+## 8. 文档索引(35 篇)
 
 主链:[prep.md](prep.md)(备战)/ [shop.md](shop.md)(商店开画面)/ [battle_wait.md](battle_wait.md)(战斗等待·结算)。
 单选族:[invest_strategy.md](invest_strategy.md) / [invest_env.md](invest_env.md) / [encounter.md](encounter.md) / [supply.md](supply.md) / [megastar.md](megastar.md) / [partner.md](partner.md) / [fortune.md](fortune.md) / [planner.md](planner.md) / [wish_trial.md](wish_trial.md) / [bookcard.md](bookcard.md) / [expert_invite.md](expert_invite.md) / [box_pick.md](box_pick.md)。(原 [equip_pick.md](equip_pick.md) 随选择装备屏误判停用删除,2026-09-22。)
 简报与过场:[briefing.md](briefing.md) / [boss_briefing.md](boss_briefing.md) / [plane_transition.md](plane_transition.md) / [plane_detail.md](plane_detail.md) / [plane_intel.md](plane_intel.md) / [wait_one_one.md](wait_one_one.md) / [next_button.md](next_button.md)。
-弹窗与部署:[armory_box.md](armory_box.md) / [consumable_overlay.md](consumable_overlay.md) / [aha_equip_pick.md](aha_equip_pick.md) / [emblem_detail_popup.md](emblem_detail_popup.md) / [item_detail_popup.md](item_detail_popup.md) / [role_detail_overlay.md](role_detail_overlay.md) / [shop_card_detail.md](shop_card_detail.md) / [refresh_odds_popup.md](refresh_odds_popup.md) / [prep_locked_return.md](prep_locked_return.md) / [interrupt_dialog.md](interrupt_dialog.md) / [deploy.md](deploy.md) / [deploy_not_full.md](deploy_not_full.md)。
+弹窗与部署:[armory_box.md](armory_box.md) / [consumable_overlay.md](consumable_overlay.md) / [aha_equip_pick.md](aha_equip_pick.md) / [emblem_detail_popup.md](emblem_detail_popup.md) / [item_detail_popup.md](item_detail_popup.md) / [role_detail_overlay.md](role_detail_overlay.md) / [shop_card_detail.md](shop_card_detail.md) / [refresh_odds_popup.md](refresh_odds_popup.md) / [prep_locked_return.md](prep_locked_return.md) / [interrupt_dialog.md](interrupt_dialog.md) / [deploy.md](deploy.md) / [deploy_not_full.md](deploy_not_full.md) / [toast_no_front.md](toast_no_front.md)。
 
 开放设计注:补给刷新的终结语义(原待裁决项)已定案落 [supply.md](supply.md);boss 简报去向已裁([boss_briefing.md](boss_briefing.md),README 已按 as-built 修正);各族其余申报面(换人卖出接缝/建档缺口/测试断档等)见各篇文末。

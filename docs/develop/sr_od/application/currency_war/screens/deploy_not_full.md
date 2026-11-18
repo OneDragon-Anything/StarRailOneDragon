@@ -35,7 +35,7 @@
 ## 7. 子态与 overlay
 
 - 本 op 自身即 overlay 处理件;命中即自处理,底层屏返回主循环重新判定。
-- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经外循环分发;两处行为对齐为申报面,无单一源测试。
+- **出战链弹窗主路径**:出战动作 op 为单击原子形态(点击后世界交回主循环重识别),出战单击后渲染的本弹窗由主循环阶段一身份分发接住派发本 op 处理——本 op 已登记 `CW_DISPATCH_SCREENS`(`kernel/cw_dispatch_tables.py` 单源),身份分发先于备战分支命中,是本弹窗的唯一处理路径(出战动作 op 内已无内联收尾)。
 
 ## 8. 守卫与防线
 
@@ -43,4 +43,4 @@
 
 ## 9. 遥测与测试面
 
-- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为测试 act 侧两个测试点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接入调用恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
+- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试:弹窗主路径(出战点击 → 本弹窗帧 → 阶段一身份分发接住本 op → 交回)= `sr-od-test/test/sr_od/application/currency_war/operations/cw_op/test_cw_start_battle_action.py::test_popup_main_path_deploy_not_full`;建档 = `currency_war_deploy_not_full.yml`。
