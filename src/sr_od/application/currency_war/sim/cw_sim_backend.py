@@ -5211,7 +5211,11 @@ class SimBackend:
         实读格心集合(装备区格心,y 值域 90-710)恒不相交,实读键整表
         覆盖后追加的占位不会反查误中实读条目。占位 = sim 环境快照,
         机械段静默不消费(反查可命中,记账正常),禁实机消费占位(实机
-        恒观察写真值)。伴随域 None(未就绪) → 跳过(等观察/名单就绪)。
+        恒观察写真值)。伴随域 None(未就绪) → **空表起算**:sim 局观察链
+        = 端口生成器直出,产物不含本键,占位同步自身即环境快照首写端
+        (None 短路会让占位恒不生效 → 穿装需求帧陷入坐标全缺席自愈循环,
+        终审 F1);本函数仅挂 SimBackend.advance,实机形态零执行路径,
+        无首写越格面。
         触发点 = advance 步界(本批穿装参数面迁移申报语义 =
         sim-design.md §6.5 环境快照族)。"""
         owned = self.gs.equips.value
@@ -5219,7 +5223,7 @@ class SimBackend:
             return
         current = self.gs.owned_equip_xy.value
         if current is None:
-            return
+            current = {}   # 环境快照首写端(见上方 docstring 申报)
         counts: dict[str, int] = {}
         for name in owned:
             counts[name] = counts.get(name, 0) + 1

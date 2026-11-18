@@ -350,7 +350,9 @@ def row_drag_points(ctx: SrContext, prefix: str,
 #  实读键整表覆盖后追加的占位不会反查误中实读条目(m-r4-2)。
 #  占位 = sim 环境快照,机械段静默不消费(反查可命中,记账正常),
 #  禁实机消费占位(实机恒观察写真值);机械段不消费故任意哨兵值安全。
-#  伴随域 None(未就绪) → 跳过(等观察/名单就绪)。
+#  伴随域 None(未就绪) → 空表起算(终审 F1:sim 局观察链 = 端口生成器
+#  直出不产本键,占位同步自身即环境快照首写端,None 短路会让占位恒不
+#  生效;本函数仅挂 SimBackend.advance,实机形态零执行路径)。
 #  写通道 = gs.observe(见上,禁 write_logic)。]
 # 申报语义 = sim-design §6.5 环境快照族。
 ```
@@ -395,7 +397,7 @@ L49 注释「与执行边定位读（`prep_actions._owned_grid_locate`，全库�
 1. 守卫断言三形（§1.2）。
 2. 拖点静态解析：`prefix = '前排' if row == 'front' else _layout_prefixes()[back_slot_count]`；`pts = row_drag_points(ctx, prefix)`；`target = pts[slot - 1]`。
 3. sim 分支：`mechanical_io_allowed()` 为假 → 机械段静默跳过（现状保留；sim 占位坐标不被机械消费，反查记账照走）。
-4. 实机机械段：`mouse_move((src_cx, src_cy))` 防吞点击 → `PREP_DRAG_SETTLE_WAIT_S` 固定等待（非判效）→ `controller.drag_to(start=(src_cx, src_cy), end=target, hold_time=0.5, duration=1.5)` → 1.5s 固定等待（MCP drag 异步落地）——等待常量与拖拽参数逐字沿用现状。
+4. 实机机械段：`mouse_move((src_cx, src_cy))` 防吞点击 → `PREP_DRAG_SETTLE_WAIT_S` 固定等待（非判效）→ `controller.drag_to(start=(src_cx, src_cy), end=target, hold_time=0.5, duration=1.5)` → 1.5s 固定等待（MCP drag 异步落地）——等待常量与拖拽参数逐字沿用现状。**时序简化申报（终审随手项，有意）**：迁移前序 = settle 等待 → mouse_move → 0.2s → drag（拖前总 0.7s）；实施序 = mouse_move → settle → drag（拖前总 0.5s）——0.2s 间隔的原语境「截图前移光标」已随 owned 网格现读退役消失，settle 移到 move 之后语义不变（防吞点击后等面板收尾再拖）；拖拽链可靠性由实机硬验收兜底（§7 条 4 + §8 步 7 单件穿装序列）。
 5. `self.park_cursor(after_wait=0.1)`（`CwOperation` 基类方法自带 sim 零光标静默，剥 `ex._op` 依赖）。
 6. 自上报：`gs = game_state_from_ctx(...)`；`outcome = report_action_wear_equip_param(gs, action, ChannelSig(...))`——签名不变；kernel 侧坐标反查记账（§2.11，op 零感知）；**outcome.applied=False 时 round detail 追加拒单事实**（「记账拒单:<码>(拖拽已发生,账未落)」——M-r3-1 修法①，直调方经 round 结果感知拒单；机械成功语义不变）；round detail 日志含 `item_name/char_name`（名称唯一机械面消费 = 日志）。
 7. round 结果：`round_success(detail)`。**「owned 网格未定位到 …」round_fail 通道消失**；`prep_actions._PREP_RECEIPT_BLOCK_CODES` L98-102 泛化行保留（工具原子族仍产出），注释补声明「WearEquip 侧供给已随坐标显式化退役」。
