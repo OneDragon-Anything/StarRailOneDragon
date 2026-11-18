@@ -694,10 +694,12 @@ class RunSummary:
 
 @dataclass
 class ExecEvent:
-    """执行事件(exec_events.jsonl;27 号能力画像数据源)。
+    """执行事件 schema(停用流的保留槽)。
 
-    cw_screen_prep 的 _fail_counts/_blocked/bail 原因本来局终即弃——落盘后跨局聚合
-    出「动作族×画面×失败率」画像(能力层:实现缺陷 vs 固有难度分型)。
+    exec_events 流写入端已停用——发出语义下动作 op 无成败知识,动作失败
+    可见性归 journal 与缺陷台账(停用申报住地:telemetry/defects.py 文件
+    尾注、telemetry/recorder.py 模块头注)。字段表保留供后续恢复写入端时
+    复用,现役零生产者。
     """
     ts: str = ""
     run_id: str = ""
