@@ -416,6 +416,23 @@ class CwActionMoveUnitParam:
     ``faction`` 不入动作字段:上报侧从状态容器槽位表现读派生(统一拖动的
     字段写语义全部按源/目标域现值推演,faction 由 board 行写端挂钩
     重算承载,无需载荷携带)。
+
+    [记账路径总契约(第三适用者;契约正文 = action-op.md「记账路径总契约」
+    条款)]:本族对象住槽位表不住坐标伴随域,记账键 = 槽位下标、记账载荷 =
+    槽位反查产物(按下标反查槽现任单位,名称/星级/费用全状态推导)——
+    「槽位反查」= 总契约精神在本域的形态(槽位表本身即名称↔位置对照表,
+    无需坐标伴随域反查);名称字段零消费,``expect`` = 提案代际防线字段
+    (发出点写入、上报层 stale_proposal 拒单消费),非名称语义参数。
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``)。
+
+    [索引/坐标定义]
+    - src_slot/dst_slot: 坐标系 = front 1-4 / back 1-N 动态 / bench 0-8
+      (基随域,bench 0 基;槽位表语义取值时机 = 生成期=执行期,槽位表
+      恒稳——卖出/移位置 None/empty 不移位)。
+    - back_slot_count: 坐标系 = 后排槽位画面物理总数 n(值域 6-9 =
+      obs.cw_back_layout._LAYOUT_PREFIX 键域);取值时机 = 生成期快照
+      (发出点 back_capacity_of(gs) 现读);src/dst 域均非 back 时忽略。
     """
     src_domain: str
     # 源域('front'|'back'|'bench')
@@ -427,11 +444,21 @@ class CwActionMoveUnitParam:
     dst_slot: int
     # [索引定义] 坐标系: 同 src_slot(域内 1 基,bench 例外 0 基)
     #             取值时机: 生成期快照
+    back_slot_count: int = 6
+    # [索引定义] 坐标系: 后排槽位画面物理总数 n(6-9,布局档键域)
+    #             取值时机: 生成期快照(发出点 back_capacity_of 现读);
+    #             src/dst 域均非 back 时忽略
     reason: str = ''   # 归因记录字段(非指令;''=未标)
     expect: str = ''   # 代际校验期望名(''=不校验,不符→拒绝;源槽
     #             期望名——与 CwActionSellBenchParam.expect 同形)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionMoveUnitParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionRefreshShopParam | CwActionCloseShopParam

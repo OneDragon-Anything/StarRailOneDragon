@@ -330,12 +330,19 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
     if not up_idx:
         return
     _comp = getattr(state_of(session), 'target_comp', None)
+    # 后排格数快照(发出点填参:MoveUnit.back_slot_count = 生成期快照,
+    # 读口单一源 = back_capacity_of——与 deploy_diff 发出面同式)。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        back_capacity_of,
+    )
+    _bsc = back_capacity_of(state)
     for bi, row, slot in deploy_slot_plans(bench, up_idx, _comp, state):
         out.append(mandate.Emitted(
             CwActionMoveUnitParam(
                 src_domain='bench', src_slot=int(bi),
                 dst_domain=row, dst_slot=int(slot),
-                reason='m0_self_rescue_deploy'),
+                reason='m0_self_rescue_deploy',
+                back_slot_count=_bsc),
             True, tag))
 
 

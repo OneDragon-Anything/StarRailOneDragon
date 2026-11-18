@@ -14,10 +14,13 @@ reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 
 slot 语义(unified-action-factory 统一后):席位域动作(CwActionSellBenchParam/
 CwActionSellDeployedParam/CwActionMoveUnitParam)携**状态容器槽位表下标**(0 基,词表单一源 =
-kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
-状态容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
-直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
-1-4 / 4-9=后排 1-6;tracked 第二账停用后旧换算族已删)。坐标参数化
+kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit 已随其
+参数面迁移批改 op 自持(op 内经模块级原语现读点位表——bench 侧 =
+备战栏-N area 序直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联
+算术,0-3=前排 1-4 / 4+=后排 1-N 动态,后排拖点按 back_slot_count 布局
+档静态解析);SellBench/SellDeployed 过渡期仍经执行器点表(各自迁移批
+自持化;bench 侧 = 备战栏 area 序;deployed 侧 = 下标→(排,排内槽号)
+换算,tracked 第二账停用后旧换算族已删)。坐标参数化
 机械动作(开件三类 CwActionOpenBoxParam/CwActionOpenTomeParam/
 CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
 (动作参数定义,拖点直取 area,不经换算);穿装与工具原子两类已升级
@@ -136,6 +139,14 @@ def row_area_centers(ctx: SrContext, prefix: str,
     prep_actions 执行器 / cw_screen_prep 观察共用。``screen_name`` =
     坐标权威画面(缺省备战画面;商店域传商店开画面——底栏 area
     商店画面档自备,跨屏坐标不共用文件)。
+
+    [拖点权威分域(角色拖动族)]:本函数裸中心(rect 中心)= 角色拖动族
+    (MoveUnit/SellDeployed/SellBench 阵型操作)的拖点权威派生式——该族
+    交互 = 整卡可拖、卡中心拖 + hold0(实测背书,机制单一源 =
+    operations/actions/drag_cw_char.py 模块头);装备 icon→角色卡族
+    (WearEquip/工具 char 模式)的权威派生式 = ``row_drag_points`` +21
+    (D-36 校准,落点须命中卡内头像区)。两族交互机制不同,派生式按交互族
+    分域,互不外溢。
     """
     si = ctx.screen_loader.get_screen(screen_name)
     if si is None:
@@ -157,10 +168,13 @@ def row_drag_points(ctx: SrContext, prefix: str,
                     screen_name: str = SCREEN_NAME) -> list[Point]:
     """prefix-N 全排 avatar 拖点列(rect 中心 x + y1+21)。
 
-    [拖点派生权威裁定]:+21(D-36 校准)= 穿戴域实机校准背书的权威
-    派生式;工具 char 模式拖点已随坐标参数面迁移统一按本式(同一「拖到
-    角色卡」交互同一拖点;旧裸中心派生经 executor 点表的历史形态已退役)。
-    后排档前缀由调用方按 back_slot_count →
+    [拖点派生权威裁定(装备 icon→角色卡族)]:+21(D-36 校准)= 穿戴域实机
+    校准背书的权威派生式;工具 char 模式拖点已随坐标参数面迁移统一按本式
+    (同一「拖到角色卡」交互同一拖点;旧裸中心派生经 executor 点表的历史
+    形态已退役)。⚠️ 辖域 = 装备 icon→角色卡交互族——角色拖动族
+    (MoveUnit/SellDeployed/SellBench)拖点 = ``row_area_centers`` 裸中心
+    (该族权威式,整卡可拖中心拖 + hold0,交互族不同不外溢,分域申报见
+    其 docstring)。后排档前缀由调用方按 back_slot_count →
     ``cw_back_layout._layout_prefixes()`` 静态解析后传入,本函数零识别
     零截图。区域缺失 = 该排空列,调用方守卫断言越界自然暴露,禁兜底
     坐标。
@@ -199,36 +213,25 @@ def sell_point(ctx: SrContext, screen_name: str = SCREEN_NAME) -> Point:
     return pt
 
 
-def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
-                       screen_name: str = SCREEN_NAME) -> None:
-    """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,设计章 2.10)。
+def drag_char_guarded(op: SrOperation, ctx: SrContext,
+                      src: Point, dst: Point) -> None:
+    """角色拖拽机械原语(失焦守卫 + 统一拖拽原语;sim 分支静默)。
 
-    d2 卖通道生产接入调用(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
-    ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
-    像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
-    tracking 同步由调用方各自做。失焦守卫同 ``PrepActionExecutor._drag``
-    语义(窗口后台化时拖拽输入静默丢,r9 实证)。
+    构成:sim 模式(``sim_backend_installed``)整段静默返回(机械执行分支
+    静默成功,自上报照走——直连旁路 port 检查)→ 失焦守卫(窗口后台化时
+    拖拽输入静默丢,拖前验焦点先激活)→ ``DragCwChar.drag_char``(统一
+    角色拖拽原语:中心拖 + hold0,机械执行零判效,发出即职责完成)。
 
-    Args:
-        op: 调用方 op(取 ctx.controller 操作)。
-        ctx: SrContext。
-        bench_idx: 槽位下标 0-8(列表下标 = 物理备战栏槽位 1-9 减一);
-            越界 = 调用方 bug,响亮上抛(守卫非判效)。
-        screen_name: 拖拽两端的坐标权威画面(缺省备战画面;商店域
-            传商店开画面——该画面档自备 备战栏/出售区 area)。
+    阵型拖动动作(MoveUnit)与卖出共享原语 ``drag_bench_to_sell`` 共用
+    本函数 = 失焦守卫单一宿主(原散落 executor._drag 与
+    drag_bench_to_sell 两份内联副本收敛至此;SellDeployed 过渡期仍经
+    executor._drag,其迁移批并入本宿主)。
     """
     from sr_od.application.currency_war.sim.cw_sim_ports import (
         sim_backend_installed,
     )
     if sim_backend_installed():
-        # sim 模式:机械执行分支(焦点守卫+真实拖拽)静默成功,自上报照走
-        # (直连 controller 旁路 port 检查;落位事实由后端状态副本承接)
         return
-    pts = row_area_centers(ctx, '备战栏', screen_name=screen_name)
-    if not (0 <= bench_idx < len(pts)):
-        raise AssertionError(
-            f'[cw][guard] 卖出拖拽槽位越界:bench_idx={bench_idx}'
-            f'(备战栏 area 数={len(pts)};调用方 bug 响亮暴露)')
     try:
         gw = ctx.controller.game_win
         if not gw.is_win_active:
@@ -240,8 +243,34 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
     from sr_od.application.currency_war.operations.actions.drag_cw_char import (
         DragCwChar,
     )
-    DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx,
-                                                        screen_name=screen_name))
+    DragCwChar.drag_char(op, src, dst)
+
+
+def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
+                       screen_name: str = SCREEN_NAME) -> None:
+    """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,设计章 2.10)。
+
+    d2 卖通道生产接入调用(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
+    ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
+    像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
+    tracking 同步由调用方各自做。拖拽机械半 = ``drag_char_guarded``
+    (失焦守卫单一宿主)。
+
+    Args:
+        op: 调用方 op(取 ctx.controller 操作)。
+        ctx: SrContext。
+        bench_idx: 槽位下标 0-8(列表下标 = 物理备战栏槽位 1-9 减一);
+            越界 = 调用方 bug,响亮上抛(守卫非判效)。
+        screen_name: 拖拽两端的坐标权威画面(缺省备战画面;商店域
+            传商店开画面——该画面档自备 备战栏/出售区 area)。
+    """
+    pts = row_area_centers(ctx, '备战栏', screen_name=screen_name)
+    if not (0 <= bench_idx < len(pts)):
+        raise AssertionError(
+            f'[cw][guard] 卖出拖拽槽位越界:bench_idx={bench_idx}'
+            f'(备战栏 area 数={len(pts)};调用方 bug 响亮暴露)')
+    drag_char_guarded(op, ctx, pts[bench_idx],
+                      sell_point(ctx, screen_name=screen_name))
 
 
 # (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(原子通路);
@@ -277,8 +306,11 @@ class PrepActionExecutor:
     """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
     宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
-    判定归观察侧 reconcile(用户裁定);拖拽统一走
-    DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
+    判定归观察侧 reconcile(用户裁定)。角色拖拽统一拖拽原语 = 模块级
+    ``drag_char_guarded``(失焦守卫 + DragCwChar.drag_char 中心拖 + hold0,
+    2026-08-13 实测验证);``_drag`` 方法与 ``_front_pts/_back_pts`` 点表
+    = 席位域待迁移动作(SellDeployed 等)的过渡宿主,其 op 随各自参数面
+    迁移批退役消费。
     """
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
@@ -301,7 +333,9 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 槽位中心(screen_info 静态,构造时读一次;op 内参数守卫与拖拽坐标共用)
+        # 槽位中心(screen_info 静态,构造时读一次;op 内参数守卫与拖拽坐标共用)。
+        # MoveUnit 已随参数面迁移改 op 内现读(零消费);SellDeployed 过渡期
+        # 仍消费 _front_pts/_back_pts(其迁移批退役)。
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
         self._back_pts: list[Point] = row_area_centers(ctx, '后排')
@@ -441,15 +475,19 @@ class PrepActionExecutor:
     #       ——穿装批退 WearEquip 消费、工具迁移批退工具 op 消费,发出面
     #       坐标源 = 坐标伴随域 gs.owned_equip_xy。WearEquip/工具两 op 均
     #       改显式坐标 + 记账拒单;拖点权威派生式 = 模块级
-    #       row_drag_points,穿装 op 与工具 char 模式自持消费)=====
+    #       row_drag_points,穿装 op 与工具 char 模式自持消费。MoveUnit
+    #       已随其参数面迁移改 op 内自持消费模块级 drag_char_guarded;
+    #       _drag 方法过渡期保留 = SellDeployed 等席位域待迁移动作宿主)=====
 
     def _drag(self, src: Point, dst: Point) -> None:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
-        源槽像素验重试已拆除)。
+        源槽像素验重试已拆除)。过渡期宿主 = SellDeployed(MoveUnit 已随
+        参数面迁移改消费模块级 drag_char_guarded,失焦守卫单一宿主收敛
+        至彼;本方法随剩余席位域动作迁移批退役)。
 
-        r10 review#2:失焦守卫下沉到本原语(所有拖拽路径共享)——窗口后台化时
-        拖拽输入静默丢(r9 实证同机制:截图正常/输入丢/连环「源槽未变」假失败),
-        拖前验焦点,失焦先激活。
+        失焦守卫语义(所有拖拽路径共享)——窗口后台化时拖拽输入静默丢
+        (r9 实证:截图正常/输入丢/连环「源槽未变」假失败),拖前验焦点,
+        失焦先激活。
         """
         from sr_od.application.currency_war.sim.cw_sim_ports import (
             sim_backend_installed,
@@ -458,10 +496,6 @@ class PrepActionExecutor:
             # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
             # port 检查;部署/卖上阵落位事实由后端状态副本承接)
             return
-        from sr_od.application.currency_war.operations.actions.drag_cw_char import (
-            DragCwChar,
-        )
-
         try:
             gw = self._ctx.controller.game_win
             if not gw.is_win_active:
@@ -470,6 +504,9 @@ class PrepActionExecutor:
                 time.sleep(0.3)
         except Exception:   # noqa: BLE001  焦点守卫 best-effort
             pass
+        from sr_od.application.currency_war.operations.actions.drag_cw_char import (
+            DragCwChar,
+        )
         DragCwChar.drag_char(self._op, src, dst)
 
     # (tracked 随动同步三条分支(备战摘除/场上摘除/上阵落位)已随

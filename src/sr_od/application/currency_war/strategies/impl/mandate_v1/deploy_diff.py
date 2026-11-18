@@ -55,6 +55,13 @@ def deploy_diff_actions(
     """
     front, back = _rows_of(gs)
     bench: list = _bench_slots_of(gs)
+    # 后排格数快照(发出点填参:MoveUnit.back_slot_count = 生成期快照,
+    # 读口单一源 = back_capacity_of,None 退 6 基线——op 侧按布局档静态
+    # 解析拖点,扩格局后排 7-9 槽拖动随此可达)。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        back_capacity_of,
+    )
+    _back_slot_count = back_capacity_of(gs)
 
     # 轻量模拟态:((名, 星) | None) 三列表 + bench 槽;动作按
     # CwActionMoveUnitParam 坐标系产出并在模拟态上推进(推演矩阵
@@ -101,16 +108,17 @@ def deploy_diff_actions(
             continue
         # —— 2. 缺位者上场(bench → 场上;D-4 落位槽选择)——
         did = _place_missing(target, f_state[0], b_state[0], bench_state[0],
-                             fresh, out)
+                             fresh, out, _back_slot_count)
         if did:
             continue
         # —— 3. 错位者排修正(场上直拖一步;目标排槽 = D-4 规则)——
-        did = _fix_misrow(target, f_state[0], b_state[0], fresh, out)
+        did = _fix_misrow(target, f_state[0], b_state[0], fresh, out,
+                          _back_slot_count)
         if did:
             continue
         # —— 4. 多余者下场(场上 → bench 空槽)——
         did = _disembark_extra(target, f_state[0], b_state[0], bench_state[0],
-                               fresh, out)
+                               fresh, out, _back_slot_count)
         if did:
             continue
         break
@@ -225,10 +233,12 @@ def _fresh_ok(cell, fresh: frozenset[str]) -> bool:
 
 
 def _place_missing(target, front: list, back: list, bench: list,
-                   fresh: frozenset[str], out: list) -> bool:
+                   fresh: frozenset[str], out: list,
+                   back_slot_count: int = 6) -> bool:
     """缺位者上场:target 名不在场 ∧ bench 有 → 上场到目标排(D-4)。
     bench 源槽 = 该名副本槽;目标槽被占 = 交换(被占者回 bench 源槽,
-    bench 占用不变)。"""
+    bench 占用不变)。``back_slot_count`` = 生成期快照直传动作载荷
+    (发出点 back_capacity_of 现读;op 侧布局档拖点解析消费)。"""
     on_board = {c[0] for c in (*front, *back) if c is not None and c[0]}
     for name, (row, _star, t_slot) in sorted(target.items()):
         if name in on_board:
@@ -248,7 +258,8 @@ def _place_missing(target, front: list, back: list, bench: list,
             continue
         out.append(CwActionMoveUnitParam(
             src_domain='bench', src_slot=src,
-            dst_domain=row, dst_slot=slot, reason='deploy_diff_place'))
+            dst_domain=row, dst_slot=slot, reason='deploy_diff_place',
+            back_slot_count=back_slot_count))
         moved = bench[src]
         bench[src] = occ if occ is not None else None
         row_list[slot - 1] = moved
@@ -257,8 +268,10 @@ def _place_missing(target, front: list, back: list, bench: list,
 
 
 def _fix_misrow(target, front: list, back: list,
-                fresh: frozenset[str], out: list) -> bool:
-    """错位者排修正:场上直拖一步(现排 → 目标排;目标槽 = D-4)。"""
+                fresh: frozenset[str], out: list,
+                back_slot_count: int = 6) -> bool:
+    """错位者排修正:场上直拖一步(现排 → 目标排;目标槽 = D-4)。
+    ``back_slot_count`` = 生成期快照直传动作载荷(同 _place_missing)。"""
     for row_list, src_domain in ((front, 'front'), (back, 'back')):
         for i, cell in enumerate(row_list):
             if cell is None or cell[0] == '' or cell[0] not in target:
@@ -278,7 +291,8 @@ def _fix_misrow(target, front: list, back: list,
             out.append(CwActionMoveUnitParam(
                 src_domain=src_domain, src_slot=i + 1,
                 dst_domain=t_row, dst_slot=slot,
-                reason='deploy_diff_misrow'))
+                reason='deploy_diff_misrow',
+                back_slot_count=back_slot_count))
             row_list[i] = occ
             dst_list[slot - 1] = cell
             return True
@@ -286,10 +300,12 @@ def _fix_misrow(target, front: list, back: list,
 
 
 def _disembark_extra(target, front: list, back: list, bench: list,
-                     fresh: frozenset[str], out: list) -> bool:
+                     fresh: frozenset[str], out: list,
+                     back_slot_count: int = 6) -> bool:
     """多余者下场(场上名 ∉ target → bench 空槽);无空槽 = 依赖交换
     顶替路径(_place_missing 的交换),此处跳过(无动作,留卖出场景
-    在 bench 按统一让位序处置)。"""
+    在 bench 按统一让位序处置)。``back_slot_count`` = 生成期快照直传
+    动作载荷(同 _place_missing)。"""
     free = next((i for i, bc in enumerate(bench) if bc is None), None)
     if free is None:
         return False
@@ -304,7 +320,8 @@ def _disembark_extra(target, front: list, back: list, bench: list,
             out.append(CwActionMoveUnitParam(
                 src_domain=src_domain, src_slot=i + 1,
                 dst_domain='bench', dst_slot=free,
-                reason='deploy_diff_disembark'))
+                reason='deploy_diff_disembark',
+                back_slot_count=back_slot_count))
             bench[free] = cell
             row_list[i] = None
             return True

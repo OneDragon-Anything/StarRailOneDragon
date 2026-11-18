@@ -6,7 +6,7 @@
 
 - **bench(备战栏)**:`gs.bench`(BenchView,slots 定长 = capacity,列表下标 0-8 = 物理槽位 1-9 减一;空槽 = `kind='empty'`)。容量判据 = 派生单一源 `bench_free_slots`/`bench_is_full`,**禁止 `len(slots)` 数占用**。
 - **deployed(上阵)**:`gs.deployed`(DeployedView 统一槽位视图,`front_slots[i]` = 前排物理槽 i+1(定长 4)/ `back_slots[j]` = 后排物理槽 j+1(**动态容量 6-9**,上限 = `DEPLOYED_BACK_CAPACITY_MAX`;扩展格进视图);位置 = 子表下标纯派生,下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6)。权威槽位恒为子表下标(`Unit` 不存槽位信息位,阵营不入 Unit——由 char_id 查角色注册表派生)。
-- **动作字段坐标系(统一动作类型清单,零换算)**:席位域动作(SellBench.bench_idx/SellDeployed.deployed_idx/DeployMove.bench_idx)直携状态容器槽位表下标(0 基);DeployMove 落位 = `(to_row, to_slot)` 载荷直指(to_slot = 排内 1 基画面槽号);坐标参数化机械动作(开件三类 OpenBox/OpenTome/OpenBookcard)的 row/slot = 画面物理排槽位 1 基(拖点直取 area,不经换算);穿装 WearEquip 与工具原子七类已升级「动态坐标显式传 + row/slot 半固定」形态(src = 1080p owned 格心显式坐标——WearEquip.src_cx/src_cy / 工具 tool_cx/tool_cy,equip 模式另带 tgt_cx/tgt_cy 目标;槽位拖点经 `prep_actions.row_drag_points` 静态解析,零读屏)。执行坐标边换算单点 = `PrepActionExecutor`。
+- **动作字段坐标系(统一动作类型清单,零换算)**:席位域动作(SellBench.bench_idx/SellDeployed.deployed_idx)直携状态容器槽位表下标(0 基);MoveUnit = 统一拖动四元组 `(src_domain, src_slot, dst_domain, dst_slot)`(bench 0 基 / front/back 排内 1 基画面槽号)+ `back_slot_count`(后排槽位画面物理总数 6-9,生成期快照,发出点 `back_capacity_of(gs)` 现读——MoveUnit 参数面迁移批新增;src/dst 域均非 back 时忽略);坐标参数化机械动作(开件三类 OpenBox/OpenTome/OpenBookcard)的 row/slot = 画面物理排槽位 1 基(拖点直取 area,不经换算);穿装 WearEquip 与工具原子七类已升级「动态坐标显式传 + row/slot 半固定」形态(src = 1080p owned 格心显式坐标——WearEquip.src_cx/src_cy / 工具 tool_cx/tool_cy,equip 模式另带 tgt_cx/tgt_cy 目标;槽位拖点经 `prep_actions.row_drag_points` 静态解析,零读屏)。**拖点权威分域(角色拖动族 = 裸中心)**:MoveUnit 拖点 = `prep_actions.row_area_centers` 裸中心(整卡可拖、卡中心拖 + hold0 实测背书;装备 icon→角色卡族 = `row_drag_points` +21,D-36 校准——两族交互机制不同,派生式分域互不外溢,申报见两函数 docstring)。执行坐标边:MoveUnit = op 自持(参数面迁移批,op 内现读点位表);其余席位域动作过渡期仍经 `PrepActionExecutor` 点表(各自迁移批自持化)。
 - **画面点位**:点位单一源 = screen_info「货币战争-备战」的 `备战栏-N`/`前排-N`/`后排-N` area,经 `prep_actions.py::row_area_centers` 按 N 升序读出中心点;执行器构造时读一次三排点位表,全程有效;后排点位按 cap 差公式选档(`cw_back_layout.py::select_back_layout` 单一入口)。
 - 遥测/推进清单 path 形态判读分域:`bench.slots[N]` = 0 基;`deployed.{row}.{slot}` = slot 1 基。
 
@@ -28,6 +28,7 @@
 - **WearEquip(坐标显式传形态)**:`src_cx`/`src_cy` 取值时机 = 发出面决策帧的坐标伴随域(`gs.owned_equip_xy`)快照,同访问内上一穿戴帧后经环内重观察刷新(装备网格伴随域新鲜度交替,载体 = `StrategyState.cw4_equip_xy_pending`,穿装与工具 aftermath 共置位共用重观察帧);`row`/`slot`/`back_slot_count` = 生成期快照。
 - **工具原子七类(坐标显式传形态)**:`tool_cx`/`tool_cy`(源)与 `tgt_cx`/`tgt_cy`(equip 模式目标)取值时机 = 发出面决策帧的坐标伴随域快照(发出点 = entry 第 7 步,经 `cw_equip_env.tool_use_params_of` 取数;同一交替载体 `cw4_equip_xy_pending`,置位帧零参数构造);`row`/`slot`/`back_slot_count` = 生成期快照。
 - **消费方不得把坐标参数化动作的字段当执行期索引复用**。
+- **MoveUnit(槽位键 + back_slot_count 形态,参数面迁移批)**:`src_slot`/`dst_slot` 取值时机 = 生成期=执行期(槽位表恒稳——移位置 None/empty 不移位,上款卖出/换位类同域);`back_slot_count` = 生成期快照(发出点 `back_capacity_of(gs)` 现读,None 退 6 基线;op 侧按布局档静态解析后排拖点,扩格 7-9 槽随此可达);`expect` 代际校验照上款(换位类防线,战斗链批量发射边界载体的陈旧化治理依赖 report 静态域拒绝,action-op.md §1 边界载体登记)。
 
 ## 4. 备战线数据流时间线
 
@@ -50,7 +51,7 @@
 
 | 臂 | 载体 | 读法 |
 |---|---|---|
-| 部署臂 | 备战环动作路径:mandate 动作发出点 → `CwActionDeployMoveOp` | 逐动作机械拖拽 + 自上报(零像素判效);计划单一源 = 策略层 `mandate_v1/deploy_plan.py::deploy_plan_moves`;kernel `cw_deploy_logic.py::residual_fill_plan` = 残余补位 |
+| 部署臂 | 备战环动作路径:统一部署搜索定型目标板(`deploy_search.search_deploy_target`)→ 差分执行器产动作序(`deploy_diff.deploy_diff_target_actions`)→ `CwActionMoveUnitOp` | 逐动作机械拖拽 + 自上报(零像素判效);计划执行期(前置步驱板)= 拖动与重观察交替(`pending_reobserve`,连续 2 次无进展 = 级联卡死出口);MoveUnit 已随参数面迁移批 op 自持(back_slot_count 发出面填参 = `back_capacity_of(gs)`,拖点 = 裸中心权威分域);kernel `cw_deploy_logic.py::residual_fill_plan` = 残余补位 |
 | 换人臂 | 发出面 `mandate.py::emit_swap_redeploy`;执行面 = `CwActionSellDeployedOp` + 后续 DeployMove 补部署 | 发出面 = 决策帧槽位表;计划单一源 = `assemble_swap_plan_inputs`+`select_swap_plan`(发出侧同函数同参,禁第二份口径);发出⇔执行归因透传 = `StrategyState.cw4_m1p_arm_pending`(帧级无条件复位);发射面分键 = `cw4_counters`(键登记单一源 = emit_swap_redeploy 写点注释) |
 | 卖出臂 | `CwActionSellBenchOp` | `bench_idx`(槽位表下标 0-8)+ `expect` 期望名;`drag_bench_to_sell` 直收 0 基,机械单发发出即记账;自上报(expect 非空失配 = stale_proposal 拒零写 + 置 empty + 回金 + 装备回收) |
 | 装备臂 | 发出点 = mandate M7 装备段(判据单一源 = `kernel/cw_equip_wear_plan._build_equip_wear_plan`;参数列表单一源 = `wear_param_steps_of`,发出面坐标伴随域消费单点)→ `CwActionWearEquipOp` | owned 装备域(`gs.equips` 快照,观察装配点直写)+ 坐标伴随域 `gs.owned_equip_xy`;机械半形态 = 显式起点(src_cx/src_cy)→ 槽位拖点静态解析(row/slot + back_slot_count → `row_drag_points`,零截图)→ 固定等待 settle → 单次拖拽(零判效)→ 自上报(坐标伴随域反查件名记账,反查不到 = `wear_item_xy_unresolved` 拒单零写);新鲜度 = 装备网格伴随域交替标志 `cw4_equip_xy_pending`(置位帧产 `Obs(in_place)`)+ 坐标缺席跳过自愈双通道 |
