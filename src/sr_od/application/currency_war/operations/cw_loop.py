@@ -125,6 +125,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_shop_card_det
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply_node import (
     CwScreenSupplyNode,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_synthesis_confirm import (
+    CwScreenSynthesisConfirm,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_wait_one_one import (
     CwScreenWaitOneOne,
 )
@@ -1110,6 +1113,14 @@ class CwLoop(CwOperation):
             return self._dispatch_screen_op(
                 CwScreenInterruptDialog(self.ctx), journal_name='中断挑战弹窗',
                 frame_tag='overlay_interrupt_dialog', wait=1.5)
+
+        if name == '货币战争-备战-合成确认':
+            # 合成确认浮层收尾(点 ✓ 完成已发起合成;关不掉 → on_fail_retry 映射
+            # round_retry;消耗语义申报见 CwScreenSynthesisConfirm docstring)
+            return self._dispatch_screen_op(
+                CwScreenSynthesisConfirm(self.ctx), journal_name='合成确认浮层',
+                frame_tag='overlay_synthesis_confirm', wait=1.5,
+                on_fail_retry=True)
 
         if name == '货币战争-大厅':
             return self._lobby_return_collect(screen)
