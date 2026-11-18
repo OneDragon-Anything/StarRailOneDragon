@@ -107,7 +107,8 @@ def from_dict(cls, d: dict) -> 'CwActionWearEquipParam':
 
 ```python
         outcome = report_action_wear_equip_param(gs, action, ChannelSig(...))
-        detail = f'穿戴 → ({action.row}-{action.slot}) 已发(发出即记账,落地归观察对账)'
+        detail = (f'穿戴 {action.item_name}/{action.char_name}'
+                  f' → ({action.row}-{action.slot}) 已发(发出即记账,落地归观察对账)')
         if outcome is not None and not outcome.applied:
             detail += f'；记账拒单:{outcome.reason}(拖拽已发生,账未落)'
         log.info(f'[cw][wear] {detail}')
@@ -166,7 +167,7 @@ def wear_param_steps_of(build: EquipPlanBuild, gs: Any
 
 **与记账面反查的两道防线关系（r3 申报；r4 精确化）**：发出面预检（本 helper 坐标缺席跳过）与记账面反查拒单（`wear_item_xy_unresolved`，§2.11）= 同一失效形态的两道防线——发出面用同一坐标伴随域预检，同帧下反查必命中。**kernel 生产路径预检漏网不可达**（emit 与 report 同宿主迭代内同步执行、零中间写端，复审已核）——第二道防线的实际生效面 = **MCP 直调路径**（直调坐标脱离发出面预检，由反查拒单 + round detail 拒单码承接，§6.1），勿据本段误判 kernel 存在竞态面。
 
-- 模块 docstring L6-8 机械原语引用更新：机械半宿主描述改为「op 自持静态派生」，`_owned_grid_locate` 引用删除、`_equip_slot_drag_point` 引用改为「已随本批退役」（§2.11）；补「坐标伴随域单一源 = gs.owned_equip_xy（观察装配点写入），本函数 = 发出面唯一消费口」。
+- 模块 docstring L6-8 机械原语引用更新：机械半宿主描述改为「op 自持静态派生」，`_owned_grid_locate` 引用删除、`_equip_slot_drag_point` 引用改为「已随本批退役」（§2.12）；补「坐标伴随域单一源 = gs.owned_equip_xy（观察装配点写入），本函数 = 发出面唯一消费口」。
 - `EquipWearStep` docstring 补一行：「本步不带坐标；坐标 = 发出点经 `wear_param_steps_of` 从状态容器坐标伴随域取（入口观察快照，穿戴帧间经环内重观察刷新，§1.5）」。
 
 ### 2.5 `strategies/impl/mandate_v1/mandate.py` — M7 发出点改构
@@ -342,11 +343,13 @@ def row_drag_points(ctx: SrContext, prefix: str,
 # 差额 > 0 → 逐差额 append 占位坐标(同名 2 件 1 坐标场景 = 差 1 补 1,
 # 非存在性跳过)。
 # [占位唯一化(M-r3-2):占位亦须满足坐标↔条目一一对应——反查按坐标
-#  首中语义,同值占位会反查错名污染 sim 逻辑账。形态 = 基值 + 全局
-#  占位序号偏移:(1769, 400 + 13*k),k = sim 后端维护的占位递增序号
-#  (伴随域 sim 局只增不减,序号恒新,无重排冲突面)。
+#  首中语义,同值占位会反查错名污染 sim 逻辑账。形态 = 界外哨兵 +
+#  占位序号偏移:(-1000 - k, -1000),k = sim 后端维护的占位递增序号
+#  (伴随域 sim 局只增不减,序号恒新,无重排冲突面);界外值与
+#  read_equip_grid 实读格心集合(装备区格心,y 值域 90-710)恒不相交,
+#  实读键整表覆盖后追加的占位不会反查误中实读条目(m-r4-2)。
 #  占位 = sim 环境快照,机械段静默不消费(反查可命中,记账正常),
-#  禁实机消费占位(实机恒观察写真值)。
+#  禁实机消费占位(实机恒观察写真值);机械段不消费故任意哨兵值安全。
 #  伴随域 None(未就绪) → 跳过(等观察/名单就绪)。
 #  写通道 = gs.observe(见上,禁 write_logic)。]
 # 申报语义 = sim-design §6.5 环境快照族。
