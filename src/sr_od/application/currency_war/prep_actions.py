@@ -340,9 +340,9 @@ class PrepActionExecutor:
         # 回执——端口无返回,摘经由本属性旁路供 on_outcome detail)。
         self.last_detail: str = ''
         # 出战点击事实(出战域重设计收缩语义):True = StartBattleOp
-        # 点击序列已执行(含弹窗确认);False = 找不到按钮/area 缺失等
-        # 未执行形态。消费方 = 出战发出核 launch_prepared_battle(本模块,
-        # 返回值旁路)。getattr 容缺(__new__ 桩形态)。
+        # 点击已执行(单击原子,op 内零弹窗收尾);False = 找不到按钮/area
+        # 缺失等未执行形态。消费方 = 出战发出核 launch_prepared_battle
+        # (本模块,返回值旁路)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
         # 最近一次分派的动作 op round 结果(QC 终结口失败透传的取数口;
         # 逐分派覆盖 = 恒本拍动作,防上拍残留误透传)。消费方 =
