@@ -52,6 +52,12 @@ class CwActionMoveUnitOp(CwOperation):
     申报)。记账 = 槽位反查产物形态(记账路径总契约第三适用者,
     词表 docstring 申报)。
 
+    与 DragCwChar(operations/actions 域,通用拖拽原语)基差异:其
+    from_idx/to_idx 恒 1 基画面物理槽位(不分域);本 op 四元组按域分基
+    (bench 0 基槽位表下标 / front·back 排内 1 基画面槽号)——同族拖动
+    动作两类基不同,跨类传参先对表,勿互填参数(DragCwChar 类 docstring
+    已有对称声明)。
+
     :param param: 统一拖动动作参数(字段语义与取值时机见词表类 docstring)。
     :param env: 备战域执行环境(代码内组装传入;可省 = 缺省 None,本 op
         机械半自持后零 env 消费,形参保留 = 注册表构造签名兼容)。
