@@ -204,16 +204,19 @@ class StrategyState:
     # 收尾点现读快照);sim 轮差分账本/A/B 披露照旧读本表,不经流。
     cw4_counters: dict = field(default_factory=dict)
 
-    # ===== 穿戴/重观察交替位(坐标伴随域新鲜度机制载体)=====
-    # [索引定义] 写入端 = 装备发出点(mandate M7 发出面 / entry 第 7 步,
-    # 两点同构):True = 本帧已发穿装动作、下一决策帧应产
-    # CwActionObsParam(scope='in_place') 环内重观察后清位——与部署扫描
-    # pending_reobserve 读后清同构(先例形态)。fail-safe 方向安全:穿装
-    # op 异常致标志残留 → 下帧多发一帧 Obs(in_place)(无害重观察)→
-    # 清标志续穿。生命周期 = session 级(局间随每局全新创建自然清零)。
-    # 语义 = 坐标伴随域 owned_equip_xy 三条契约之「陈旧窗口禁消费」的
-    # 执行载体(契约正文 = action-op.md「记账路径总契约」条款)。
-    cw4_wear_pending: bool = False
+    # ===== 装备网格伴随域新鲜度交替位(坐标伴随域 owned_equip_xy 新鲜度机制载体)=====
+    # [索引定义] 写入端 = 穿装发出点(mandate M7 发出面 / entry 第 7 步,
+    # 两点同构)+ 工具原子发出点(entry 第 7 步工具段)——两类会变异 owned
+    # 装备网格的动作共置位、共用同一重观察帧:True = 本帧已发穿装或工具
+    # 原子动作、下一决策帧应产 CwActionObsParam(scope='in_place') 环内
+    # 重观察后清位——与部署扫描 pending_reobserve 读后清同构(先例形态)。
+    # fail-safe 方向安全:动作 op 异常致标志残留 → 下帧多发一帧
+    # Obs(in_place)(无害重观察)→ 清标志续发。生命周期 = session 级
+    # (局间随每局全新创建自然清零)。语义 = 坐标伴随域 owned_equip_xy
+    # 三条契约之「陈旧窗口禁消费」的执行载体(契约正文 = action-op.md
+    # 「记账路径总契约」条款);覆盖 aftermath = 穿装合成/reflow + 工具
+    # 消耗/reflow(获得类 aftermath = 穿装批 A1 假设辖域另案)。
+    cw4_equip_xy_pending: bool = False
 
     # ===== 相位与镜像(每轮重算;write_shop_mirrors 写)=====
     # 相位观测缺省 = ''(absence 语义;live 初值 'FORM' 由 create_session

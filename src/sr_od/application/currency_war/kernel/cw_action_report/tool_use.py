@@ -2,12 +2,26 @@
 
 **机械执行直接上报**(用户裁定 2026-09-21,权威版本 =
 flow/action_ops.md §1 增补 2):动作 op = 机械执行
-不判成败,上报**无条件按成功写状态容器**——确定面
+不判成败,机械成功即按成功写状态容器——确定面
 :meth:`GameState.write_logic`、随机面(效果含采样):
-:meth:`GameState.write_logic_rand` 采样链。「失败」不是本层概念,状态容器与
-实机出入归观察对账机制按其契约处置。本模块自 ``zero_writes`` 零写占位升格
+:meth:`GameState.write_logic_rand` 采样链;状态容器与实机出入归观察
+对账机制按其契约处置。本模块自 ``zero_writes`` 零写占位升格
 (七函数自零写族移至本模块,包级 ``__getattr__`` 命名规约解析具名模块先于零写族,
 op 侧调用形态不变)。
+
+**记账路径总契约(第二适用者;契约正文 = action-op.md「记账路径总契约」
+条款)**:记账 = 坐标反查——动作 op 上报它实际动过的坐标(源 = 工具
+icon 格心七类通用;equip 模式目标 = 目标装备 icon 格心,第二反查键),
+kernel 记账层用坐标伴随域 ``gs.owned_equip_xy`` 反查出具体内容再记账,
+反查函数 = kernel :func:`cw_game_state.resolve_item_by_xy` 公共口;
+名称字段(item_name/char_name)机械面与记账面均零消费(纯日志)。
+出参语义申报(applied):反查/槽位解析失败 = **applied=False 拒单零写**
+(处置 = 交还框架决策循环刷新对照表重派,禁补拖;精密扳手
+consume=False 例外 = 不拒单、evidence 注记 tool_xy_unresolved 形态),
+其余分支维持 applied=True。反查产物移除 = **严格移除**(list.remove /
+前置 index,反查命中但名单缺条目 = 禁消费窗口违反,自然 ValueError
+响亮暴露,零防御);状态推导名(冶金炉 char 分支穿戴件)维持
+``_remove_one`` 容错(非反查产物,总契约不辖)。
 
 记账载体 = ``gs.equips``(工具件住装备库存,观察/策略同口径):**工具
 消耗移除与效果分支同域合并单笔写,禁拆两笔**(拆两笔 = 中间态 + 二次失配
@@ -27,9 +41,9 @@ op 侧调用形态不变)。
   特殊(银狼升星奖励专属 10 件在内)与骇客不可作用、亦不可产出;披露键
   :data:`FURNACE_MUTATE_POOL_ASSUMPTION_KEYS`;rng = pick_invest 关键字
   带缺省形态(缺省未播种 = 采样是猜测);
-- **失败安全**(沿 gain-chain §2.7 同款):目标单位未观察/漂移、桥零写
-  分支(库存未观察/无此件)= bug 面零写 + 留存证据不停机;rand 写吸收工具
-  消失的成败差异 = 预期自愈形态,不落缺陷。
+- **失败安全**(沿 gain-chain §2.7 同款):库存未观察/费用门超门/桥零写
+  分支 = bug 面零写 + 留存证据不停机(applied=True 保留);rand 写吸收
+  工具消失的成败差异 = 预期自愈形态,不落缺陷。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包
 ``cw_action_report.__init__`` docstring;工具七类机械半同构,同住一文件
@@ -60,6 +74,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     Unit,
     _emit_defect,
     _validate_sig,
+    resolve_item_by_xy,
 )
 
 #: 链内写端署名(gain-chain 同纪律:新写端新名,不沿用旧名伪装连续;
@@ -68,11 +83,24 @@ TOOL_USE_REPORT_PRODUCER: str = 'CwActionToolUseReport'
 
 #: 缺陷留存证据 kind 词表(_emit_defect 台账行分键;留存证据不停机)。
 DEFECT_PRIVILEGE_WORN_UNSUPPORTED: str = 'tool_privilege_worn_unsupported'
+#: 槽位解析失败(总契约「保留升格」:原 applied=True + 缺陷留存 → 现役
+#: applied=False 拒单,与穿装 wear_target_unit_missing 同形统一)。
 DEFECT_TARGET_UNIT_MISSING: str = 'tool_target_unit_missing'
 DEFECT_BRIDGE_ZERO_WRITE: str = 'tool_bridge_zero_write'
 DEFECT_TOKEN_NOT_ADMITTED: str = 'tool_token_not_admitted'
 DEFECT_MUTATE_CONSEQUENCE_CANDIDATE: str = 'furnace_mutate_consequence_candidate'
 DEFECT_MUTATE_OUT_OF_SCOPE_KEPT: str = 'furnace_mutate_out_of_scope_kept'
+
+#: 拒单码(记账路径总契约「新码先登记再使用」;登记面 = 本常量节 +
+#: fields.md 回执契约节;拒单 = applied=False 零写 + 留存证据,处置 =
+#: 交还框架决策循环刷新对照表重派,禁补拖)。⚠️ tool_xy_unresolved 同时
+#: 是精密扳手 consume=False 豁免行的 evidence 注记形态(非拒单)——
+#: 判读按 applied/reason 列区分两类行,勿按码单值断言拒单。
+REJECT_TOOL_XY_UNRESOLVED: str = 'tool_xy_unresolved'
+REJECT_TOOL_TARGET_XY_UNRESOLVED: str = 'tool_target_xy_unresolved'
+# (退役拒因码:furnace_target_missing / privilege_target_missing——名称
+#  在库检查随坐标反查路径退役,反查产物取代;tool_xy_unresolved /
+#  tool_target_xy_unresolved 承接其拒单面。)
 
 #: 冶金炉采样池 v0 建模假设档披露键(pick_invest 先例形态):池语义 =
 #: 同类别均匀、排除自身,成员资格轴 = 注册表 category(作用域白名单 =
@@ -182,6 +210,16 @@ def _equips_inv(gs: GameState) -> list[str] | None:
     return None if inv is None else list(inv)
 
 
+def _reject(sig: ChannelSig, reason: str, *, field_name: str,
+            expected: str, actual: str, evidence: str) -> LogicOutcome:
+    """记账拒单统一出口(总契约拒单条款):applied=False 零写 + 留存证据
+    ——拒单发生在拖拽之后,处置 = 交还框架决策循环刷新对照表重派,
+    禁补拖(与穿装批 _reject 同形)。"""
+    _emit_defect(field_name=field_name, expected=expected, actual=actual,
+                 evidence=evidence, sig=sig, kind=reason)
+    return LogicOutcome(applied=False, reason=reason)
+
+
 # ============================================================ 冶金炉
 
 def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
@@ -221,7 +259,10 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
 
 def _furnace_equip_branch(gs: GameState, param: Any, sig: ChannelSig,
                        rng: random.Random) -> LogicOutcome:
-    """炉·拖装备入账分支:单笔合并采样替换写(rand 面)。"""
+    """炉·拖装备入账分支:双键反查(源工具 + equip 目标件)→ 单笔合并
+    采样替换写(rand 面)。目标件/工具名 = 反查产物(名称字段零消费);
+    反查不到 = 记账拒单(applied=False 零写);反查命中后的移除 = 严格
+    移除(名单缺条目 = 禁消费窗口违反,自然 ValueError 响亮暴露)。"""
     inv = _equips_inv(gs)
     if inv is None:
         _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
@@ -230,52 +271,71 @@ def _furnace_equip_branch(gs: GameState, param: Any, sig: ChannelSig,
                            evidence='tool_furnace_equip',
                            detail='equips_unobserved')
         return LogicOutcome(applied=True, reason='furnace_equips_unobserved')
-    if param.item_name not in inv:
-        _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
-                           field_name='equips',
-                           expected=f'目标件 {param.item_name!r} 在库',
-                           actual=f'不在库(inv={inv!r})',
-                           evidence='tool_furnace_equip',
-                           detail='target_item_missing')
-        return LogicOutcome(applied=True, reason='furnace_target_missing')
-    new_item = furnace_mutate_sample(rng, param.item_name)
+    item = resolve_item_by_xy(gs, param.tgt_cx, param.tgt_cy)
+    tool = resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)
+    if tool is None:
+        # 源键反查不到 = 记账拒单(工具消耗笔辖域,总契约拒单条款;
+        # 源键 = 七类通用主键,先于 equip 目标键判定)。
+        return _reject(sig, REJECT_TOOL_XY_UNRESOLVED,
+                       field_name='equips',
+                       expected='owned_equip_xy 含 (tool_cx, tool_cy) 条目',
+                       actual=f'xy=({param.tool_cx},{param.tool_cy})',
+                       evidence='tool_furnace_equip')
+    if item is None:
+        # equip 目标键反查不到 = 记账拒单(替换原名称在库检查
+        # furnace_target_missing;处置 = 交还决策循环刷新对照表重派)。
+        return _reject(sig, REJECT_TOOL_TARGET_XY_UNRESOLVED,
+                       field_name='equips',
+                       expected='owned_equip_xy 含 (tgt_cx, tgt_cy) 条目',
+                       actual=f'xy=({param.tgt_cx},{param.tgt_cy})',
+                       evidence='tool_furnace_equip')
+    new_item = furnace_mutate_sample(rng, item)
     if new_item is None:
         _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
                            field_name='equips',
-                           expected=f'{param.item_name!r} 同类别池可采样',
+                           expected=f'{item!r} 同类别池可采样',
                            actual='目标件不在注册表/池空(禁猜)',
                            evidence='tool_furnace_equip',
                            detail='mutate_pool_unavailable')
         return LogicOutcome(applied=True, reason='furnace_pool_unavailable')
-    # 合并单笔:移除工具 ∧ 移除目标件 ∧ 追加采样替换(禁拆两笔)。
+    # 合并单笔:反查产物严格移除(工具 ∧ 目标件)∧ 追加采样替换(禁拆两笔)。
     new_inv = list(inv)
-    _remove_one(new_inv, '冶金炉')
-    _remove_one(new_inv, param.item_name)
+    new_inv.remove(tool)
+    new_inv.remove(item)
     new_inv.append(new_item)
     gs.write_logic_rand(
         gs.equips, new_inv, produced_by=TOOL_USE_REPORT_PRODUCER,
-        evidence=f'tool_furnace_equip:{param.item_name}>{new_item}', sig=sig)
-    _emit_consequence_candidates(gs, sig, [(param.item_name, new_item)],
+        evidence=f'tool_furnace_equip:{item}>{new_item}', sig=sig)
+    _emit_consequence_candidates(gs, sig, [(item, new_item)],
                                  evidence='tool_furnace_equip')
     return LogicOutcome(
         applied=True,
-        reason=f'furnace_mutated({param.item_name}>{new_item})')
+        reason=f'furnace_mutated({item}>{new_item})')
 
 
 def _furnace_char_branch(gs: GameState, param: Any, sig: ChannelSig,
                       rng: random.Random) -> LogicOutcome:
-    """炉·拖角色入账分支:①equips 采样链 rand 合并写(白名单件采样替换,越
-    白名单穿戴件保留原样 + 聚合留存证据——其是否随动作消失未采证,v0 保留);
-    ②行域穿戴清空 logic 写(全拆,清空本身无随机)。"""
+    """炉·拖角色入账分支:源工具反查 → ①equips 采样链 rand 合并写(白名单
+    件采样替换,越白名单穿戴件保留原样 + 聚合留存证据——其是否随动作消失
+    未采证,v0 保留);②行域穿戴清空 logic 写(全拆,清空本身无随机)。
+    工具端 = 反查产物严格移除;穿戴件名 = 状态推导名(unit.equips),维持
+    ``_remove_one`` 容错(总契约不辖);槽位解析失败 = 拒单
+    (tool_target_unit_missing 升格 applied=False)。"""
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
-        _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
-                           field_name='deployed',
-                           expected=f'({param.row},{param.slot}) 有单位',
-                           actual='未观察/漂移无单位',
-                           evidence='tool_furnace_char',
-                           detail='target_unit_missing')
-        return LogicOutcome(applied=True, reason='tool_target_unit_missing')
+        return _reject(sig, DEFECT_TARGET_UNIT_MISSING,
+                       field_name='deployed',
+                       expected=f'({param.row},{param.slot}) 有单位',
+                       actual='未观察/漂移无单位',
+                       evidence='tool_furnace_char')
+    tool = resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)
+    if tool is None:
+        # 源键反查不到 = 记账拒单(工具消耗笔辖域)。
+        return _reject(sig, REJECT_TOOL_XY_UNRESOLVED,
+                       field_name='equips',
+                       expected='owned_equip_xy 含 (tool_cx, tool_cy) 条目',
+                       actual=f'xy=({param.tool_cx},{param.tool_cy})',
+                       evidence='tool_furnace_char')
     worn = list(unit.equips or [])
     replacements: list[str] = []
     mutated_worn: list[str] = []
@@ -314,10 +374,11 @@ def _furnace_char_branch(gs: GameState, param: Any, sig: ChannelSig,
                            evidence='tool_furnace_char',
                            detail='equips_unobserved')
         return LogicOutcome(applied=True, reason='furnace_equips_unobserved')
-    # ①合并单笔 rand:移除工具 ∧ 移除全部穿戴 ∧ 追加(白名单件采样替换 +
+    # ①合并单笔 rand:反查产物严格移除工具 ∧ 移除全部穿戴(状态推导名
+    #   _remove_one 容错,总契约不辖)∧ 追加(白名单件采样替换 +
     #   越白名单件原样保留)。
     new_inv = list(inv)
-    _remove_one(new_inv, '冶金炉')
+    new_inv.remove(tool)
     for w in worn:
         _remove_one(new_inv, w)
     new_inv.extend(replacements)
@@ -357,11 +418,12 @@ def _emit_consequence_candidates(gs: GameState, sig: ChannelSig,
 def report_action_privilege_card_use_param(gs: GameState, param: Any,
                                            sig: ChannelSig) -> LogicOutcome:
     """特权赋予卡上报(两条分支):
-    - ``target_kind='equip'``(库存分支):**单笔 write_logic 合并写**
-      equips = 移除工具 ∧ 目标件名 → ``privilege_counterpart`` 替换
-      (映射桥;同名多件全替换与库存桥 ``transform_equip_to_privilege``
-      同口径,禁第二套);桥零写分支透传(库存未观察/无此件)→ 留存证据
-      kind=``tool_bridge_zero_write``;
+    - ``target_kind='equip'``(库存分支):双键反查(源工具 + 目标件)→
+      **单笔 write_logic 合并写** equips = 严格移除工具 ∧ 反查产物件名 →
+      ``privilege_counterpart`` 替换(映射桥;同名多件全替换与库存桥
+      ``transform_equip_to_privilege`` 同口径,禁第二套;前置 index 自然
+      ValueError 防静默空变换);反查不到 = 记账拒单零写(tool_xy_
+      unresolved / tool_target_xy_unresolved,总契约处置);
     - 其余(拖角色入账分支):**fail-closed 零写** + 留存证据
       (kind=``tool_privilege_worn_unsupported``;用户裁定 2026-09-21 按
       不能拖角色处理待实机测试,判据面现役只产库存分支,收到 char 分支 =
@@ -387,22 +449,33 @@ def report_action_privilege_card_use_param(gs: GameState, param: Any,
                            detail='equips_unobserved')
         return LogicOutcome(applied=True,
                             reason='privilege_equips_unobserved')
-    if param.item_name not in inv:
-        _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
-                           field_name='equips',
-                           expected=f'目标件 {param.item_name!r} 在库',
-                           actual=f'不在库(inv={inv!r})',
-                           evidence='tool_privilege_equip',
-                           detail='target_item_missing')
-        return LogicOutcome(applied=True, reason='privilege_target_missing')
-    target = privilege_counterpart(param.item_name)
-    # 合并单笔:移除工具 ∧ 变换同笔(映射桥 privilege_counterpart;
-    # 禁拆两笔——拆两笔 = 中间态 + 二次失配面)。
+    item = resolve_item_by_xy(gs, param.tgt_cx, param.tgt_cy)
+    tool = resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)
+    if tool is None:
+        # 源键反查不到 = 记账拒单(工具消耗笔辖域;源键 = 主键先判定)。
+        return _reject(sig, REJECT_TOOL_XY_UNRESOLVED,
+                       field_name='equips',
+                       expected='owned_equip_xy 含 (tool_cx, tool_cy) 条目',
+                       actual=f'xy=({param.tool_cx},{param.tool_cy})',
+                       evidence='tool_privilege_equip')
+    if item is None:
+        # equip 目标键反查不到 = 记账拒单(替换原名称在库检查
+        # privilege_target_missing)。
+        return _reject(sig, REJECT_TOOL_TARGET_XY_UNRESOLVED,
+                       field_name='equips',
+                       expected='owned_equip_xy 含 (tgt_cx, tgt_cy) 条目',
+                       actual=f'xy=({param.tgt_cx},{param.tgt_cy})',
+                       evidence='tool_privilege_equip')
+    target = privilege_counterpart(item)
+    # 合并单笔:反查产物严格移除工具 ∧ 变换同笔(映射桥 privilege_counterpart;
+    # 禁拆两笔——拆两笔 = 中间态 + 二次失配面)。前置 index 自然 ValueError
+    # 防静默空变换(反查命中但名单缺条目 = 禁消费窗口违反响亮暴露)。
+    inv.index(item)
     new_inv = list(inv)
-    _remove_one(new_inv, '特权赋予卡')
-    new_inv = [target if n == param.item_name else n for n in new_inv]
+    new_inv.remove(tool)
+    new_inv = [target if n == item else n for n in new_inv]
     gs.write_logic(gs.equips, new_inv, produced_by=TOOL_USE_REPORT_PRODUCER,
-                   evidence=f'tool_privilege_equip:{param.item_name}>{target}',
+                   evidence=f'tool_privilege_equip:{item}>{target}',
                    sig=sig)
     return LogicOutcome(applied=True,
                         reason=f'privilege_transformed({target})')
@@ -414,19 +487,36 @@ def _wrench_report(gs: GameState, param: Any, sig: ChannelSig, *,
                    tool_name: str, consume: bool) -> LogicOutcome:
     """扳手族共用实现:**两笔 write_logic**——①equips 合并写 = 移除工具
     (``consume``;精密扳手无限次不递减)+ 追加目标角色全部穿戴件;
-    ②目标角色行域穿戴清空。归属迁移非获得,不走获得链。"""
+    ②目标角色行域穿戴清空。归属迁移非获得,不走获得链。
+    工具名 = 源坐标反查产物,按 consume 分支分裂处置(总契约):拆装扳手
+    (consume=True)反查不到 = ``tool_xy_unresolved`` 拒单零写(工具消耗笔
+    是反查产物辖域);精密扳手(consume=False)**豁免不拒单**——无消耗笔
+    可拒,拒单 = 物理卸装无账(行域清空写不落、账实分裂靠 reconcile 兜底,
+    对照表未刷新前恒拒 = 语义倒退),equips 追加穿戴件与行域清空照写,
+    evidence 注记本码形态。槽位解析失败 = 拒单
+    (tool_target_unit_missing 升格 applied=False)。"""
     _validate_sig(sig, ('logic_action',))
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
-        _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
-                           field_name='deployed',
-                           expected=f'({param.row},{param.slot}) 有单位',
-                           actual='未观察/漂移无单位',
-                           evidence=f'tool_{tool_name}',
-                           detail='target_unit_missing')
-        return LogicOutcome(applied=True, reason='tool_target_unit_missing')
+        return _reject(sig, DEFECT_TARGET_UNIT_MISSING,
+                       field_name='deployed',
+                       expected=f'({param.row},{param.slot}) 有单位',
+                       actual='未观察/漂移无单位',
+                       evidence=f'tool_{tool_name}')
+    tool = resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)
+    xy_note = ''
+    if tool is None:
+        if consume:
+            # 拆装扳手:源键反查不到 = 记账拒单(消耗笔辖域)。
+            return _reject(sig, REJECT_TOOL_XY_UNRESOLVED,
+                           field_name='equips',
+                           expected='owned_equip_xy 含 (tool_cx, tool_cy) 条目',
+                           actual=f'xy=({param.tool_cx},{param.tool_cy})',
+                           evidence=f'tool_{tool_name}')
+        # 精密扳手豁免(无消耗笔可拒):evidence 注记本码形态,不拒单。
+        xy_note = f'|{REJECT_TOOL_XY_UNRESOLVED}'
     worn = list(unit.equips or [])
-    ev = f'tool_{tool_name}@{param.row}{param.slot}'
+    ev = f'tool_{tool_name}@{param.row}{param.slot}{xy_note}'
     inv = _equips_inv(gs)
     if inv is None:
         # 分支① bug 面(库存未观察):零写留存证据;分支②(行域)独立事实照写。
@@ -437,7 +527,8 @@ def _wrench_report(gs: GameState, param: Any, sig: ChannelSig, *,
     else:
         new_inv = list(inv)
         if consume:
-            _remove_one(new_inv, tool_name)
+            # 反查产物严格移除(命中但名单缺条目 = 禁消费窗口违反)。
+            new_inv.remove(tool)
         new_inv.extend(worn)
         gs.write_logic(gs.equips, new_inv,
                        produced_by=TOOL_USE_REPORT_PRODUCER,
@@ -468,21 +559,21 @@ def report_action_precision_wrench_use_param(gs: GameState, param: Any,
 
 def _projector_report(gs: GameState, param: Any, sig: ChannelSig, *,
                       tool_name: str, cost_gate: int) -> LogicOutcome:
-    """投影仪族共用实现:①equips ``write_logic`` 移除工具;②获得走链
-    ``gain_character(char, 1★)``(复制进席触发 3 合 1 = 口述·权威
-    2026-09-21;席满溢出/落点 = 链语义承接)。费用门(≤3,注册表现读
-    ``bench_char_cost``)前置查 = 防御纵深(动作发出点判据面已覆盖),超门 =
-    留存证据零写。"""
+    """投影仪族共用实现:源工具反查 → ①equips ``write_logic`` 反查产物
+    严格移除;②获得走链 ``gain_character(char, 1★)``(复制进席触发
+    3 合 1 = 口述·权威 2026-09-21;席满溢出/落点 = 链语义承接)。
+    费用门(≤3,注册表现读 ``bench_char_cost``)前置查 = 防御纵深(动作
+    发出点判据面已覆盖),超门 = 留存证据零写(applied=True 保留);
+    源键反查不到 = 记账拒单(tool_xy_unresolved,消耗笔辖域);槽位解析
+    失败 = 拒单(tool_target_unit_missing 升格 applied=False)。"""
     _validate_sig(sig, ('logic_action',))
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
-        _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
-                           field_name='deployed',
-                           expected=f'({param.row},{param.slot}) 有单位',
-                           actual='未观察/漂移无单位',
-                           evidence=f'tool_{tool_name}',
-                           detail='target_unit_missing')
-        return LogicOutcome(applied=True, reason='tool_target_unit_missing')
+        return _reject(sig, DEFECT_TARGET_UNIT_MISSING,
+                       field_name='deployed',
+                       expected=f'({param.row},{param.slot}) 有单位',
+                       actual='未观察/漂移无单位',
+                       evidence=f'tool_{tool_name}')
     char = str(unit.char_id or '')
     if cost_gate > 0:
         cost = bench_char_cost(unit)
@@ -494,6 +585,15 @@ def _projector_report(gs: GameState, param: Any, sig: ChannelSig, *,
                                evidence=f'tool_{tool_name}',
                                detail='cost_gate_over')
             return LogicOutcome(applied=True, reason='projector_cost_gate')
+    tool = resolve_item_by_xy(gs, param.tool_cx, param.tool_cy)
+    if tool is None:
+        # 源键反查不到 = 记账拒单(工具消耗笔辖域;费用门在先 = 门内分支
+        # 先拦,反查拒单不改变门语义)。
+        return _reject(sig, REJECT_TOOL_XY_UNRESOLVED,
+                       field_name='equips',
+                       expected='owned_equip_xy 含 (tool_cx, tool_cy) 条目',
+                       actual=f'xy=({param.tool_cx},{param.tool_cy})',
+                       evidence=f'tool_{tool_name}')
     ev = f'tool_{tool_name}@{param.row}{param.slot}'
     inv = _equips_inv(gs)
     if inv is None:
@@ -503,7 +603,7 @@ def _projector_report(gs: GameState, param: Any, sig: ChannelSig, *,
                            evidence=ev, detail='equips_unobserved')
     else:
         new_inv = list(inv)
-        _remove_one(new_inv, tool_name)
+        new_inv.remove(tool)
         gs.write_logic(gs.equips, new_inv,
                        produced_by=TOOL_USE_REPORT_PRODUCER,
                        evidence=f'{ev}#consume', sig=sig)

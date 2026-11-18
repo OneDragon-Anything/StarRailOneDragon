@@ -803,18 +803,22 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
 **语义**:装备库存坐标伴随域——名 → 格心坐标列表 dict(1080p;同名多条 =
 列表多元素,序 = 识别命中序 = 发出面「同名按出现序游标消费」的出现序
 口径)。**决策消费面**(与 §3.2.15b occupied_equips 审计面的语义差):
-①发出面坐标源(穿装动作 src_cx/src_cy 取数);②**记账面反查键**——
-记账路径总契约(用户裁定)首例:动作 op 上报它实际动过的坐标,kernel
+①发出面坐标源(穿装动作 src_cx/src_cy 取数;工具原子 tool_cx/tool_cy
+源坐标,equip 模式另带 tgt_cx/tgt_cy 目标坐标);②**记账面反查键**——
+记账路径总契约(用户裁定):动作 op 上报它实际动过的坐标,kernel
 按坐标伴随域反查出具体内容再记账,名称字段(item_name/char_name)在
-机械面与记账面均零消费(契约正文 = action-op.md「记账路径总契约」条款)。
+机械面与记账面均零消费(首例 = 穿装 WearEquip,第二适用者 = 工具原子
+七类;契约正文 = action-op.md「记账路径总契约」条款)。
 **写入方**:唯一观察写入方 = 备战入口 heavy 观察装配点(与 equips 同一次
 read_equips 派生,整表覆盖)+ sim 后端占位同步(环境快照通道,按名单
 计数差 append 占位,占位 = 界外哨兵坐标唯一化;先例 = diamond_count
 环境快照写);**禁策略/动作逻辑写端**——环内获得件坐标缺席 = 发出面
 跳过自愈,禁回填猜值。**新鲜度契约**:陈旧有行为后果(拖错格/错账),
-由策略侧「穿戴/重观察交替」承载(反查时序不变式:上报反查消费拖前
-快照,重观察刷新晚于上报;记账后→重观察前的陈旧条目窗口禁消费;同一
-快照内坐标↔条目一一对应),消费方禁跨重观察帧复用快照坐标。语义档:
+由策略侧「装备网格伴随域新鲜度交替」承载(载体 =
+`StrategyState.cw4_equip_xy_pending`,穿装与工具 aftermath 两类发出共置位
+共用同一重观察帧;反查时序不变式:上报反查消费拖前快照,重观察刷新
+晚于上报;记账后→重观察前的陈旧条目窗口禁消费;同一快照内坐标↔条目
+一一对应),消费方禁跨重观察帧复用快照坐标。语义档:
 None = 观察域未就绪(反查面按 None → 反查不到拒单);{} = 真读到空;
 不承诺与 gs.equips 名单同序/同长(对齐键 = 名 + 出现序游标)。
 
@@ -3245,7 +3249,9 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     断言后;`定位缺失(按钮-确认)` = 补给选卡确认链新增) =
     `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`定位缺失(按钮-确认)`
     /`未执行:定位缺失(按钮-出战|按钮-跳过)`/
-    `未执行:无简易武装箱|无秘密典籍|无书册卡|owned 网格未定位族`;
+    `未执行:无简易武装箱|无秘密典籍|无书册卡`
+    (`owned 网格未定位族` 已随工具原子族坐标显式化退役——两供给方 =
+    穿装批退 WearEquip、工具迁移批退工具 op,全仓零 round_fail 供给);
     子码枚举单一源 = `prep_actions.py` 码化映射表(补给确认码供给点 =
     `cw_pick_supply_action.py::_note_receipt`:pick_supply 确认点击实机
     定位缺失产此码,sim 点击经端口受理不产此码)。
@@ -3262,6 +3268,19 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     核对删除);`wear_item_xy_unresolved` **新增**(坐标伴随域反查不到
     = 拒单零写,拒绝发生在拖拽后——round detail 带拒单码,处置 = 交还
     框架决策循环刷新对照表重派,禁补拖;登记后使用纪律已守)。
+    工具原子上报拒绝码五行变更(参数面迁移批;登记面 =
+    `kernel/cw_action_report/tool_use.py` 拒单码常量节):
+    `furnace_target_missing`/`privilege_target_missing` **退役**(名称在库
+    检查删除,坐标反查路径取代);`tool_target_unit_missing` **保留升格**
+    (槽位解析失败从 applied=True 缺陷留存升格 applied=False 拒单,与
+    `wear_target_unit_missing` 同形统一);`tool_xy_unresolved` **新增**
+    (源工具坐标反查不到 = 拒单零写,round detail 带拒单码,处置 =
+    交还框架决策循环刷新对照表重派,禁补拖;⚠️ 本码同时是精密拆装扳手
+    consume=False 豁免行的 evidence 注记形态(非拒单,无消耗笔可拒)——
+    判读脚本按 evidence 字符串检索该码会同时命中拒单行与豁免注记行
+    两类,需按 applied/reason 列区分);`tool_target_xy_unresolved` **新增**
+    (equip 模式目标件坐标反查不到 = 拒单零写,冶金炉/特权赋予卡 equip
+    分支)。
   `- `plane_node_sequences`(GameState 位面节点序列记录表,`PlaneNodeLedger` 载体):
     整行快照语义、逐位合并写、低频重写,Field 化无收益;访问口 = `cw_exec_state`
     三访问函数(get_node_ledger/ledger_node_type/ledger_update_plane)与

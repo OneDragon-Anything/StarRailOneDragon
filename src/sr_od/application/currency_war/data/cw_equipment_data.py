@@ -45,10 +45,11 @@ def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "",
 EQUIP_TOOL_CATEGORY: str = '工具'
 """注册表装备分类学里的「工具」类名(不可 drag 穿戴,只能拖到装备/角色上
 消耗使用)。分类全集单一源 = 本文件 ``Equipment.category`` 字段注释;
-消费 = kernel 判据面(`cw_equip_wear_plan` 穿戴候选过滤,import 本常量)
-与按名定位读(坐标伴随域 = gs.owned_equip_xy,观察装配点写入;
-现役按名定位读仅剩工具原子族 `prep_actions._owned_grid_locate`,待迁移);
-工具消费 = `CwActionToolUseOp`;禁再写本地平行定义。
+消费 = kernel 判据面(`cw_equip_wear_plan` 穿戴候选过滤,import 本常量);
+按名定位读已随工具原子族坐标显式化退役(原 `prep_actions._owned_grid_locate`),
+坐标伴随域 = gs.owned_equip_xy(观察装配点写入),发出面坐标源 + 记账面
+反查键(穿装与工具原子两类);工具消费 = `CwActionToolUseOp`;
+禁再写本地平行定义。
 
 [v4.7 待裁] v4.7 官方 7 类(进阶装备/特权装备/星徽/餐品改件/列车改件/
 宝钻/固有装备)无「工具」类,旧工具 7 件全部不在官方名单——本常量判据

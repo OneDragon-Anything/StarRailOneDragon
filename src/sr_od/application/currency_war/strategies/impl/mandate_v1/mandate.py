@@ -678,6 +678,11 @@ def run_mandate(frame: MandateFrame,
     m7_equip_xy_pending(坐标伴随域候选缺席被跳过的计划步数,值 = 步数
     非帧数——帧粒度事件按量累加)/ equip_plan_xy_all_pending(计划非空
     但坐标全缺席的自愈重派帧,事件帧计数)。
+    工具原子参数面迁移批(entry 第 7 步工具段发出面):
+    m7_5_tool_xy_pending(工具原子坐标缺席被跳过的原子数,值 = 原子数
+    非帧数——帧粒度事件按量累加,与 m7_equip_xy_pending 同口径)/
+    m7_5_tool_xy_all_pending(本帧有可用工具原子但坐标全缺席的自愈重派
+    帧,事件帧计数)。
     """
     counters = getattr(state_of(session), 'cw4_counters', None)
     if not isinstance(counters, dict):
@@ -1039,13 +1044,14 @@ def run_mandate(frame: MandateFrame,
             # 资源前置缺失(黑板帧/装备观察域未就绪)= 未发出通道,标志不置,
             # 下帧重派(与组合壳时代 round_fail 同形)。
             _count('equip_plan_resource_missing')
-        elif _st.cw4_wear_pending:
-            # 穿戴/重观察交替(坐标伴随域新鲜度机制):上帧已发穿戴 →
+        elif _st.cw4_equip_xy_pending:
+            # 装备网格伴随域新鲜度交替(坐标伴随域新鲜度机制;穿装与工具
+            # aftermath 共用同一重观察帧):上帧已发穿装/工具原子 →
             # 本帧环内重观察(owned_equip_xy 实读刷新)后再续穿;读后清
             # (先例 = 部署扫描 pending_reobserve 形态)。本帧计划构造结果
-            # 丢弃,不产穿戴——「记账后→重观察前的伴随域陈旧条目窗口禁
+            # 丢弃,不产穿装——「记账后→重观察前的伴随域陈旧条目窗口禁
             # 消费」契约(记账路径总契约之②)的执行点。
-            _st.cw4_wear_pending = False
+            _st.cw4_equip_xy_pending = False
             out.append(Emitted(CwActionObsParam(scope='in_place'),
                                True, 'm7_equip_reobserve'))
         else:
@@ -1053,7 +1059,7 @@ def run_mandate(frame: MandateFrame,
             for _p in params:
                 out.append(Emitted(_p, True, 'm7_equip_transfer'))
             if params:
-                _st.cw4_wear_pending = True
+                _st.cw4_equip_xy_pending = True
             if not _build.steps:
                 # 空计划具名 NOOP(合法稳态)。
                 _count('equip_plan_empty_noop')

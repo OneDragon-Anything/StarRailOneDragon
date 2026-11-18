@@ -70,6 +70,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     Unit,
     _emit_defect,
     _validate_sig,
+    resolve_item_by_xy,
 )
 
 #: 角色穿戴上限(equipment_mechanics.md「角色上限 3 件」定案)。
@@ -230,21 +231,6 @@ def _apply_forge_privilege(gs: GameState, unit: Unit, worn: list[str],
     return True
 
 
-def _resolve_item_by_xy(gs: GameState, src_cx: int, src_cy: int) -> str | None:
-    """坐标伴随域反查装备名((cx,cy) → 名;记账路径总契约适用)。
-
-    唯一性前提 = 同一快照内坐标↔名一一对应(单格单件,观察路径由逐格
-    分类器保证、sim 占位路径由唯一化哨兵保证);反查不到(坐标不在表/
-    伴随域未就绪 None) = None → 调用侧拒单零写
-    (``wear_item_xy_unresolved``)→ 跳过自愈通道(下帧观察重派)。
-    条目量级 ≤28 格线性遍历,无性能面。"""
-    xy_map = gs.owned_equip_xy.value or {}
-    for name, cands in xy_map.items():
-        if (int(src_cx), int(src_cy)) in [(int(a), int(b)) for a, b in cands]:
-            return name
-    return None
-
-
 def _locate_unit(gs: GameState, row: str, slot: int) -> tuple[str, int, Unit] | None:
     """按物理槽位定位穿戴目标单位(记账路径总契约:目标身份改由槽位反查
     ——gs 知道该槽现任是谁,槽空 = 拒单;char_name 身份核对已随名称降级
@@ -328,7 +314,7 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
                      evidence='wear_equip_report', sig=_grp_sig, kind=reason)
         return LogicOutcome(applied=False, reason=reason)
 
-    item = _resolve_item_by_xy(gs, param.src_cx, param.src_cy)
+    item = resolve_item_by_xy(gs, param.src_cx, param.src_cy)
     if item is None:
         # 记账拒单(反查不到;拒单发生在拖拽之后,处置 = 交还决策循环
         # 经观察链刷新对照表后自然重派,禁止补拖)。

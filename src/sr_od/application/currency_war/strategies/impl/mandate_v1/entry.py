@@ -1117,10 +1117,14 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
                        registry: DecisionV2Registry | None) -> list[Emitted]:
     """装备与工具步(工序第 7 步;22 号篇 §1 第 7 步)。
 
+    - 伴随域新鲜度交替检查上提步首:置位帧产 Obs(in_place) + 提前
+      return(置位帧零参数构造,穿装与工具两段全跳过——工具原子 aftermath
+      亦含 owned 网格 reflow,与穿装共用同一重观察帧);
     - 装备穿戴 = 现行完整实现整体保留(合成规划/分配/转移;计划产出位
       单一源 = kernel/cw_equip_wear_plan._build_equip_wear_plan);
     - 工具使用判据 = 现行 kernel/cw_equip_env.evaluate_tool_actions 不动
-      (G1 准入 + 逐件原子发出);
+      (G1 准入 + 逐件原子发出;参数构造 = tool_use_params_of 坐标伴随域
+      消费口);
     - 组内序:穿戴先行、工具随后(旧「工具动作先于骨架动作发出」的排序
       随编排停用;穿戴/工具原子均系截断点,实际执行逐帧单件收敛)。
     """
@@ -1132,6 +1136,17 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
     out: list[Emitted] = []
     owned = list(gs.equips.value or [])
     if not owned:
+        return out
+    # —— 装备网格伴随域新鲜度交替检查上提步首(置位帧零参数构造):上帧
+    # 已发穿装/工具原子(两类 aftermath 均含 owned 网格 reflow)→ 本帧清
+    # 标志、产 Obs(in_place) 环内重观察后**提前 return**——穿装与工具两
+    # 段全跳过,「窗口内无第二次坐标消费」的强保证(置位帧即使判据面有
+    # 可用工具也不产原子,防陈旧伴随域盲拖 + 错账)。tag 保留不改(遥测
+    # 分键零 churn;穿装与工具 aftermath 共用同一重观察帧)。
+    if st.cw4_equip_xy_pending:
+        st.cw4_equip_xy_pending = False
+        out.append(Emitted(CwActionObsParam(scope='in_place'),
+                           True, 'm7_equip_reobserve'))
         return out
     # —— 装备穿戴(M7;与 mandate M7 发出面同构编排,M1:两发出点计数
     # 语义不得分叉)——
@@ -1145,20 +1160,12 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
             # 资源前置缺失(装备观察域未就绪)= 未发出通道,下帧重派。
             counters['equip_plan_resource_missing'] = \
                 counters.get('equip_plan_resource_missing', 0) + 1
-        elif st.cw4_wear_pending:
-            # 穿戴/重观察交替(坐标伴随域新鲜度机制):上帧已发穿戴 →
-            # 本帧环内重观察后再续穿;读后清(先例 = 部署扫描
-            # pending_reobserve 形态)。「记账后→重观察前的伴随域陈旧
-            # 条目窗口禁消费」契约(记账路径总契约之②)的执行点。
-            st.cw4_wear_pending = False
-            out.append(Emitted(CwActionObsParam(scope='in_place'),
-                               True, 'm7_equip_reobserve'))
         else:
             params, xy_pending = wear_param_steps_of(build, gs)
             for p in params:
                 out.append(Emitted(p, True, 'm7_equip_transfer'))
             if params:
-                st.cw4_wear_pending = True
+                st.cw4_equip_xy_pending = True
             if not build.steps:
                 counters['equip_plan_empty_noop'] = \
                     counters.get('equip_plan_empty_noop', 0) + 1
@@ -1173,12 +1180,16 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
                 counters['equip_plan_xy_all_pending'] = \
                     counters.get('equip_plan_xy_all_pending', 0) + 1
     # —— 工具消费(判据/准入单一源 = kernel/cw_equip_env;评估留痕与
-    # 原子构造 = 现行 M7.5 动作发出点原样移入)——
+    # 原子构造 = 现行 M7.5 动作发出点;参数构造单一源 =
+    # tool_use_params_of 发出面坐标伴随域消费口)——
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         admitted_tool_actions as _admit_tools,
     )
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         evaluate_tool_actions as _eval_tools,
+    )
+    from sr_od.application.currency_war.kernel.cw_equip_env import (
+        tool_use_params_of as _tool_params,
     )
     counters['m7_5_evaluated'] = counters.get('m7_5_evaluated', 0) + 1
     _tool_actions = _eval_tools(
@@ -1202,8 +1213,9 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
         log.info('[cw!][tools] tool=%s action=%s usable=%s reason=%s',
                  _ta.tool, _ta.action, _ta.usable, _ta.reason or '-')
     if any(a.usable for a in _tool_admitted):
-        # 逐件产工具原子类(判据面同源纯函数按 owned 序首中;未知 usable
-        # 动作 = 判据面扩容未同步原子类,禁猜交互)。
+        # 判据 triples 收集(目标选择逻辑留 entry = 判据语境属决策侧;
+        # helper 只管坐标):原子构造改 (tool, action, target) 三元组,
+        # 词表外动作 = unmapped 计数(判定前移到收集段,语义不变)。
         from sr_od.application.currency_war.data.cw_synthesis import (
             recycle_qualified as _rq,
         )
@@ -1214,32 +1226,40 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
                              'key_equips', None) or [])
         _rq_set = _rq(_keys)
         _priv_targets = {_pbn(k) for k in _keys if _pbn(k) is not None}
+        _triples: list[tuple[str, str, str]] = []
         for _ta in _tool_admitted:
             if not _ta.usable:
+                continue
+            if _ta.action not in ('furnace_single', 'privilege_upgrade'):
+                counters['m7_5_atomic_unmapped'] = \
+                    counters.get('m7_5_atomic_unmapped', 0) + 1
                 continue
             _tgt = ''
             if _ta.action == 'furnace_single':
                 _tgt = next((n for n in owned
                              if n != _ta.tool and n in _rq_set), '')
-            elif _ta.action == 'privilege_upgrade':
-                _tgt = next((n for n in owned if n in _priv_targets), '')
             else:
-                counters['m7_5_atomic_unmapped'] = \
-                    counters.get('m7_5_atomic_unmapped', 0) + 1
-                continue
+                _tgt = next((n for n in owned if n in _priv_targets), '')
             if not _tgt:
                 continue
-            if _ta.tool == '冶金炉':
-                _atom: CwAction = CwActionFurnaceUseParam(
-                    target_kind='equip', item_name=_tgt)
-            elif _ta.tool == '特权赋予卡':
-                _atom = CwActionPrivilegeCardUseParam(
-                    target_kind='equip', item_name=_tgt)
-            else:
-                counters['m7_5_atomic_unmapped'] = \
-                    counters.get('m7_5_atomic_unmapped', 0) + 1
-                continue
-            out.append(Emitted(_atom, True, 'm7_5_tool_consume'))
+            _triples.append((_ta.tool, _ta.action, _tgt))
+        # 坐标伴随域消费(双坐标齐备才产原子;缺席原子计数 + 自愈重派帧)
+        # → 置位与穿装段同形(工具 aftermath 亦含 owned 网格 reflow)。
+        _tool_params_list, _tool_xy_pending = _tool_params(gs, _triples)
+        for _p in _tool_params_list:
+            out.append(Emitted(_p, True, 'm7_5_tool_consume'))
+        if _tool_xy_pending:
+            # 计数口径:值 = 本帧被跳过的工具原子数(按量累加;
+            # 键族登记单一源 = mandate.run_mandate docstring 计数键清单)。
+            counters['m7_5_tool_xy_pending'] = \
+                counters.get('m7_5_tool_xy_pending', 0) + _tool_xy_pending
+        if _triples and not _tool_params_list:
+            # 坐标全缺席帧(自愈通道:经帧稳定截断 → Obs outer_loop
+            # 重观察后重派)。
+            counters['m7_5_tool_xy_all_pending'] = \
+                counters.get('m7_5_tool_xy_all_pending', 0) + 1
+        if _tool_params_list:
+            st.cw4_equip_xy_pending = True
     return out
 
 

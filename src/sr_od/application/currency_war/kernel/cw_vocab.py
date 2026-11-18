@@ -9,9 +9,12 @@
 状态容器槽位表下标(族A 口径,0 基)——动作发出面从状态容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
 (物理槽位→槽位表下标换算归执行边纯函数)。例外 = 坐标参数化机械动作
-(工具原子类;CwActionWearEquipParam 已升级「动态坐标显式传 + row/slot
-半固定」形态,src_cx/src_cy = 1080p 显式坐标):row/slot 字段按定义 =
+(开件三类 OpenBox/OpenTome/OpenBookcard):row/slot 字段按定义 =
 画面物理排槽位 1 基(执行器拖点直取画面 area;字段注释逐类声明)。
+穿装与工具原子两类已升级「动态坐标显式传 + row/slot 半固定」形态
+(CwActionWearEquipParam:src_cx/src_cy;工具原子类:tool_cx/tool_cy
+源坐标,equip 模式另带 tgt_cx/tgt_cy 目标坐标——坐标伴随域
+gs.owned_equip_xy 为单一坐标源,字段注释逐类声明)。
 
 **局面表示单一载体 = 状态容器 GameState**(kernel/cw_game_state,实机真值
 记录模型):sim 后端/实机操作链/策略决策同吃状态容器,域写入 = 观察链漏斗
@@ -139,10 +142,10 @@ class ShopCard:
 # 画面物理槽位号(1 基)仅存两边界:①观察写入边(observe/reconcile
 # 读链直产 (槽号, Unit) 对);②执行坐标边(deployed 下标→(排,排内
 # 槽号)固定双射内联算术,0-3=前排 1-4 / 4-9=后排 1-6)。坐标参数化
-# 机械动作(工具原子类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
-# 属动作参数定义,不在换算边适用范围(CwActionWearEquipParam 已升级
-# 「动态坐标显式传 + row/slot 半固定」形态,src_cx/src_cy = 1080p
-# 显式坐标,不经换算边)。
+# 机械动作(开件三类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
+# 属动作参数定义,不在换算边适用范围(穿装 CwActionWearEquipParam 与
+# 工具原子类已升级「动态坐标显式传 + row/slot 半固定」形态,显式坐标
+# = 1080p,不经换算边)。
 
 # ``route_tag`` 字段契约(原 CwAction 基类唯一字段,摊平后逐动作类重声明):
 # 策略内部路由键(发出分支的构造事实,不随时间漂移、不维护状态),只回答
@@ -499,6 +502,19 @@ class CwActionOpenBookcardParam:
                            metadata={'action_key_exclude': True})
 
 
+# ===== 动作参数 JSON 通道构造(MCP run_operation from_dict 共享形态)=====
+
+def action_param_from_dict(cls, d: dict):
+    """动作参数 dataclass ← dict(MCP run_operation JSON 通道的共享构造
+    形态;单一源 = cw_replay_reader.from_dict 同构):只取已声明字段、
+    未知键忽略、缺字段落 dataclass 默认值。坐标是跨进程契约,直调方
+    按 action-op.md §5 各 op docstring 传参。"""
+    import dataclasses
+
+    known = {f.name for f in dataclasses.fields(cls)}
+    return cls(**{k: v for k, v in d.items() if k in known})
+
+
 @dataclass
 class CwActionWearEquipParam:
     """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路;
@@ -557,106 +573,255 @@ class CwActionWearEquipParam:
 
 @dataclass
 class CwActionFurnaceUseParam:
-    """冶金炉(R8 按消耗品各立类;双模式)。
+    """冶金炉(R8 按消耗品各立类;双模式;参数面三分法 = 动态坐标显式传
+    (tool_cx/tool_cy 源;equip 模式另带 tgt_cx/tgt_cy 目标)+ row/slot
+    半固定(char 模式 + back_slot_count))。
+
+    [记账路径总契约(第二适用者;契约正文 =
+    skills/sr-od-dev-currency-war/references/flow/action-op.md「记账路径
+    总契约」条款)]:op 上报它实际动过的坐标——源坐标 = 工具 icon 格心
+    (七类通用),equip 模式目标坐标 = 目标装备 icon 格心(第二反查键);
+    kernel 记账层用坐标伴随域 gs.owned_equip_xy 反查出具体内容再记账,
+    名称字段(item_name/char_name)在机械面与记账面均零消费(纯日志)。
+    三条契约:①反查时序不变式——上报反查消费拖前快照,重观察刷新必须
+    晚于上报;②记账后 → 重观察前的伴随域陈旧条目窗口禁消费(框架侧由
+    装备网格新鲜度交替标志 cw4_equip_xy_pending 保证,穿装与工具共用);
+    ③反查唯一性前提 = 同一快照内坐标↔条目一一对应;反查不到 = 记账拒单
+    (源键 tool_xy_unresolved / equip 目标键 tool_target_xy_unresolved),
+    拒单后禁止补拖。
 
     - target_kind='equip':拖装备 = 原地变异同类型随机(target =
-      装备库 owned 件,``item_name``;上报 = rand 采样替换——同类别池
+      owned 目标件格心 tgt_cx/tgt_cy;上报 = rand 采样替换——同类别池
       write_logic_rand 合并单笔写,采样池 = ``cw_sim_equips.furnace_reroll``
       同源,写端 = ``cw_action_report.tool_use``);
     - target_kind='char':拖角色 = 全拆 + 每件变异随机(target =
       角色槽位,``row``/``slot``;①equips 采样链 rand 合并写 + ②行域
       穿戴清空 logic 写;变异面不走获得链不触发获得回调)。
+
+    [索引/坐标定义]
+    - tool_cx/tool_cy: 坐标系 = 1080p 全局像素 owned 工具条目格心;
+      取值时机 = 发出面决策帧的坐标伴随域快照(发出面经
+      cw_equip_env.tool_use_params_of 取;MCP 直调 = 当帧 analyze
+      extras.owned_equips 元素 cx/cy,读完即用);op 不做落点前校验
+      (坐标新鲜度纪律归调用方)。
+    - tgt_cx/tgt_cy: 同域 owned 目标件格心(equip 模式必填;0 = 未传
+      哨兵——1080p 装备区真实坐标恒非零、sim 占位为负值哨兵,0 只表达
+      缺省,op 守卫断言拒零值;与源同格 = 守卫断言拒)。
+    - row: 'front'|'back'(char 模式;画面物理排,通用坐标系声明同上)。
+    - slot: 排内画面物理槽位 1 基(前排 1-4 / 后排 1-N;char 模式必填;
+      生成期快照,记账面兼目标定位键——按 row/slot 反查槽现任单位)。
+    - back_slot_count: 后排槽位画面物理总数 n(值域 6-9 =
+      obs.cw_back_layout._LAYOUT_PREFIX 键域;front 行忽略)。
     """
     target_kind: str    # 'equip' | 'char'(作用对象模式;值域封闭)
-    item_name: str = ''  # target_kind='equip':装备库 owned 件名
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心;兼记账反查键)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心;兼记账反查键)
+    tgt_cx: int = 0     # equip 模式目标件格心 x(0 = 未传哨兵,op 守卫拒零)
+    tgt_cy: int = 0     # equip 模式目标件格心 y(0 = 未传哨兵,op 守卫拒零)
     row: str = ''        # target_kind='char':见上方通用坐标系声明
     slot: int = 0        # target_kind='char':画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    item_name: str = ''  # 语义参数(equip 模式目标件名;纯日志,机械面与记账面零消费)
+    char_name: str = ''  # 语义参数(char 模式目标角色名;纯日志,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionFurnaceUseParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
 class CwActionPrivilegeCardUseParam:
-    """特权赋予卡(R8;两条分支)。
+    """特权赋予卡(R8;两条分支;参数面三分法 = 动态坐标显式传
+    (tool_cx/tool_cy 源;equip 模式另带 tgt_cx/tgt_cy 目标)+ row/slot
+    半固定(char 模式 + back_slot_count))。
 
-    - target_kind='equip'(库存分支,现役执行分支):确定变换 = target 件
-      名替换为对应·特权名(映射单一源 = ``cw_effect_inventory.
+    [记账路径总契约(第二适用者;三条契约与反查双键申报同
+    CwActionFurnaceUseParam docstring,拒单码同族)]:源坐标 = 工具 icon
+    格心(七类通用),equip 模式目标坐标 = 目标装备 icon 格心(第二反查
+    键);名称字段零消费(纯日志);反查不到 = 记账拒单零写,拒单后禁止
+    补拖。契约正文 = action-op.md「记账路径总契约」条款。
+
+    - target_kind='equip'(库存分支,现役执行分支):确定变换 = 反查产物
+      件名替换为对应·特权名(映射单一源 = ``cw_effect_inventory.
       privilege_counterpart``;上报 = equips 合并单笔写 = 移除工具 ∧
       变换同笔,写端 = ``cw_action_report.tool_use``);
     - target_kind='char'(拖角色入账分支):**fail-closed 不支持**(用户裁定
       2026-09-21 按不能拖角色处理待实机测试)——上报侧收到 char 分支 =
       零写留存证据(tool_privilege_worn_unsupported);判据面现役只产库存分支,
       穿域桥 ``transform_worn_equip_to_privilege`` 留在原位。
+
+    [索引/坐标定义]
+    - tool_cx/tool_cy: 1080p owned 工具条目格心,发出面决策帧坐标伴随域
+      快照(同 CwActionFurnaceUseParam)。
+    - tgt_cx/tgt_cy: 同域 owned 目标件格心(equip 模式必填;0 = 未传哨兵,
+      op 守卫拒零;与源同格 = 守卫拒)。
+    - row/slot/back_slot_count: char 模式画面物理排槽位 1 基 + 后排档
+      (同 CwActionFurnaceUseParam)。
     """
     target_kind: str    # 'equip' | 'char'(值域封闭,同 CwActionFurnaceUseParam)
-    item_name: str = ''  # target_kind='equip':被变换的进阶成品件名
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心;兼记账反查键)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心;兼记账反查键)
+    tgt_cx: int = 0     # equip 模式目标件格心 x(0 = 未传哨兵,op 守卫拒零)
+    tgt_cy: int = 0     # equip 模式目标件格心 y(0 = 未传哨兵,op 守卫拒零)
     row: str = ''        # target_kind='char':见上方通用坐标系声明
     slot: int = 0        # target_kind='char':画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    item_name: str = ''  # 语义参数(equip 模式目标件名;纯日志,机械面与记账面零消费)
+    char_name: str = ''  # 语义参数(char 模式目标角色名;纯日志,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionPrivilegeCardUseParam:
+        """dict → 动作实例(共享形态单一源 = cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
 class CwActionWrenchUseParam:
-    """拆装扳手(R8):target = 角色槽位(取下该角色全部穿戴,装备归属
-    面回区);工具消耗品 −1。上报 = 两笔 logic 合并写(equips = 移除工具
-    ∧ 追加穿戴件;行域穿戴清空),写端 = ``cw_action_report.tool_use``。"""
+    """拆装扳手(R8;参数面三分法 = 动态坐标显式传(tool_cx/tool_cy 源)
+    + row/slot 半固定(+ back_slot_count)):target = 角色槽位(取下该角色
+    全部穿戴,装备归属面回区);工具消耗品 −1。上报 = 两笔 logic 合并写
+    (equips = 反查产物严格移除工具 ∧ 追加穿戴件;行域穿戴清空),写端 =
+    ``cw_action_report.tool_use``。
+
+    [记账路径总契约(第二适用者;契约正文 = action-op.md「记账路径总契约」
+    条款)]:op 上报源坐标(工具 icon 格心,七类通用),kernel 记账层按
+    坐标伴随域 gs.owned_equip_xy 反查工具名记账;目标身份由 row/slot 纯
+    槽位反查(槽现任单位),名称字段(char_name)零消费(纯日志)。三条
+    契约同 CwActionFurnaceUseParam docstring;源键反查不到 = 记账拒单
+    (tool_xy_unresolved),拒单后禁止补拖。
+
+    [索引/坐标定义]
+    - tool_cx/tool_cy: 1080p owned 工具条目格心,发出面决策帧坐标伴随域
+      快照(同 CwActionFurnaceUseParam)。
+    - row: 'front'|'back'(画面物理排,通用坐标系声明同上)。
+    - slot: 排内画面物理槽位 1 基(前排 1-4 / 后排 1-N;生成期快照,
+      记账面兼目标定位键)。
+    - back_slot_count: 后排槽位画面物理总数 n(值域 6-9;front 行忽略)。
+    """
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心;兼记账反查键)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心;兼记账反查键)
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    char_name: str = ''  # 语义参数(目标角色名;纯日志,机械面与记账面零消费,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionWrenchUseParam:
+        """dict → 动作实例(共享形态单一源 = cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
 class CwActionPrecisionWrenchUseParam:
-    """精密拆装扳手(R8):target = 角色槽位(同 CwActionWrenchUseParam);无限次用,
-    工具库存面不递减(上报两笔 logic 同扳手,equips 不移除工具;重复获得改
-    +1 金 = 贡献算术,获得回执窗已登记)。"""
+    """精密拆装扳手(R8;参数面三分法同 CwActionWrenchUseParam):
+    target = 角色槽位(同拆装扳手);无限次用,工具库存面不递减(上报两笔
+    logic 同扳手,equips 不移除工具;重复获得改 +1 金 = 贡献算术,获得
+    回执窗已登记)。源坐标反查仅作记账 evidence 归因——反查不到不拒单
+    (无消耗笔可拒,行域清空照写 + evidence 注记 tool_xy_unresolved 形态;
+    拒单反而造成物理卸装无账)。
+
+    [索引/坐标定义] 逐字段同 CwActionWrenchUseParam。
+    """
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心;记账 evidence 归因键)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心;记账 evidence 归因键)
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    char_name: str = ''  # 语义参数(目标角色名;纯日志,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionPrecisionWrenchUseParam:
+        """dict → 动作实例(共享形态单一源 = cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
 class CwActionStaffProjectorUseParam:
-    """员工投影仪(R8 投影仪按型号两类之一):target = 角色槽位
-    (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
-    ``cw_affix_effects`` 投影仪费用门行),门由动作发出点判据面覆盖。上报 =
-    复制走获得链 ``gain_character``(落位 → 回调 → 3 合 1 升星判断;
-    复制触发三合一 = 口述·权威 2026-09-21)+ equips 移除工具合并分支,
-    写端 = ``cw_action_report.tool_use``(费用门注册表现读前置查 =
-    防御纵深)。"""
+    """员工投影仪(R8 投影仪按型号两类之一;参数面三分法同
+    CwActionWrenchUseParam):target = 角色槽位(在备战席创造该角色 1 星
+    复制);费用门 = 3 费及以下(门表单一源 = ``cw_affix_effects`` 投影仪
+    费用门行),门由动作发出点判据面覆盖。上报 = 复制走获得链
+    ``gain_character``(落位 → 回调 → 3 合 1 升星判断;复制触发三合一 =
+    口述·权威 2026-09-21)+ equips 反查产物严格移除工具合并分支,写端 =
+    ``cw_action_report.tool_use``(费用门注册表现读前置查 = 防御纵深)。
+
+    [索引/坐标定义] 逐字段同 CwActionWrenchUseParam。
+    """
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心;兼记账反查键)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心;兼记账反查键)
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    char_name: str = ''  # 语义参数(目标角色名;纯日志,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionStaffProjectorUseParam:
+        """dict → 动作实例(共享形态单一源 = cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
 class CwActionPerfectProjectorUseParam:
-    """完美投影仪(R8 投影仪按型号两类之二):target = 角色槽位
-    (同 CwActionStaffProjectorUseParam 但无费用门;上报同走获得链)。"""
+    """完美投影仪(R8 投影仪按型号两类之二;参数面三分法同
+    CwActionWrenchUseParam):target = 角色槽位(同员工投影仪但无费用门;
+    上报同走获得链)。
+
+    [索引/坐标定义] 逐字段同 CwActionWrenchUseParam。
+    """
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心;兼记账反查键)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心;兼记账反查键)
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    char_name: str = ''  # 语义参数(目标角色名;纯日志,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionPerfectProjectorUseParam:
+        """dict → 动作实例(共享形态单一源 = cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
 class CwActionLuckyTokenUseParam:
-    """好运令牌(R8):拖到角色 → 从其推荐进阶装备中获得一件。
+    """好运令牌(R8;参数面三分法同 CwActionWrenchUseParam):拖到角色 →
+    从其推荐进阶装备中获得一件。
 
     ⚠️ 动作发出点待办(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
     永不进准入(``cw_equip_env.evaluate_tool_actions`` rc_missing 拒因
     已登记)——类随族立档 + 注册行,动作发出点禁无判据发出;判据面建模批
     补档(知识缺口登记 = ``flow/action-logic-state.md`` §7 好运令牌行)。
-    上报侧 = 零写留存证据(tool_token_not_admitted 注记,写端随 R9 判据批)。
+    上报侧 = 零写留存证据(tool_token_not_admitted 注记,写端随 R9 判据批;
+    零写面反查不适用)。
+
+    [索引/坐标定义] 逐字段同 CwActionWrenchUseParam。
     """
+    tool_cx: int        # 1080p 拖拽起点 x(owned 工具条目格心)
+    tool_cy: int        # 1080p 拖拽起点 y(owned 工具条目格心)
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    char_name: str = ''  # 语义参数(目标角色名;纯日志,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionLuckyTokenUseParam:
+        """dict → 动作实例(共享形态单一源 = cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass

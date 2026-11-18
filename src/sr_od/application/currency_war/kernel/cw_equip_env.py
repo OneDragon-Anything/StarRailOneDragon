@@ -631,3 +631,62 @@ def admitted_tool_actions(actions: list[ToolAction]) -> list[ToolAction]:
         out.append(a if not a.usable else ToolAction(
             a.tool, a.action, False, TOOL_REJECT_G1_NOT_ADMITTED))
     return out
+
+
+def tool_use_params_of(gs, atoms: list[tuple[str, str, str]]
+                       ) -> tuple[list, int]:
+    """工具原子判据条 → equip 模式动作参数列表(发出面坐标伴随域消费单点)
+    + 坐标缺席原子数。
+
+    ``atoms`` 元组 = (tool_name, action_kind, target_name);
+    ``action_kind`` 值域 = 现役两支 ``'furnace_single'|'privilege_upgrade'``
+    (判据面 :func:`evaluate_tool_actions` 的 usable 动作键;词表外键 =
+    AssertionError 响亮暴露,禁静默跳过)。坐标消费 =
+    ``gs.owned_equip_xy`` 按名取列表 + per-name 游标序贯消费(工具名与
+    目标名各一游标;游标只在双坐标齐备、确定产原子时才推进,缺席原子
+    不白耗候选——单动作收敛生产形态下游标退化为恒取首候选,先例申报同
+    ``cw_equip_wear_plan.wear_param_steps_of``)。双坐标齐备才产原子
+    (equip 模式:tool_cx/tool_cy 源 + tgt_cx/tgt_cy 目标;item_name 填
+    日志语义);任一坐标缺席 = 该原子本帧不产(计数返回值;自愈通道 =
+    帧稳定截断 → Obs outer_loop 重观察后自然重派,同穿装批)。
+    kernel 零 app import(gs 形参 duck;惰性 import cw_vocab,本模块
+    判据面惰性 import 先例同款)。char 模式原子不经本 helper(判据面
+    现役只产 equip 分支;char 模式构造面 = MCP 直调 + 判据批扩容直构)。
+    """
+    from sr_od.application.currency_war.kernel.cw_vocab import (
+        CwActionFurnaceUseParam,
+        CwActionPrivilegeCardUseParam,
+    )
+    xy_map = gs.owned_equip_xy.value or {}   # None 守卫:未就绪 → 全跳过
+    cursor: dict[str, int] = {}
+    params: list = []
+    skipped = 0
+
+    def _peek(name: str):
+        """按名窥视当前游标坐标候选(不推进;缺席 = None)。"""
+        cands = xy_map.get(name) or []
+        k = cursor.get(name, 0)
+        return cands[k] if k < len(cands) else None
+
+    for tool_name, action_kind, target_name in atoms:
+        if action_kind == 'furnace_single':
+            param_cls = CwActionFurnaceUseParam
+        elif action_kind == 'privilege_upgrade':
+            param_cls = CwActionPrivilegeCardUseParam
+        else:
+            raise AssertionError(
+                f'tool_use_params_of action_kind={action_kind!r} 词表外'
+                '(值域 = furnace_single/privilege_upgrade)')
+        tool_c = _peek(tool_name)
+        tgt_c = _peek(target_name)
+        if tool_c is None or tgt_c is None:
+            skipped += 1
+            continue
+        cursor[tool_name] = cursor.get(tool_name, 0) + 1
+        cursor[target_name] = cursor.get(target_name, 0) + 1
+        params.append(param_cls(
+            target_kind='equip',
+            tool_cx=int(tool_c[0]), tool_cy=int(tool_c[1]),
+            tgt_cx=int(tgt_c[0]), tgt_cy=int(tgt_c[1]),
+            item_name=target_name))
+    return params, skipped

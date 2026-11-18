@@ -172,7 +172,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 - `pending_loss`：败态待补偿登记（`kernel/cw_economy.py::LostNodeRef`）。写端 = 战斗结算失败分支；消费 = 轮首收入败局补偿支（口径见 kernel `cw_economy`），非 supply/reward 节点消费、败态跨轮保留至下一战斗轮。
 - `shop_locked`：整店锁。v1 恒 `False`（动作类型清单无锁通道，首版恒解锁 + 披露，字段先行占位；实机写端待锁图标观察补档）。
 - `diamond_count`：宝钻计数（UI 可见局内货币）。sim 写端 = 补给带钻选项落地写入（`_on_supply_picked` 按 `DIAMOND_EQUIP_NAMES` 名单从 `chosen_supply` 现值派生）；**现役失配申报**：sim 占位池的钻标挂基础件名、不命中名单 → 宝钻发放分支接入调用在位但不发放，激活归占位分布真实化批裁定；实机写端待补档。
-- `owned_equip_xy`：装备库存坐标伴随域（名 → 格心坐标列表，fields.md §3.2.15c）。sim 写端 = **环境快照通道**（写通道 = `gs.observe`，禁 write_logic——会把伴随域写成逻辑态，破坏 observe-vs-logic 失配告警语义；载体 = `SimBackend._sync_owned_equip_xy_placeholders`，advance 步界触发）：按名单（gs.equips）计数差 append 占位坐标（同名多件逐差额 append，非按名存在性跳过——否则第二条反查/记账消费缺位），占位 = 界外哨兵 + 占位序号唯一化（`(-1000-k, -1000)`，与 read_equips 实读格心集合恒不相交，实读键整表覆盖后追加的占位不会反查误中实读条目；先例 = diamond_count 环境快照写）。机械段静默不消费占位（反查可命中，记账全链通）；禁实机消费占位（实机恒观察写真值）。
+- `owned_equip_xy`：装备库存坐标伴随域（名 → 格心坐标列表，fields.md §3.2.15c）。sim 写端 = **环境快照通道**（写通道 = `gs.observe`，禁 write_logic——会把伴随域写成逻辑态，破坏 observe-vs-logic 失配告警语义；载体 = `SimBackend._sync_owned_equip_xy_placeholders`，advance 步界触发）：按名单（gs.equips）计数差 append 占位坐标（同名多件逐差额 append，非按名存在性跳过——否则第二条反查/记账消费缺位），占位 = 界外哨兵 + 占位序号唯一化（`(-1000-k, -1000)`，与 read_equips 实读格心集合恒不相交，实读键整表覆盖后追加的占位不会反查误中实读条目；先例 = diamond_count 环境快照写）。机械段静默不消费占位（反查可命中，记账全链通）；禁实机消费占位（实机恒观察写真值）。工具原子消费本伴随域（源键 `tool_cx`/`tool_cy` + equip 模式目标键 `tgt_cx`/`tgt_cy`），占位语义不变、零 sim 改动——被消耗名的陈旧占位残留（同步只增不删）按名键反查恒返回该名不污染他名，该名重新入库时被复用且名单确含该名（哨兵唯一化保证坐标↔条目一一对应）。
 
 ## 6. 两边消费契约
 

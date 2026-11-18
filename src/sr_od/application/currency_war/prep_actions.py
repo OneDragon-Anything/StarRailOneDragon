@@ -18,11 +18,11 @@ kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边
 状态容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
 1-4 / 4-9=后排 1-6;tracked 第二账停用后旧换算族已删)。坐标参数化
-机械动作(工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
-row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
-不经换算);CwActionWearEquipParam 已升级「动态坐标显式传 + row/slot
-半固定」形态(src_cx/src_cy = 1080p 显式坐标,槽位拖点经模块级
-row_drag_points 静态解析,op 自持零读屏)。
+机械动作(开件三类 CwActionOpenBoxParam/CwActionOpenTomeParam/
+CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
+(动作参数定义,拖点直取 area,不经换算);穿装与工具原子两类已升级
+「动态坐标显式传 + row/slot 半固定」形态(起点 = 1080p 显式坐标,
+槽位拖点经模块级 row_drag_points 静态解析,op 自持零读屏)。
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
@@ -39,7 +39,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
-    _area_rect,
     area_center,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -91,18 +90,15 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 #: ``未生效:*`` 族(StartBattle 弹窗收尾)随之零供给退役。开件三动作
 #: (箱/典籍/书册卡)执行前识别读门随状态容器槽位直点形态拆除:判空 fail
 #: (无简易武装箱/无秘密典籍/无书册卡)零 round_fail 供给,映射行退役
-#: ——状态容器陈旧「件不在」的治理归观察对账域,非动作 op 失败分支。)
+#: ——状态容器陈旧「件不在」的治理归观察对账域,非动作 op 失败分支。
+#: 「owned 网格未定位」三行(工具/目标件/泛化)随工具原子族坐标显式化
+#: 退役(两供给方 = 穿装批退 WearEquip、本批退工具,全仓零 round_fail
+#: 供给;定位落空治理 = 发出面坐标缺席跳过 + 记账拒单通道)。)
 _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     # —— 出战(点击前):按钮定位失败 = 动作没发出 ——
     ('未执行:找不到按钮', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-出战', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-跳过', '未执行:定位缺失(按钮-跳过)'),
-    # —— 穿戴/工具原子:owned 网格定位失败(拖拽前,现读落空族)——
-    # (泛化行保留 = 工具原子族仍产出;WearEquip 侧供给已随坐标显式化
-    #  退役——穿装 op 改显式起点 + 记账拒单,零 round_fail 供给。)
-    ('owned 网格未定位到工具', '未执行:定位缺失(工具)'),
-    ('owned 网格未定位到目标件', '未执行:定位缺失(目标件)'),
-    ('owned 网格未定位到', '未执行:定位缺失(owned 网格)'),
 )
 
 
@@ -162,10 +158,9 @@ def row_drag_points(ctx: SrContext, prefix: str,
     """prefix-N 全排 avatar 拖点列(rect 中心 x + y1+21)。
 
     [拖点派生权威裁定]:+21(D-36 校准)= 穿戴域实机校准背书的权威
-    派生式;工具 char 模式现役裸中心派生(executor ``_front_pts/_
-    back_pts`` 经 :func:`row_area_centers`)= 无实机背书的历史形态,
-    待工具迁移批实机核对后统一按本式(同一「拖到角色卡」交互应同一
-    拖点)。后排档前缀由调用方按 back_slot_count →
+    派生式;工具 char 模式拖点已随坐标参数面迁移统一按本式(同一「拖到
+    角色卡」交互同一拖点;旧裸中心派生经 executor 点表的历史形态已退役)。
+    后排档前缀由调用方按 back_slot_count →
     ``cw_back_layout._layout_prefixes()`` 静态解析后传入,本函数零识别
     零截图。区域缺失 = 该排空列,调用方守卫断言越界自然暴露,禁兜底
     坐标。
@@ -442,32 +437,11 @@ class PrepActionExecutor:
         return self._dispatch_action(action)
 
     # ===== 装备/工具原子域(工具按消耗品各立类;机械原语
-    #       _owned_grid_locate 留在本 runner,工具 op 体迁经 env.executor
-    #       消费。WearEquip 消费已随坐标显式化退役:拖点权威派生式 =
-    #       模块级 row_drag_points,由穿装 op 自持消费)=====
-
-    def _owned_grid_locate(self, item_name: str) -> Point | None:
-        """owned 装备网格内按名定位 icon 中心(机械现读;执行坐标边合法读)。
-
-        WearEquip 消费已随坐标显式化退役(坐标伴随域 gs.owned_equip_xy
-        + 显式 src_cx/src_cy 承接),现役唯一消费者 = 工具原子族
-        (cw_tool_use_action,待迁移)。名字定位是唯一稳定识别标志(网格
-        reflow 使快照坐标失真);miss → None(调用方按「计划失效」未发出
-        通道处理,下帧重派重算)。"""
-        from sr_od.application.currency_war.obs.cw_equipment import (
-            ensure_equip_sift_templates,
-            read_equips,
-        )
-        templates = ensure_equip_sift_templates(self._ctx)
-        if templates is None:
-            return None
-        rect = _area_rect(self._ctx, '区域-道具装备', SCREEN_NAME)
-        if rect is None:
-            return None
-        hits = read_equips(self._op.screenshot(), templates,
-                           equip_rect=(rect.x1, rect.y1, rect.x2, rect.y2))
-        entry = next(((n, p) for n, p, _ in hits if n == item_name), None)
-        return Point(entry[1][0], entry[1][1]) if entry is not None else None
+    #       _owned_grid_locate 已随工具原子族坐标显式化退役:全仓零消费
+    #       ——穿装批退 WearEquip 消费、工具迁移批退工具 op 消费,发出面
+    #       坐标源 = 坐标伴随域 gs.owned_equip_xy。WearEquip/工具两 op 均
+    #       改显式坐标 + 记账拒单;拖点权威派生式 = 模块级
+    #       row_drag_points,穿装 op 与工具 char 模式自持消费)=====
 
     def _drag(self, src: Point, dst: Point) -> None:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,

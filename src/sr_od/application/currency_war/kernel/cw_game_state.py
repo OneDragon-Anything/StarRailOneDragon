@@ -3184,7 +3184,8 @@ class GameState:
     # diamond_count/back_layout 的环境快照写通道);禁策略/动作逻辑写端
     # ——环内获得件坐标缺席 = 发出面跳过自愈,禁回填猜值(规范 screen-op
     # §2 同款)。⚠️ 与 occupied_equips(审计面,决策零消费)的语义差:本
-    # 字段 = 决策消费面(发出面坐标源 + 记账面反查键——记账路径总契约 =
+    # 字段 = 决策消费面(发出面坐标源 + 记账面反查键,消费方 = 穿装与
+    # 工具原子两类(工具 = 源键 + equip 目标键)——记账路径总契约 =
     # 动作 op 上报坐标,kernel 按坐标伴随域反查内容记账,名称字段零消费,
     # 契约正文 = action-op.md「记账路径总契约」条款)——陈旧有行为后果
     # (拖错格/错账),新鲜度由策略侧「穿戴/重观察交替」承载(反查时序
@@ -4402,6 +4403,25 @@ class GameState:
         cur = self.frame_obs
         self.frame_obs = 'none'
         return cur
+
+
+# ============================================================ 坐标伴随域反查(记账路径总契约公共口)
+
+def resolve_item_by_xy(gs: GameState, src_cx: int, src_cy: int) -> str | None:
+    """坐标伴随域反查装备名((cx,cy) → 名;记账路径总契约适用)。
+
+    消费方 = 穿装(wear_equip)与工具原子(tool_use)两类记账路径——
+    反查函数第二消费者出现时从 wear_equip 模块私有上移 kernel 单一源,
+    禁各上报文件私留副本。唯一性前提 = 同一快照内坐标↔名一一对应(单格
+    单件,观察路径由逐格分类器保证、sim 占位路径由唯一化哨兵保证);反查
+    不到(坐标不在表/伴随域未就绪 None) = None → 调用侧拒单零写
+    (穿装 wear_item_xy_unresolved / 工具 tool_xy_unresolved 系)→ 跳过
+    自愈通道(下帧观察重派)。条目量级 ≤28 格线性遍历,无性能面。"""
+    xy_map = gs.owned_equip_xy.value or {}
+    for name, cands in xy_map.items():
+        if (int(src_cx), int(src_cy)) in [(int(a), int(b)) for a, b in cands]:
+            return name
+    return None
 
 
 # ============================================================ 节点类型派生与生效序读口(渠道③)
