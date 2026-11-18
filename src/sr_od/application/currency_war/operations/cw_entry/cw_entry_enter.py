@@ -78,11 +78,13 @@ class CwEntryEnter(CwOperation):
         if popup is not None:
             return popup
 
-        # 到达大厅:左上角赛季名「入画奇航」(大厅独有识别标志;lobby screen_info
-        # area 判定,替代全屏 ocr)。v4.7 大厅改版:旧锚「创业指南」左菜单已不存在,
-        # 换赛季名 id_mark(赛季更替时随建档同步换锚,判据 = 画面左上标题区唯一稳定文本)。
-        # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配。
-        if self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-赛季名').is_success:
+        # 到达大厅:左上角玩法名标题「货币战争」(大厅独有识别标志;lobby screen_info
+        # area 判定)。v4.7 大厅改版:旧锚「创业指南」左菜单已不存在;曾换锚赛季名
+        # 「入画奇航」,但赛季名每赛季必漂移(v4.7 赛季「零和博弈」实帧失配)——换锚
+        # 「货币战争」玩法名标题:玩法名不随赛季更替,是标题区唯一跨赛季稳定文本。
+        # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配
+        # (玩法名标题 rect 对准指南页左上「旷宇纷争」标题下沿,带内无文本,实测不失配)。
+        if self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-玩法名').is_success:
             log.info('[cw-entry] 到达货币战争大厅')
             return self.round_success(CwEntryEnter.STATUS_AT_LOBBY)
 

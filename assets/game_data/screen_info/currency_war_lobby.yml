@@ -30,20 +30,6 @@ area_list:
   template_match_threshold: 0.8
   color_range: null
   goto_list: []
-- area_name: 标识-赛季名
-  id_mark: true
-  pc_rect:
-  - 95
-  - 112
-  - 265
-  - 170
-  text: 入画奇航
-  lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
-  template_match_threshold: 0.7
-  color_range: null
-  goto_list: []
 - area_name: 标识-未解锁横幅
   id_mark: false
   pc_rect:
@@ -87,3 +73,17 @@ area_list:
   color_range: null
   goto_list:
   - 货币战争-优势布局
+- area_name: 标识-玩法名
+  id_mark: true
+  pc_rect:
+  - 50
+  - 80
+  - 170
+  - 118
+  text: 货币战争
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
