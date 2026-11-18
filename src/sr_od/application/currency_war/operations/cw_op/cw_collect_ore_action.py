@@ -33,7 +33,10 @@ if TYPE_CHECKING:
 
 class CwActionCollectOreOp(CwOperation):
     """点晶矿:零读屏零排序零截断(挑选归决策侧 kernel 单一源),
-    起点:货币战争-备战画面(动作执行时);终点:点击一个晶矿;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
+    起点:货币战争-备战画面(动作执行时)。入口画面锚归画面 op 观察侧
+    (cw_op 零读屏契约,见 skills/sr-od-dev-currency-war/references/flow/action-op.md);
+    错屏防线 = ``cw_screen_prep`` 入口判定 + 下一帧观察对账,本 op 不自判。
+    终点:点击一个晶矿;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     席满时部分晶矿可能没点开由后续观察回补。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
