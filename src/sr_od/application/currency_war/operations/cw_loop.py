@@ -23,10 +23,12 @@ from sr_od.application.currency_war.cw_screen_state import (
     PREP_DIRECT_EXIT_SCREENS,
     get_in_match_screen_name,
 )
+from sr_od.application.currency_war.kernel import cw_dispatch_tables
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_of,
 )
+from sr_od.application.currency_war.kernel.cw_obs_core import prep_anchors_hit
 from sr_od.application.currency_war.kernel.cw_overlay_register import (
     clear_screen_changes,
 )
@@ -142,253 +144,13 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang impor
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
+from sr_od.application.currency_war.prep_actions import (
+    locked_resume_sync_and_battle,
+)
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry import state
 from sr_od.context.sr_context import SrContext
-
-
-def locked_resume_sync_and_battle(op, ctx):
-    """恢复局锁定直出战+ **首战前备战同步步**(裁定出处 =
-    策略审查报告 .debug/temp/currency_war/20260905-093104-strategy-review/
-    策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
-    CwActionStartBattleParam,板面调整被跳过(实证:恢复局首战快照 board_before 为空
-    ——部署面零执行)。本函数在 CwActionStartBattleParam 前插一次 **部署原子序同步步**
-    (按策略层部署计划现算逐 move 发统一拖动/换星直卖原子——阶段 5/6 丁
-    起计划 = 统一部署搜索定型 + 差分执行器;板空时计划恒空,与零商店交互形态同构;锁定
-    局「商店探针零响应」禁令只覆盖商店域,部署面不受覆盖)。
-
-    证据位语义(最严读法申报「发出即写」):同步步
-    **发出后立即置位** ``op._cw_locked_sync_done``——原「ok=True
-    才置位 + 失败重试(上限 3)」消费执行器成败回执,回执已停用,
-    失败概念在发出型下消解,重试/放弃治理结构随之停用(发出次数预算
-    承载归 J2 形态,同源重推);「部署是否真落地」由下一帧观察侧
-    reconcile 对账暴露(与既有 token 门「发出即写」同款裁定)。锁定
-    确认分支复位证据位。
-
-    隐藏前提声明(R3):同步步的「不误卖」依赖恢复局 session 必新鲜——
-    恢复检测链(cw_resume_lock.is_new_match)恒走新状态容器(GameState),节点未观察
-    ⇒ deploy-swap 卖出通道整体跳过(board 未观察不可判),同步步实际
-    只做确定性部署;若未来恢复检测放开 mid-run 复用 session,stale board
-    会让同步步按旧目标线卖新局板面——届时须先加卖出输入守卫。
-
-    **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
-    硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不实现,
-    登记待办:待玩家确认。与「达标即出战」分支(strategy-docs/14_p1_consume_arms.md §9.6)的关系按 C1 规格:本函数
-    = 恢复局面调用面(标志覆盖),底层动作发出核 = ``launch_prepared_battle``
-    单一函数,达标分支经策略层前置动作发出点(bridge._launch_front_check)调用
-    面共用动作发出核、**不过本标志**(旧「须经本函数单一动作发出点,禁旁路」话术
-    与 C1 矛盾,按规格改写)。
-    """
-    return launch_battle_unified(op, ctx, face='resume')
-
-
-def _battle_chain_deploy_moves(session) -> list:
-    """出战链部署计划(策略层部署计划单一源;R2 原子通路)。
-
-    计划单一源 = mandate_v1 ``deploy_plan.battle_chain_deploy_params``
-    (frame 状态容器现读装配 + 选人 + 落位策略全在策略层;design
-   -benchchar-retirement §2.2「出战链不再装配选人输入」)。
-    与 mandate 动作发出点同一计划函数,禁第二套计划语义。恢复局同步步/
-    达标分支共用;空板面/计划空 = 空 move 序(CwActionStartBattleParam
-    照发)。"""
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-        battle_chain_deploy_params,
-    )
-    if session is None:
-        return []
-    return list(battle_chain_deploy_params(session))
-
-
-def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
-    """出战底层动作发出核(C1 单一发出函数,strategy-docs/14_p1_consume_arms.md §9.6):部署原子序 +
-    CwActionStartBattleParam 的执行核,恢复局面与达标分支两调用面共用,禁各写一套
-    CwActionStartBattleParam 动作发出点。
-
-    - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
-      battle):首战前插备战同步步,**发出即置位**证据位
-      ``op._cw_locked_sync_done``(回执已停用,失败概念随之消解);
-      锁定确认分支复位证据位。同步步载体 = 统一拖动/换星直卖原子序
-      (按策略层部署计划现算逐 move 发;恢复局卖出通道整体跳过语义
-      不变——board 未观察时计划恒空)。
-    - ``sync_once=False``(达标分支面,调用面 = 策略层前置动作发出点):
-      **不过标志**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,
-      已同步形态下零 move 即零待部署;标志只覆盖恢复局面,达标分支第二次发出
-      被「每局恰一次」标志拦截 = C1 明令防的双源病)。
-
-    返回 ``(launch_ok, detail)`` = 出战**点击序列已执行**(出战域重设计
-     收缩语义:执行器 last_launch_ok 旁路;False = 找不到按钮/area
-    缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,结束后
-    画面状态由外循环下一帧重判)。 刹车短路(停机标志
-    已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
-    """
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwActionStartBattleParam,
-    )
-    from sr_od.application.currency_war.prep_actions import (
-        PrepActionExecutor,
-        StopBrakeShortCircuit,
-    )
-    ex = PrepActionExecutor(op, ctx)
-    try:
-        _moves = []
-        if sync_once:
-            if not getattr(op, '_cw_locked_sync_done', False):
-                _m_lpb = getattr(ctx, 'cw_match', None)
-                _sess_lpb = getattr(_m_lpb, 'session', None) \
-                    if _m_lpb is not None else None
-                _moves = (_battle_chain_deploy_moves(_sess_lpb)
-                          if _sess_lpb is not None else [])
-                for _mv in _moves:
-                    ex.execute(_mv)   # 机械执行无返回
-                # 发出即写(申报;回执已停用,失败概念消解)
-                op._cw_locked_sync_done = True
-                log.info('[cw-loop] 恢复局备战同步步(部署原子×%d)已发出: %s',
-                         len(_moves), getattr(ex, 'last_detail', ''))
-            else:
-                log.debug('[cw-loop] 恢复局同步步已置位,跳过部署原子序')
-        else:
-            # 达标分支面:每帧部署原子序(部署面现读重建;已同步形态零 move)
-            _m_lpb = getattr(ctx, 'cw_match', None)
-            _sess_lpb = getattr(_m_lpb, 'session', None) \
-                if _m_lpb is not None else None
-            _moves = (_battle_chain_deploy_moves(_sess_lpb)
-                      if _sess_lpb is not None else [])
-            for _mv in _moves:
-                ex.execute(_mv)
-            log.info('[cw-loop] 达标臂部署原子序 ×%d: %s',
-                     len(_moves), getattr(ex, 'last_detail', ''))
-        ex.execute(CwActionStartBattleParam())
-    except StopBrakeShortCircuit as e:
-        log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
-        return False, '已停止[W209j刹车]'
-    # CwActionStartBattleParam 点击序列事实(出战域重设计收缩语义;getattr 容缺 =
-    # __new__/桩形态兼容)
-    return bool(getattr(ex, 'last_launch_ok', False) or False), \
-        getattr(ex, 'last_detail', '')
-
-
-# (达标分支 G1 准入预估 readiness_admission_report 与 deploy_swap_no_victim
-#  计数位已随部署统一批丁并入统一结构而删除:统一部署搜索下板满帧经交换交互上场,
-#  「无合格 victim → 出战无腾位」形态结构性不存在——unified-deploy-order
-#  §2.7/§4 M4 姊妹出口行;victim 资格判据面的纳入统一管理随 kernel swap 机器批。)
-
-
-def _launch_screen_recheck(op, ctx) -> tuple[bool, Any]:
-    """发出前屏态复验(fresh 截图 + 备战两识别标志同帧命中判定;原达标分支内联段原样迁入)。
-
-    stale(非备战屏) → ``readiness_stale_screen`` 分键零静默并返回
-    ``(False, 该帧截图)``;复验链异常 → 保守放行(留存证据 defect,放行/放弃
-    之辩归编排者裁)。复验帧同帧返回供浮层安全检查消费(禁二次截图)。
-    """
-    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    try:
-        _fresh = op.screenshot()
-        _still_prep = _prep_anchors_hit(op, _fresh)   # C3:两识别标志同帧命中判定单一源
-    except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行;
-        # 放行/放弃之辩归编排者裁,本批只补观测面:分键零静默与 stale 分支对齐)
-        log.warning('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
-        try:
-            from sr_od.application.currency_war.telemetry.defects import (
-                record_defect,
-            )
-            record_defect(
-                'deploy', 'readiness_recheck_error',
-                expected='复验链 screenshot/find_area 正常',
-                observed=f'异常:{type(e).__name__}',
-                gap_large=False, auto_resolved=False,
-                verdict=('留证-屏态复验异常保守放行(切屏瞬间误真 9 拖空挥'
-                         '面重新暴露的观测入口;放行/放弃裁归编排者)'),
-                reader_source='readiness_recheck',
-                note='复验异常分键(与 readiness_stale_screen 分支对齐零静默)')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
-        _still_prep = True
-    if not _still_prep:
-        counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
-        if isinstance(counters, dict):
-            counters['readiness_stale_screen'] = \
-                counters.get('readiness_stale_screen', 0) + 1
-        log.info('[cw-loop] 达标臂放弃发射:执行时刻非备战屏'
-                 '(屏态过期,readiness_stale_screen)')
-    return _still_prep, _fresh
-
-
-def _launch_overlay_gate(op, ctx, screen) -> str | None:
-    """浮层安全检查(原达标分支浮层闸的判据单一源化形态):阶段一身份分发
-    判据复用——分发表内非备战画面命中 = 浮层在场(第十五局实雷:投资策略
-    浮层盖备战,两识别标志模板穿透命中);遭遇选择面板 = 备战屏上面板(身份分发
-    仍返备战),OCR「遭遇其」前缀兜底(currency_war_encounter.md 出处)。
-    命中返回画面名/面板标识并落 ``readiness_overlay_hold`` 分键零静默;
-    ``None`` = 无浮层。"""
-    _overlay_screens = [s for s in CwLoop.CW_DISPATCH_SCREENS
-                        if s != '货币战争-备战']
-    # 身份读点改道(sim 装配后 = 状态机答口;模态在场的 sim 真值即
-    # 当前呈现屏 ∈ 清单;未装配 = 原识别链零行为变化):
-    _match = cw_sim_ports.sim_or_live_identity(
-        _overlay_screens,
-        lambda: get_match_screen_name(ctx, screen,
-                                      screen_name_list=_overlay_screens))
-    _ov_hit = _match if isinstance(_match, str) and _match else None
-    if _ov_hit is None and op.round_by_ocr(
-            screen, '遭遇其', lcs_percent=0.9).is_success:
-        # 遭遇选择面板 = 备战屏上的面板(非独立屏):两个识别标志仍可见但槽区被
-        # 覆盖,识别标志表探不到,OCR 词「遭遇其」前缀兜底(docs/game/screens/
-        # currency_war_encounter.md 出处)。
-        _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
-    if _ov_hit is not None:
-        counters = getattr(strategy_state_of(
-            getattr(ctx, 'cw_match', None).session if getattr(
-                ctx, 'cw_match', None) is not None else None),
-            'cw4_counters', None)
-        if isinstance(counters, dict):
-            counters['readiness_overlay_hold'] = \
-                counters.get('readiness_overlay_hold', 0) + 1
-        log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,交由浮层接管面',
-                 _ov_hit)
-    return _ov_hit
-
-
-def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
-    """出战统一执行器(三路径共用;三路径语义盘点 = 同目录 audit-executor.md §1)。
-
-    内部序 = 屏态复验 → 浮层安全检查 → face 分轨(部署原子序)→
-    CwActionStartBattleParam 执行。失败语义按调用面分轨:本函数只返回事实
-    ``(launch_ok, detail)``,计数与复位归调用方(禁调用面私有记账入本函数)。
-
-    :param face: ``'armed'``(达标分支面:G1 准入预估暴露 + 部署原子序每帧
-        现算不过标志)| ``'resume'``(恢复局面面:标志覆盖部署原子序一次)。两
-        face 同保屏态复验与浮层安全检查(design 申报:恢复局面面防误触补齐)。
-    """
-    if face not in ('armed', 'resume'):
-        raise ValueError(f'未知调用面: {face!r}(合法 = armed/resume)')
-    _still_prep, _fresh = _launch_screen_recheck(op, ctx)
-    if not _still_prep:
-        return False, 'readiness_stale_screen'
-    _ov_hit = _launch_overlay_gate(op, ctx, _fresh)
-    if _ov_hit is not None:
-        return False, f'readiness_overlay_hold:{_ov_hit}'
-    if face == 'armed':
-        return launch_prepared_battle(op, ctx, sync_once=False)
-    return launch_prepared_battle(op, ctx, sync_once=True)
-
-
-
-def _prep_anchors_hit(op, screen) -> bool:
-    """备战两识别标志同帧命中判定(小helper,复用身份分发识别标志表同款两标志;禁判据外散写)。
-
-    第二识别标志免战子态双形态(currency_war_prep.md「跳过(N/N)」按钮替换节):
-    「免战牌」激活的战斗节点,出战按钮被替换为「跳过」(同位置)——识别标志只认
-    「出战」会把免战备战帧判非备战(出战前屏态复验恒 stale,出战永不发)。
-    实机 = 「按钮-跳过」OCR 识别标志同位可命中;sim = 后端 visible 按钮对真值。
-    """
-    if not op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
-                                 crop_first=False).is_success:
-        return False
-    return (op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
-                                  crop_first=False).is_success
-            or op.round_by_find_area(screen, '货币战争-备战', '按钮-跳过',
-                                     crop_first=False).is_success)
 
 
 def _dispatch_pos(ctx: Any) -> tuple[int, int]:
@@ -511,18 +273,10 @@ class CwLoop(CwOperation):
     #: 清单不含:备战(阶段二两识别标志同帧判定默认,扩展识别标志语料误杀)、补给锁定
     #(按钮在普通节点 revisit 备战同样出现,#18 接入调用暂缓)、道具详情弹窗/
     #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则)。
-    CW_DISPATCH_SCREENS: ClassVar[tuple[str, ...]] = (
-        '货币战争-列车同行', '货币战争-银狼升星',
-        '货币战争-命运卜者强化', '货币战争-位面详情', '货币战争-盛会之星',
-        '货币战争-遭遇节点', '货币战争-未达上限警告', '货币战争-投资策略',
-        '货币战争-补给', '货币战争-武装箱弹窗', '货币战争-备战-武装箱选择',
-        '货币战争-商店刷新概率表', '货币战争-祈愿试炼', '货币战争-星徽秘典弹窗',
-        '货币战争-备战-专家邀请函', '货币战争-商店卡牌详情', '货币战争-备战-策略锁定',
-        '货币战争-备战-遭遇锁定', '货币战争-备战-开商店', '货币战争-提示-前台无角色',
-        '货币战争-BOSS简报', '货币战争-位面过渡', '货币战争-简报', '货币战争-投资环境',
-        '货币战争-备战-角色详情', '货币战争-星徽详情', '货币战争-中断挑战弹窗',
-        '货币战争-大厅',
-    )
+    #: 单一源 = kernel/cw_dispatch_tables(常量本体与内容维护口径申报住彼;
+    #: 第二消费方 = prep_actions 浮层闸门)。
+    CW_DISPATCH_SCREENS: ClassVar[tuple[str, ...]] = \
+        cw_dispatch_tables.CW_DISPATCH_SCREENS
 
     def _dispatch_anchor_precheck(self) -> None:
         """iter1 分发画面预检(防建档/merged 漂移):分发清单内任一画面不存在
@@ -1438,10 +1192,12 @@ class CwLoop(CwOperation):
         # 退出的备战态(含免战)。已知边界:B 类浮层(选择伙伴等)在场时
         # 全集识别返回其专属屏名 ∉ A 类 → 本停机位判否,交下方分发分支
         # 处理浮层,处理完屏名回 A 类才交还(互踢推演成立);开商店等已
-        # 独立建档的备战子态同理由屏名区分。穿透式两识别标志同帧命中判定 _prep_anchors_hit
+        # 独立建档的备战子态同理由屏名区分。穿透式两识别标志同帧命中判定
+        # prep_anchors_hit(kernel/cw_obs_core)
         # 已不用于本停机位(穿透语义会把「选择伙伴」帧误判干净备战立即
-        # 交还,与路由③互踢)——其本体不动,调用点 = _launch_screen_recheck
-        # (出战前屏态复验)与阶段二备战认领两处(语义分界 = exit_chain §3)。
+        # 交还,与路由③互踢)——其本体不动,调用点 = prep_actions
+        # _launch_screen_recheck(出战前屏态复验)与阶段二备战认领两处
+        # (语义分界 = exit_chain §3)。
         if self._stop_at_prep and get_in_match_screen_name(
                 self.ctx, screen) in PREP_DIRECT_EXIT_SCREENS:
             return self.round_success('已到可交还退出调度的备战态(含免战)')
@@ -1570,8 +1326,8 @@ class CwLoop(CwOperation):
         # 替换——只认出战则免战备战帧落未知兜底,连续未识别触顶整局报废
         # (sim 实证 seed 20261015)。两识别标志同位区(rect 跳过略宽,覆盖
         # 「跳过(N/N)」计数文本,lcs 收紧 0.9);误命中需同帧命中第一识别标志,
-        # 仅备战系布局成立。判定单一源 = _prep_anchors_hit(禁散写)。
-        if _prep_anchors_hit(self, screen):
+        # 仅备战系布局成立。判定单一源 = prep_anchors_hit(kernel/cw_obs_core,禁散写)。
+        if prep_anchors_hit(self, screen):
             self._fallback_clear_pending()
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已停用, §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +

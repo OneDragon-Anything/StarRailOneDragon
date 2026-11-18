@@ -971,8 +971,8 @@ class CwScreenPrep(CwOperation):
         if isinstance(action, CwActionStartBattleParam):
             # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
             # →部署原子序→出战点击链——策略前置
-            # 动作发出点的意图在此落执行)。
-            from sr_od.application.currency_war.operations.cw_loop import (
+            # 动作发出点的意图在此落执行;执行器住 prep_actions)。
+            from sr_od.application.currency_war.prep_actions import (
                 launch_battle_unified,
             )
             _, _detail_lbu = launch_battle_unified(self, self.ctx,

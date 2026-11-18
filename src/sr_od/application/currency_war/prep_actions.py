@@ -1,4 +1,13 @@
-"""货币战争 备战决策环 执行器(P1;strategy/03 §13)。
+"""货币战争 备战决策环 执行器 + 出战发出链(P1;strategy/03 §13)。
+
+**住址申报**:本模块 = 出战域执行臂——备战原子动作执行器(PrepActionExecutor
+runner 包络)与出战发出链(``launch_battle_unified`` 统一执行器 + 屏态复验 /
+浮层闸门两道执行前防线 + ``launch_prepared_battle`` 发出核 + ``locked_resume_
+sync_and_battle`` resume 面封装 + ``_battle_chain_deploy_moves`` 计划装配件)
+同居;发出链消费方 = 画面 op armed 面(CwScreenPrep)与 loop resume 面
+(CwLoop)。**防线边界申报**:两道防线 = 执行前守卫(拦截错误画面上的机械
+发出:非备战屏 stale 放弃 / 浮层在场 hold),非动作后判效——动作落地判定
+仍归观察侧 reconcile 对账,与「机械执行、不含玩法判断」申报不抵。
 
 框架层:本模块**不含玩法判断**(何时收晶矿/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
 只负责「机械执行一个动作」(用户裁定:动作 op 只管机械执行,
@@ -14,13 +23,12 @@ reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 
 slot 语义(unified-action-factory 统一后):席位域动作(CwActionSellBenchParam/
 CwActionSellDeployedParam/CwActionMoveUnitParam)携**状态容器槽位表下标**(0 基,词表单一源 =
-kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit 已随其
-参数面迁移批改 op 自持(op 内经模块级原语现读点位表——bench 侧 =
+kernel/cw_vocab,坐标系裁定见其模块头)。执行坐标边:MoveUnit/SellDeployed
+已随各自参数面迁移批改 op 自持(op 内经模块级原语现读点位表——bench 侧 =
 备战栏-N area 序直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联
 算术,0-3=前排 1-4 / 4+=后排 1-N 动态,后排拖点按 back_slot_count 布局
-档静态解析);SellBench/SellDeployed 过渡期仍经执行器点表(各自迁移批
-自持化;bench 侧 = 备战栏 area 序;deployed 侧 = 下标→(排,排内槽号)
-换算,tracked 第二账停用后旧换算族已删)。坐标参数化
+档静态解析);SellBench 过渡期仍经执行器点表(其迁移批自持化;
+bench 侧 = 备战栏 area 序,tracked 第二账停用后旧换算族已删)。坐标参数化
 机械动作(开件三类 CwActionOpenBoxParam/CwActionOpenTomeParam/
 CwActionOpenBookcardParam)的 row/slot 字段 = 画面物理排槽位 1 基
 (动作参数定义,拖点直取 area,不经换算);穿装与工具原子两类已升级
@@ -36,13 +44,22 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Any
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.screen.screen_utils import get_match_screen_name
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_dispatch_tables import (
+    CW_DISPATCH_SCREENS,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     area_center,
+    prep_anchors_hit,
+)
+from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
@@ -50,6 +67,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionOpenBookcardParam,
     CwActionStartBattleParam,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -125,7 +143,8 @@ class StopBrakeShortCircuit(RuntimeError):
     语义 = 运行中被停 → 拒绝执行任何动作(run 27 实证:director 环在
     Deploy 钩子 stop_running 后仍发 CwActionStartBattleParam 点出战——环顶检查(第一层)
     之外,本入口兜底覆盖绕环路径)。表达 = 本异常:执行器抛出,
-    调用方(cw_screen_prep 决策环 / cw_loop 动作发出核)捕获后返回主循环,
+    调用方(cw_screen_prep 决策环 / 本模块出战发出核 launch_prepared_battle)
+    捕获后返回主循环,
     下轮 loop 顶见 STOP 退出。判据 = last_run_result 非空(start 清
     None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
     """
@@ -222,10 +241,11 @@ def drag_char_guarded(op: SrOperation, ctx: SrContext,
     拖拽输入静默丢,拖前验焦点先激活)→ ``DragCwChar.drag_char``(统一
     角色拖拽原语:中心拖 + hold0,机械执行零判效,发出即职责完成)。
 
-    阵型拖动动作(MoveUnit)与卖出共享原语 ``drag_bench_to_sell`` 共用
-    本函数 = 失焦守卫单一宿主(原散落 executor._drag 与
-    drag_bench_to_sell 两份内联副本收敛至此;SellDeployed 过渡期仍经
-    executor._drag,其迁移批并入本宿主)。
+    阵型拖动动作(MoveUnit/SellDeployed)与卖出共享原语
+    ``drag_bench_to_sell`` 共用本函数 = 失焦守卫单一宿主(原散落
+    executor._drag 与 drag_bench_to_sell 两份内联副本收敛至此;
+    executor._drag 已随 SellDeployed 参数面迁移批退役——三消费者
+    MoveUnit/SellDeployed/drag_bench_to_sell 均已并入本宿主)。
     """
     from sr_od.application.currency_war.sim.cw_sim_ports import (
         sim_backend_installed,
@@ -303,14 +323,14 @@ class PrepExecEnv:
 
 
 class PrepActionExecutor:
-    """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
+    """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配原语)。
 
-    宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
+    宿主 op = CwScreenPrep(SrOperation);机械执行(点击/等待),落地
     判定归观察侧 reconcile(用户裁定)。角色拖拽统一拖拽原语 = 模块级
-    ``drag_char_guarded``(失焦守卫 + DragCwChar.drag_char 中心拖 + hold0,
-    2026-08-13 实测验证);``_drag`` 方法与 ``_front_pts/_back_pts`` 点表
-    = 席位域待迁移动作(SellDeployed 等)的过渡宿主,其 op 随各自参数面
-    迁移批退役消费。
+    ``drag_char_guarded``(失焦守卫 + DragCwChar.drag_char 中心拖 + hold0);
+    原过渡宿主 ``_drag`` 方法与 ``_front_pts/_back_pts`` 点表已随
+    SellDeployed 参数面迁移批退役(最后消费者迁出——全部动作 op 拖拽
+    统一走模块级原语,场上排拖点 = 各 op 内经 row_area_centers 现读)。
     """
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
@@ -321,8 +341,8 @@ class PrepActionExecutor:
         self.last_detail: str = ''
         # 出战点击事实(出战域重设计收缩语义):True = StartBattleOp
         # 点击序列已执行(含弹窗确认);False = 找不到按钮/area 缺失等
-        # 未执行形态。消费方 = cw_loop 动作发出核(launch_prepared_battle 返回
-        # 值旁路)。getattr 容缺(__new__ 桩形态)。
+        # 未执行形态。消费方 = 出战发出核 launch_prepared_battle(本模块,
+        # 返回值旁路)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
         # 最近一次分派的动作 op round 结果(QC 终结口失败透传的取数口;
         # 逐分派覆盖 = 恒本拍动作,防上拍残留误透传)。消费方 =
@@ -333,12 +353,11 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 槽位中心(screen_info 静态,构造时读一次;op 内参数守卫与拖拽坐标共用)。
-        # MoveUnit 已随参数面迁移改 op 内现读(零消费);SellDeployed 过渡期
-        # 仍消费 _front_pts/_back_pts(其迁移批退役)。
+        # 备战栏槽位中心(screen_info 静态,构造时读一次):开件三类守卫
+        # 与 SellBench getattr 容缺守卫消费(各自迁移批退役);原
+        # _front_pts/_back_pts 已随 SellDeployed 参数面迁移批退役
+        # (最后消费者迁出——场上排拖点 = 各 op 内经 row_area_centers 现读)。
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
-        self._front_pts: list[Point] = row_area_centers(ctx, '前排')
-        self._back_pts: list[Point] = row_area_centers(ctx, '后排')
 
     # ===== 执行入口(机械执行,无返回;参数守卫已收拢各动作 op 内
     #       守卫断言,flow/action_ops.md §1 决策侧参数现算契约)=====
@@ -475,39 +494,9 @@ class PrepActionExecutor:
     #       ——穿装批退 WearEquip 消费、工具迁移批退工具 op 消费,发出面
     #       坐标源 = 坐标伴随域 gs.owned_equip_xy。WearEquip/工具两 op 均
     #       改显式坐标 + 记账拒单;拖点权威派生式 = 模块级
-    #       row_drag_points,穿装 op 与工具 char 模式自持消费。MoveUnit
-    #       已随其参数面迁移改 op 内自持消费模块级 drag_char_guarded;
-    #       _drag 方法过渡期保留 = SellDeployed 等席位域待迁移动作宿主)=====
-
-    def _drag(self, src: Point, dst: Point) -> None:
-        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
-        源槽像素验重试已拆除)。过渡期宿主 = SellDeployed(MoveUnit 已随
-        参数面迁移改消费模块级 drag_char_guarded,失焦守卫单一宿主收敛
-        至彼;本方法随剩余席位域动作迁移批退役)。
-
-        失焦守卫语义(所有拖拽路径共享)——窗口后台化时拖拽输入静默丢
-        (r9 实证:截图正常/输入丢/连环「源槽未变」假失败),拖前验焦点,
-        失焦先激活。
-        """
-        from sr_od.application.currency_war.sim.cw_sim_ports import (
-            sim_backend_installed,
-        )
-        if sim_backend_installed():
-            # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
-            # port 检查;部署/卖上阵落位事实由后端状态副本承接)
-            return
-        try:
-            gw = self._ctx.controller.game_win
-            if not gw.is_win_active:
-                log.warning('[cw!][drag] 窗口失焦(拖拽输入将静默丢)→ 先激活')
-                gw.active()
-                time.sleep(0.3)
-        except Exception:   # noqa: BLE001  焦点守卫 best-effort
-            pass
-        from sr_od.application.currency_war.operations.actions.drag_cw_char import (
-            DragCwChar,
-        )
-        DragCwChar.drag_char(self._op, src, dst)
+    #       row_drag_points,穿装 op 与工具 char 模式自持消费。MoveUnit/
+    #       SellDeployed 均已随各自参数面迁移改 op 内自持消费模块级
+    #       drag_char_guarded,_drag 方法随 SellDeployed 批退役)=====
 
     # (tracked 随动同步三条分支(备战摘除/场上摘除/上阵落位)已随
     #tracked 第二账停用删除:动作写主域(逻辑
@@ -533,5 +522,222 @@ class PrepActionExecutor:
         return op_success, detail
 
 
+# ============================================================ 出战发出链(armed/resume 两调用面共用;住址申报见模块头)
 
 
+def locked_resume_sync_and_battle(op, ctx):
+    """恢复局锁定直出战+ **首战前备战同步步**(裁定出处 =
+    策略审查报告 .debug/temp/currency_war/20260905-093104-strategy-review/
+    策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
+    CwActionStartBattleParam,板面调整被跳过(实证:恢复局首战快照 board_before 为空
+    ——部署面零执行)。本函数在 CwActionStartBattleParam 前插一次 **部署原子序同步步**
+    (按策略层部署计划现算逐 move 发统一拖动/换星直卖原子——阶段 5/6 丁
+    起计划 = 统一部署搜索定型 + 差分执行器;板空时计划恒空,与零商店交互形态同构;锁定
+    局「商店探针零响应」禁令只覆盖商店域,部署面不受覆盖)。
+
+    证据位语义(最严读法申报「发出即写」):同步步
+    **发出后立即置位** ``op._cw_locked_sync_done``——原「ok=True
+    才置位 + 失败重试(上限 3)」消费执行器成败回执,回执已停用,
+    失败概念在发出型下消解,重试/放弃治理结构随之停用(发出次数预算
+    承载归 J2 形态,同源重推);「部署是否真落地」由下一帧观察侧
+    reconcile 对账暴露(与既有 token 门「发出即写」同款裁定)。锁定
+    确认分支复位证据位。
+
+    隐藏前提声明(R3):同步步的「不误卖」依赖恢复局 session 必新鲜——
+    恢复检测链(cw_resume_lock.is_new_match)恒走新状态容器(GameState),节点未观察
+    ⇒ deploy-swap 卖出通道整体跳过(board 未观察不可判),同步步实际
+    只做确定性部署;若未来恢复检测放开 mid-run 复用 session,stale board
+    会让同步步按旧目标线卖新局板面——届时须先加卖出输入守卫。
+
+    **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
+    硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不实现,
+    登记待办:待玩家确认。与「达标即出战」分支(strategy-docs/14_p1_consume_arms.md §9.6)的关系按 C1 规格:本函数
+    = 恢复局面调用面(标志覆盖),底层动作发出核 = ``launch_prepared_battle``
+    单一函数,达标分支经策略层前置动作发出点(bridge._launch_front_check)调用
+    面共用动作发出核、**不过本标志**(旧「须经本函数单一动作发出点,禁旁路」话术
+    与 C1 矛盾,按规格改写)。
+    """
+    return launch_battle_unified(op, ctx, face='resume')
+
+
+def _battle_chain_deploy_moves(session) -> list:
+    """出战链部署计划(策略层部署计划单一源;R2 原子通路)。
+
+    计划单一源 = mandate_v1 ``deploy_plan.battle_chain_deploy_params``
+    (frame 状态容器现读装配 + 选人 + 落位策略全在策略层;design
+   -benchchar-retirement §2.2「出战链不再装配选人输入」)。
+    与 mandate 动作发出点同一计划函数,禁第二套计划语义。恢复局同步步/
+    达标分支共用;空板面/计划空 = 空 move 序(CwActionStartBattleParam
+    照发)。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        battle_chain_deploy_params,
+    )
+    if session is None:
+        return []
+    return list(battle_chain_deploy_params(session))
+
+
+def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
+    """出战底层动作发出核(C1 单一发出函数,strategy-docs/14_p1_consume_arms.md §9.6):部署原子序 +
+    CwActionStartBattleParam 的执行核,恢复局面与达标分支两调用面共用,禁各写一套
+    CwActionStartBattleParam 动作发出点。
+
+    - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
+      battle):首战前插备战同步步,**发出即置位**证据位
+      ``op._cw_locked_sync_done``(回执已停用,失败概念随之消解);
+      锁定确认分支复位证据位。同步步载体 = 统一拖动/换星直卖原子序
+      (按策略层部署计划现算逐 move 发;恢复局卖出通道整体跳过语义
+      不变——board 未观察时计划恒空)。
+    - ``sync_once=False``(达标分支面,调用面 = 策略层前置动作发出点):
+      **不过标志**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,
+      已同步形态下零 move 即零待部署;标志只覆盖恢复局面,达标分支第二次发出
+      被「每局恰一次」标志拦截 = C1 明令防的双源病)。
+
+    返回 ``(launch_ok, detail)`` = 出战**点击序列已执行**(出战域重设计
+     收缩语义:执行器 last_launch_ok 旁路;False = 找不到按钮/area
+    缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,结束后
+    画面状态由外循环下一帧重判)。 刹车短路(停机标志
+    已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
+    """
+    ex = PrepActionExecutor(op, ctx)
+    try:
+        _moves = []
+        if sync_once:
+            if not getattr(op, '_cw_locked_sync_done', False):
+                _m_lpb = getattr(ctx, 'cw_match', None)
+                _sess_lpb = getattr(_m_lpb, 'session', None) \
+                    if _m_lpb is not None else None
+                _moves = (_battle_chain_deploy_moves(_sess_lpb)
+                          if _sess_lpb is not None else [])
+                for _mv in _moves:
+                    ex.execute(_mv)   # 机械执行无返回
+                # 发出即写(申报;回执已停用,失败概念消解)
+                op._cw_locked_sync_done = True
+                log.info('[cw-loop] 恢复局备战同步步(部署原子×%d)已发出: %s',
+                         len(_moves), getattr(ex, 'last_detail', ''))
+            else:
+                log.debug('[cw-loop] 恢复局同步步已置位,跳过部署原子序')
+        else:
+            # 达标分支面:每帧部署原子序(部署面现读重建;已同步形态零 move)
+            _m_lpb = getattr(ctx, 'cw_match', None)
+            _sess_lpb = getattr(_m_lpb, 'session', None) \
+                if _m_lpb is not None else None
+            _moves = (_battle_chain_deploy_moves(_sess_lpb)
+                      if _sess_lpb is not None else [])
+            for _mv in _moves:
+                ex.execute(_mv)
+            log.info('[cw-loop] 达标臂部署原子序 ×%d: %s',
+                     len(_moves), getattr(ex, 'last_detail', ''))
+        ex.execute(CwActionStartBattleParam())
+    except StopBrakeShortCircuit as e:
+        log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
+        return False, '已停止[W209j刹车]'
+    # CwActionStartBattleParam 点击序列事实(出战域重设计收缩语义;getattr 容缺 =
+    # __new__/桩形态兼容)
+    return bool(getattr(ex, 'last_launch_ok', False) or False), \
+        getattr(ex, 'last_detail', '')
+
+
+# (达标分支 G1 准入预估 readiness_admission_report 与 deploy_swap_no_victim
+#  计数位已随部署统一批丁并入统一结构而删除:统一部署搜索下板满帧经交换交互上场,
+#  「无合格 victim → 出战无腾位」形态结构性不存在——unified-deploy-order
+#  §2.7/§4 M4 姊妹出口行;victim 资格判据面的纳入统一管理随 kernel swap 机器批。)
+
+
+def _launch_screen_recheck(op, ctx) -> tuple[bool, Any]:
+    """发出前屏态复验(fresh 截图 + 备战两识别标志同帧命中判定)。
+
+    stale(非备战屏) → ``readiness_stale_screen`` 分键零静默并返回
+    ``(False, 该帧截图)``;复验链异常 → 保守放行(留存证据 defect,放行/放弃
+    之辩归编排者裁)。复验帧同帧返回供浮层安全检查消费(禁二次截图)。
+    """
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    try:
+        _fresh = op.screenshot()
+        _still_prep = prep_anchors_hit(op, _fresh)   # C3:两识别标志同帧命中判定单一源
+    except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行;
+        # 放行/放弃之辩归编排者裁,本批只补观测面:分键零静默与 stale 分支对齐)
+        log.warning('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
+        try:
+            from sr_od.application.currency_war.telemetry.defects import (
+                record_defect,
+            )
+            record_defect(
+                'deploy', 'readiness_recheck_error',
+                expected='复验链 screenshot/find_area 正常',
+                observed=f'异常:{type(e).__name__}',
+                gap_large=False, auto_resolved=False,
+                verdict=('留证-屏态复验异常保守放行(切屏瞬间识别误真的拖空'
+                         '事故形态重新暴露的观测入口;放行/放弃裁归编排者)'),
+                reader_source='readiness_recheck',
+                note='复验异常分键(与 readiness_stale_screen 分支对齐零静默)')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
+        _still_prep = True
+    if not _still_prep:
+        counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['readiness_stale_screen'] = \
+                counters.get('readiness_stale_screen', 0) + 1
+        log.info('[cw-loop] 达标臂放弃发射:执行时刻非备战屏'
+                 '(屏态过期,readiness_stale_screen)')
+    return _still_prep, _fresh
+
+
+def _launch_overlay_gate(op, ctx, screen) -> str | None:
+    """浮层安全检查(身份分发判据复用的执行前防线):阶段一身份分发
+    判据复用——分发表内非备战画面命中 = 浮层在场(投资策略浮层盖备战、
+    识别标志穿透命中的事故形态);遭遇选择面板 = 备战屏上面板(身份分发
+    仍返备战),OCR「遭遇其」前缀兜底(currency_war_encounter.md 出处)。
+    命中返回画面名/面板标识并落 ``readiness_overlay_hold`` 分键零静默;
+    ``None`` = 无浮层。"""
+    _overlay_screens = [s for s in CW_DISPATCH_SCREENS
+                        if s != '货币战争-备战']
+    # 身份读点改道(sim 装配后 = 状态机答口;模态在场的 sim 真值即
+    # 当前呈现屏 ∈ 清单;未装配 = 原识别链零行为变化):
+    _match = cw_sim_ports.sim_or_live_identity(
+        _overlay_screens,
+        lambda: get_match_screen_name(ctx, screen,
+                                      screen_name_list=_overlay_screens))
+    _ov_hit = _match if isinstance(_match, str) and _match else None
+    if _ov_hit is None and op.round_by_ocr(
+            screen, '遭遇其', lcs_percent=0.9).is_success:
+        # 遭遇选择面板 = 备战屏上的面板(非独立屏):两个识别标志仍可见但槽区被
+        # 覆盖,识别标志表探不到,OCR 词「遭遇其」前缀兜底(docs/game/screens/
+        # currency_war_encounter.md 出处)。
+        _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
+    if _ov_hit is not None:
+        counters = getattr(strategy_state_of(
+            getattr(ctx, 'cw_match', None).session if getattr(
+                ctx, 'cw_match', None) is not None else None),
+            'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['readiness_overlay_hold'] = \
+                counters.get('readiness_overlay_hold', 0) + 1
+        log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,交由浮层接管面',
+                 _ov_hit)
+    return _ov_hit
+
+
+def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
+    """出战统一执行器(armed/resume 两调用面共用)。
+
+    内部序 = 屏态复验 → 浮层安全检查 → face 分轨(部署原子序)→
+    CwActionStartBattleParam 执行。失败语义按调用面分轨:本函数只返回事实
+    ``(launch_ok, detail)``,计数与复位归调用方(禁调用面私有记账入本函数)。
+
+    :param face: ``'armed'``(达标分支面:G1 准入预估暴露 + 部署原子序每帧
+        现算不过标志)| ``'resume'``(恢复局面面:标志覆盖部署原子序一次)。两
+        face 同保屏态复验与浮层安全检查(design 申报:恢复局面面防误触补齐)。
+    """
+    if face not in ('armed', 'resume'):
+        raise ValueError(f'未知调用面: {face!r}(合法 = armed/resume)')
+    _still_prep, _fresh = _launch_screen_recheck(op, ctx)
+    if not _still_prep:
+        return False, 'readiness_stale_screen'
+    _ov_hit = _launch_overlay_gate(op, ctx, _fresh)
+    if _ov_hit is not None:
+        return False, f'readiness_overlay_hold:{_ov_hit}'
+    if face == 'armed':
+        return launch_prepared_battle(op, ctx, sync_once=False)
+    return launch_prepared_battle(op, ctx, sync_once=True)

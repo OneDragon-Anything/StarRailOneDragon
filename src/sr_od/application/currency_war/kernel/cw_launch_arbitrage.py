@@ -41,7 +41,8 @@ flow/README.md §1 决策控制分层铁律):
 **执行皮肤不在本模块**:消费动作的执行/逻辑态直写是两面各自的循环体
 (生产 = 商店画面 op 单动作循环既有守卫链;sim 与实机同一段动作 op
 执行链),与
-「动作发出核 launch_prepared_battle 留 operations 不动」同判据(两面差异全部
+「动作发出核 launch_prepared_battle 住 prep_actions.py(发出链与执行器
+同居)」同判据(两面差异全部
 属执行/观测皮肤,判定语义恰此处一份——cw_launch_admission 同款先例)。
 """
 from __future__ import annotations

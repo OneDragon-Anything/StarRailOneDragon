@@ -136,7 +136,8 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
     ``LAUNCH_QUALITY_EVAL_ERROR_KEY`` 分键落盘,残量禁静默)。
 
     消费面拓扑(方案三混合):实机 = operations/cw_loop
-    备战分支驱动执行(动作发出核 launch_prepared_battle 留 operations 不动);
+    备战分支驱动执行(动作发出核 launch_prepared_battle 住 prep_actions.py
+    ——发出链与执行器同居);
     判据语义恰此处一份,
     禁任一消费面内联第二实现(布局守卫 + 测试单一源)。出战就绪关闸帧
     (配方完备 ∧ 质量推迟)的判读观测位 = ``quality.defer_by_quality``。

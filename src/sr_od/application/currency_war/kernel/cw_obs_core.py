@@ -1,8 +1,13 @@
 """货币战争 OCR 观测层共享基础设施:screen_info 区域读取 + OCR helper + 常量。
 
 各画面观测模块(``cw_briefing_obs`` 简报 / ``cw_settlement_obs`` 结算 / ``cw_observation`` 备战)
-共用的 helper 与 screen_info area 名 / 坐标系常量集中于此,**避免循环导入**(本模块不依赖任何兄弟
-观测模块,只依赖底层 geometry/ctx)。
+共用的 helper 与 screen_info area 名 / 坐标系常量集中于此,**避免循环导入**(本模块只依赖
+底层 geometry/ctx 与 kernel 兄弟模块)。
+
+**kernel 收 op 参数的边界申报**(首例 = :func:`prep_anchors_hit`):个别判据必须经 op 的
+识别原语(``round_by_find_area``,sim 端口改道面)执行——此类函数的 op 由调用方经参数
+传入,本模块不 import operations 树(两消费方均可 import 本模块、无循环,判据单一源
+禁散写的前提)。
 
 **区域单一真相源 = screen_info**(用户 2026-08-03):备战 ``currency_war_battle_prep.yml``
 (screen「货币战争-备战」)、简报 ``currency_war_briefing.yml``。改区域改 yml 即可,不动代码。
@@ -116,6 +121,31 @@ def shop_card_click_points(ctx: SrContext) -> list[Point]:
         if area is not None and area.pc_rect is not None:
             pts.append(area.pc_rect.center)
     return pts
+
+
+def prep_anchors_hit(op, screen) -> bool:
+    """备战两识别标志同帧命中判定(小helper,复用身份分发识别标志表同款两标志;禁判据外散写)。
+
+    第二识别标志免战子态双形态(currency_war_prep.md「跳过(N/N)」按钮替换节):
+    「免战牌」激活的战斗节点,出战按钮被替换为「跳过」(同位置)——识别标志只认
+    「出战」会把免战备战帧判非备战(出战前屏态复验恒 stale,出战永不发)。
+    实机 = 「按钮-跳过」OCR 识别标志同位可命中;sim = 后端 visible 按钮对真值。
+
+    双消费单一源(禁散写):出战发出链屏态复验(消费方 = prep_actions
+    ``_launch_screen_recheck``)与 loop 备战分支认领判定(消费方 = CwLoop)。
+
+    Args:
+        op: 调用方 op(经参数传入 = 本模块收 op 参数首例,边界申报见模块头;
+            判据必须经 op 的识别原语 ``round_by_find_area`` 执行)。
+        screen: 备战档识别帧。
+    """
+    if not op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
+                                 crop_first=False).is_success:
+        return False
+    return (op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
+                                  crop_first=False).is_success
+            or op.round_by_find_area(screen, '货币战争-备战', '按钮-跳过',
+                                     crop_first=False).is_success)
 
 
 def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None) -> list:
