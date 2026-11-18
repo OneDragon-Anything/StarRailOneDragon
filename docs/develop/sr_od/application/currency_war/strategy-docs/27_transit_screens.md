@@ -9,7 +9,7 @@
 - **与策略链的三个衔接点**(衔接归邻接画面,不在本画面决策):
   1. BOSS 简报关闭后自动开商店(多触发源之一,`docs/game/currency_war/research/screen_flow_timing.md` #14)→ 商店期接管([23_shop_screen.md](23_shop_screen.md));
   2. 位面过渡进入下一位面后照常自动开商店(唯一例外是开局节点 1-1)→ 同上;跨位面 HP 继承与开局 HP 先验 = 观察供数(`kernel/cw_opening_hp.py`),非本画面决策;
-  3. 恢复局(进过战斗后异常重启)商店交互被游戏禁用(只能出战,`docs/game/currency_war/research/economy.md` §2.1)→ 外循环在锁定态直接出战(`prep_actions.py::locked_resume_sync_and_battle`),策略面无补丁位。
+  3. 恢复局(进过战斗后异常重启)商店交互被游戏禁用(只能出战,`docs/game/currency_war/research/economy.md` §2.1)→ 备战画面 op `CwScreenPrep` 特殊流程段在锁定态直接出战(观察 node 段1 第0查识别 + 决策动作 node 段3b `prep_actions.py::locked_resume_sync_and_battle`),策略面无补丁位。
 
 ## 2. 会执行的动作清单
 

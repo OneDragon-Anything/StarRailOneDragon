@@ -1,7 +1,7 @@
 # 外层循环(loop)
 
 > 组件 = `operations/cw_loop.py`(CwLoop)。
-> **职责边界**:loop 只做三件事——识别当前画面、派发给对应画面 op、循环运行管理(预检/看门狗/轮次推进信号/局终收尾)。**画面处理逻辑(识别后的交互/试探/行为序列)一律归画面 op——loop 分支里出现点击即违例**;违例族消解申报:出战执行链 6 函数已迁 `prep_actions.py`(与执行器同居,统一执行器 = `prep_actions.py::launch_battle_unified`)、前台无角色弹窗内联分支已改为独立画面 op `CwScreenNoFrontHint` 经阶段一身份分发派发;残余违例(道具详情弹窗阶段三判定归属/备战分支交互链)登记在跨迭代挂账板「loop 瘦身」条,随下批重构消解。
+> **职责边界**:loop 只做三件事——识别当前画面、派发给对应画面 op、循环运行管理(预检/看门狗/轮次推进信号/局终收尾)。**画面处理逻辑(识别后的交互/试探/行为序列)一律归画面 op——loop 分支里出现点击即违例**;违例族消解申报:出战执行链 6 函数已迁 `prep_actions.py`(与执行器同居,统一执行器 = `prep_actions.py::launch_battle_unified`)、前台无角色弹窗内联分支已改为独立画面 op `CwScreenNoFrontHint` 经阶段一身份分发派发、备战分支交互链已迁 `CwScreenPrep` 特殊流程段(观察 node 段1 子态识别四查 + 决策动作 node 段3 三处置,迭代 2026-11-18-prep-special-flow);残余违例(道具详情弹窗阶段三判定归属)登记在跨迭代挂账板「loop 瘦身」条,随下批重构消解。
 > 路径根 = `src/sr_od/application/currency_war/`;代码定位一律用 `文件::符号名`。守卫细则见 [guards.md](guards.md);画面 op 形态见 [screen-op.md](screen-op.md)。
 
 四层分工判据:**外层循环管「现在是哪个画面、交给谁」;画面指挥管「一次访问内观察→决策→执行的编排」;策略步进管「给一帧期望态提什么动作」;动作执行管「一个动作怎么落地」(机械发出、零判效;落地判定归观察侧对账)**。
@@ -26,7 +26,7 @@ loop()(@operation_node,预算 = node_max_retry_times,值见代码;cw_loop.py::Cw
   └─ 全不命中 → _handle_unknown_fallback()(guards.md)
 ```
 
-run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/round 缓存清零、`_is_new_match = ctx.cw_match is None`(续跑支持:cw_match 已存在则延用,手动逐轮验证靠此跨 run 延续 match)、职级难度 ctx 中转吸收(取走清空防跨局复用)、SettlementState/CwScreenBattleWait 实例化、新局兜底 `establish_new_match`。
+run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/round 缓存清零、恢复局检测状态机写入 Match 流程态五字段(`was_new = ctx.cw_match is None`;`is_new_match/resume_probe_pending` 写 `= was_new`,`locked_resume/locked_round` 重置,`locked_sync_done` 不重置〔配对不变量〕;续跑支持:cw_match 已存在则延用,手动逐轮验证靠此跨 run 延续 match;写入节奏 per-run,宿主 = `strategies/impl/cw_strategy.py::CurrencyWarMatch`)、职级难度 ctx 中转吸收(取走清空防跨局复用)、SettlementState/CwScreenBattleWait 实例化、新局兜底 `establish_new_match`。
 
 ## 2. 画面识别与分发(两阶段身份分发)
 
@@ -83,18 +83,15 @@ run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/roun
 
 ## 3. 备战表面默认分支的进入序
 
-> 本分支现状含前置交互链(锁定探针/分流点击)与内联关闭,属「loop 瘦身」挂账的违例面,重构后本节改写;以下为 as-built 记录。
+> 本分支已坍缩为纯识别派发:备战交互三段链(返回投资策略点击/恢复局候选探针+锁定直出战/补给分流)已迁 `CwScreenPrep` 特殊流程段(观察 node 段1 子态识别四查 + 决策动作 node 段3 三处置,迭代 2026-11-18-prep-special-flow;画面 op 侧形态细则见 screen-op.md「备战(CwScreenPrep)特殊」行),以下为 as-built。
 
-双识别标志同帧命中后按序(本分支无前置插入位置):
+**动作发出决策不在本分支**:达标帧的发出决策宿主 = mandate_v1 决策链最先检查的发出点(`decide_prep_screen` 入口消费 kernel `readiness_launch_decision`;出战就绪帧产受限商店访问意图或 `StartBattle` 终点意图,随派发的备战访问 op 落执行;判据与语义 = strategy-docs/14_p1_consume_arms.md §9.6/§11.10)。
 
-**动作发出决策不在本分支**:达标帧的发出决策宿主 = mandate_v1 决策链最先检查的发出点(`decide_prep_screen` 入口消费 kernel `readiness_launch_decision`;出战就绪帧产受限商店访问意图或 `StartBattle` 终点意图,随第 5 步派发的备战访问 op 落执行;判据与语义 = strategy-docs/14_p1_consume_arms.md §9.6/§11.10)。
-
-1. "返回投资策略选择"按钮在 → 点去选策略(上游策略屏处理失败 symptom,计数报警);
-2. **恢复局(locked-resume)检测**:候选 = 新 match ∧ 首个备战相位 round>1;点一下商店按钮试探:能打开 = 未锁定,打不开 = 锁定恢复态;锁定态跳过全部备战交互,经统一执行器(恢复模式,含屏态复验与浮层安全检查)直接出战并置战斗窗,出战成功即解除(`prep_actions.py::locked_resume_sync_and_battle`);
-3. 可控轮数:`max_rounds` 已跑满 → round_success 停备战屏;
-4. 补给节点分流:nodeseq current=supply → 点"返回补给阶段"进补给屏(用节点类型判,非按钮——battle 节点也有该按钮);
-5. 派发 `CwScreenPrep` 备战单轮。**访问结束契约置战斗窗**:出战意图由统一执行器 `prep_actions.py::launch_battle_unified` 落执行,op 以终结出口 success 结束本次访问;外循环 `_on_prep_round` 回调见 success 返回即置 `_battle_ts` + `_battle_wait_active`(非出战出口的 success 返回误置位由 CwScreenBattleWait 宽限等待 + 备战 id_mark 白名单兜底分流);
-6. **环让位重入契约**:备战分支处理完(含弹窗让路)必须以 return 结束本轮,下一轮从循环顶重新识别画面,不在同一轮里直接再进备战分支。
+1. **横幅中间态守卫**:OCR「请选择投资策略」lcs 0.8 在场 → round_wait 等展开(选卡页展开中零可交互元素,不处理);
+2. 双识别标志识别(`prep_anchors_hit`)同帧命中 → 兜底清 `_fallback_clear_pending`(本轮分发未接住任何 pending 条目 → 整列清;识别到弹窗屏不清——多弹窗条目逐个存活;sim 不走本清);
+3. **max_rounds 停点**:已跑满 → round_success 停备战屏。**停点新语义(迁移申报)**:停点先于派发,子态帧不再处置——候选挂起、锁定不确认、返回按钮不点,直接停屏;停点语义 =「停备战屏不跑备战单轮」,子态处置属备战交互(已归画面 op)。跨 run 后果:停点命中候选帧后同进程再跑,`was_new=False` → 探针链对该局永久失活(锁定接管则锁永不确定)——既有形态保留,危害承载 = 跨迭代挂账板「loop 瘦身」条⑥;
+4. 派发 `CwScreenPrep` 备战单轮(`on_result` 回调不变)。子态帧在 op 内走特殊流程:观察 node 段1 四查(0 锁定确认态〔含段3b retry 耗尽后主循环重派发的重入帧,直达出战段〕/ a 返回按钮 / b 恢复候选探针 / c 补给分流)+ 决策动作 node 段3 三处置(点返回 / `prep_actions.py::locked_resume_sync_and_battle` 同步步+出战 / 点「返回补给阶段」),细则见 screen-op.md「备战(CwScreenPrep)特殊」行。**交回契约与失败链**:子态处置均以 round_success 交回(wait 2/3/2);锁定出战未执行 → op 内 retry 保锁(框架预算每访问 1 首跑+3 重试=4 次),耗尽 → 访问 fail → 外环 fail-streak 限 5 次重派发,至多约 20 次出战尝试,≪ 旧形态 loop 节点原地重试预算 400 次。**战斗窗置位统一由外循环 `_on_prep_round` 回调承载**:对一切 success 交回统一置 `_battle_ts` + `_battle_wait_active`(含返回按钮/补给出口的非出战交回——误置位由 CwScreenBattleWait 宽限等待 + 备战 id_mark 白名单兜底分流);出战意图由统一执行器 `prep_actions.py::launch_battle_unified` 落执行;
+5. **环让位重入契约**:备战分支处理完(含弹窗让路)必须以 return 结束本轮,下一轮从循环顶重新识别画面,不在同一轮里直接再进备战分支。
 
 ## 4. 轮次推进
 

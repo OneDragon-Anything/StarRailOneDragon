@@ -836,9 +836,12 @@ None = 观察域未就绪(反查面按 None → 反查不到拒单);{} = 真读�
 #### 3.2.17 分类子态 prep_substate
 
 **语义**:本屏的子态分型,四档——策略锁定/遭遇锁定/补给锁定(暗色锁定三档,帧观察
-识别标志)+ **恢复锁定**(恢复局备战期档,ops 据此禁开店;交互规则各不相同)。
-**边界**:恢复锁定=**会话推断档、无帧识别识别标志**,写入方=接管协议的标记+探针判定协议
-(§6.3),而非帧观察。四档机制不同源,**禁按「帧子态」统一走帧识别路由**。补给锁定
+识别标志)+ **恢复锁定**(恢复局备战期档;交互规则各不相同)。
+**边界**:恢复锁定=**会话推断档、无帧识别识别标志**,现役承载 = 对局流程态
+`Match.locked_resume`(写入方 = 备战画面 op `CwScreenPrep` 特殊流程段探针判定
+协议,协议纯函数 = `kernel/cw_resume_lock.py`;禁开店由锁定帧第0查直达出战段
+结构性保证——常规路径含开店问询零接触;本字段恢复锁定档零现役写入方),而非帧
+观察。四档机制不同源,**禁按「帧子态」统一走帧识别路由**。补给锁定
 **单命中不路由**——screen_flow_timing #18 已登记实证:普通节点 revisit 备战也现「返回
 补给阶段」按钮,单识别标志分流会误伤普通备战(该档接入调用因此暂缓已登记);需联合判定。
 
@@ -1031,10 +1034,13 @@ active_env 核对源。开局写入方见 §3.4.3(多屏写入,本条=备战屏�
 不经失效事件的 sim/离线入口不受误伤;`False` = 显式失效(接管/重置/账失效)
 后获得时点未落定,**账值不可消费**;`True` = 已锚定。事件驱动(非逐帧)。
 
-- **写入方**:`False` = `cw_loop._mark_session_resumed`(接管检测确认点;重置/
-  账失效类事件同口);`True` = kernel `reconcile_tracking` bench 侧屏幕真值
-  写回成功点(唯一确认写入方;bench 读失败/双空读守卫/槽号健康门拒绝均不写 =
-  保持未观察)。
+- **写入方**:`False` = 接管检测两确认点分流(战斗帧确认点 =
+  `cw_loop._invalidate_tracked_on_takeover`,actor=`CwLoop`;备战帧确认点 =
+  `cw_screen_prep.CwScreenPrep._invalidate_tracked_on_takeover` 接管候选过判
+  即写,actor=`CwScreenPrep`;两写体同款 `write_logic` 调用,evidence=
+  `takeover_invalidation`;重置/账失效类事件同口);`True` = kernel
+  `reconcile_tracking` bench 侧屏幕真值写回成功点(唯一确认写入方;bench 读
+  失败/双空读守卫/槽号健康门拒绝均不写 = 保持未观察)。
 - **消费端**:策略商店门(`flow.decide_shop_action`,判定单一源 = 本模块
   `tracked_unobserved`)——未观察 → 返回恒可用终结 `CloseShop` 返回主循环,
   备战环完整观察(全量识别)确认后再进店;执行侧跳过留痕/连续跳过熔断
@@ -3113,15 +3119,20 @@ retry 耗尽=整个 run 失败);备战期 gold **无机制性例外**:同按备�
 **显式决策表(禁三种读法并存)**:①接入调用恒观察——备战帧读到即 observe;②读失败→
 carried 沿用(从未读过→None);③None 仅当从未读过——不是机制规则、不是恒 None 口径。
 
-- **恢复锁定判定协议(实现=cw_resume_lock.py)**:
+- **恢复锁定判定协议(实现=cw_resume_lock.py;执行宿主 = 备战画面 op
+  `CwScreenPrep` 特殊流程段)**:
   1. **候选判据**:session 全新 ∧(round>1 ∨ plane>1)→ 恢复局候选——纯画面/会话
      判据,新局 r1 不检测。
-  2. **探针确认**(一次性):点商店按钮 → 验「按钮-收起」出现:出现=normal;未出现
-     =locked → 分类子态置「恢复锁定」。
-  3. **结果承载**:分类子态=恢复锁定,后续循环直接消费,**不重复探针**。
-  4. **解除**:出战成功即解锁,下个备战相位落常规循环;出战未落地=保锁重试(连续
-     失败由 stall 哨兵兜底)。
-- 禁开店动作由分类子态「恢复锁定」档承载(§3.2.17;写入方=上述协议)。
+  2. **探针确认**(一次性,识别性点击):点「按钮-商店」试探 → 验「按钮-收起」出现:
+     出现=normal;未出现=locked → 置「恢复锁定」;候选过判即先写接管观察态失效
+     (`tracked_account_observed=False`,actor=CwScreenPrep)。
+  3. **结果承载**:恢复锁定承载 = 对局流程态 `Match.locked_resume`(与
+     `locked_sync_done=False` 同帧配对写),后续访问经第0查直接消费,**不重复
+     探针**(候选无条件撤回防同 run 重探针)。
+  4. **解除**:出战成功即解锁,下个备战相位落常规循环;出战未落地=保锁重试(访问内
+     框架预算耗尽 → 访问 fail → 外环 fail-streak 重派发)。
+- 禁开店由锁定承载结构性保证(第0查命中直达出战段,常规路径含开店问询零接触;
+  非状态容器档承载——本字段恢复锁定档零现役写入方,§3.2.17)。
 - 恢复前置=职级 + 节点 + 金币;hp=**开局先验写入 82/开局不利 62**→
   首个备战帧现场读值覆盖(失读不覆盖先验)。
 - 中继纪律:恢复局新 session 的五镜像字段停在默认值,中继把未知固化为正式值的路径
@@ -3136,7 +3147,9 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 Field 定义 + `cw_loop` 写入位置(`ResumeAttach`/`takeover_resumed` journal 行同灭)+
 投影审计行;match_facts 域版本 bump 5。**恢复检测本体不受影响**:`resume_candidate`
 判定/锁定臂/relaunch 残留结算屏处理(session 侧独立机制)与接管观察态失效
-(`tracked_account_observed=False`,原同口第二写入方,在用)全部保留。考古走 git。
+(`tracked_account_observed=False`,原与该旗标同口,在用;现役写入方 = 两确认点
+分流——战斗帧 = `cw_loop._invalidate_tracked_on_takeover`、备战帧 =
+`CwScreenPrep` 特殊流程段候选过判确认点)全部保留。考古走 git。
 
 接管补采无 gs 字段:补采编排 = `CwEntryPlaneIntel`,采集真值经位面详情屏写门落
 `plane_bosses`/`enemy_affixes`(§3.1.3);重复委派由编排的真值跳过门兜住。
