@@ -1173,9 +1173,10 @@ class CwScreenPrep(CwOperation):
         旁路消费;开店返回 = 商店访问级完成事实,非动作 op round 结果)
         = None,终结口透传不适用。"""
         if isinstance(action, CwActionStartBattleParam):
-            # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
-            # →部署原子序→出战点击链——策略前置
-            # 动作发出点的意图在此落执行;执行器住 prep_actions)。
+            # 出战意图执行 = 统一执行器(face=armed:部署原子序→出战点击链
+            # ——策略前置动作发出点的意图在此落执行;执行器住 prep_actions;
+            # 旧屏态复验/浮层闸门两道执行前防线已退役,见 prep_actions
+            # 模块头「防线边界申报」)。
             from sr_od.application.currency_war.prep_actions import (
                 launch_battle_unified,
             )

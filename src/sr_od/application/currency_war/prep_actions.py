@@ -1,13 +1,16 @@
 """货币战争 备战决策环 执行器 + 出战发出链(P1;strategy/03 §13)。
 
 **住址申报**:本模块 = 出战域执行臂——备战原子动作执行器(PrepActionExecutor
-runner 包络)与出战发出链(``launch_battle_unified`` 统一执行器 + 屏态复验 /
-浮层闸门两道执行前防线 + ``launch_prepared_battle`` 发出核 + ``locked_resume_
-sync_and_battle`` resume 面封装 + ``_battle_chain_deploy_moves`` 计划装配件)
-同居;发出链消费方 = 画面 op armed 面(CwScreenPrep)与 loop resume 面
-(CwLoop)。**防线边界申报**:两道防线 = 执行前守卫(拦截错误画面上的机械
-发出:非备战屏 stale 放弃 / 浮层在场 hold),非动作后判效——动作落地判定
-仍归观察侧 reconcile 对账,与「机械执行、不含玩法判断」申报不抵。
+runner 包络)与出战发出链(``launch_battle_unified`` 统一执行器 +
+``launch_prepared_battle`` 发出核 + ``locked_resume_sync_and_battle`` resume
+面封装 + ``_battle_chain_deploy_moves`` 计划装配件)同居;发出链消费方 =
+画面 op armed 面(CwScreenPrep)与 loop resume 面(CwLoop)。
+**防线边界申报**:执行前守卫现役 = drag 类浮层守卫(``prep_drag_overlay_gate``,
+拦截错误画面上的机械拖拽),非动作后判效——动作落地判定仍归观察侧
+reconcile 对账,与「机械执行、不含玩法判断」申报不抵。出战链两道执行前
+防线(屏态复验/浮层闸门)已退役(2026-11-19 用户裁定,挂账板 §二.7⑤)——
+错屏/浮层下的误发出由阶段一身份分发(每帧)+ drag 浮层守卫 + 调用方
+retry 网承接。
 
 框架层:本模块**不含玩法判断**(何时收晶矿/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
 只负责「机械执行一个动作」(用户裁定:动作 op 只管机械执行,
@@ -48,29 +51,19 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.base.screen.screen_utils import get_match_screen_name
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_dispatch_tables import (
-    CW_DISPATCH_SCREENS,
-)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     area_center,
-    prep_anchors_hit,
-)
-from sr_od.application.currency_war.kernel.cw_strategy_session import (
-    strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     CwActionLevelUpParam,
     CwActionStartBattleParam,
 )
-from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -275,8 +268,8 @@ def drag_char_guarded(op: SrOperation, ctx: SrContext,
 # ============================================================ drag 类动作浮层守卫(执行前输入契约拒绝)
 
 #: drag 类动作发出前的浮层检查清单(轻检查,非全量浮层扫描——每动作付
-#: 逐锚 find 成本,不做全量身份分发扫描;全量门 = 出战链
-#: ``_launch_overlay_gate``,两门取舍见 ``prep_drag_overlay_gate`` docstring)。
+#: 逐锚 find 成本;全量身份扫描 = 阶段一身份分发每帧现役,本表 = drag 类
+#: 动作侧轻守卫,取舍见 ``prep_drag_overlay_gate`` docstring)。
 #: 表项 = (画面名, 识别标志 area, 在场标识, 失败指引)。初版两项实证吞面:
 #: 合成确认浮层(全局模态阻断,浮层外拖拽全吞,r9 局实证)+ 角色详情面板
 #: (拖拽退化成点卡后面板继续吞后续输入,001156 帧物证)。判定口径 =
@@ -295,9 +288,9 @@ _DRAG_BLOCK_OVERLAYS: tuple[tuple[str, str, str, str], ...] = (
 
 
 def prep_drag_overlay_gate(op: SrOperation) -> str | None:
-    """drag 类动作发出前的浮层守卫(执行前输入契约拒绝,同
-    ``_launch_overlay_gate`` 族——prep_actions 模块头「防线边界申报」辖面:
-    拦截错误画面上的机械发出,非动作后判效)。
+    """drag 类动作发出前的浮层守卫(执行前输入契约拒绝)——
+    prep_actions 模块头「防线边界申报」现役辖面:拦截错误画面上的机械
+    发出,非动作后判效。
 
     检查清单 = :data:`_DRAG_BLOCK_OVERLAYS`(轻检查,非全量
     ``CW_DISPATCH_SCREENS`` 身份分发扫描——每拖付逐锚 find 成本,量级可接受;
@@ -697,100 +690,21 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 #  §2.7/§4 M4 姊妹出口行;victim 资格判据面的纳入统一管理随 kernel swap 机器批。)
 
 
-def _launch_screen_recheck(op, ctx) -> tuple[bool, Any]:
-    """发出前屏态复验(fresh 截图 + 备战两识别标志同帧命中判定)。
-
-    stale(非备战屏) → ``readiness_stale_screen`` 分键零静默并返回
-    ``(False, 该帧截图)``;复验链异常 → 保守放行(留存证据 defect,放行/放弃
-    之辩归编排者裁)。复验帧同帧返回供浮层安全检查消费(禁二次截图)。
-    """
-    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    try:
-        _fresh = op.screenshot()
-        _still_prep = prep_anchors_hit(op, _fresh)   # C3:两识别标志同帧命中判定单一源
-    except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行;
-        # 放行/放弃之辩归编排者裁,本批只补观测面:分键零静默与 stale 分支对齐)
-        log.warning('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
-        try:
-            from sr_od.application.currency_war.telemetry.defects import (
-                record_defect,
-            )
-            record_defect(
-                'deploy', 'readiness_recheck_error',
-                expected='复验链 screenshot/find_area 正常',
-                observed=f'异常:{type(e).__name__}',
-                gap_large=False, auto_resolved=False,
-                verdict=('留证-屏态复验异常保守放行(切屏瞬间识别误真的拖空'
-                         '事故形态重新暴露的观测入口;放行/放弃裁归编排者)'),
-                reader_source='readiness_recheck',
-                note='复验异常分键(与 readiness_stale_screen 分支对齐零静默)')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
-        _still_prep = True
-    if not _still_prep:
-        counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
-        if isinstance(counters, dict):
-            counters['readiness_stale_screen'] = \
-                counters.get('readiness_stale_screen', 0) + 1
-        log.info('[cw-loop] 达标臂放弃发射:执行时刻非备战屏'
-                 '(屏态过期,readiness_stale_screen)')
-    return _still_prep, _fresh
-
-
-def _launch_overlay_gate(op, ctx, screen) -> str | None:
-    """浮层安全检查(身份分发判据复用的执行前防线):阶段一身份分发
-    判据复用——分发表内非备战画面命中 = 浮层在场(投资策略浮层盖备战、
-    识别标志穿透命中的事故形态);遭遇选择面板 = 备战屏上面板(身份分发
-    仍返备战),OCR「遭遇其」前缀兜底(currency_war_encounter.md 出处)。
-    命中返回画面名/面板标识并落 ``readiness_overlay_hold`` 分键零静默;
-    ``None`` = 无浮层。"""
-    _overlay_screens = [s for s in CW_DISPATCH_SCREENS
-                        if s != '货币战争-备战']
-    # 身份读点改道(sim 装配后 = 状态机答口;模态在场的 sim 真值即
-    # 当前呈现屏 ∈ 清单;未装配 = 原识别链零行为变化):
-    _match = cw_sim_ports.sim_or_live_identity(
-        _overlay_screens,
-        lambda: get_match_screen_name(ctx, screen,
-                                      screen_name_list=_overlay_screens))
-    _ov_hit = _match if isinstance(_match, str) and _match else None
-    if _ov_hit is None and op.round_by_ocr(
-            screen, '遭遇其', lcs_percent=0.9).is_success:
-        # 遭遇选择面板 = 备战屏上的面板(非独立屏):两个识别标志仍可见但槽区被
-        # 覆盖,识别标志表探不到,OCR 词「遭遇其」前缀兜底(docs/game/screens/
-        # currency_war_encounter.md 出处)。
-        _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
-    if _ov_hit is not None:
-        counters = getattr(strategy_state_of(
-            getattr(ctx, 'cw_match', None).session if getattr(
-                ctx, 'cw_match', None) is not None else None),
-            'cw4_counters', None)
-        if isinstance(counters, dict):
-            counters['readiness_overlay_hold'] = \
-                counters.get('readiness_overlay_hold', 0) + 1
-        log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,交由浮层接管面',
-                 _ov_hit)
-    return _ov_hit
-
-
 def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
     """出战统一执行器(armed/resume 两调用面共用)。
 
-    内部序 = 屏态复验 → 浮层安全检查 → face 分轨(部署原子序)→
-    CwActionStartBattleParam 执行。失败语义按调用面分轨:本函数只返回事实
-    ``(launch_ok, detail)``,计数与复位归调用方(禁调用面私有记账入本函数)。
+    内部序 = face 分轨(部署原子序)→ CwActionStartBattleParam 执行。
+    失败语义按调用面分轨:本函数只返回事实 ``(launch_ok, detail)``,
+    计数与复位归调用方(禁调用面私有记账入本函数)。
 
     :param face: ``'armed'``(达标分支面:G1 准入预估暴露 + 部署原子序每帧
-        现算不过标志)| ``'resume'``(恢复局面面:标志覆盖部署原子序一次)。两
-        face 同保屏态复验与浮层安全检查(design 申报:恢复局面面防误触补齐)。
+        现算不过标志)| ``'resume'``(恢复局面面:标志覆盖部署原子序一次)。
+    执行前屏态复验/浮层闸门已退役(2026-11-19 用户裁定,挂账板 §二.7⑤):
+    错屏/浮层下的误发出由阶段一身份分发(每帧)+ drag 浮层守卫 + 调用方
+    retry 网承接;动作落地判定归观察侧 reconcile(既有)。
     """
     if face not in ('armed', 'resume'):
         raise ValueError(f'未知调用面: {face!r}(合法 = armed/resume)')
-    _still_prep, _fresh = _launch_screen_recheck(op, ctx)
-    if not _still_prep:
-        return False, 'readiness_stale_screen'
-    _ov_hit = _launch_overlay_gate(op, ctx, _fresh)
-    if _ov_hit is not None:
-        return False, f'readiness_overlay_hold:{_ov_hit}'
     if face == 'armed':
         return launch_prepared_battle(op, ctx, sync_once=False)
     return launch_prepared_battle(op, ctx, sync_once=True)
