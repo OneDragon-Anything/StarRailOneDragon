@@ -100,6 +100,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_megastar impo
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_next_button import (
     CwScreenNextButton,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_no_front_hint import (
+    CwScreenNoFrontHint,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_partner import (
     CwScreenPartner,
 )
@@ -1223,23 +1226,11 @@ class CwLoop(CwOperation):
                 frame_tag='overlay_shop_open', wait=1.5, on_result=_on_shop_visit)
 
         if name == '货币战争-提示-前台无角色':
-
-            def _frontless_confirm_step() -> OperationRoundResult:
-                # 出战域重设计:弹窗确认结束本次访问语义——点确认关弹窗,
-                # 零恢复动作(不重部署不补发出,原前台无角色恢复链已停用);结束本次访问
-                # 外循环下一帧重判真实画面(备战 = 重走备战环决策;弹窗
-                # 残留 = 本分支再入确认,天然幂等)。「前台无角色」根因
-                # 处置归部署面决策,弹窗分支不自愈。
-                _ok_pt = self.round_by_find_and_click_area(
-                    screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
-                log.info('[cw-loop] 前台无角色提示 → 确认关闭(%s)→ 交回重判',
-                         _ok_pt.is_success)
-                return self.round_wait(wait=1.5)
-
-            # C1:准推进恢复链非纯推进画面——链形透传,
-            # 轮次结果即分支出口,包装只补 journal 行与留存证据帧。
+            # 零恢复动作语义(op 内同申报):确认关弹窗即结束本次访问,不重部署
+            # 不补发出;「前台无角色」根因处置归部署面决策,弹窗分支不自愈。
+            # 弹窗残留 = 本分支再入派发,天然幂等。
             return self._dispatch_screen_op(
-                _frontless_confirm_step, journal_name='前台无角色确认',
+                CwScreenNoFrontHint(self.ctx), journal_name='前台无角色确认',
                 frame_tag='overlay_frontless', wait=1.0)
 
         if name == '货币战争-BOSS简报':

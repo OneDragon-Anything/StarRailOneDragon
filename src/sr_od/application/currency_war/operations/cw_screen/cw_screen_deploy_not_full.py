@@ -15,8 +15,10 @@ node = 落地复查顶部(确认已发 → 识别标志不在 = 弹窗已关 →
 = 确认未落地 → 重做勾选确认)→ 勾「勾选-本局不再提示」safe_click+0.3s
 → 确认 emit_overlay_confirm → 置位 → round_wait 循环推进(不烧节点重试
 预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 分支 = 不适用
-(sim 无对应画面段),等价判据主支撑 = 实机已登记行为测试
-(test_obs_arch_phase_screens.py)。
+(sim 无对应画面段)。
+
+角色 = 未达上限弹窗处理主路径:经阶段一身份分发直派,接管出战点击后的
+弹窗帧(动作 op 单击原子,出战点击后零弹窗收尾,弹窗收尾职责归本 op)。
 """
 import time
 from typing import ClassVar
