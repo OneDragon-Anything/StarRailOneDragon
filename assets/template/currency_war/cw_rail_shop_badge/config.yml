@@ -1,0 +1,6 @@
+sub_dir: currency_war
+template_id: cw_rail_shop_badge
+template_name: 备战左侧开拓商店入口金菱形徽记
+template_shape: rectangle
+auto_mask: true
+point_list: []
