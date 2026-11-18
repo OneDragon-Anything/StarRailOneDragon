@@ -381,11 +381,47 @@ class CwActionSellDeployedParam:
     SellDeployed 坐标域扩展,unified-deploy-order §4 D4-2:值域随
     ``back_capacity_of`` 动态 6-9,扩格帧后排 7-9 可直卖;空槽 None,
     卖出置 None 不移位——索引跨动作组恒稳)。
+
+    [记账路径总契约(第四适用者;契约正文 = action-op.md「记账路径总契约」
+    条款)]:本族对象住槽位表不住坐标伴随域,记账键 = deployed_idx 槽位
+    下标、记账载荷 = 槽位反查产物/状态推导名(卖出单位身份/星级/退款 =
+    按 idx 反查槽现任单位;卸装件回收 = 反查产物单位的 ``sold.equips``
+    载体字段——单位对象本身即其携带装备的权威)。「槽位反查」无表形态
+    第二例(MoveUnit 第一例);名称字段零新增(无 item_name/char_name
+    形态),宪法③(名称字段 = 语义参数)对本 op = 空集成立;``expect`` =
+    提案代际防线字段(防线写入端:现役生产发出点恒缺省 ''——填参完整性
+    归提案代际防线批核),非名称语义参数。
+
+    [交替机制申报] 卖出 aftermath(卸装件回库存)= 装备纯增长方向 =
+    穿装批 A1 假设辖域——``cw4_equip_xy_pending`` 零置位端(置位端
+    收编按「同一条不变式一族同判」,A1 实机验证批统一裁决,单标志多
+    置位端回退机制零新增);场上摘槽/回金与坐标伴随域零交集。
+
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``);旧帧/旧序列化数据缺
+    back_slot_count 键落缺省 6,历史 deployed_idx ≤ 9 值域全兼容。
+
+    [索引/坐标定义]
+    - deployed_idx: 坐标系 = deployed 视图统一槽位表下标(前排 0-3 /
+      后排 4+ 排内 1 基,固定双射内联算术——prep-contract.md §1);
+      取值时机 = 生成期=执行期恒稳(槽位表恒稳,卖出置 None 不移位);
+      yield plan 卖步骤 = 跨帧队列消化形态,陈旧由发出点按名现读重推导
+      + ``step.issued`` 执行失败出口承接(fail-closed)。
+    - back_slot_count: 坐标系 = 后排槽位画面物理总数 n(值域 6-9 =
+      obs.cw_back_layout._LAYOUT_PREFIX 键域);取值时机 = 生成期快照
+      (发出点 ``back_capacity_of(gs)`` 现读);deployed_idx < 4(前排
+      域)时忽略。
     """
     deployed_idx: int
     # [索引定义] 坐标系: 前排 0-3 / 后排 4+ 排内 1 基(动态容量 6-9,
     #             back_capacity_of 现读;旧定长 10 截断已随坐标域扩展退役)
-    #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
+    #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位);
+    #             yield plan 卖步骤 = 跨帧消化,发出点按名现读重推导
+    #             fail-closed(记账路径总契约②,本类 docstring 申报)
+    back_slot_count: int = 6
+    # [索引定义] 坐标系: 后排槽位画面物理总数 n(6-9,布局档键域)
+    #             取值时机: 生成期快照(发出点 back_capacity_of 现读);
+    #             deployed_idx < 4(前排域)时忽略
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 CwActionSellBenchParam)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
     expect: str = ''           # 遥测观测字段(降级:槽位恒稳后不再承担
@@ -393,6 +429,12 @@ class CwActionSellDeployedParam:
                                # 校验保留——名不符仍是跨代际提案的拒绝信号)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionSellDeployedParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 # (CwActionSwapDeployParam 已随 kernel swap 机器/部署统一批戊批纳入统一管理删除:场上去留 = 统一部署搜索定型 + 差分执行器,换位交互由统一拖动承载——unified-deploy-order §2.7/§4。)

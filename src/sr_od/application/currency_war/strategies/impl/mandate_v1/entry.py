@@ -649,6 +649,7 @@ def _step_yield_plan(session: StrategySession,
     坐标换算;驱板步骤 = 名集覆盖比对 + 落位算术。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        back_capacity_of,
         bench_units_of,
         effective_node_pos,
     )
@@ -696,7 +697,9 @@ def _step_yield_plan(session: StrategySession,
                         _yield_plan_fail(st, counters, plan)
                         return None
                     return [Emitted(
-                        CwActionSellDeployedParam(deployed_idx=_didx),
+                        CwActionSellDeployedParam(
+                            deployed_idx=_didx,
+                            back_slot_count=back_capacity_of(gs)),
                         True, 'yield_plan_sell')]
                 _bidx = mandate._bench_container_idx_by_compact(
                     gs, _bench_compact_idx(gs, step.name))
@@ -820,6 +823,9 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
     <counter>_rng_tail_hit 随机尾键命中;键名族登记 =
     telemetry/schema.py 键表节,载荷来源 = 评估器候选行观测字段)。
     """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        back_capacity_of,
+    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
     )
@@ -854,7 +860,9 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
     if cand.rng_tail_hit:
         _rk = f'{counter}_rng_tail_hit'
         st.cw4_counters[_rk] = st.cw4_counters.get(_rk, 0) + 1
-    return [Emitted(CwActionSellDeployedParam(deployed_idx=didx),
+    return [Emitted(CwActionSellDeployedParam(
+                        deployed_idx=didx,
+                        back_slot_count=back_capacity_of(gs)),
                     True, tag)]
 
 

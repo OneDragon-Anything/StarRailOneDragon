@@ -765,7 +765,7 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     解析键 = 动作 ``deployed_idx``(= state.deployed 槽位表下标 0-9,
 )——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
     cw_state.CwActionSellDeployedParam(cw_evolution 谷底回滚 / sim engine,序列化字段
-    deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
+    deployed_idx/back_slot_count/income/reason/expect,无 row/slot);cw_prep_actions 的
     同名 row+slot 类零构造点、且策略覆盖外声明不发出(test_cw_shop_line
     覆盖外测试),不会出现在 decisions 帧。
 

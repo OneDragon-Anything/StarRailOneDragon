@@ -98,7 +98,8 @@ def deploy_diff_actions(
                 idx = (i if domain == 'front'
                        else len(f_state[0]) + i)
                 out.append(CwActionSellDeployedParam(
-                    deployed_idx=idx, reason='deploy_star_swap'))
+                    deployed_idx=idx, reason='deploy_star_swap',
+                    back_slot_count=_back_slot_count))
                 row_list[i] = None
                 acted = True
                 break
