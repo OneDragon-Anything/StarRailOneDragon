@@ -355,10 +355,11 @@ class PrepActionExecutor:
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
         # 槽位中心(screen_info 静态,构造时读一次)。_bench_pts 现役消费 =
-        # 开件两类守卫(OpenBox/OpenTome,各自迁移批退役)——OpenBookcard
-        # 已随其参数面迁移批改 op 内现读并废除 slot=None 现算;MoveUnit/
-        # SellBench 已随各自参数面迁移批改 op 内现读;SellDeployed 过渡期
-        # 仍消费 _front_pts/_back_pts(其迁移批退役)。
+        # 开件一类守卫(OpenBox,其迁移批 = 开件族收官批退役)——OpenBookcard/
+        # OpenTome 已随各自参数面迁移批改 op 内现读(OpenTome 并废除
+        # slot=None 现算);MoveUnit/SellBench 已随各自参数面迁移批改 op 内
+        # 现读;SellDeployed 过渡期仍消费 _front_pts/_back_pts(其迁移批
+        # 退役)。
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
         self._back_pts: list[Point] = row_area_centers(ctx, '后排')

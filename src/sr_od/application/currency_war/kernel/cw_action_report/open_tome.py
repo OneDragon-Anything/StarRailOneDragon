@@ -23,7 +23,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开秘密典籍上报:bench 槽位 kind → empty(开件即腾位,占席事实
-    进状态容器)。槽不存在/类型不符 = applied=False 零写(陈旧提案)。"""
+    进状态容器)。slot 必填(None 语义已随参数面迁移批废除——本函数
+    零现算直取 ``int(param.slot) - 1``,「tome kind → 槽号」现算全仓
+    收敛发出点 ``entry._consumable_open_action`` 单点);槽不存在/类型
+    不符 = applied=False 零写零声明(tome_slot_missing 拒单)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -41,10 +44,8 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
         # 仅测试直构/极端离线形态可达;该形态开件本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved')
     slots = list(view.slots)
-    _idx = (int(param.slot) - 1 if param.slot is not None
-            else next((i for i, s in enumerate(slots)
-                       if s is not None and s.kind == 'tome'), None))
-    if _idx is None or not (0 <= _idx < len(slots)) \
+    _idx = int(param.slot) - 1
+    if not (0 <= _idx < len(slots)) \
             or slots[_idx] is None or slots[_idx].kind != 'tome':
         return LogicOutcome(applied=False, reason='tome_slot_missing')
     slots[_idx] = BenchSlot(kind='empty')

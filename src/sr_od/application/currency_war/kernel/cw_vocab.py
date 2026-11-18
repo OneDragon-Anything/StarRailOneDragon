@@ -579,11 +579,38 @@ class CwActionOpenTomeParam:
     """开秘密典籍(点槽一次即开:单击即弹星徽四选一〔用户确认 2026-09-25 游戏实际口径〕;开典籍即腾席+外循环分发 CwScreenBookcard 接管选卡)。
 
     建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
-    选卡决策在 CwScreenBookcard(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
+    选卡决策在 CwScreenBookcard(板上阵营匹配),本动作只负责把典籍点开。
+    非终结动作(星徽四选一弹窗经 director 环 overlay-pending 通用路径交回
+    外循环分发)。
+
+    **slot 必填(None 语义已废除)**:与 OpenBox 的 ``slot | None`` 缺省
+    形态不同,本类 slot 必填——None 的「op 帮调用方现算首件槽」语义已
+    随参数面迁移批废除,「哪个槽是典籍」的现算唯一归发出点
+    ``entry._consumable_open_action``(op 机械路径与上报层零现算,机械
+    执行路径零 game state 依赖)。缺 slot 键 = ``from_dict`` 构造面
+    TypeError;显式传 null = op 守卫 AssertionError(文案指向参数契约)。
+
+    [记账路径总契约第七适用者](契约正文 = skills/sr-od-dev-currency-war/
+    references/flow/action-op.md「记账路径总契约」条款):记账键 = 槽位
+    下标,腾位 = 直址写(kind 'tome' → empty)零身份反查——无回金/
+    无装备回收/无 sold 内容,槽位键域退化形态;名称字段零新增(宪法③
+    空集);零转移声明(本动作非转移动作,上报零 WorldDecl 构造,星徽
+    四选一画面的出现事实由上报内 star_tome 登记承载)。MCP 直调传参 =
+    当帧 extras ``bench.slots`` 中 kind='tome' 槽的下标 + 1(与发出点
+    同源口径;注意与 OpenBox 的 kind='supply_box' 不同串)。
+
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``)。
     """
-    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按状态容器 bench kind 槽位现算);None = op 内按 game state 状态容器现算首件槽(双出口守卫断言:gs 缺席/状态容器无该 kind 首槽 → AssertionError)
+    slot: int   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 生成期快照(决策半 entry._consumable_open_action 按状态容器 bench kind='tome' 槽位现算——全仓唯一现算点;None 语义已随参数面迁移批废除,op/上报层现算分支退役);写入端 = 发出点
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionOpenTomeParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
 
 
 @dataclass
