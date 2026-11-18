@@ -39,8 +39,13 @@ gain_equipment 尾段计数钩子(cw_effect_inventory
 板面装备贡献,落地写 = 目标域整表重建单写(事实事件广播已停用)。
 
 拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留存证据,禁半写):
-- owned 无该件 → ``wear_item_not_owned``(合法穿戴前置,漏 = 计划失效);
-- 目标槽位解析失败(越界/空槽/在位者与 char_name 不符 = 陈旧提案;
+- 坐标伴随域反查不到(坐标不在表/伴随域未就绪 None)→
+  ``wear_item_xy_unresolved``(记账 = 坐标反查——记账路径总契约(用户
+  裁定):动作 op 上报它实际动过的坐标,kernel 用观察产出的坐标伴随域
+  反查出具体内容再记账,名称从「记账键」降级为「反查产物」;契约正文 =
+  skills/sr-od-dev-currency-war/references/flow/action-op.md「记账路径
+  总契约」条款,名称校验 wear_item_not_owned 已随反查路径退役);
+- 目标槽位解析失败(越界/空槽 = 陈旧提案;
   计划步恒戳物理槽位定位,定位序见 :func:`_locate_unit`)→
   ``wear_target_unit_missing``(front-only 回退步拖空槽 avatar = 游戏
   侧静默拒,上报如实拒);
@@ -225,56 +230,45 @@ def _apply_forge_privilege(gs: GameState, unit: Unit, worn: list[str],
     return True
 
 
-def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
-    """定位穿戴目标单位。
+def _resolve_item_by_xy(gs: GameState, src_cx: int, src_cy: int) -> str | None:
+    """坐标伴随域反查装备名((cx,cy) → 名;记账路径总契约适用)。
 
-    定位序 = **物理槽位定位先行**:计划步恒戳 (row, slot)
-    (``cw_equip_wear_plan`` M7 分配自 deployed 视图派生 / front-only
-    回退步空槽序),且机械拖拽的真实落点 = 该槽位 avatar——账随拖点走。
-    同名角色跨域在场(deployed + bench 各一份)时,名匹配 bench 先序会
-    记到**另一个**单位身上:席上副本穿满 → 超限拒单零写 → 决策环同
-    输入重派无限自旋(sim 实证);实机同构时账面与画面分裂(下一入口
-    观察失配)。槽位解析失败/在位者身份与 char_name 不符 = 陈旧提案,
-    拒单(禁静默按名改目标)。row/slot 缺省(row 空)的调用面走原名
-    匹配回退(bench → deployed 全域,char_name 空按槽位现读的原
-    front-only 形态已被槽位先行覆盖)。[索引定义] row ∈ 'front'|'back'
-    (词表通用声明),slot = 画面物理槽位 1 基,deployed 域 = DeployedView
-    子表下标 + 1(位置 = 子表下标派生);bench 域 = BenchView 槽序
-    (视图槽 i ↔ 画面槽位 i+1)。
+    唯一性前提 = 同一快照内坐标↔名一一对应(单格单件,观察路径由逐格
+    分类器保证、sim 占位路径由唯一化哨兵保证);反查不到(坐标不在表/
+    伴随域未就绪 None) = None → 调用侧拒单零写
+    (``wear_item_xy_unresolved``)→ 跳过自愈通道(下帧观察重派)。
+    条目量级 ≤28 格线性遍历,无性能面。"""
+    xy_map = gs.owned_equip_xy.value or {}
+    for name, cands in xy_map.items():
+        if (int(src_cx), int(src_cy)) in [(int(a), int(b)) for a, b in cands]:
+            return name
+    return None
+
+
+def _locate_unit(gs: GameState, row: str, slot: int) -> tuple[str, int, Unit] | None:
+    """按物理槽位定位穿戴目标单位(记账路径总契约:目标身份改由槽位反查
+    ——gs 知道该槽现任是谁,槽空 = 拒单;char_name 身份核对已随名称降级
+    退役,名匹配回退分支同批退役零生产消费)。
+
+    定位序 = **纯槽位定位**:机械拖拽的真实落点 = 该槽位 avatar——账随
+    拖点走,槽位解析失败(越界/空槽)= 陈旧提案,拒单(禁静默改目标)。
+    [索引定义] row ∈ 'front'|'back'(词表通用声明),slot = 画面物理槽位
+    1 基,deployed 域 = DeployedView 子表下标 + 1(位置 = 子表下标派生);
+    取值时机 = 执行期现读(记账拍 deployed 视图现值)。
 
     Returns:
         ``(域键, 下标, 单位)``;未命中 = None。
     """
-    char_name = str(getattr(param, 'char_name', '') or '')
-    row = str(getattr(param, 'row', '') or '')
-    slot = int(getattr(param, 'slot', 0) or 0)
     view = gs.deployed.value
-    if view is not None and row in ('front', 'back') and slot >= 1:
-        sub = (view.front_slots if row == 'front'
-               else view.back_slots) or []
-        if 1 <= slot <= len(sub):
-            u = sub[slot - 1]
-            if u is not None and (not char_name
-                                  or u.char_id == char_name):
-                return (('front_row' if row == 'front' else 'back_row'),
-                        slot - 1, u)
-        # 槽位已戳但解析不得(越界/空槽)或身份不符 = 陈旧提案,如实拒
-        #(零写返回主循环重派,下帧计划重戳新槽位);禁回退名匹配静默改目标。
+    if view is None or row not in ('front', 'back') or slot < 1:
         return None
-    bench_view = gs.bench.value
-    if char_name and bench_view is not None:
-        for i, s in enumerate(bench_view.slots):
-            if (s is not None and s.kind == 'unit' and s.unit is not None
-                    and s.unit.char_id == char_name):
-                return ('bench', i, s.unit)
-    if view is not None:
-        for key, sub in (('front_row', view.front_slots),
-                         ('back_row', view.back_slots)):
-            if char_name:
-                for i, u in enumerate(sub or []):
-                    if u is not None and u.char_id == char_name:
-                        return (key, i, u)
-    return None
+    sub = (view.front_slots if row == 'front' else view.back_slots) or []
+    if not (1 <= slot <= len(sub)):
+        return None
+    u = sub[slot - 1]
+    if u is None:
+        return None
+    return (('front_row' if row == 'front' else 'back_row'), slot - 1, u)
 
 
 def _write_mutated_domain(gs: GameState, domain: str, idx: int,
@@ -305,15 +299,23 @@ def _write_mutated_domain(gs: GameState, domain: str, idx: int,
 
 def report_action_wear_equip_param(gs: GameState, param: Any,
                                    sig: ChannelSig) -> LogicOutcome:
-    """穿装备上报(穿戴原子,发出即记账):owned −1 + worn 集穿着即合成
-    + 目标单位所在域整表重建单写(equips 随对象)。row/slot = 画面
-    物理槽位(词表定义;计划步恒戳,机械拖拽落点),目标定位 =
-    ``_locate_unit`` 槽位定位先行 + 无槽位调用面名匹配回退
-    (3.2 起 tracked 第二账停用,主域单点)。
+    """穿装备上报(穿戴原子,发出即记账):坐标伴随域反查件名 → worn 集
+    穿着即合成 + 目标单位所在域整表重建单写(equips 随对象)。记账键 =
+    param.src_cx/src_cy(动作 op 实际拖过的坐标;记账路径总契约——名称
+    从「记账键」降级为「反查产物」,名称校验与 char_name 身份核对已退役,
+    穿没穿归观察写入边对账)。row/slot = 画面物理槽位(词表定义;计划步
+    恒戳,机械拖拽落点),目标定位 = ``_locate_unit`` 纯槽位反查。
 
-    拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不已登记 /
-    合成后超上限。applied 出口 = 目标域整表重建单写 + owned 摘件 +
-    合成事件发放条目(事实事件广播已停用,落地写 = 域整表重建单写)。
+    拒绝分支(零写 + 留存证据,布尔契约见模块头):坐标反查不到 / 目标
+    槽位解析失败 / 合成后超上限。applied 出口 = 目标域整表重建单写 +
+    owned 摘件 + 合成事件发放条目(事实事件广播已停用,落地写 = 域整表
+    重建单写)。
+
+    反查后名单一致性:反查产物名直走既有 owned.remove(不加名单校验)
+    ——反查表与名单同环同源产出(observe_full 同一次 read_equips 派生
+    双键),反查命中逻辑上必在名单;理论不一致态(名单已摘而伴随域未
+    刷新)= 禁消费窗口违反,取值直接使用 Python 自然异常(list.remove
+    ValueError)= bug 响亮暴露(零防御纪律,禁校验出口)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -326,20 +328,21 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
                      evidence='wear_equip_report', sig=_grp_sig, kind=reason)
         return LogicOutcome(applied=False, reason=reason)
 
-    owned = list(gs.equips.value or [])
-    if param.item_name not in owned:
-        return _reject('wear_item_not_owned', f"owned 含 {param.item_name}",
-                       f'owned={owned}')
-    located = _locate_unit(gs, param)
+    item = _resolve_item_by_xy(gs, param.src_cx, param.src_cy)
+    if item is None:
+        # 记账拒单(反查不到;拒单发生在拖拽之后,处置 = 交还决策循环
+        # 经观察链刷新对照表后自然重派,禁止补拖)。
+        return _reject('wear_item_xy_unresolved',
+                       'owned_equip_xy 含 (src_cx, src_cy) 条目',
+                       f'xy=({param.src_cx},{param.src_cy})')
+    located = _locate_unit(gs, param.row, param.slot)
     if located is None:
         return _reject('wear_target_unit_missing',
-                       f'{param.char_name!r} 已登记(bench/rows)',
-                       f'char_name={param.char_name!r} '
-                       f'row={getattr(param, "row", "")!r} '
-                       f'slot={getattr(param, "slot", 0)!r}')
+                       'row/slot 解析到在任单位(deployed)',
+                       f'row={param.row!r} slot={param.slot!r}')
     domain, idx, unit = located
     worn, fused_privilege = _wear_synthesis(
-        list(unit.equips) + [param.item_name],
+        list(unit.equips) + [item],
         convert=_synthesis_convert(gs),
         fuse_privilege=_synthesis_fuse_privilege(gs))
     if len(worn) > WEAR_LIMIT:
@@ -350,7 +353,7 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     # worn 单笔(变换与合成写同一字段,禁二笔;次数扣减系不同字段已在
     # 支内独立成笔)。
     forge_converted = _apply_forge_privilege(
-        gs, unit, worn, list(unit.equips) + [param.item_name], _grp_sig)
+        gs, unit, worn, list(unit.equips) + [item], _grp_sig)
     new_unit = replace(unit, equips=worn)
     evidence = 'wear_worn'
     if fused_privilege:
@@ -359,9 +362,11 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
         evidence += '|forge_privilege'
     _write_mutated_domain(gs, domain, idx, new_unit, _grp_sig,
                           evidence=evidence)
-    owned.remove(param.item_name)
+    # 反查产物直摘(零名单校验;不一致态自然 ValueError 响亮,见 docstring)。
+    owned = list(gs.equips.value or [])
+    owned.remove(item)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
-                   evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
+                   evidence=f'owned[{item}] -1(穿戴)', sig=_grp_sig)
     # (tracked 第二账已停用:状态容器侧本函数
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
     #  穿戴随动分支」无可同步;session 形参兼容保留。)

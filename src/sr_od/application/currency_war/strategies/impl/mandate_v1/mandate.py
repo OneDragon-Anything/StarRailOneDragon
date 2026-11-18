@@ -48,6 +48,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     CwActionFurnaceUseParam,
     CwActionLuckyTokenUseParam,
+    CwActionObsParam,
     CwActionOpenShopParam,
     CwActionPerfectProjectorUseParam,
     CwActionPrecisionWrenchUseParam,
@@ -672,6 +673,11 @@ def run_mandate(frame: MandateFrame,
     3.6/3.7 停用删除(防活锁职责 = 商店会话标记 shop_handled 承接;
     历史 counter 键 shop_latch_skip_* / equip_latch_skip_m7 随标志停用
     停产)。
+    装备域(穿戴/重观察交替批):equip_plan_resource_missing(计划构造
+    资源前置缺失帧)/ equip_plan_empty_noop(空计划 NOOP 帧)/
+    m7_equip_xy_pending(坐标伴随域候选缺席被跳过的计划步数,值 = 步数
+    非帧数——帧粒度事件按量累加)/ equip_plan_xy_all_pending(计划非空
+    但坐标全缺席的自愈重派帧,事件帧计数)。
     """
     counters = getattr(state_of(session), 'cw4_counters', None)
     if not isinstance(counters, dict):
@@ -1026,22 +1032,40 @@ def run_mandate(frame: MandateFrame,
             and m7_wearable_exists(frame.owned_equips):
         from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
             _build_equip_wear_plan,
+            wear_param_steps_of,
         )
         _build = _build_equip_wear_plan(session, registry)
         if _build.fail_reason:
             # 资源前置缺失(黑板帧/装备观察域未就绪)= 未发出通道,标志不置,
             # 下帧重派(与组合壳时代 round_fail 同形)。
             _count('equip_plan_resource_missing')
+        elif _st.cw4_wear_pending:
+            # 穿戴/重观察交替(坐标伴随域新鲜度机制):上帧已发穿戴 →
+            # 本帧环内重观察(owned_equip_xy 实读刷新)后再续穿;读后清
+            # (先例 = 部署扫描 pending_reobserve 形态)。本帧计划构造结果
+            # 丢弃,不产穿戴——「记账后→重观察前的伴随域陈旧条目窗口禁
+            # 消费」契约(记账路径总契约之②)的执行点。
+            _st.cw4_wear_pending = False
+            out.append(Emitted(CwActionObsParam(scope='in_place'),
+                               True, 'm7_equip_reobserve'))
         else:
-            for _step in _build.steps:
-                out.append(Emitted(
-                    CwActionWearEquipParam(item_name=_step.item_name,
-                              char_name=_step.char_name,
-                              row=_step.row, slot=_step.slot),
-                    True, 'm7_equip_transfer'))
+            params, _xy_pending = wear_param_steps_of(_build, state)
+            for _p in params:
+                out.append(Emitted(_p, True, 'm7_equip_transfer'))
+            if params:
+                _st.cw4_wear_pending = True
             if not _build.steps:
                 # 空计划具名 NOOP(合法稳态)。
                 _count('equip_plan_empty_noop')
+            if _xy_pending:
+                # 计数口径:值 = 本帧被跳过的计划步数(帧粒度事件,非布尔
+                # 发生过),键族登记单一源 = 本模块 docstring 计数键清单。
+                counters['m7_equip_xy_pending'] = (
+                    counters.get('m7_equip_xy_pending', 0) + _xy_pending)
+            if _build.steps and not params:
+                # 坐标全缺席帧(自愈通道:环内新获得件/观察未覆盖 → 本帧
+                # 零穿装动作,经帧稳定截断 → Obs outer_loop 重观察后重派)。
+                _count('equip_plan_xy_all_pending')
 
     # M7.5 工具消费动作发出点已物理移出本执行器(审 A1 主案):
     # 动作发出点 = entry.emit ②证明 pass 与③升档器求值位之间(判据单一源

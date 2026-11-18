@@ -1133,26 +1133,45 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
     owned = list(gs.equips.value or [])
     if not owned:
         return out
-    # —— 装备穿戴(M7)——
+    # —— 装备穿戴(M7;与 mandate M7 发出面同构编排,M1:两发出点计数
+    # 语义不得分叉)——
     if mandate.m7_wearable_exists(owned):
         from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
             _build_equip_wear_plan,
+            wear_param_steps_of,
         )
         build = _build_equip_wear_plan(session, registry)
         if build.fail_reason:
             # 资源前置缺失(装备观察域未就绪)= 未发出通道,下帧重派。
             counters['equip_plan_resource_missing'] = \
                 counters.get('equip_plan_resource_missing', 0) + 1
+        elif st.cw4_wear_pending:
+            # 穿戴/重观察交替(坐标伴随域新鲜度机制):上帧已发穿戴 →
+            # 本帧环内重观察后再续穿;读后清(先例 = 部署扫描
+            # pending_reobserve 形态)。「记账后→重观察前的伴随域陈旧
+            # 条目窗口禁消费」契约(记账路径总契约之②)的执行点。
+            st.cw4_wear_pending = False
+            out.append(Emitted(CwActionObsParam(scope='in_place'),
+                               True, 'm7_equip_reobserve'))
         else:
-            for step in build.steps:
-                out.append(Emitted(
-                    CwActionWearEquipParam(item_name=step.item_name,
-                                           char_name=step.char_name,
-                                           row=step.row, slot=step.slot),
-                    True, 'm7_equip_transfer'))
+            params, xy_pending = wear_param_steps_of(build, gs)
+            for p in params:
+                out.append(Emitted(p, True, 'm7_equip_transfer'))
+            if params:
+                st.cw4_wear_pending = True
             if not build.steps:
                 counters['equip_plan_empty_noop'] = \
                     counters.get('equip_plan_empty_noop', 0) + 1
+            if xy_pending:
+                # 计数口径:值 = 本帧被跳过的计划步数(帧粒度事件按量累加,
+                # 与 mandate 同键同义,两发出点不分叉)。
+                counters['m7_equip_xy_pending'] = \
+                    counters.get('m7_equip_xy_pending', 0) + xy_pending
+            if build.steps and not params:
+                # 坐标全缺席帧(自愈通道:经帧稳定截断 → Obs outer_loop
+                # 重观察后重派)。
+                counters['equip_plan_xy_all_pending'] = \
+                    counters.get('equip_plan_xy_all_pending', 0) + 1
     # —— 工具消费(判据/准入单一源 = kernel/cw_equip_env;评估留痕与
     # 原子构造 = 现行 M7.5 动作发出点原样移入)——
     from sr_od.application.currency_war.kernel.cw_equip_env import (

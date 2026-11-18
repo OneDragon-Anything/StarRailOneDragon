@@ -3,15 +3,18 @@
 本模块 = 穿装备计划构造的 kernel 宿主(计划构造随动作发出点
 上移 kernel,决策侧逐帧现算):计划单一源随动作发出点上移,
 组合壳(RunEquip→CwOpEquipAll)停用后动作发出点直接消费同一构造函数,
-无第二源。机械执行半现役宿主 = ``cw_wear_equip_action.py::
-CwActionWearEquipOp`` + ``prep_actions.py`` 机械原语
-(``_equip_slot_drag_point``/``_owned_grid_locate``);
+无第二源。机械执行半宿主 = ``cw_wear_equip_action.py::
+CwActionWearEquipOp``(op 自持静态派生:显式起点坐标 + 槽位拖点表;
+原 ``prep_actions`` 机械原语 ``_owned_grid_locate`` 引用已随坐标显式化
+退役、``_equip_slot_drag_point`` 已随本批退役);
 ``EquipWearStep`` 及拉黑/排序纯 helper 同住本模块
 (kernel 不得依 operations——依赖方向是本归属 kernel 的动机之一)。
 
 **边界申报**:``_build_equip_wear_plan(session,
 registry)`` 形参 = 决策链可达两件(黑板帧宿主 session / 判据开关
 registry),类型 Any(duck 型;kernel 零 app/context import)。
+坐标伴随域单一源 = gs.owned_equip_xy(观察装配点写入),
+:func:`wear_param_steps_of` = 发出面唯一消费口。
 
  装备环境信号「构造点唯一」契约维持:唯一构造点 = 本模块
 ``_build_equip_wear_plan``(一次打包传递)。
@@ -24,6 +27,9 @@ from typing import Any
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionWearEquipParam,
 )
 
 #: 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量;自
@@ -82,6 +88,9 @@ class EquipWearStep:
     - ``char_name``: 分配目标角色注册名;**'' = front-only 回退步**
       (身份读失败分支:无角色身份,拖点 = 前排空槽 avatar),全 char_name
       为 '' 的计划 = 回退路径计划(哨兵不挂,与今日该分支无哨兵一致)。
+
+    本步不带坐标;坐标 = 发出点经 :func:`wear_param_steps_of` 从状态容器
+    坐标伴随域取(入口观察快照,穿戴帧间经环内重观察刷新)。
     """
     item_name: str
     char_name: str
@@ -110,6 +119,42 @@ class EquipPlanBuild:
     fail_reason: str = ''
     branch: str = 'm7'
     owned_wearable_names: list[str] = field(default_factory=list)
+
+
+def wear_param_steps_of(build: EquipPlanBuild, gs: Any
+                        ) -> tuple[list[CwActionWearEquipParam], int]:
+    """计划步 → 穿装动作参数列表(发出面坐标伴随域消费单点) + 坐标缺席步数。
+
+    坐标消费 = gs.owned_equip_xy 按名取列表 + per-name 游标序贯消费。
+    游标为 helper 完备性/MCP 对齐产物:**生产单动作收敛形态下
+    (bridge.py decide_prep_screen 只发 actions[0]、余参弃、下帧重算)
+    每帧至多产一个 param,游标退化为恒取首候选**;同名多条(量产型
+    装甲×2)逐件分帧消费,件同名无语义差,任意配对合法。
+    坐标候选缺席 = 该步本帧不产(计数返回值承载;实机 = 环内新获得件/
+    观察未覆盖,经帧稳定截断 → Obs outer_loop → 入口 heavy 重观察后
+    自然重派;sim = 后端占位同步恒可得)。
+    back_slot_count = int(gs.back_layout.value or 6)(与计划面
+    ``_bk_n or 6`` 同口径,双弃权帧缺省沿用非新增)。
+    kernel 零 app import(形参 duck:build = EquipPlanBuild,gs = 状态容器)。
+    """
+    xy_map = gs.owned_equip_xy.value or {}   # None 守卫:未就绪 → 全跳过
+    cursor: dict[str, int] = {}
+    params: list[CwActionWearEquipParam] = []
+    skipped = 0
+    for step in build.steps:
+        cands = xy_map.get(step.item_name) or []
+        k = cursor.get(step.item_name, 0)
+        if k >= len(cands):
+            skipped += 1
+            continue
+        cx, cy = cands[k]
+        cursor[step.item_name] = k + 1
+        params.append(CwActionWearEquipParam(
+            src_cx=int(cx), src_cy=int(cy),
+            row=step.row, slot=step.slot,
+            back_slot_count=int(gs.back_layout.value or 6),
+            item_name=step.item_name, char_name=step.char_name))
+    return params, skipped
 
 
 def _build_equip_wear_plan(session: Any,

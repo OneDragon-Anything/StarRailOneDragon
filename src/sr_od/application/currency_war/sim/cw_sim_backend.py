@@ -1690,6 +1690,11 @@ class SimBackend:
     #: 对偶实机「每次进店读屏」)。关店清 ``gs.shop`` 呈现不清本记录;
     #: 节点窗起新发牌自然覆盖(整店锁跳过发牌 = 牌面跨节点保留,同语义)。
     _shop_record: ShopPayload | None = field(init=False, default=None)
+    #: 装备库存坐标伴随域占位递增序号(:meth:`_sync_owned_equip_xy_placeholders`
+    #: append 占位唯一化用;局内只增不减,序号恒新 = 占位坐标恒唯一)。
+    #: 私有簿记不入状态容器/不入快照恢复(同形先例同上;恢复安全 =
+    #: 占位表本体在状态容器快照内,序号只需保证追加期唯一)。
+    _equip_xy_placeholder_seq: int = field(init=False, default=0)
     # (私有 overlay 队列与评估器簿记三件[队列/一次性标志/银狼星基线/
     #  巨星水位]已停用:sim 呈现数据源 =
     #  状态容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
@@ -2428,6 +2433,10 @@ class SimBackend:
             self._dismiss_modal()
         self._reconcile_next_screen(decl)
         self._observe_board_truth()   # 步界板面真值观察(等值零写)
+        # 步界装备库存坐标伴随域占位同步(环境快照通道;本步全部名单写
+        # 落定后同步,下一决策帧发出面恒可得占位坐标——穿装参数面迁移
+        # 申报 sim 占位同步必做面)。
+        self._sync_owned_equip_xy_placeholders()
         # 升级连锁声明统一排空段(本 advance 的最终商店写,覆盖节点经验/
         # 窗口分支/选卡/首购等全部非买经验源跨级产生的 spy 声明)。
         self._drain_pending_levelup_decls()
@@ -5186,6 +5195,51 @@ class SimBackend:
         gs.observe(gs.board, truth,
                    evidence=sim_evidence(f'board:p{plane}r{r}'),
                    sig=obs_sig(group_id='sim:board'))
+
+    def _sync_owned_equip_xy_placeholders(self) -> None:
+        """装备库存坐标伴随域占位同步(环境快照通道,写通道 = gs.observe,
+        禁 write_logic——会把伴随域写成逻辑态,破坏 observe-vs-logic 失配
+        告警语义;先例 = diamond_count/back_layout 环境快照 observe 写)。
+
+        语义 = 名单(gs.equips)中每名的条目数 − 坐标伴随域该名条目数 =
+        差额,差额 > 0 → 逐差额 append 占位坐标(**按计数差 append,非按
+        名存在性跳过**——同名 2 件只 append 1 条会让第二条反查/记账消费
+        缺位)。[占位唯一化]:占位亦须满足坐标↔条目一一对应——反查按
+        坐标首中语义,同值占位会反查错名污染 sim 逻辑账。形态 = 界外
+        哨兵 + 占位序号偏移:``(-1000 - k, -1000)``,k = 占位递增序号
+        (局内只增不减,序号恒新,无重排冲突面);界外值与 read_equips
+        实读格心集合(装备区格心,y 值域 90-710)恒不相交,实读键整表
+        覆盖后追加的占位不会反查误中实读条目。占位 = sim 环境快照,
+        机械段静默不消费(反查可命中,记账正常),禁实机消费占位(实机
+        恒观察写真值)。伴随域 None(未就绪) → 跳过(等观察/名单就绪)。
+        触发点 = advance 步界(本批穿装参数面迁移申报语义 =
+        sim-design.md §6.5 环境快照族)。"""
+        owned = self.gs.equips.value
+        if owned is None:
+            return
+        current = self.gs.owned_equip_xy.value
+        if current is None:
+            return
+        counts: dict[str, int] = {}
+        for name in owned:
+            counts[name] = counts.get(name, 0) + 1
+        # 整值换新(frozen 帧替换语义:禁原地改旧帧后写回;新 dict 承载
+        # 既有条目 + 逐差额追加占位)。
+        updated: dict[str, list[tuple[int, int]]] = {
+            name: list(cands) for name, cands in current.items()}
+        appended = False
+        for name, want in counts.items():
+            have = len(updated.get(name) or [])
+            for _ in range(max(0, want - have)):
+                self._equip_xy_placeholder_seq += 1
+                k = self._equip_xy_placeholder_seq
+                updated.setdefault(name, []).append((-1000 - k, -1000))
+                appended = True
+        if not appended:
+            return   # 等值零写幂等(与板面真值观察同纪律)
+        self.gs.observe(self.gs.owned_equip_xy, updated,
+                        evidence=sim_evidence('equip_xy:placeholder'),
+                        sig=obs_sig(group_id='sim:equip_xy'))
 
     # ---------------------------------------------------------- 局结果面
 

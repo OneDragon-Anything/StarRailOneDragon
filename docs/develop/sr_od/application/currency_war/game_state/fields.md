@@ -798,6 +798,26 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
 (`cw_equip_wear_plan._build_equip_wear_plan`;键坐标系/空槽不入表形态与本域
 同构)。
 
+#### 3.2.15c 装备库存坐标伴随域 owned_equip_xy
+
+**语义**:装备库存坐标伴随域——名 → 格心坐标列表 dict(1080p;同名多条 =
+列表多元素,序 = 识别命中序 = 发出面「同名按出现序游标消费」的出现序
+口径)。**决策消费面**(与 §3.2.15b occupied_equips 审计面的语义差):
+①发出面坐标源(穿装动作 src_cx/src_cy 取数);②**记账面反查键**——
+记账路径总契约(用户裁定)首例:动作 op 上报它实际动过的坐标,kernel
+按坐标伴随域反查出具体内容再记账,名称字段(item_name/char_name)在
+机械面与记账面均零消费(契约正文 = action-op.md「记账路径总契约」条款)。
+**写入方**:唯一观察写入方 = 备战入口 heavy 观察装配点(与 equips 同一次
+read_equips 派生,整表覆盖)+ sim 后端占位同步(环境快照通道,按名单
+计数差 append 占位,占位 = 界外哨兵坐标唯一化;先例 = diamond_count
+环境快照写);**禁策略/动作逻辑写端**——环内获得件坐标缺席 = 发出面
+跳过自愈,禁回填猜值。**新鲜度契约**:陈旧有行为后果(拖错格/错账),
+由策略侧「穿戴/重观察交替」承载(反查时序不变式:上报反查消费拖前
+快照,重观察刷新晚于上报;记账后→重观察前的陈旧条目窗口禁消费;同一
+快照内坐标↔条目一一对应),消费方禁跨重观察帧复用快照坐标。语义档:
+None = 观察域未就绪(反查面按 None → 反查不到拒单);{} = 真读到空;
+不承诺与 gs.equips 名单同序/同长(对齐键 = 名 + 出现序游标)。
+
 #### 3.2.16 消耗品库存 consumables
 
 **语义**:消耗品库存(工具等)。
@@ -3236,6 +3256,12 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     (取值直接使用 = 使用点自然异常,异常经失败运行证据链可见)。
     边界:LogicOutcome 域(上报函数族出参 `applied/reason` 拒绝
     语义,logic-updates 权威版本全域)与回执域同名不同物,见 note_action_receipt docstring。
+    WearEquip 上报拒绝码三行变更(坐标参数化迁移):`wear_item_not_owned`
+    **退役**(记账改坐标反查,名称校验删除);`wear_target_unit_missing`
+    **收窄保留**(越界/空槽拒单;「在位者与 char_name 不符」条件随身份
+    核对删除);`wear_item_xy_unresolved` **新增**(坐标伴随域反查不到
+    = 拒单零写,拒绝发生在拖拽后——round detail 带拒单码,处置 = 交还
+    框架决策循环刷新对照表重派,禁补拖;登记后使用纪律已守)。
   `- `plane_node_sequences`(GameState 位面节点序列记录表,`PlaneNodeLedger` 载体):
     整行快照语义、逐位合并写、低频重写,Field 化无收益;访问口 = `cw_exec_state`
     三访问函数(get_node_ledger/ledger_node_type/ledger_update_plane)与

@@ -406,6 +406,16 @@ class CwScreenPrep(CwOperation):
                     _gs_obs.observe(_gs_obs.equips,
                                     list(_of.get('owned_equips')),
                                     sig=_prep_sig)
+                    if _of.get('owned_equip_xy') is not None:
+                        # 装备库存坐标伴随域平行写(同环同 sig,整表覆盖):
+                        # 名 → 格心坐标列表,与名单同一次 read_equips 派生
+                        # (observe_full heavy 产物双键);消费面 = 发出面
+                        # 坐标源 + 记账面反查键(语义/禁写端条款见
+                        # gs.owned_equip_xy 字段注释)。宁缺勿造守卫同族:
+                        # 产物无键(资源未就绪)不写保现值。
+                        _gs_obs.observe(_gs_obs.owned_equip_xy,
+                                        _of.get('owned_equip_xy'),
+                                        sig=_prep_sig)
                 if _of.get('occupied_equips') is not None:
                     # 穿戴位置观察写端:采集产物 {(row, slot): [件名]} → 状态容器键
                     # 'front:1' 形态(tuple 键 JSON 序列化不安全);失读

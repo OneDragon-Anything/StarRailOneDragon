@@ -8,9 +8,10 @@
 备战观察视图 PrepObservation 与采晶矿挑选 kernel 纯函数。坐标系裁定 =
 状态容器槽位表下标(族A 口径,0 基)——动作发出面从状态容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
-(物理槽位→槽位表下标换算归执行边纯函数)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
-工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
-直取画面 area;字段注释逐类声明)。
+(物理槽位→槽位表下标换算归执行边纯函数)。例外 = 坐标参数化机械动作
+(工具原子类;CwActionWearEquipParam 已升级「动态坐标显式传 + row/slot
+半固定」形态,src_cx/src_cy = 1080p 显式坐标):row/slot 字段按定义 =
+画面物理排槽位 1 基(执行器拖点直取画面 area;字段注释逐类声明)。
 
 **局面表示单一载体 = 状态容器 GameState**(kernel/cw_game_state,实机真值
 记录模型):sim 后端/实机操作链/策略决策同吃状态容器,域写入 = 观察链漏斗
@@ -138,8 +139,10 @@ class ShopCard:
 # 画面物理槽位号(1 基)仅存两边界:①观察写入边(observe/reconcile
 # 读链直产 (槽号, Unit) 对);②执行坐标边(deployed 下标→(排,排内
 # 槽号)固定双射内联算术,0-3=前排 1-4 / 4-9=后排 1-6)。坐标参数化
-# 机械动作(CwActionWearEquipParam/工具原子类,见备战域节)的 row/slot
-# 字段 = 画面物理排槽位,属动作参数定义,不在换算边适用范围。
+# 机械动作(工具原子类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
+# 属动作参数定义,不在换算边适用范围(CwActionWearEquipParam 已升级
+# 「动态坐标显式传 + row/slot 半固定」形态,src_cx/src_cy = 1080p
+# 显式坐标,不经换算边)。
 
 # ``route_tag`` 字段契约(原 CwAction 基类唯一字段,摊平后逐动作类重声明):
 # 策略内部路由键(发出分支的构造事实,不随时间漂移、不维护状态),只回答
@@ -498,20 +501,58 @@ class CwActionOpenBookcardParam:
 
 @dataclass
 class CwActionWearEquipParam:
-    """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
+    """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路;
+    坐标参数化迁移形态:显式起点坐标 + 半固定槽位,op 机械面零读屏零定位)。
 
-    计划构造 = kernel ``build_equip_wear_plan``(决策侧逐帧现算);发出序即执行序(决策核逐帧取首项)。逻辑态 =
-    ``obs.owned_equips`` 摘件(视觉域,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同形);
-    穿没穿归观察写入边对账(裁决 3 零比对出生:体内零 CV-diff 验穿)。
-    ``char_name`` = 目标角色注册名('' = front-only 回退步,拖点 =
-    前排空槽 avatar,与 EquipWearStep 契约同形)。
+    [记账路径总契约首例(用户裁定;契约正文 =
+    skills/sr-od-dev-currency-war/references/flow/action-op.md「记账路径
+    总契约」条款)]:op 上报实际动过的坐标(src_cx/src_cy),kernel 记账层
+    用坐标伴随域 gs.owned_equip_xy 反查出装备名再记账——名称字段
+    (item_name/char_name)在机械面与记账面均零消费,仅进 op 日志与
+    round detail(纯日志语义)。三条契约:
+    ①反查时序不变式——上报反查消费拖前快照,重观察刷新必须晚于上报;
+    ②记账后 → 重观察前的伴随域陈旧条目窗口禁消费(框架侧由穿戴/重观察
+    交替保证);
+    ③反查唯一性前提 = 同一快照内坐标↔条目一一对应;反查不到 = 记账拒单
+    (wear_item_xy_unresolved),拒单后禁止补拖。
+
+    from_dict = MCP run_operation JSON 通道构造(冻结原则:形态单一源 =
+    cw_replay_reader.from_dict——只取已声明字段、未知键忽略、缺字段落
+    dataclass 默认值)。
+
+    [索引/坐标定义]
+    - src_cx/src_cy: 坐标系 = 1080p 全局像素(owned 装备条目格心);
+      取值时机 = 发出面决策帧的坐标伴随域快照(同访问内上一穿戴帧后经
+      环内重观察刷新;MCP 直调 = 当帧 analyze extras.owned_equips 元素
+      cx/cy,读完即用);写入端 = 发出点(策略 mandate/entry 经
+      wear_param_steps_of,或直调方按当帧读数传)。op 不做落点前校验
+      (坐标新鲜度纪律归调用方)。
+    - row: 'front'|'back'(画面物理排,通用坐标系声明同上)。
+    - slot: 坐标系 = 排内画面物理槽位 1 基(前排 1-4 / 后排 1-N,非列表
+      下标);取值时机 = 生成期快照(计划步,pass 内恒稳);记账面兼目标
+      定位键(按 row/slot 反查槽现任单位,槽空 = 拒单)。
+    - back_slot_count: 坐标系 = 后排槽位画面物理总数 n(值域 6-9 =
+      obs.cw_back_layout._LAYOUT_PREFIX 键域);取值时机 = 生成期快照
+      (gs.back_layout 现读,双弃权缺省 6);row='front' 时忽略。
     """
-    item_name: str
-    char_name: str
+    src_cx: int         # 1080p 拖拽起点 x(owned 装备条目格心;兼记账反查键)
+    src_cy: int         # 1080p 拖拽起点 y(owned 装备条目格心;兼记账反查键)
     row: str            # 'front' | 'back'(见上方通用坐标系声明)
     slot: int           # 画面物理槽位 1 基(前排 1-4 / 后排 1-N)
+    back_slot_count: int = 6   # 后排槽位画面物理总数(6-9;front 行忽略)
+    item_name: str = ''   # 语义参数(纯日志,机械面与记账面均零消费,可省)
+    char_name: str = ''   # 语义参数(纯日志,机械面与记账面均零消费,可省)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionWearEquipParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;只取已声明字段,
+        未知键忽略,缺字段落默认值——形态单一源 = cw_replay_reader.from_dict)。"""
+        import dataclasses
+
+        known = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in known})
 
 
 @dataclass

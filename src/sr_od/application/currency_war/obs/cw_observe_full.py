@@ -175,9 +175,18 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                         'screen_info 区域-道具装备 缺失(owned 不采集)')
         else:
             _eq_rect4 = (_eq_rect.x1, _eq_rect.y1, _eq_rect.x2, _eq_rect.y2)
-            out['owned_equips'] = [
-                n for n, _p, _s in read_equips(frame, _eq_sift,
-                                               equip_rect=_eq_rect4)]
+            # 同一次 read_equips 产出派生双键(零额外识别开销):owned_equips
+            # = 名单(消费面 = 计划构造/装配点 equips 写),owned_equip_xy =
+            # 坐标伴随域(名 → 格心坐标列表,同名多条 = 列表多元素;消费面 =
+            # 发出面坐标源 + 记账面反查键,见 gs.owned_equip_xy 字段注释)。
+            # 条目序 = 识别命中序,即发出面「同名多条按出现序游标消费」的
+            # 出现序口径。
+            _eq_hits = read_equips(frame, _eq_sift, equip_rect=_eq_rect4)
+            out['owned_equips'] = [n for n, _p, _s in _eq_hits]
+            _eq_xy: dict = {}
+            for _n, (_cx, _cy), _s in _eq_hits:
+                _eq_xy.setdefault(_n, []).append((int(_cx), int(_cy)))
+            out['owned_equip_xy'] = _eq_xy
         _eq_grays = ensure_equip_tm_templates(ctx)
         if _eq_grays is None:
             log.warning('[cw][observe_full] 装备观察域未就绪:'

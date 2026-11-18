@@ -18,9 +18,11 @@ kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边
 状态容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
 1-4 / 4-9=后排 1-6;tracked 第二账停用后旧换算族已删)。坐标参数化
-机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
+机械动作(工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
-不经换算)。
+不经换算);CwActionWearEquipParam 已升级「动态坐标显式传 + row/slot
+半固定」形态(src_cx/src_cy = 1080p 显式坐标,槽位拖点经模块级
+row_drag_points 静态解析,op 自持零读屏)。
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
@@ -96,6 +98,8 @@ _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     ('area 缺失:按钮-出战', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-跳过', '未执行:定位缺失(按钮-跳过)'),
     # —— 穿戴/工具原子:owned 网格定位失败(拖拽前,现读落空族)——
+    # (泛化行保留 = 工具原子族仍产出;WearEquip 侧供给已随坐标显式化
+    #  退役——穿装 op 改显式起点 + 记账拒单,零 round_fail 供给。)
     ('owned 网格未定位到工具', '未执行:定位缺失(工具)'),
     ('owned 网格未定位到目标件', '未执行:定位缺失(目标件)'),
     ('owned 网格未定位到', '未执行:定位缺失(owned 网格)'),
@@ -149,6 +153,36 @@ def row_area_centers(ctx: SrContext, prefix: str,
             except ValueError:
                 continue
             pts.append((n, a.pc_rect.center))
+    pts.sort(key=lambda t: t[0])
+    return [p for _, p in pts]
+
+
+def row_drag_points(ctx: SrContext, prefix: str,
+                    screen_name: str = SCREEN_NAME) -> list[Point]:
+    """prefix-N 全排 avatar 拖点列(rect 中心 x + y1+21)。
+
+    [拖点派生权威裁定]:+21(D-36 校准)= 穿戴域实机校准背书的权威
+    派生式;工具 char 模式现役裸中心派生(executor ``_front_pts/_
+    back_pts`` 经 :func:`row_area_centers`)= 无实机背书的历史形态,
+    待工具迁移批实机核对后统一按本式(同一「拖到角色卡」交互应同一
+    拖点)。后排档前缀由调用方按 back_slot_count →
+    ``cw_back_layout._layout_prefixes()`` 静态解析后传入,本函数零识别
+    零截图。区域缺失 = 该排空列,调用方守卫断言越界自然暴露,禁兜底
+    坐标。
+    """
+    si = ctx.screen_loader.get_screen(screen_name)
+    if si is None:
+        return []
+    pts: list[tuple[int, Point]] = []
+    pfx = f'{prefix}-'
+    for a in si.area_list:
+        if a.area_name.startswith(pfx) and a.pc_rect is not None:
+            try:
+                n = int(a.area_name[len(pfx):])
+            except ValueError:
+                continue
+            pts.append((n, Point((a.pc_rect.x1 + a.pc_rect.x2) // 2,
+                                 a.pc_rect.y1 + 21)))
     pts.sort(key=lambda t: t[0])
     return [p for _, p in pts]
 
@@ -407,45 +441,19 @@ class PrepActionExecutor:
         _use_tool)全仓零调用含测试,已删。"""
         return self._dispatch_action(action)
 
-    # ===== 装备/工具原子域(穿戴 / 工具按消耗品各立类;机械原语
-    #       _equip_slot_drag_point/_owned_grid_locate
-    #       留在本 runner,体迁 op 经 env.executor 消费)=====
-
-    def _equip_slot_drag_point(self, row: str, slot: int) -> Point | None:
-        """(row, slot) → avatar 拖拽点(与同文件拖点派生式同构:rect 中心
-        x + y1+21;前排 = 前排-N rect 中心 x + y1+21(D-36 校准),后排 =
-        布局选档前缀(select_back_layout 单一入口)同式派生)。缺失 → None
-        (建档漂移,禁兜底坐标)。"""
-        _si = self._ctx.screen_loader.get_screen(SCREEN_NAME)
-        if _si is None:
-            return None
-        if row == 'front':
-            r = next((a for a in _si.area_list
-                      if a.area_name == f'前排-{slot}' and a.pc_rect is not None),
-                     None)
-            if r is None:
-                return None
-            return Point((r.pc_rect.x1 + r.pc_rect.x2) // 2, r.pc_rect.y1 + 21)
-        _pfx = '后排'
-        try:
-            from sr_od.application.currency_war.obs.cw_back_layout import (
-                select_back_layout as _sel_bl,
-            )
-            _pfx = _sel_bl(self._ctx, self._op.screenshot())[1] or _pfx
-        except Exception:   # noqa: BLE001  选档失败退 6 槽基线(旧行为)
-            pass
-        r = next((a for a in _si.area_list
-                  if a.area_name == f'{_pfx}-{slot}' and a.pc_rect is not None),
-                 None)
-        if r is None:
-            return None
-        return Point((r.pc_rect.x1 + r.pc_rect.x2) // 2, r.pc_rect.y1 + 21)
+    # ===== 装备/工具原子域(工具按消耗品各立类;机械原语
+    #       _owned_grid_locate 留在本 runner,工具 op 体迁经 env.executor
+    #       消费。WearEquip 消费已随坐标显式化退役:拖点权威派生式 =
+    #       模块级 row_drag_points,由穿装 op 自持消费)=====
 
     def _owned_grid_locate(self, item_name: str) -> Point | None:
         """owned 装备网格内按名定位 icon 中心(机械现读;执行坐标边合法读)。
 
-        名字定位是唯一稳定识别标志(网格 reflow 使快照坐标失真);miss → None
-        (调用方按「计划失效」未发出通道处理,下帧重派重算)。"""
+        WearEquip 消费已随坐标显式化退役(坐标伴随域 gs.owned_equip_xy
+        + 显式 src_cx/src_cy 承接),现役唯一消费者 = 工具原子族
+        (cw_tool_use_action,待迁移)。名字定位是唯一稳定识别标志(网格
+        reflow 使快照坐标失真);miss → None(调用方按「计划失效」未发出
+        通道处理,下帧重派重算)。"""
         from sr_od.application.currency_war.obs.cw_equipment import (
             ensure_equip_sift_templates,
             read_equips,
