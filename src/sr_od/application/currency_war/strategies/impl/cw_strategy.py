@@ -400,23 +400,24 @@ class CurrencyWarMatch:
     is_new_match: bool = False
     # 恢复候选(新 match 无本局记录,待首个备战相位 round>1 时探针裁决;
     # 续跑恒 False)。取值时机:handle_init 写 = is_new_match;撤回点两处 =
-    # 候选判定否 / 探针裁决后。写入端:handle_init + 备战分支撤回两处。
-    # 消费:备战分支探针门。
+    # 候选判定否 / 探针裁决后。写入端:handle_init + CwScreenPrep 段1 b 查
+    # 撤回两处。消费:CwScreenPrep 探针门(b 查)。
     resume_probe_pending: bool = False
     # 锁定确认(探针零响应 → 跳过备战交互直接出战)。取值时机:handle_init
     # 重置 False;锁定确认置 True / 出战成功置 False(锁解除)。写入端:
-    # handle_init + 备战分支确认点与锁解除点。消费:备战分支锁定门。
+    # handle_init + CwScreenPrep 锁定确认点(段1 b 查)与锁解除点(段3b)。
+    # 消费:CwScreenPrep 锁定门(段1 第 0 查 / 段3b)。
     locked_resume: bool = False
     # 锁定确认时的相位轮次(遥测/日志对照用,不参与判定)。取值时机:与
     # locked_resume 置 True 同帧写入;handle_init 重置 0。写入端:handle_init
-    # + 备战分支确认点。消费:日志/遥测对照。
+    # + CwScreenPrep 锁定确认点。消费:日志/遥测对照。
     locked_round: int = 0
     # 首战前备战同步步证据位。取值时机:**不进 handle_init 重置**;置 False
     # 与锁定确认同帧配对写、置 True 与发出核发出后写同帧配对——配对不变量:
     # 出战段仅经 locked_resume=True 可达,该置位与置 False 同帧配对,未经
-    # 锁定确认的 Match 依赖字段初值 True。写入端:备战分支锁定确认(False)/
-    # prep_actions 发出核(True)。消费:发出核证据位门(读侧 Match 缺席按
-    # False 容缺)。
+    # 锁定确认的 Match 依赖字段初值 True。写入端:CwScreenPrep 锁定确认
+    # (False)/ prep_actions 发出核(True)。消费:发出核证据位门(读侧
+    # Match 缺席按 False 容缺)。
     locked_sync_done: bool = True
 
     def __post_init__(self) -> None:

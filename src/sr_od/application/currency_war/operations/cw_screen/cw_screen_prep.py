@@ -5,13 +5,15 @@
 消费,留在观察 node);动作上报的对账归一走 op 自上报(上报函数族)+
 观察边界 cw_reconcile 兜底。
 
-形态(两 node 直继承 SrOperation):观察 node = 环装配前置(执行器构建
+形态(两 node 直继承 SrOperation):观察 node = 子态识别四查(特殊流程段,
+备战交互链迁入,命中即跳前置段直达处置)+ 环装配前置(执行器构建
 /缓存复位)+ 环入口清场 + 开商店收起 + heavy 观察 → CwScreenPrepObs
 (可选域经 report_screen_prep_obs 落状态容器)+ 事件 overlay 早退返回主循环 +
-接管补采委派 + 纯观察审计族;决策动作 node = 单动作决策循环(无防御
-上限,用户裁定:不收敛 = 策略实现 bug)。书册卡的开卡时机归策略实现管
-(用户裁定 2026-09-19):观察链产 kind='bookcard' 槽位,策略器 entry ①
-卡片分支发出终结动作,本画面 op 不再代发。
+接管补采委派 + 纯观察审计族;决策动作 node = 特殊流程三处置(先于段序号
+置位)+ 单动作决策循环(无防御上限,用户裁定:不收敛 = 策略实现 bug)。
+书册卡的开卡时机归策略实现管(用户裁定 2026-09-19):观察链产
+kind='bookcard' 槽位,策略器 entry ① 卡片分支发出终结动作,本画面 op
+不再代发。
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     DeployedView,
     OreSight,
     deployed_view_of_hits,
+    game_state_from_ctx,
     game_state_of,
     gs_of_ctx,
     observe_node_anchor,
@@ -81,6 +84,12 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
     read_node_sequence,
+    read_phase_round,
+)
+from sr_od.application.currency_war.obs.cw_resume_lock import (
+    locked_after_start_battle,
+    probe_resolve,
+    resume_candidate,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
@@ -104,6 +113,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.prep_actions import (
     PrepActionExecutor,
     StopBrakeShortCircuit,
+    locked_resume_sync_and_battle,
     row_area_centers,
 )
 from sr_od.application.currency_war.sim import cw_sim_ports
@@ -173,12 +183,22 @@ class CwScreenPrep(CwOperation):
     决策(状态容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败
     回执;终结 op 发出即返回主循环)→ 逻辑态直写(动作 op 自上报))。
     决策循环无防御上限(用户裁定:不收敛 = 策略实现 bug)。
+
+    特殊流程段(备战交互链迁入,迭代 2026-11-18-prep-special-flow):
+    观察 node 段1 子态识别四查(最顶部)+ 段2 子态流程事实写;决策动作
+    node 段3 特殊流程三处置(先于段序号置位)。常规帧四查全否 → 既有
+    全量路径零变化。
     """
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
         self._executor: PrepActionExecutor | None = None
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
+        # 访问内子态载体(观察 node 段1 → 决策动作 node 段3 传递;取值 =
+        # 'back_to_strategy'/'supply_divert',None = 常规帧)。锁定子态不经
+        # 此载体(经 Match.locked_resume)。本 op 每次派发新建实例 → 载体
+        # 结构性不跨访问存活(迭代 2026-11-18-prep-special-flow §2.1)。
+        self._prep_substate: str | None = None
         # on_outcome 落地登记注册表随画面 op 基类停用:本 op 级登记件原两件
         # = 经验期望账本推进(CwActionLevelUpParam/CwActionOpenShopParam 两通道),随
         # 期望账拆除停用——「未落地不计数」防线
@@ -723,6 +743,33 @@ class CwScreenPrep(CwOperation):
     def _match(self) -> CurrencyWarMatch | None:
         return getattr(self.ctx, 'cw_match', None)
 
+    def _invalidate_tracked_on_takeover(self) -> None:
+        """接管候选过判确认点 → 状态容器(GameState)观察态失效
+        (tracked_account_observed=False;段2 子态流程事实写)。
+
+        与主循环战斗帧恢复检测确认点(cw_loop._invalidate_tracked_on_takeover,
+        actor=CwLoop)构成两确认点分流(写入端登记 =
+        kernel/cw_game_state.py tracked_account_observed 字段注);本写点 =
+        备战帧,actor=CwScreenPrep,write_logic 调用形态与主循环写体同款。
+        时点 = 候选过判即写、先于探针点击(非锁定候选帧同样写,非锁定
+        接管帧的失效保护不收窄——迭代 2026-11-18-prep-special-flow §2.2)。
+        best-effort 不阻塞探针链;session 缺(局外/桩)静默跳过。
+        """
+        try:
+            match = self._match()
+            session = getattr(match, 'session', None) \
+                if match is not None else None
+            if session is None:
+                return
+            _gs = gs_of_ctx(self.ctx, session)
+            _gs.write_logic(
+                _gs.tracked_account_observed, False,
+                produced_by='CwScreenPrep', evidence='takeover_invalidation',
+                sig=ChannelSig(family='logic_action', actor='CwScreenPrep',
+                               mode='compute'))
+        except Exception as e:  # noqa: BLE001  失效写入不阻塞探针链
+            log.debug(f'[cw-prep] 接管观察态失效写入跳过: {e}')
+
     # ===== 备战单轮 op(拆内环;两 node 形态)=====
     # 外循环(cw_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
     # 观察 node = 数据观察 + 对账;决策动作 node = 单动作决策循环
@@ -735,15 +782,114 @@ class CwScreenPrep(CwOperation):
     def observe(self) -> OperationRoundResult:
         """环装配前置 + 数据观察 + 对账(纯观察审计族留在本 node)。
 
-        序列:执行器构建 + 缓存复位 → 环入口清场(ENTRY_OVERLAY_CLOSE =
-        过渡相位表「可一键关闭」子集)→ 开商店收起探针 → heavy 观察 →
-        CwScreenPrepObs 装配(可选域经 :func:`report_screen_prep_obs` 在
-        原写点位落状态容器:链域在 heavy 观察链内、接管域在补采簇内,字段在
-        场才写)→ 帧代次标注 → 事件 overlay 早退返回主循环 → 接管补采 →
-        审计族消费。书册卡不再入口代清:识别 kind 进状态容器,开卡时机由
-        策略器 entry ① 卡片分支裁决(用户裁定 2026-09-19,发出的
-        CwActionOpenBookcardParam 为终结动作,返回语义与原入口代发一致)。"""
+        序列:段1 子态识别四查(特殊流程,见下)→ 执行器构建 + 缓存复位 →
+        环入口清场(ENTRY_OVERLAY_CLOSE = 过渡相位表「可一键关闭」子集)→
+        开商店收起探针 → heavy 观察 → CwScreenPrepObs 装配(可选域经
+        :func:`report_screen_prep_obs` 在原写点位落状态容器:链域在 heavy
+        观察链内、接管域在补采簇内,字段在场才写)→ 帧代次标注 →
+        事件 overlay 早退返回主循环 → 接管补采 → 审计族消费。书册卡不再
+        入口代清:识别 kind 进状态容器,开卡时机由策略器 entry ① 卡片分支
+        裁决(用户裁定 2026-09-19,发出的 CwActionOpenBookcardParam 为
+        终结动作,返回语义与原入口代发一致)。
+
+        段1 子态识别四查(最顶部,先于 match 缺席门/清场/收店探针/heavy/
+        补采/审计;优先序 0 > a > b > c):非常规子态帧(返回按钮/恢复候选
+        探针/锁定确认/补给未确认)在交互链迁入本 op 前从不被任何前置段
+        接触(主循环派发前已处置;迁移保真见迭代设计 §2.2——heavy 观察在
+        锁定帧上执行会把板面真值写入状态容器,恢复局同步步的部署计划从
+        「空计划零部署」漂移为「真部署」),子态命中即跳过全部既有前置段,
+        处置动作归决策动作 node 段3。子态裁决的流程事实写(Match 字段配对
+        写/接管失效写)= 段2 语义;探针与收店点击 = 识别手段(识别性点击
+        读屏例外,迭代 2026-11-18-prep-special-flow §2.7-1)。查全否 →
+        既有路径一步不动。"""
         match = self._match()
+        # ===== 段1 子态识别四查(特殊流程;处置在决策动作 node 段3)=====
+        # Match 缺席(局外/桩):第 0 查与 b 查按否处理,落到下方 match
+        # 缺席门(迭代设计 §2.3 缺席防御申报)。
+        if match is not None and match.locked_resume:
+            # 第 0 查:锁定确认态(含段3b retry 耗尽 → 主循环重派发的
+            # 重入帧)→ 直达段3b。锁定态经 Match.locked_resume 传给决策
+            # 动作 node,访问内零额外载体。
+            return self.round_success('锁定确认态直达出战段(段3b)', wait=0)
+        screen = self.last_screenshot
+        if self.round_by_ocr(screen, '返回投资策略选择',
+                             lcs_percent=0.9).is_success:
+            # a 查:返回按钮子态(上游投资策略屏处理失败的 symptom,用户
+            # 定性随迁)。lcs_percent=0.9 防线(随迁):与「请选择投资策略」
+            # 共享「选择投资策略」子串(6/8=0.75)在默认阈值之上,误匹配会
+            # 吞投资策略屏致死循环(实跑卡 plane1 实证);真按钮全文
+            # OCR 1.0 不受影响。
+            self._prep_substate = 'back_to_strategy'
+            return self.round_success('返回按钮子态,直达处置段(段3a)', wait=0)
+        if match is not None and match.resume_probe_pending:
+            # b 查:恢复候选探针子态(判据/探针裁决/撤回语义与主循环原
+            # 三段链逐位同源,纯函数单一源 = cw_resume_lock;旧宿主 =
+            # cw_loop 备战分支,迭代 2026-11-18-prep-special-flow 迁入)。
+            _caps_gs = game_state_of(match.session)
+            _pr = read_phase_round(
+                self.ctx, screen,
+                round_caps=(_caps_gs.node_seq_by_plane.value
+                            if _caps_gs is not None else None))
+            if not resume_candidate(match.is_new_match, _pr[0], _pr[1]):
+                # 候选判定否(1-1 正常新局):撤回候选,落常规路径
+                #(既有前置段全量照旧)。
+                match.resume_probe_pending = False
+            else:
+                # 候选过判:接管失效写先于探针点击(时点保持「候选过判即写」,
+                # 非锁定候选帧同样写——见 _invalidate_tracked_on_takeover)。
+                self._invalidate_tracked_on_takeover()
+                # 探针 = 锁定子态的识别手段(商店可开性探测,识别性点击):
+                # 点「按钮-商店」试探 → 验「按钮-收起」出现与否。
+                self.round_by_find_and_click_area(
+                    screen, '货币战争-备战', '按钮-商店', success_wait=1.2)
+                _opened = self.round_by_find_area(
+                    self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
+                    crop_first=False).is_success
+                # 候选撤回(无条件,防同 run 重探针;撤回语义随迁)。
+                match.resume_probe_pending = False
+                if probe_resolve(_opened) == 'normal':
+                    # 非锁定(误判防线):收起关店 → 按序跑齐全部既有前置段
+                    #(= 收店后同帧落常规派发的 fresh visit 全序列;收店
+                    # success_wait=1.0 沿现状值)。
+                    self.round_by_find_and_click_area(
+                        self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
+                        success_wait=1.0)
+                    log.info('[cw-prep] 恢复候选但商店可开 → 非锁定,走常规')
+                else:
+                    # 锁定确认:三字段同帧配对写(locked_sync_done=False 与
+                    # 发出核置 True 同帧配对的配对不变量见
+                    # Match.locked_sync_done 字段注)→ 直达段3b。
+                    match.locked_resume = True
+                    match.locked_round = _pr[1]
+                    match.locked_sync_done = False   # 新锁定局:首战前同步步待执行
+                    log.warning('[cw!][prep] 恢复局锁定确认(P%s-r%s,商店探针'
+                                '零响应)→ 直接出战', _pr[0], _pr[1])
+                    return self.round_success('恢复局锁定确认,直达出战段(段3b)',
+                                              wait=0)
+        # c 查:补给分流子态(nodeseq 当前节点=supply ∧ chosen_supply 未确认;
+        # 用 nodeseq 节点类型判、非「返回补给阶段」按钮的理由随迁:该按钮
+        # battle 节点 revisit 备战也在,不可靠——实跑 1-6 battle 出战成功 +
+        # 也有该按钮;nodeseq 读失败(非 clean 帧)→ 不 divert,默认备战
+        # 分支保险不误判 battle 为 supply;读法与主循环原补给分流同源)。
+        # 已确认走常规的理由随迁(2026-10-29 流程模型对齐):补给确认后游戏
+        # 回备战并自动弹店,出战动作才完成节点——已确认备战帧不得再回补给屏
+        # (死循环面);恢复局例外:商店锁死只能出战,出战链照常完成节点
+        _cur_slot = next((s for s in (read_node_sequence(self.ctx, screen) or [])
+                          if s.state == 'current'), None)
+        if _cur_slot is not None and _cur_slot.node_type == 'supply':
+            _gs_c = None
+            try:
+                _gs_c = game_state_from_ctx(self.ctx)
+            except Exception:  # noqa: BLE001  状态容器缺席 = 局外语境,按未确认处理
+                _gs_c = None
+            _supply_confirmed = (_gs_c is not None
+                                 and _gs_c.chosen_supply.value is not None)
+            if not _supply_confirmed:
+                self._prep_substate = 'supply_divert'
+                return self.round_success('补给未确认子态,直达处置段(段3c)',
+                                          wait=0)
+            log.info('[cw-prep] 补给节点已确认(chosen_supply 在场)→ 走常规备战')
+        # —— match 缺席门(既有;四查全否后到达)——
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
         session = match.session
@@ -808,9 +954,61 @@ class CwScreenPrep(CwOperation):
         动作机械执行(无成败回执),无进展治理归外循环 stall
         防线,落地判定归观察侧 reconcile。决策循环无防御上限
         (用户裁定:不收敛 = 策略实现 bug)。
+
+        段3 特殊流程三处置(位于段序号置位之前;子态识别在观察 node 段1,
+        三处置共享本顶部分流位,迭代 2026-11-18-prep-special-flow §2.7-3):
+        a 返回按钮 → 点返回交回(下轮身份分发进投资策略屏);b 锁定 →
+        locked_resume_sync_and_battle 同步步+出战(成功 = 锁解除+交回,
+        战斗窗置位不在此——``_on_prep_round`` 回调对一切 success 交回统一
+        置位;未执行 = retry 保锁,预算耗尽 → 访问 fail → 主循环外环
+        fail-streak);c 补给未确认 → 点返回补给阶段交回(下轮进补给屏)。
+        a/c 点击成败均交回(不落段4、不落 retry):下轮重识别自然重试
+        (现状同语义)。
         """
         match = self._match()
         session = match.session
+        # ===== 段3 特殊流程三处置(先于段序号置位,子态帧不动 serial)=====
+        if match.locked_resume:
+            # b:锁定直出战(首战前备战同步步组合封装,证据位 =
+            # Match.locked_sync_done;详见 prep_actions 函数 docstring)。
+            progressed, detail = locked_resume_sync_and_battle(self, self.ctx)
+            if progressed:
+                match.locked_resume = locked_after_start_battle(progressed)
+                log.info('[cw-prep] 锁定恢复局 → 出战成功,锁解除'
+                         '(交回外循环战斗分支)')
+                return self.round_success('锁定恢复局出战成功(交回外循环战斗分支)',
+                                          wait=3)
+            log.warning('[cw!][prep] 锁定模式出战未执行(%s)→ retry(保锁定)',
+                        detail)
+            return self.round_retry('锁定模式出战未执行', wait=2)
+        if self._prep_substate == 'back_to_strategy':
+            # a:点「返回投资策略选择」→ 交回(下轮身份分发进投资策略屏;
+            # 点击成败均交回)。lcs_percent=0.9 防线理由见观察 node a 查注释。
+            self.round_by_ocr_and_click(self.last_screenshot,
+                                        '返回投资策略选择', success_wait=2,
+                                        lcs_percent=0.9)
+            # 计数随迁:cw4_counters 分键 back_to_strategy_symptom(遥测单一
+            # 载体;原 loop 实例计数随三段链迁出停用)。None 守卫 =
+            # strategy_state 缺席跳过(先例 = prep_actions 发出链既有守卫);
+            # 寿命 per-run → per-match(每局归零,进局终 MatchFinal 快照)。
+            _st_cnt = strategy_state_of(session)
+            _counters = getattr(_st_cnt, 'cw4_counters', None)
+            if isinstance(_counters, dict):
+                _counters['back_to_strategy_symptom'] = \
+                    _counters.get('back_to_strategy_symptom', 0) + 1
+                log.warning('[cw!][prep] 返回按钮=上游选择屏处理失败症状'
+                            '(策略屏点歪),第%d次',
+                            _counters['back_to_strategy_symptom'])
+            return self.round_success('返回按钮子态:已点返回(成败均交回,'
+                                      '下轮重识别)', wait=2)
+        if self._prep_substate == 'supply_divert':
+            # c:点「按钮-返回补给阶段」→ 交回(下轮身份分发进补给屏;
+            # 点击成败均交回)。
+            self.round_by_find_and_click_area(
+                self.last_screenshot, '货币战争-备战', '按钮-返回补给阶段',
+                success_wait=2)
+            return self.round_success('补给未确认子态:已点返回补给阶段'
+                                      '(下轮补给屏分发)', wait=2)
         # 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
         # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
         #(商店 visit/破墙段)残留的续段 token/结论标志按序号不等自动失效。

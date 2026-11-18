@@ -524,7 +524,7 @@ def locked_resume_sync_and_battle(op, ctx):
     局「商店探针零响应」禁令只覆盖商店域,部署面不受覆盖)。
 
     证据位语义(最严读法申报「发出即写」):同步步
-    **发出后立即置位** ``op._cw_locked_sync_done``——原「ok=True
+    **发出后立即置位** ``ctx.cw_match.locked_sync_done``——原「ok=True
     才置位 + 失败重试(上限 3)」消费执行器成败回执,回执已停用,
     失败概念在发出型下消解,重试/放弃治理结构随之停用(发出次数预算
     承载归 J2 形态,同源重推);「部署是否真落地」由下一帧观察侧
@@ -572,7 +572,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 
     - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
       battle):首战前插备战同步步,**发出即置位**证据位
-      ``op._cw_locked_sync_done``(回执已停用,失败概念随之消解);
+      ``ctx.cw_match.locked_sync_done``(回执已停用,失败概念随之消解);
       锁定确认分支复位证据位。同步步载体 = 统一拖动/换星直卖原子序
       (按策略层部署计划现算逐 move 发;恢复局卖出通道整体跳过语义
       不变——board 未观察时计划恒空)。
