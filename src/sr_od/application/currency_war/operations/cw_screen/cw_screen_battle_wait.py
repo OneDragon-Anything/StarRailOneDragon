@@ -837,7 +837,7 @@ class CwScreenBattleWait(CwOperation):
         # ③出口 B:团灭终局链终点 = 回到大厅(「返回货币战争」落点)→
         # terminal 结束本次访问主循环 3c 收尾(runs summary/分配器/存档在彼处;
         # 遥测连续性红线:收尾点固定于此)。
-        if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南',
+        if self.round_by_find_area(screen, '货币战争-大厅', '标识-玩法名',
                                    crop_first=False).is_success:
             log.info('[cw-bwait] 终局分叉:已回大厅 → terminal_lobby(交整局退出收尾)')
             return self.round_success('terminal_lobby')

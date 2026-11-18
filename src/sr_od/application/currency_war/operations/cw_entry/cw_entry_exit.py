@@ -264,7 +264,7 @@ class CwEntryExit(CwOperation):
     def report_back(self) -> OperationRoundResult:
         return self.round_by_find_and_click_area(
             self.last_screenshot, '货币战争-结算-战报', '按钮-返回货币战争',
-            until_find_all=[('货币战争-大厅', '标识-创业指南')],
+            until_find_all=[('货币战争-大厅', '标识-玩法名')],
             success_wait=2.5)
 
     # ---- 节点:大厅确认(终点;SUCCESS 无出边 = op 完成) ----

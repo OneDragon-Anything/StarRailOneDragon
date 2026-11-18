@@ -145,8 +145,8 @@ class CurrencyWarApp(SrApplication):
         )
 
     def _at_lobby(self, screen: MatLike) -> bool:
-        """已在货币战争大厅(「创业指南」大厅独有识别标志,lobby screen_info area)。"""
-        return self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-创业指南').is_success
+        """已在货币战争大厅(「货币战争」玩法名标题,赛季无关稳定锚,lobby screen_info area)。"""
+        return self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-玩法名').is_success
 
     def _in_match(self, screen) -> bool:
         """已在货币战争对局中(备战/事件/战斗/结算任一态)。
@@ -155,7 +155,7 @@ class CurrencyWarApp(SrApplication):
         """
         # 大厅不是对局中态:防 _IN_MATCH_KEYWORDS 短词(如「出战」)round_by_ocr 默认 lcs 0.5
         # 误匹配大厅文字(「货币战争」含「战」→「出战」1/2=0.5 命中)→ _start_match 误判已在对局 →
-        # 跳过 start 交 loop → loop 见大厅「创业指南」→ 误「对局结束」2.4s 空跑(2026-08-06 实跑)。
+        # 跳过 start 交 loop → loop 见大厅识别标志 → 误「对局结束」2.4s 空跑(2026-08-06 实跑)。
         if self._at_lobby(screen):
             return False
         # ① 画面匹配层:已建档对局屏(备战系/事件系/战斗系/结算系/警告系/难度确认)。

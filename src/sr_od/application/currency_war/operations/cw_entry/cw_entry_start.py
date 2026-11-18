@@ -214,7 +214,7 @@ class CwEntryStart(CwOperation):
         self._advance_steps: int = 0
         # 残留状态容器弃置去重(同一次入口链只报一次)
         self._stale_discarded: bool = False
-        # 大厅识别标志(「标识-创业指南」)连续命中轮数(残留大厅判定计数,执行期现读)
+        # 大厅识别标志(「标识-玩法名」)连续命中轮数(残留大厅判定计数,执行期现读)
         self._lobby_anchor_rounds: int = 0
         # 残留大厅逃逸进度:已点「按钮-关闭」露出大世界 / 已按 F 重进新鲜大厅
         self._residual_closed: bool = False
@@ -288,12 +288,12 @@ class CwEntryStart(CwOperation):
         # 残留大厅态(实机事故:上局结束「回大厅」后大厅 UI 层残留,
         # app 层 _enter_lobby 见大厅识别标志即跳过 enter op → 死按钮态直达本 op)。
         # 该态「开始」按钮不响应任何点击(死按钮仍 OCR 可见,故判据用大厅识别标志
-        # 「标识-创业指南」而非开始按钮文字),右上角「按钮-关闭」才是真退出:
+        # 「标识-玩法名」而非开始按钮文字),右上角「按钮-关闭」才是真退出:
         # 关闭后露出朝露公馆大世界入口,F 交互重进的大厅恢复可点。走到本节点仍见
         # 大厅识别标志 = 「点开始」未产生画面转移 → 残留态;连续多轮识别标志命中才判定
         # (防转场动画帧误判)。若 BackToNormalWorldPlus 已处理残留,本分支不触发。
         if self.round_by_find_area(
-                screen, CwEntryStart.LOBBY_SCREEN, '标识-创业指南',
+                screen, CwEntryStart.LOBBY_SCREEN, '标识-玩法名',
                 crop_first=False).is_success:
             self._lobby_anchor_rounds += 1
             if self._lobby_anchor_rounds < CwEntryStart.LOBBY_RESIDUAL_CONFIRM_ROUNDS:

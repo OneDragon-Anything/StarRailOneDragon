@@ -206,7 +206,7 @@ class BackToNormalWorldPlus(SrOperation):
         # 项目规则:操作禁用 ESC,返回/关闭一律点坐标(本分支走 screen_info area)。
         # 用 round_retry 而非 round_wait:点击可能不落地,WAIT 不消耗 retry 会死循环
         # (同本节点兜底分支既有先例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
-        result = self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南')
+        result = self.round_by_find_area(screen, '货币战争-大厅', '标识-玩法名')
         if result.is_success:
             # 锁光标恢复态加固:机器重启后游戏直接恢复进本 UI 时光标处于锁定态,
             # 不带 Alt 的点击全部落空(2026-09-02 一条龙恢复链事故实证:id_mark 命中
