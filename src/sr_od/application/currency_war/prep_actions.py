@@ -334,7 +334,10 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
     CwActionSellBenchOp 已随其参数面迁移批改 op 内自持现读,不再经本
     helper):「拖→出售区」机械一段(发出即职责完成,落地事实归观察侧
     reconcile 对账);内置点表越界守卫 = MCP 直调原语面兜底。拖拽机械半
-    = ``drag_char_guarded``(失焦守卫单一宿主)。
+    = ``drag_char_guarded``(失焦守卫单一宿主)。浮层守卫面 = 调用方节点
+    自装(``CwSellBenchBySlot.drag_sell`` 先例):守卫受阻需 round_fail
+    通道(受阻码闭集),本 helper 为 void 机械原语不承载;新调用方接入须
+    自带同款守卫(``prep_drag_overlay_gate`` 置 sim 门内),禁沿用裸拖。
 
     Args:
         op: 调用方 op(取 ctx.controller 操作)。
