@@ -83,10 +83,6 @@ class CwScreenInvestEnv(CwOperation):
     判据 = 策略层 ``invest_env``(strategy-docs/28_invest_env_screen.md))→ 刷新终结分支 ∨ 选卡确认链派发。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
-    # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y;常量=screen_info 缺失兜底。
-    # 实机点验:立绘在卡顶 y≈100-400(点立绘/卡名 y390 不选中且开角色详情);
-    # **描述区 y≈450 才选中**(立绘下方);卡底 y700 无效。区别 invest_strategy(描述区 y545)。
-    CARD_CLICK_Y: ClassVar[int] = 450   # 兜底;首选 area_center('区域-卡牌描述行')
     # 卡名行 center-y 过滤带(排除标题 y≈98 / 描述 y≈419+ / 确认 y≈982)。
     # 卡名 y 随立绘漂移(实机见过 375-378 / 392),带宽 [360,410] 覆盖实测漂移域。
     NAME_CY_LO: ClassVar[int] = 360
@@ -386,11 +382,15 @@ class CwScreenInvestEnv(CwOperation):
         # 选择事实零状态容器写(active_env 注册在动作落地获得链 gain_invest_env,
         # 动作 op 即时上报;权威版本 = game_state/gain-chain.md)。
 
-        # 点最优卡底(Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底
-        # CARD_CLICK_Y)+ 确认链经工厂派发。
+        # 点最优卡的**描述行**选中(Y = 建档「区域-卡牌描述行」rect 中心,缺失
+        # 显式失败不再兜底常量)+ 确认链经工厂派发。实机点验画面事实:点立绘
+        # 不选中且开角色详情,点描述行(立绘下方)才选中;x 随 OCR 命中。
         _sel = area_center(self.ctx, '区域-卡牌描述行', CwScreenInvestEnv.SCREEN_NAME)
-        _click_y = _sel.y if _sel is not None else CwScreenInvestEnv.CARD_CLICK_Y
-        target = Point(choose_x, _click_y)
+        if _sel is None:
+            # 选卡动作发出前显式失败交回主循环(与上方「决策无有效选卡输出」
+            # 同位同语义;生产 area 恒在,此态 = 档案损坏)。
+            return self.round_fail('area 缺失:区域-卡牌描述行(货币战争-投资环境)')
+        target = Point(choose_x, _sel.y)
 
         # 台账:确认前开「投资环境变异窗」豁免——环境选择是位面节点序列唯一
         # 变异源(用户口述),确认到节点行重读刷新之间查表与逐帧校验的不一致

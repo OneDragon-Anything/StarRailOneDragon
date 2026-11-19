@@ -143,8 +143,11 @@ class CwEntryPlaneIntel(CwOperation):
         if cur is None:
             return self.round_retry('备战节点条未读出(半开帧/渲染态),重试')
         r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
-        # 兜底字面量:area 缺失(离线/档案损坏)时的节点条原点(1080p 实测值)
-        ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
+        if r is None:
+            # 缺失态显式失败交调用方失败链(node 预算 3):不再静默兜底旧字面量。
+            return self.round_fail('区域-节点条 area 缺失(货币战争-备战)')
+        # 节点圆心相对坐标的基准 = 节点条 rect 左上原点(cur.cx/cy 为条内相对值)。
+        ox, oy = (r.x1, r.y1)
         if cw_sim_ports.mechanical_io_allowed():
             self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
         else:

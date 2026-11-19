@@ -4,7 +4,8 @@
 勾「本局不再提示」+ 确认,解除未达上限警告阻塞出战。
 
 勾选/确认坐标进 screen_info(``currency_war_deploy_not_full``):``勾选-本局不再提示`` +
-``按钮-确认``;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
+``按钮-确认``;本 op 经 ``cw_obs_core.area_center`` 读,area 缺失显式失败
+(round_fail 交主循环,无兜底常量)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,继承 CwOperation,
 轻屏统一形态):观察 node = 标识门(id_mark「标识-未达上限警告」,miss
@@ -23,7 +24,6 @@ node = 落地复查顶部(确认已发 → 识别标志不在 = 弹窗已关 →
 import time
 from typing import ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -45,9 +45,6 @@ class CwScreenDeployNotFull(CwOperation):
     起点:货币战争-出战人数未满弹窗出现;终点:已勾选本局不再提示并确认(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-未达上限警告'   # screen_info 画面(currency_war_deploy_not_full.yml)
-    # 勾选/确认:screen_info center;常量=screen_info 缺失兜底。
-    CHECKBOX_NO_PROMPT: ClassVar[Point] = Point(912, 589)   # 兜底;首选 area_center('勾选-本局不再提示')
-    BTN_CONFIRM: ClassVar[Point] = Point(1159, 653)          # 兜底;首选 area_center('按钮-确认')
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-未达上限确认')
@@ -101,8 +98,13 @@ class CwScreenDeployNotFull(CwOperation):
         """勾选 + 确认体:勾「勾选-本局不再提示」(``safe_click``+0.3s)→ 确认
         (``emit_overlay_confirm``)→ 置位(落地判定归下一轮落地复查)→
         round_wait 循环推进。"""
-        _check = area_center(self.ctx, '勾选-本局不再提示', CwScreenDeployNotFull.SCREEN_NAME) or CwScreenDeployNotFull.CHECKBOX_NO_PROMPT
-        _confirm = area_center(self.ctx, '按钮-确认', CwScreenDeployNotFull.SCREEN_NAME) or CwScreenDeployNotFull.BTN_CONFIRM
+        _check = area_center(self.ctx, '勾选-本局不再提示', CwScreenDeployNotFull.SCREEN_NAME)
+        _confirm = area_center(self.ctx, '按钮-确认', CwScreenDeployNotFull.SCREEN_NAME)
+        if _check is None or _confirm is None:
+            # 缺失态显式失败(close_detail 先例形态;生产 area 恒在,此态 =
+            # 档案损坏):不再静默兜底点旧常量坐标。
+            return self.round_fail('area 缺失:勾选-本局不再提示/按钮-确认'
+                                   '(货币战争-未达上限警告)')
         safe_click(self, _check, tag='cw-deploywarn')
         time.sleep(0.3)
         # 确认 + 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察):不读屏判「弹窗关没关」,落地由下一轮重入

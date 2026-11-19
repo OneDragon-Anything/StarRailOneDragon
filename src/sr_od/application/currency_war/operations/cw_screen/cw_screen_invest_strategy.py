@@ -112,10 +112,6 @@ class CwScreenInvestStrategy(CwOperation):
     起点:货币战争-投资策略 3 选 1 画面;终点:选卡并确认完成,画面离开(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
-    # 卡选中点击 Y:screen_info「区域-卡名行」center.y(=卡名选中行);常量=兜底。
-    # 实机点验:点卡名(y≈474)→ 白边选中 → 确认亮 → 确认推进;点卡底/
-    # 描述区不选中 → 确认灰置 → 整局阻塞风险。
-    CARD_CLICK_Y: ClassVar[int] = 474   # 兜底(卡名选中);首选 area_center('区域-卡名行')
     # 卡名行 center-y 过滤带(标题 y≈98 / 描述 y≈520+ / 刷新次数 y≈841 / 确认 y≈983)
     NAME_CY_LO: ClassVar[int] = 465
     NAME_CY_HI: ClassVar[int] = 505
@@ -360,13 +356,18 @@ class CwScreenInvestStrategy(CwOperation):
             if _n not in ('?',) and get_strategy(_n) is None:
                 log.warning(f'[cw-strat] 投资策略名不在注册表(数据缺口): {_n!r}')
 
-        # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;
-        # 缺失兜底 CARD_CLICK_Y)+ 确认链经工厂派发(机械链 + 即时上报在
-        # 动作 op 内:定位点决策半现算经 env 显式传入;确认钮 = 动作 op
-        # 执行体 round_by_find_and_click_area 查找点击,全族统一)。
+        # 点最优卡的**卡名**选中(Y = 建档「区域-卡名行」rect 中心,缺失显式
+        # 失败不再兜底常量)+ 确认链经工厂派发(机械链 + 即时上报在动作 op 内:
+        # 定位点决策半现算经 env 显式传入;确认钮 = 动作 op 执行体
+        # round_by_find_and_click_area 查找点击,全族统一)。实机点验画面事实:
+        # 点卡名 → 白边选中 → 确认亮 → 确认推进;点卡底/描述区不选中 →
+        # 确认灰置 → 整局阻塞风险。
         _sel = area_center(self.ctx, '区域-卡名行', CwScreenInvestStrategy.SCREEN_NAME)
-        _click_y = _sel.y if _sel is not None else CwScreenInvestStrategy.CARD_CLICK_Y
-        target = Point(choose_x, _click_y)
+        if _sel is None:
+            # 选卡动作发出前显式失败交回主循环(与上方「决策无有效选卡输出」
+            # 同位同语义;生产 area 恒在,此态 = 档案损坏)。
+            return self.round_fail('area 缺失:区域-卡名行(货币战争-投资策略)')
+        target = Point(choose_x, _sel.y)
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )

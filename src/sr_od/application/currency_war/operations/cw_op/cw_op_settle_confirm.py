@@ -28,10 +28,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
@@ -57,11 +57,8 @@ class CwOpSettleConfirm(CwOperation):
     """
 
     #: 长按兜底(实机对局实证:「继续挑战」点击不响应 → 结算屏停留 ≥3 轮
-    #: → 长按 (960,898) 兜底推进)。
+    #: → 长按建档 rect 中心兜底推进;长按点语义见 confirm 内注释)。
     SETTLE_STAY_LONG_PRESS: ClassVar[int] = 3
-    #: 长按兜底专用点(「继续挑战」长按 (960,898);普通点击点
-    #: OCR/area 命中位置——检测/点击分离时点击坐标须随命中)。
-    SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-结算确认')
@@ -125,10 +122,15 @@ class CwOpSettleConfirm(CwOperation):
             self._stay += 1
             if self._stay >= CwOpSettleConfirm.SETTLE_STAY_LONG_PRESS:
                 log.info('[cw-settle-confirm] 结算屏停留 %s 轮(点击未生效)'
-                         '→ 长按 (960,898) 兜底推进', self._stay)
+                         '→ 长按兜底推进', self._stay)
                 if cw_sim_ports.mechanical_io_allowed():
-                    self.ctx.controller.click(
-                        CwOpSettleConfirm.SETTLEMENT_NEXT, press_time=0.5)
+                    # 长按点 = 建档「按钮-继续挑战」rect 中心(坐标单一源);
+                    # 本分支仅在按钮 area 命中轮内可达,None 态 = 档案损坏,
+                    # 天然不可达的防御臂:降级跳过长按,普通点击链继续。
+                    press_point = area_center(self.ctx, '按钮-继续挑战',
+                                              '货币战争-结算')
+                    if press_point is not None:
+                        self.ctx.controller.click(press_point, press_time=0.5)
                 self.park_cursor(after_wait=0.1)
                 self._stay = 0
             # 遭遇奖励兑现(推进上报前调:语义顺序 = 先记账后推进;并防御
