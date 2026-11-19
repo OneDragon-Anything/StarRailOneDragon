@@ -761,8 +761,8 @@ class CwLoop(CwOperation):
         super().after_operation_done(result)
         self._write_terminal_summary_if_needed()
 
-    # (局终归档现役归宿 =  已落位(gs_prov=快照来源注记/局终速查=
-    #  match_final 行,retirement.md §2);存量数据文件归档只读
+    # (局终归档现役归宿 = 已落位(gs_prov=快照来源注记/局终速查=
+    #  match_final 行);存量数据文件归档只读
     # (不删不写,裸读考古,r5-migration-plan §4-6))
 
     def _write_terminal_summary_if_needed(self) -> None:

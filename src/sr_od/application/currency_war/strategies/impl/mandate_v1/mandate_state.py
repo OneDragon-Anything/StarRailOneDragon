@@ -198,7 +198,7 @@ class StrategyState:
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
 
     # ===== 策略行为观测分键(单一分键表;策略 state=决策行 strategy-state
-    # 载体,retirement.md §3 键归属已定案:全部键=策略行为键零效果域键,
+    # 载体,键归属已定案:全部键=策略行为键零效果域键,
     # 键全集登记底稿 = 逐键审计 256 字面+16 闭族+9 开放族)=====
     # 局终级全键聚合 = 局终域行载荷 MatchFinal.cw4_counters(cw_loop 两
     # 收尾点现读快照);sim 轮差分账本/A/B 披露照旧读本表,不经流。

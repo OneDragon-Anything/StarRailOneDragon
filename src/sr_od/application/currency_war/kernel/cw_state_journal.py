@@ -24,7 +24,7 @@ as-built 权威版本面 = ``docs/develop/sr_od/application/currency_war/game_st
 分文件候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,
 journal.md §5)。
 
-寿命契约(装配端;retirement.md §6-5 直迁形态):滚动清理以 **run 段**
+寿命契约(装配端):滚动清理以 **run 段**
 为整体单元(段 = 行内 run_id 归属,整段淘汰禁切半段),已淘汰段的 state_ref
 钉 = 永久 unverified,淘汰动作在本模块 manifest(``journal.retirement.jsonl``,
 journal 同目录)逐段暴露(archived_out;判读者钉解析失败时查 manifest 可辨
@@ -68,8 +68,8 @@ DEFAULT_FLUSH_EVERY: int = 64
 #: kernel 禁依 telemetry,哨兵是跨仓独立脚本,无共享 import 面)。
 REAL_RUN_ID_RE: re.Pattern[str] = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 
-#: journal 段保留窗(天;实机段,寿命契约保留窗 = 跨期语料窗,retirement.md
-#:。30 天 = 跨月对照语料窗的保守值;窗口数值随常开化后真实数据积累定,
+#: journal 段保留窗(天;实机段,寿命契约保留窗 = 跨期语料窗。
+#: 30 天 = 跨月对照语料窗的保守值;窗口数值随常开化后真实数据积累定,
 #: 无观察窗计时——r5-migration-plan.md §4-5)。
 JOURNAL_RETENTION_DAYS: int = 30
 
@@ -88,7 +88,7 @@ JOURNAL_NONLIVE_RETENTION_DAYS: int = 3
 #: 单段可达 ~145MB(fake_20260908),192MB = 约一个压测段 + 正常积累余量;
 #: 实现时点现役账面 251.6MB 恰超此窗,首次装配即触发首次真实回收。容量失控
 #: 可击穿实机段 30 天承诺窗——被清段经 manifest 逐段暴露保考古
-#: (retirement.md §6-5「保留窗下限」语义:正常积累下承诺成立,容量约束优先)。
+#: (寿命契约「保留窗下限」语义:正常积累下承诺成立,容量约束优先)。
 JOURNAL_MAX_BYTES: int = 192 * 1024 * 1024
 
 #: 段淘汰 manifest 文件名(journal 同目录;逐段一行 archived_out 暴露,
@@ -165,7 +165,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
                               ) -> dict[str, Any]:
     """run 段粒度滚动清理(寿命契约;装配前置时点调,单进程写端未启动)。
 
-    契约(retirement.md §6-5 直迁形态;策略语义权威版本 = journal.md §5):
+    契约(策略语义权威版本 = journal.md §5):
     - 清理单元 = **run 段整体**(行内 run_id 归属;禁切半段——段内版本序
       完整性是 state_ref 钉解析的前提);
     - 三道闸按序判定(测试可传参覆写常量):

@@ -977,8 +977,8 @@ class Settlement:
 
 # ============================================================ 局终域(runs 并入载体)
 
-#: 终局类型词表封闭集(retirement.md §2 runs 行:局终收束一行;并入映射 =
-#: 现役 runs result 词表 win/loss/stopped + 非完结/无收束行 = abnormal)。
+#: 终局类型词表封闭集(局终收束一行;词表 = win/loss/stopped,
+#: 非完结/无收束行 = abnormal)。
 FINAL_WIN: str = 'win'
 FINAL_LOSS: str = 'loss'
 FINAL_STOPPED: str = 'stopped'
@@ -2252,8 +2252,7 @@ def bench_view_of_working(slots: list, capacity_view=None) -> BenchView:
 #: 落盘;**触发语义 = 写口受理成功即触发**(行落盘另以 sink 武装与 run_id
 #: 在场为准——未武装/局外 = 行不落而事件照发,事件 run_id='' 形态,消费方
 #: 自滤;详 :meth:`write_match_final` docstring)。复盘流程本体不挂本批
-#: (终局行 = 复盘入口,retirement.md §7 消费面行 9 触发面:runs 兜底与
-#: Δ池再生触发改挂局终域行落盘事件,挂接入调用批)。
+#: (终局行 = 复盘入口:运行时 summary 兜底与 Δ 池再生触发挂本行落盘事件)。
 _MATCH_FINAL_LISTENER: Callable[[dict], None] | None = None
 
 

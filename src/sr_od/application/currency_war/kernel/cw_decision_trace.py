@@ -49,8 +49,8 @@
 路径语义);生产装配单点调 :func:`install_decision_trace`(run 归属复用
 进程级供给槽,前置 = ``cw_state_journal.install_state_telemetry`` 已装;
 槽缺席 = 行全视为局外拒写,诚实缺失)。局外(run_id 空)拒写假行(§3.2.3
-同纪律)。文件寿命与 journal 按 run 段同批淘汰(§5.4,retirement.md §6-5;
-两文件禁单件淘汰):淘汰判定单一源 = journal 段清理,本文件协同淘汰
+同纪律)。文件寿命与 journal 按 run 段同批淘汰(两文件禁单件淘汰):
+淘汰判定单一源 = journal 段清理,本文件协同淘汰
 journal 已淘汰的同一 run_id 集。
 
 **确认联动(定案 C8)**:四查消费面等价(§6)以「局终聚合渲染读链零改动」
@@ -343,7 +343,7 @@ def _retire_segments(path: Path, retired_ids: list[str], *,
 
     **淘汰判定单一源 = journal 段清理**(:func:`enforce_journal_retention`);
     本函数只把 journal 已判淘汰的**同一 run_id 集**从决策行文件同步摘除
-    ——两文件禁单件淘汰(retirement.md §6-5):禁「journal 段已清而决策
+    ——两文件禁单件淘汰:禁「journal 段已清而决策
     行段残留」的半淘汰态。只摘 run_id 精确命中行;坏行/无 run_id 行原样
     保留(宁留不误删,清理面不做判定)。逐段写 manifest 一行
     ``archived_out`` 暴露(判读辨「清理 vs 丢数据」);原子重写

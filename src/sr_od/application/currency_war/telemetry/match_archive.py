@@ -275,7 +275,7 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
                                    (summary or {}).get('rounds_survived')}}
 
 
-# ===== 局终行识别(局终域 match_final,retirement.md §2 runs 行)=====
+# ===== 局终行识别(局终域 match_final)=====
 
 # 局终行的 field 值单一源 = kernel MATCH_FINAL_FIELD(随写口声明;
 # 模块顶部统一 import,本节不再复制字面量)。

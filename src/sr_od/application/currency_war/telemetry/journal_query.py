@@ -34,13 +34,8 @@ cw_loop ``_run_has_outcome_at`` 跳过+计数+log 留痕);字节层宽容 = 以
 ``errors='replace'`` 解码(物理截断可劈开多字节字符,替换不抛),含
 U+FFFD 的行计 ``byte_repair_lines`` 后仍走 JSON 判定(坏行照跳)。
 
-消费方迁移覆盖清单(逐消费方 = 已迁/候/不适用)单一源 = retirement.md §7
-(``docs/develop/sr_od/application/currency_war/game_state/retirement.md`` 消费方迁移清单,
-11 消费面;本模块 = 其中判读 CLI 面的新账读入口)。溯源注(临时产物域,
-非单一源):批交付报告 ``.debug/temp/currency_war/统一state-R3.1-交付
-报告.md`` §5 与 ``统一state-R3.2-交付报告.md`` 曾载逐消费方迁移核对明细
-(R3.2 补行 3:cw_replay_reader 等三消费方;其中两模块已随后续死代码
-清偿移除,清单权威 = retirement.md §7 现值)。
+本模块 = 判读 CLI 面的新账读入口(旧流消费方迁移面之一,逐消费方迁
+移核对明细归 git 历史)。
 """
 from __future__ import annotations
 

@@ -16,8 +16,7 @@ from sr_od.application.currency_war.telemetry.state import (
 
 # ===== 统一缺陷台账(defect_ledger.jsonl;纯观测索引层,零行为变更)=====
 # 把散在观察冲突/执行失败的缺陷口径归一:台账每行经 evidence.refs 指回证据行
-# ——审计先查台账,下钻再回证据行。refs 迁移(retirement.md §2
-# defect_ledger 行,已定案):旧流(decisions/outcomes/obs_conflicts)
+# ——审计先查台账,下钻再回证据行。refs 迁移(已定案):旧流(decisions/outcomes/obs_conflicts)
 # 写面已停用,refs 统一改指 journal ``(run_id,v)`` 登记条目(构造
 # 单一源 = kernel.cw_telemetry_exit.journal_refs;无账本媒体时诚实省略)。
 # 证据行现役归宿 = journal obs_event arbitrate 行(field 对账);exec 失败
@@ -303,8 +302,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
         gap=gap, plane=int(rec.get('plane') or 0),
         round_num=int(rec.get('round_num') or 0),
         verdict=str(rec.get('verdict') or ''), shot=rec.get('shot'),
-        # refs = journal (run_id,v) 登记条目(refs 迁移,retirement.md §2
-        # defect_ledger 行):该条目恰为上方汇点刚写入的 obs_event 证据行版本
+        # refs = journal (run_id,v) 登记条目:该条目恰为上方汇点刚写入的 obs_event 证据行版本
         #(obs_conflict 先 note_obs_event 后旁路,同栈无间写);旧
         # obs_conflicts 流指针已停用,新行按其下钻扑空。
         refs=journal_refs(),

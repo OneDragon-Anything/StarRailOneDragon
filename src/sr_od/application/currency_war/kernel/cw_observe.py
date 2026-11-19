@@ -137,8 +137,7 @@ def set_obs_phase(phase: str | None) -> None:
 # (用户 2026-09-10 直迁裁定):独立证据文件的写入端停用,证据归宿
 # = 统一 state 账本行型 2(obs_event,GameState
 # .note_obs_event;同流占版本内嵌当时 state),行结构/截图节流/告警门语义
-# 原样并入(retirement.md §2 obs_conflicts 行)。存档只读:历史冲突行仍可
-# 经判读 CLI 旧视图读(不迁移)。
+# 同款。存档只读:历史冲突行仍可经判读 CLI 旧视图读(不迁移)。
 
 #: 冲突截图节流窗(秒):同 (field, verdict) 在窗内只存一张截图。
 #: 实证积压 18.8GB 的根因 —— 慢性状态冲突(deployed_align「补齐」每帧触发,board

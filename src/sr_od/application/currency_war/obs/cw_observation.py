@@ -2920,7 +2920,7 @@ def _phase_screen_context(phase: str | None, plane: int | None,
 
 
 def runs_result_to_final_type(result: str) -> str | None:
-    """现役 runs ``result`` 词表 → 局终类型并入映射(retirement.md §2 runs 行)。
+    """现役 runs ``result`` 词表 → 局终类型并入映射。
 
     win/loss/stopped 同名直映;abandoned 及其余非完结值(含空串)= abnormal
     (非完结值域 = 异常终局家族,与档案装配器 ``_TERMINAL_RESULTS`` 的

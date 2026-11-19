@@ -7,8 +7,7 @@
 接入调用(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
 **载体停用声明(后现状)**:ExogenousEvent 流出口已停用为恒 no-op
 桩(cw_telemetry_exit.record_exogenous),出战就绪与否都不落行;登记表各
-行 host 所指原宿主写点已同步停用——载体与宿主归宿待裁决,登记起(retirement.md
-exogenous 行),接入调用批落地前本模块在役面 = 登记/校验/幂等,零落行。
+行 host 所指原宿主写点已同步停用,本模块在役面 = 登记/校验/幂等,零落行。
 
 **观测-only 边界(用户裁定)**:本模块只做数据采集与计数登记,
 状态改写/效果施加明确出栈(效果施加语义归 §8.2 效果结构化词表线)——
@@ -150,7 +149,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         anchor_id='sell_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
         host='原宿主=卖牌执行点 sell_income 行写点(recorder.record_sell_income,'
-             '已随删除波 1 退役;归宿候裁挂 retirement.md §2 exogenous 行)',
+             '已退役)',
         carrier_kind='sell_income',
         sim_domain='实机先行',
         evidence_required=False,
@@ -161,8 +160,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         anchor_id='refresh_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
         host='原宿主=三写点面(spend_ledger 刷新字段 + shop_snapshots refresh'
-             ' 行 + record_refresh_execution/REFRESH bump,均已随删除波 1 退役;'
-             '归宿候裁挂 retirement.md §2 exogenous 行)',
+             ' 行 + record_refresh_execution/REFRESH bump,均已退役)',
         carrier_kind=None,
         sim_domain='实机先行',
         evidence_required=False,
@@ -300,7 +298,7 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
                 evidence_refs: list[dict[str, str]] | None = None,
                 event_key: str = '', summary: str = '') -> bool:
     """登记一次观测触发并走 §12.3 载体一上行口(载体停用声明见模块头:ExogenousEvent
-    出口已停用恒 no-op 桩,受理后行不落盘,归宿待裁决,登记 retirement.md §2)。
+    出口已停用恒 no-op 桩,受理后行不落盘)。
 
     校验链(违规 = 红,炸错不静默):①封闭集(集外条目 = 红,锁①);
     ②scope 值域;③effect_ref 恒空(结构锁,锁⑤——效果施加批
