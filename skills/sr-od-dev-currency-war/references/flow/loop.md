@@ -71,7 +71,7 @@ run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/roun
     → CwScreenPrep 备战单轮(进入序见 §3)
 战斗窗(战斗窗标志 _battle_wait_active ∨ 帧级识别 _frame_in_battle_window)
     → CwScreenBattleWait
-大厅收尾分支(id_mark 行'标识-创业指南')→ 对局收尾(§6)
+大厅收尾分支(id_mark 行'标识-创业指南')→ 对局收尾(§7)
 下一步(OCR)→ CwScreenNextButton
 兜底 全不命中 → _handle_unknown_fallback(guards.md)
 ```
@@ -109,10 +109,41 @@ run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/roun
 **框架不负责多轮循环的上限限制。** 外循环的轮次推进与画面 op 的决策循环均**不设迭代数上限**——健康循环永不因迭代计数被截断;死循环/不收敛 = **策略实现 bug**,修复在策略侧,框架不兜底(不收敛表现为挂起,可观测)。
 
 - 轮次推进以 `round_wait` 形态继续(迭代不烧 `node_max_retry_times` 预算;该预算仅失败路径 round_retry 消费);
-- **失败类出口不属于迭代上限**:连续 fail 重派网(`OP_FAIL_REDISPATCH_LIMIT`,guards.md)、未知画面兜底、异常传播 = 对「错误条件」的响应,与迭代计数无关;
+- **失败类出口不属于迭代上限**:连续 fail 重派网(`OP_FAIL_REDISPATCH_LIMIT`,guards.md)、未知画面兜底、异常传播 = 对「错误条件」的响应,与迭代计数无关;出口总表见 §6;
 - 兜底不变量:每个决策画面的动作空间至少含一个恒可用终结动作(终结 = 结束本次访问;见 `docs/develop/sr_od/application/currency_war/screens/op-layer.md` §1.4)——正确策略必收敛,收敛性由策略侧保证。
 
-## 6. 停机与遥测钩子
+## 6. 结束出口表(loop 全部终态出口与 app 交接判定)
+
+> loop op(`cw_loop.py::CwLoop`)的终态出口与 app 编排层的交接判定对应关系。**交接** = loop 结束时把「该退出但还没退」的状态移交 app 退出收尾节点(`currency_war_app.py::CurrencyWarApp._exit_cleanup`)处置,由其调用 `CwEntryExit` 完成退局;loop 的退出触发只有两种——正常完成、节点出错过多,两者都以 `round_success` 出口交接。出口文本常量 = `cw_loop.py` 模块级 `STATUS_LOBBY_DONE`/`STATUS_HANDOFF_PREFIX`(loop 出口与 app 判定共用单一源,禁裸串散写);防线出口的判定契约见 guards.md §1。
+
+**success 出口**:
+
+| 出口 | 文本 | 产出点 | app 交接节点行为 |
+|---|---|---|---|
+| **交接点①正常完成** | `STATUS_LOBBY_DONE`(「对局结束,回大厅」) | `_lobby_return_collect` 大厅收尾分支(收尾簿记完成后) | 弹窗守卫 → exit 大厅确认形态 → 置 `ctx.cw_match=None` |
+| **交接点②异常超限** | `STATUS_HANDOFF_PREFIX`+计数键(「异常退出交接:<键>」) | `_dispatch_screen_op` 防线段耗尽(默认构造;投资环境链链首按双条件透传同款出口) | 弹窗守卫 → exit 清场退局形态 → 置 `ctx.cw_match=None` |
+| max_rounds 停备战 | 「已跑 N 轮停备战(达 max_rounds=M)」 | 备战分支停点(先于派发) | 跳过 exit 直接结束(**非退出触发**:验证模式留局采样) |
+| 开局失败/中断(假局守卫) | 「开局失败/中断(未产生对局数据,不记 summary)」 | `_lobby_return_collect` 假局守卫 | 跳过 exit 直接结束(**非退出触发**:已在大厅,对局状态已清) |
+| route⑤ 停机位 | 「已到可交还退出调度的备战态(含免战)」 | `loop()` 停机位判定(仅 `stop_at_prep=True` 构造可达) | app 主路径不可达;exit 委托清理的交还点(见 entry-exit.md §3) |
+
+**fail 出口**:
+
+| 出口 | 文本 | 产出点 | app 行为 |
+|---|---|---|---|
+| 防线耗尽(委托清理模式) | 「<名> 连续 fail 超上限(交上层处置)」 | `_dispatch_screen_op` 防线段耗尽且构造参数 `cleanup_delegate=True` | route⑤ 委托清理实例专用:exit 节点重试承接,其预算耗尽 → exit fail → app 失败收尾(残局可见非静默) |
+| 未知画面兜底耗尽 | 「连续 N 帧未识别画面,重试耗尽待建档」 | `_handle_unknown_fallback`(连续 `UNKNOWN_FAIL_THRESHOLD` 轮) | app 失败收尾——画面全盲时 exit 同为识别驱动、无从处置,交接无意义 |
+| 框架级失败(非显式出口) | —(框架收敛) | loop 节点重试预算耗尽 / 未捕获异常上抛 / 框架超时;战斗窗宽限 bail 经防线网收敛至上两行;系统哨兵为最终兜底 | app 失败收尾;残局由下次启动预检恢复链兜底 |
+
+**非退出触发边界**:max_rounds 停点与假局守卫出口虽为 success,但不是退出触发——前者是验证模式的留局采样语义,后者现场已在大厅且无对局可退;两者落 app 交接节点三形态判定的「其余」分支,跳过退出。三形态判定是互补结构,出口文本漂移只会把错形态漏进行为安全的「其余」分支;可升级为结构化 data 载体(`round_success(status, data=…)` 框架既有支持),当前按文本判定的形态保留。
+
+**委托清理模式耗尽维持 fail 的语义**:exit 委托的清理 loop 是新实例,失败计数从零重算;若其耗尽出口翻成交接 success,exit 会误判「清理完成」→ 残局遗留且账面成功(静默失败)。故构造参数 `cleanup_delegate=True` 时耗尽维持 round_fail,由 exit 节点重试承接(防线出口契约 = 双出口,见 guards.md §1 与 `_dispatch_screen_op` docstring)。
+
+**已知噪音与构造点边界申报**:
+
+- sim 直驱构造点耗尽出口翻转:sim 现役直驱 `CwLoop` 的构造点(skill 脚本 `scripts/cw_sim_match_drive.py`、测试 harness sim_backend_runner.py)为默认参构造(交接 success 出口)——sim 决策链确定性驱动、耗尽不可达(前提);若未来触达,拿到的是无消费方解析的交接文本,无害。
+- 幻影 run 噪音:route⑤ 委托清理 loop 在运行记录已关闭态会重铸新运行 id(幻影 run),清理段日志归属碎片化;正常完成+弹窗压大厅路径还会触发对局状态重建又立刻被假局守卫拆除,伴随误导性警告「开局阶段即回大厅」(委托态下该警告不表达真实开局失败)。已知噪音申报,治理挂跨迭代挂账板「委托清理 loop 不参与运行记录生命周期」条。
+
+## 7. 停机与遥测钩子
 
 | 钩子 | 内容 | 载体 |
 |---|---|---|

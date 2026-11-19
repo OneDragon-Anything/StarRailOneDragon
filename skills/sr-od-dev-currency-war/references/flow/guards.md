@@ -8,11 +8,18 @@
 
 | 限额 | 计数语义 |
 |---|---|
-| `OP_FAIL_REDISPATCH_LIMIT`(值见代码) | 连续计(任一分发 op ok 清零;异键 ok 同闭窗);同一分发 op 连续 fail 达限额 → 保留证据截图 + round_fail 显式停交上层,取代无界空转。round_fail 的 FAIL 枚举不吃 node_max_retry 预算,直接收敛运行 FAILED——「不停机」指框架不自动重派、停机决策交上层观察者;刻意处 = 消除「静默」而非「重试」,ERROR 行进日志 = 哨兵 STALL 通道与人都能看到 |
+| `OP_FAIL_REDISPATCH_LIMIT`(值见代码) | 连续计(任一分发 op ok 清零;异键 ok 同闭窗);同一计数键(`chain_key` 或 journal 名)连续 fail 达限额 → 保留证据截图 + 显式出口交上层,取代无界空转。刻意处 = 消除「静默」而非「重试」,ERROR 行进日志 = 哨兵 STALL 通道与人都能看到 |
 
 计数/判定统一在 `_dispatch_screen_op`。位面过渡的误分发根修在识别层:BOSS简报 id_mark 换装徽记模板(OCR 误读免疫),阶段一位面过渡身份分支挂 boss 判别排他。
 
-**链形 dispatch 分支契约**:一个分支体内多次 dispatch 的链形分支必须传同一 `chain_key` 归组计数(`_dispatch_screen_op` 可选参数,缺省 None = 计数键仍 journal 名),链首调用方透传防线 FAIL 出口(FAIL 枚举只从防线段产生,出口契约见包装 docstring);现役唯一多 dispatch 链形分支 = 投资环境链(环境 op → 等待 1-1),链形透传分支(3c,大厅收尾)为单发透传例外、不经本网(既有申报不变)。未按契约接线 = 绕过防线(链内交替 fail 异键归一失效的历史形态)。链形下限额计「连续 fail 分发次数」,每粘滞分发轮烧 2 次(链首+链尾;语义申报见包装 docstring)。
+**出口语义(停机转交接,双出口契约)**:耗尽出口按构造参数 `cleanup_delegate` 分流(产生点 = `_dispatch_screen_op` 防线段,契约单一源 = 该包装 docstring)——
+
+- **默认(app 主路径,False)**:耗尽 → `round_success`,status 以 `STATUS_HANDOFF_PREFIX`(「异常退出交接:」)开头、后缀 = 触发计数键。语义 = 异常退出是预期内处置:节点出错过多触发弃局,loop 把「该退出但还没退」的状态交接给 app 退出收尾节点,由其调 `CwEntryExit` 清场退局回大厅(交接语义见 loop.md §6 与 entry-exit.md §4)。
+- **委托清理模式(route⑤ 构造点,True)**:耗尽维持 `round_fail`(现状文案)——委托实例失败计数从零重算,出口若翻成交接 success 会让 exit 误判清理完成、残局遗留且账面成功(静默失败);由 exit 节点重试承接,其预算耗尽 → exit fail → app 失败收尾,残局可见非静默。
+
+两出口都不吃 `node_max_retry` 预算——「不停机」指框架不自动重派,处置决策交上层:默认出口以带前缀 success 收敛 loop op(app 按前缀转交接);fail 出口作为顶层 op 结果时直接收敛运行 FAILED,作为委托清理实例结果时由 exit 节点重试承接(见上条)。
+
+**链形 dispatch 分支契约**:一个分支体内多次 dispatch 的链形分支必须传同一 `chain_key` 归组计数(`_dispatch_screen_op` 可选参数,缺省 None = 计数键仍 journal 名),链首调用方按**双条件**判定防线已触发并透传早退(`result == FAIL` ∨ status 带交接前缀;两种出口都只从防线段产生,契约见包装 docstring;透传保两种模式「链尾不空跑」);现役唯一多 dispatch 链形分支 = 投资环境链(环境 op → 等待 1-1),链形透传分支(3c,大厅收尾)为单发透传例外、不经本网(既有申报不变)。未按契约接线 = 绕过防线(链内交替 fail 异键归一失效的历史形态)。链形下限额计「连续 fail 分发次数」,每粘滞分发轮烧 2 次(链首+链尾;语义申报见包装 docstring)。
 
 备战交互链迁 `CwScreenPrep` 特殊流程段后的失败链形态(迭代 2026-11-18-prep-special-flow):锁定直出战未执行 = 画面 op 段3b retry 保锁(框架预算每访问 1 首跑+3 重试=4 次)→ 访问 fail 走本网,备战 op 键连续 fail 限 5 次重派发 → 至多约 20 次出战尝试,有界且 ≪ 旧形态 loop 节点原地重试预算 400 次。横幅守卫与兜底清(`_fallback_clear_pending`)留主循环识别命中后、派发前,与本网交界无变化。
 
