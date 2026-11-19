@@ -122,7 +122,7 @@ class CwScreenBriefing(CwOperation):
             # 词缀运行时登记插入位置(效果账本 source='affix';登记体自身按
             # 已登记条目幂等兜底)。命中结构化注册(cw_affix_effects
             # .AFFIX_EFFECT_SPECS)才入账本;best-effort 失败不阻塞点
-            # 「下一步」(登记面纪律 = effect-domain.md §7.3)。
+            # 「下一步」(登记面纪律 = 效果域登记 best-effort)。
             if _match is not None:
                 try:
                     from sr_od.application.currency_war.kernel.cw_affix_effects import (

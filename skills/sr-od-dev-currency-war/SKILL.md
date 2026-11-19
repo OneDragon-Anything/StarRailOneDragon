@@ -166,6 +166,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 改状态容器(写入入口 / 上报函数 / 字段增删) | 改前必读 [references/game-state.md](references/game-state.md)(三种来源与对账 / 上报函数族形态 / 字段设计纪律) | game-state |
 | 改状态流水 / 判读账本(行结构 / 渠道签名 / 版本号 / 落盘 / 寿命清理) | 改前必读 [references/journal.md](references/journal.md)(两种行型 / 签名字段面 / 单版本事务 / 三道闸滚动清理 / 常开装配) | journal |
 | 改获得链 / 加获得类效果(原语 / 事件回调 / 检查分支 / 升星合成) | 链式规范单一源 = `kernel/cw_gain_chain.py` 模块 docstring(七原语契约 / 枚举回调 / 固定时序 / 随机态纪律 / 失败安全)+ 各函数 docstring;策略卡效果体注册表在 `kernel/cw_gain_effects.py` | — |
+| 改效果域 / 加卡建模(规格声明 / 计数器 / 事件接入 / 词缀源) | 改前必读 [references/effect-inventory.md](references/effect-inventory.md)(声明式建模 / 单调计数器 / 写入两分 / 事件映射 / 零响应教义);逐卡是什么效果归注册表条目注释(`kernel/cw_investments.py::STRATEGY_EFFECTS` 各源注册表) | effect-inventory |
 | 自主推进(实机探索期:派实机探索 agent / 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill,需求线流水线);CW 实机探索期运转细则+领域叠加件(核心面清单/共享资产枚举/串行模式映射)+策略迭代期最小定义(§6,时期切换种子) → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
 | ADR / as-built 维护 | §4文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查 §3 单一源地图,仍定位不了 → 给分诊表补行 | — |

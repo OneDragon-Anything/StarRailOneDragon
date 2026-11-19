@@ -1898,12 +1898,12 @@ def grant_effect_node_xp(gs: GameState, *, frame: str = '') -> None:
     - 达成位未记录 → 先走达成检测(_record_lv8_window_start:等级达标
       即记达成位 = 当前生效位);**当拍不发放**(「接下来 N 个节点」=
       达成当拍的后继 N 节点,advance_node 登记当拍不推进守卫同口径 +
-      effect-domain.md §8.6 躺平权威版本同读法);
+      躺平读法权威版本 = cw_investments 注册条目注释);
     - 有达成位 ∧ 当前生效位 > 达成位(元组字典序,位序单调下与剩余
       联合即完备)∧ 剩余 > 0 → grant_xp(每节点经验额)×1,已发放计数
       经 inventory bump 单调 +1(键 CounterKey.XP_GRANTED;剩余 = 窗口
       节点数(payload.xp_after_level[1])− 已发放,计算侧导出——
-      effect-domain.md §3「state 不存『剩余』」);窗口耗尽条目**留置
+      单调计数器模型,state 不存『剩余』);窗口耗尽条目**留置
       不删**(环境 = 选定后整局在场,账本条目 = 环境在场登记,窗口耗尽
       ≠ 环境离场,禁删——与 N_NODES 到期移除语义分域)。
     生效位未锚定(None)→ 本拍零动作(tick 入口已有同款闸,本桥内再查

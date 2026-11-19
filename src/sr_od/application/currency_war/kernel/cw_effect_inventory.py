@@ -205,17 +205,16 @@ class CounterKey:
 # 适用范围:策略源=选卡登记(register_strategy);词缀源=敌人词缀改写源,结构化
 # 注册=kernel/cw_affix_effects.AFFIX_EFFECT_SPECS(register_affix 登记);
 # 环境源=投资环境适用范围,结构化条目=ENV_PORTAL_EFFECTS(经济环境)+未入模
-# 占位(register_portal_from_env 登记,登记面纪律 = game_state/effect-domain.md §7.3)。
+# 占位(register_portal_from_env 登记,登记面纪律 = 效果域登记 best-effort)。
 SOURCE_STRATEGY: str = 'strategy'
 SOURCE_PORTAL: str = 'portal'
 SOURCE_AFFIX: str = 'affix'
 
 
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
-# 已登记条目 = 全员晋升/人力重组/大裁员/降本增效/现金为王(cw_investments
-# .STRATEGY_EFFECTS,官方文 cw_invest_data.py:67/:68/:134/:136/:200);写入
-# 归属单一源 = docs/develop/sr_od/application/currency_war/game_state
-# /effect-domain.md §8 同名条(全员晋升/人力重组/大裁员/降本增效/现金为王)。
+# 在用条目 = 全员晋升/大裁员(人力重组/降本增效/现金为王已随 v4.7 官方数据
+# 退场,退场卡的消费端与注释残留见 CW 跨迭代挂账板);写入归属单一源 =
+# cw_investments 注册条目注释。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)
 # 出售支按「卡文是否携带发牌条目」两值细分:出售 = 语义本体(清场退款),
@@ -235,7 +234,7 @@ BOARD_REWRITE_SELL_ALL_DEAL: str = 'sell_all_deal'      # 全场出售+发牌条
 # 已登记条目 = 公司人才流动(右 3)+ 乱成一锅粥(左 6)(cw_investments
 # .STRATEGY_EFFECTS,官方文 cw_invest_data.py:60/:351);重掷面 = 随机分支零逻辑
 # 写、观察收尾,写归属单一源 =
-# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
+# skills/sr-od-dev-currency-war/references/effect-inventory.md
 #与 §8 同名条。姊妹乱成一锅粥+(352102)未建条目(单卡纪律,
 # 族级展开批另落)。
 BENCH_REROLL_RIGHT3: str = 'right3_same_cost'   # 备战席最右 3 位变为随机同费角色
@@ -247,7 +246,7 @@ BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随
 # 防散落字符串)=====
 # 已登记条目 = 公司军火更新·银(cw_investments.STRATEGY_EFFECTS,官方文
 # cw_invest_data.py:86);变异面 = 随机分支零逻辑写、观察收尾,写归属单一源 =
-# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
+# skills/sr-od-dev-currency-war/references/effect-inventory.md
 #与 §8 同名条。「同品质」语义先验 = 同 category(冶金炉
 # furnace_mutate_pool 已登记先例,tool_use 域),未证零消费。银/金/彩三卡
 # 变异条目同文共用本常量(银/金/彩三卡 SE 条目全建,差异全在发放条目)。
@@ -260,7 +259,7 @@ EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备�
 # 已登记条目 = 分解万物(cw_investments.STRATEGY_EFFECTS,官方文
 # cw_invest_data.py:324);变换面 = 游戏侧自动改写(卡文「本局游戏中」持续
 # 标记),bot 零执行端、备战帧 equips 整表观察收真值,写归属单一源 =
-# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
+# skills/sr-od-dev-currency-war/references/effect-inventory.md
 #与 §8 同名条。与 EQUIPS_REROLL_SAME_QUALITY 互不复用(语义
 # 顶替禁制:变异 = 同品质随机重掷,变换 = 固定目标具名件,两语义异型)。
 EQUIPS_TRANSFORM_ADVANCED_MATTER: str = 'advanced_to_matter_all'   # 物品栏全部进阶装备变为物质分解液
@@ -292,10 +291,10 @@ class ActiveEffect:
     # 元组(cw_node_schedule.NodePos 同形,与 acquired_key 同键);写入端唯一
     # = 伴生基准方法 :meth:`ActiveEffectInventory.set_xp_window_anchor`(发放桥
     # grant_effect_node_xp / 主插入位置 _record_lv8_window_start 经它写,零旁路直改
-    # ——effect-domain.md「写端全部经 inventory 方法」纪律);一次性语义:
+    # ——效果域 inventory 方法写纪律,skill effect-inventory.md §3);一次性语义:
     # 已设置拒绝重写(达成位单调不可改);None = 未达成/未记录。窗口剩余 =
     # payload 窗口节点数 − counters[CounterKey.XP_GRANTED],计算侧导出,
-    # 禁另播「剩余」存储键(单调计数器模型,effect-domain.md §3)。
+    # 禁另播「剩余」存储键(单调计数器模型,skill effect-inventory.md §2)。
     counters: dict[str, int] = field(default_factory=dict)   # CounterKey 键 → 计数
 
 
@@ -314,8 +313,7 @@ class ActiveEffectInventory:
     prep_actions._level_up
     (既有);结算插入位置 = CwScreenBattleWait 结算观察写端(_record_round_outcome
     非 telemetry_only 分支,apply_settlement_cover 同分支同时序;现役注册表
-    零战斗结算触发条目 = 零效果条目推进,零条目 = 零驱动,effect-domain
-    。
+    零战斗结算触发条目 = 零效果条目推进,零条目 = 零驱动(效果域零注册触发面)。
     """
 
     def __init__(self) -> None:
@@ -414,7 +412,7 @@ class ActiveEffectInventory:
 
         生产登记插入位置 = CwScreenInvestEnv._decide_and_act 确认链
         (active_env 写入同址;best-effort
-        失败不阻塞确认链,effect-domain.md §7.3 登记面纪律同词缀源)。
+        失败不阻塞确认链,效果域登记 best-effort 纪律同词缀源)。
         """
         return self._register(spec, SOURCE_PORTAL, acquired_key)
 
@@ -852,7 +850,7 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     - **未知名零动作**:注册表外(赛季新增/OCR 误识/锁定未命名)无效果原文
       无从占位 → None(调用侧 is_known_env 已 warning,此处不再重复告警);
     - **幂等**:portal 源已登记同名(spec.name = 归一名)跳过——环境确认链
-      重入/retry 不得双登记(实例按 spec_key 唯一,effect-domain.md §9.1
+      重入/retry 不得双登记(实例按 spec_key 唯一,效果域同卡不叠加销案
       与词缀源同款纪律);
     - acquired_key = 登记时点节点序位快照((位面,轮) 元组;GameState
       节点单例;节点未观察(引导窗)= None 缺位,last_state 帧回退已停用删除);
@@ -898,7 +896,7 @@ def _portal_acquired_key(gs: object, session: object) -> tuple[int, int] | None:
 
 
 # ============================================================ 账本→字段桥·板面重写
-# (GameState 数据结构设计 §5 全员晋升/人力重组两行;effect-domain.md §8 同名条。
+# (GameState 数据结构设计 §5 全员晋升/人力重组两行;cw_investments 注册条目注释。
 # 与 cw_game_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
 # cw_game_state——其模块头 import 本模块,桥落本侧可免模块级成环;
 # ChannelSig/BenchView 运行期函数内惰性取。插入位置 = 选卡时点(设计 §3.2.3
@@ -933,7 +931,7 @@ class BoardRewriteReport:
     cleared_fields: tuple[str, ...] = ()   # 实际执行逻辑清空的 GameState 字段名
     partial_read: bool = False     # True = 出售域未全读(deployed/bench
                                    # 任一从未观察)→ 退款公式输入不完整,退款
-                                   # 零写入等观察收尾(effect-domain.md §6.3);
+                                   # 零写入等观察收尾(效果域确定性两分);
                                    # upgrade_all 恒 False(无出售面)
 
 
@@ -971,7 +969,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     跳过不损真值到达。**出售域未全读**(deployed/bench 任一
     value=None,典型 = 中断恢复对局/观察缺口局)= 退款公式的输入不完整(未读
     域实际卖数未知,refund 只是已读面的部分值)→ 不满足归属判据确定性
-    分支「确定性公式+已知输入」的前提(effect-domain.md §6.3)→ 退款
+    分支「确定性公式+已知输入」的前提(效果域确定性两分)→ 退款
     零写入留存证据(报告 partial_read=True + 日志),等观察收尾——禁把部分
     退款以 logic 标写成权威值(观察帧覆盖前记录层留错误金)。gold 未读
     (None)= 无累加基座,跳过金写入(禁把退款当余额);退款合计为 0
@@ -1043,7 +1041,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     # 出售域全读判据:front/back 均已读且 bench view 已读,退款公式的输入
     # (实际卖数)才完整——任一子域从未观察时 refund 只是已读面的部分值,
     # 归属判据确定性分支「确定性公式+已知输入」前提不成立
-    # (effect-domain.md §6.3),该退款禁入金(等观察收尾)。
+    # (效果域确定性两分),该退款禁入金(等观察收尾)。
     partial_read = front is None or view is None
 
     ev = f'effect_board_rewrite@{frame}' if frame else 'effect_board_rewrite'
@@ -1118,7 +1116,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 # ============================================================ 账本→字段桥·装备改写写端
 # (写入归属申报单一源 = kernel/cw_affix_effects.py EQUIP_REWRITE_DECLARATIONS
 # × EQUIP_WRITE_SIDES;归属判据 = GameState 数据结构设计 §5.3 / 权威版本
-# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §6.3。宿主放本侧与
+# 效果域确定性两分(skill effect-inventory.md §3)。宿主放本侧与
 # 板面重写桥同理:申报模块 cw_affix_effects 头 import 本模块,桥落本侧免
 # 模块级成环;GameState 真类运行期函数内惰性取,维持「模块头零包内
 # import」契约。)
@@ -1435,7 +1433,7 @@ def transform_equip_to_privilege(gs: GameState, source_name: str, *,
 
 
 # ============================================================ 节点边界金结算载体
-# (装备申报面三贡献算术的组合写收尾,归属判据 = effect-domain.md §6.3
+# (装备申报面三贡献算术的组合写收尾,归属判据 = 效果域确定性两分
 # 确定性分支:轮首收入三支与装备贡献全部确定性可算 → 逻辑写,且同窗变更
 # 源必须合并为**单次**金面写入(窗口独占性分形段头注:节点边界窗曾与未接
 # 写端的轮首收入共享,本载体即该窗的 live 写端收束——收入公式已收束
@@ -1490,7 +1488,7 @@ def settle_node_boundary_gold(
       失配等价推算 bug);金未读(None)= 无累加基座,整拍跳过零
       写入(禁造假基座,板面重写桥金面同族先例);合计 0 同样跳过(无可
       入账增量,禁把观察金翻标成 logic,来源标记到字段)。
-    - **适用范围排除**:到期尾款金(effect-domain.md §7.3 禁 logic 直写防双计)、
+    - **适用范围排除**:到期尾款金(效果域到期尾款禁直写金)、
       事件金、STRATEGY_ECONOMY 的 gold_per_node 族(
       「'invest' 键单列」)不在本载体——各自接入调用面另批;sim 收入路径
       不经本载体(sim 真值合成)。

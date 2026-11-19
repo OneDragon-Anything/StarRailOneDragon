@@ -75,7 +75,7 @@
 - **附属机制**(与写门同居「上报」node 簇,session 通道;异常口径 best-effort,不阻塞上报主链):
   - 节点类型台账:`kernel/cw_exec_state.py::ledger_update_plane` plane_detail 源(详情条整面覆盖,None 位保旧)+ boss 位按「首领 = 位面最后节点」位置先验回填(`fill_boss_by_position`,回填依据 = 本 op 标签验证语义)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,状态容器非 Field 簿记)。
   - 敌人难度参考值:`get_node_ledger().difficulty_ref` 逐位面落账。
-  - 词缀效果账本登记:`kernel/cw_affix_effects.py::register_affixes_from_names`(上报后登记;中断恢复的对局这是词缀登记唯一活源——简报侧登记插入位置在中断恢复的对局不运行;命中结构化注册才入账本,登记体按已登记条目幂等,补采重跑不双登记;登记面纪律 = [../game_state/effect-domain.md](../game_state/effect-domain.md) 词缀源节)。
+  - 词缀效果账本登记:`kernel/cw_affix_effects.py::register_affixes_from_names`(上报后登记;中断恢复的对局这是词缀登记唯一活源——简报侧登记插入位置在中断恢复的对局不运行;命中结构化注册才入账本,登记体按已登记条目幂等,补采重跑不双登记;登记面纪律 = skills/sr-od-dev-currency-war/references/effect-inventory.md 词缀源同轨)。
 
 ## 7. 子态与 overlay
 

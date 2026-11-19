@@ -64,32 +64,32 @@ EXEMPT_REGISTRY: dict[tuple[str, str], tuple[ExemptEntry, ...]] = {}
 # 高效决策(id 301701,墙钟时限类首例):窗末失配豁免——覆盖写端
 # 前缀盘点全集(程序化盘点,前缀匹配 = effect_* 裸词含 @frame 变体;
 # 禁硬编码计数,新写端入域时同步扩面)。reason 为持久索引
-# (effect-domain §10-8 既有待裁决项,本条目系治理面配套非新增面)。
+# (高效决策 50s 墙钟窗既有待裁项,本条目系治理面配套非新增面)。
 EXEMPT_REGISTRY[('货币战争-备战-开商店', 'free_refresh_left')] = (
     ExemptEntry(screen='货币战争-备战-开商店',
                  field='free_refresh_left',
                  logic_evidence='proj_refresh_free_left',
-                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(effect-domain §10-8 待裁决);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
+                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(墙钟驱动维待裁);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
     ExemptEntry(screen='货币战争-备战-开商店',
                  field='free_refresh_left',
                  logic_evidence='effect_burst',
-                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(effect-domain §10-8 待裁决);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
+                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(墙钟驱动维待裁);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
     ExemptEntry(screen='货币战争-备战-开商店',
                  field='free_refresh_left',
                  logic_evidence='effect_node',
-                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(effect-domain §10-8 待裁决);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
+                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(墙钟驱动维待裁);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
     ExemptEntry(screen='货币战争-备战-开商店',
                  field='free_refresh_left',
                  logic_evidence='effect_plane',
-                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(effect-domain §10-8 待裁决);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
+                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(墙钟驱动维待裁);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
     ExemptEntry(screen='货币战争-备战-开商店',
                  field='free_refresh_left',
                  logic_evidence='effect_plane_refire',
-                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(effect-domain §10-8 待裁决);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
+                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(墙钟驱动维待裁);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
     ExemptEntry(screen='货币战争-备战-开商店',
                  field='free_refresh_left',
                  logic_evidence='refresh_random_sample',
-                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(effect-domain §10-8 待裁决);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
+                 reason='高效决策 50s 墙钟窗末游戏侧清零全部免费刷新(desc 明写);计数器模型无墙钟驱动维(墙钟驱动维待裁);窗末观察 0 对逻辑余量的覆盖 = 机制差异非推算 bug'),
 )
 
 

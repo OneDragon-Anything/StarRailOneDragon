@@ -221,7 +221,7 @@ def scan_rewrite_equipments() -> dict[str, str]:
 
 # ===== 装备改写成员写入归属申报表(键集必须恰等于 scan_rewrite_equipments 命中集)=====
 #: 归属判据(效果写入归属判据权威版本 = docs/develop/sr_od/application/currency_war/game_state/
-#: effect-domain.md §6.3;详设 = GameState 数据结构设计 §5.3):结果可准确
+#: 效果域确定性两分;详设 = GameState 数据结构设计 §5.3):结果可准确
 #: 计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 → 不建逻辑写端,观察
 #: 收束。「现观察覆盖兜底」= 生产插入位置接入调用归各覆盖批(工具执行/节点结算/获得
 #: 回执),接入调用前记录面维持观察覆盖。
@@ -409,13 +409,13 @@ def _validate_equip_write_sides() -> None:
 # 为 spec.id 键)。注册表外词缀(纯数值/无改写面)零动作,照旧观察覆盖兜底;
 # 开局不利走 AFFIX_SPEC_EXEMPT 豁免(专用写端载体,禁第二份数值源)。
 # 登记面 best-effort:调用方以 try/except 包裹、失败不阻塞读链主链(与策略源
-# 选卡登记插入位置同纪律,effect-domain.md §7.3「登记插入位置纪律」)。
+# 选卡登记插入位置同纪律,效果域登记 best-effort 纪律)。
 def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     """词缀 OCR 名集 → 命中结构化注册的词缀入效果账本(source='affix')。
 
     - **幂等**:已已登记词缀源条目(spec.id = 词缀名)跳过——简报重入/retry、
       位面详情补采重跑同词缀集不得双登记(实例按 spec_key 唯一,
-      effect-domain.md §9.1 销案「同卡叠加语义」同源)。
+      效果域「同卡不叠加」销案同源)。
     - **注册表命中才登记**:AFFIX_EFFECT_SPECS 之外的词缀无结构化规格 →
       零动作;改写面写端不归登记插入位置(归属单一源 = 各 spec.notes 与
       EQUIP_REWRITE_DECLARATIONS,接入调用前观察覆盖兜底)。

@@ -3620,7 +3620,7 @@ def gain_invest_strategy(gs: GameState, session: object,
                 _frame = _node_frame(gs)
                 _entry = gs.effects.register_strategy(_spec, _key)
                 # 金面播值负债卡首例(超发货币):登记帧金读数快照入条目
-                # counters[LOST](effect-domain §4
+                # counters[LOST](效果域伴生数值空间
                 # 伴生数值空间;live 读数 = 观察值,sim 读数 = 状态副本真值)。
                 # 本播值 = 状态容器簿记非金写,live 行为零变化;金读数 None =
                 # 计数缺省 + 缺陷留存证据(禁猜测写)。
@@ -4831,7 +4831,7 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        f'@{unlock[0]}-{unlock[1]}')
     # economy 交换条目(不等价交换,卡面「交换你的小队生命值和金币。」,
     # 棱彩):归属 = 逻辑写(效果族归属判据 = 可准确计算的确定性效果走
-    # 逻辑写,单一源 = game_state/effect-domain.md §6.3),
+    # 逻辑写,单一源 = game_state/效果域确定性两分),
     # kernel 获得链首个 hp 逻辑写端——与即时生命通道「链内写 hp 会在
     # live 侧引入 hp 逻辑写端」立场(apply_strategy_pick_hp docstring)
     # 并置不冲突:彼立场系该通道「选卡当场即时型」条目自身的实现选择,

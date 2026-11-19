@@ -386,7 +386,7 @@ class CwScreenPlaneIntel(CwOperation):
         # 词缀效果账本登记(上报后登记;中断恢复的对局这是词缀登记唯一活源——
         # 简报侧登记插入位置在中断恢复的对局不运行)。命中结构化注册才入账本,登记
         # 体按已登记条目幂等(补采重跑不双登记;登记面纪律 =
-        # effect-domain.md §7.6 词缀源节)。
+        # 效果域词缀源同轨,skill effect-inventory.md §6)。
         if self._affixes:
             with contextlib.suppress(Exception):
                 from sr_od.application.currency_war.kernel.cw_affix_effects import (
