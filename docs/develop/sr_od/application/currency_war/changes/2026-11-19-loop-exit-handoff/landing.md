@@ -12,7 +12,7 @@
 
 ### 2.1 T-1 app 交接节点（两段式 + 三形态判定）
 
-**范围**：按 design.md §2.2/§2.5：①`currency_war_app.py`「对局循环到结束」节点后新增「退出收尾」节点（node_from 默认 success 边；fail 边不接——loop 硬失败走 app 失败收尾现状语义；节点自身失败〔守卫预算耗尽/exit 调用失败〕→ 无出边 → app 失败收尾，与硬失败同型）；②交接节点两段式：先弹窗守卫段（复用进局链守卫注册表 `ENTRY_POPUP_GUARDS`，cw_entry_start.py）——**迁移面如实申报**：注册表现值三条（列车补给/星琼详情/星徽详情）且守卫规格 `EntryPopupGuardSpec` 是单动作形态；积分奖励不在注册表、是进局链内联两步动作（一键领取→关闭），照单动作迁入会死循环重试——迁移 = 守卫规格扩展支持「领后关闭」两段动作 + 注册表迁入 + 进局链内联段（`CwEntryStart` 积分奖励分支）处置；后 exit 调用段；③三形态判定，载体 = `self._previous_round_result.status`（禁另起炉灶）：大厅完成 → exit 大厅确认形态；异常交接 → exit 清场退局形态；其余（max_rounds 停备战 / 假局守卫开局失败-中断）→ 跳过 exit 直接结束；④两交接形态完成后置 `ctx.cw_match=None`（兜底清理点，design.md §2.3 口径）；⑤出口文本常量落 loop 常量面（`STATUS_LOBBY_DONE` / `STATUS_HANDOFF_PREFIX`，cw_loop.py 模块级，loop 出口与 app 判定共用单一源，禁裸串散写）；⑥新节点重试预算显式调高（框架缺省 3 次不够多层弹窗叠加，取值落地时按弹窗层数定并注释口径）；⑦打桩测试六用例（新文件 `test_currency_war_app_handoff.py`，打桩先例 test_nameless_honor_app.py：大厅→exit 被调+置 None / 异常→exit 被调+置 None / max_rounds→零调用 / 假局守卫→零调用 / fail→零调用+失败收尾 / 积分奖励压大厅→守卫清〔两步动作〕→exit 被调）。
+**范围**：按 design.md §2.2/§2.5：①`currency_war_app.py`「对局循环到结束」节点后新增「退出收尾」节点（node_from 默认 success 边；fail 边不接——loop 硬失败走 app 失败收尾现状语义；节点自身失败〔守卫预算耗尽/exit 调用失败〕→ 无出边 → app 失败收尾，与硬失败同型）；②交接节点两段式：先弹窗守卫段（复用进局链守卫注册表 `ENTRY_POPUP_GUARDS`，cw_entry_start.py）——**迁移面如实申报**：注册表现值三条（列车补给/星琼详情/星徽详情）且守卫规格 `EntryPopupGuardSpec` 是单动作形态；积分奖励不在注册表、是进局链内联两步动作（一键领取→关闭），照单动作迁入会死循环重试——迁移 = 守卫规格扩展支持「领后关闭」两段动作 + 注册表迁入 + 进局链内联段（`CwEntryStart` 积分奖励分支）处置；后 exit 调用段；③三形态判定，载体 = `self._previous_round_result.status`（禁另起炉灶）：大厅完成 → exit 大厅确认形态；异常交接 → exit 清场退局形态；其余（max_rounds 停备战 / 假局守卫开局失败-中断）→ 跳过 exit 直接结束；④两交接形态完成后置 `ctx.cw_match=None`（兜底清理点，design.md §2.3 口径）；⑤出口文本常量落 loop 常量面（`STATUS_LOBBY_DONE` / `STATUS_HANDOFF_PREFIX`，cw_loop.py 模块级，loop 出口与 app 判定共用单一源，禁裸串散写）；⑥新节点重试预算显式调高（框架缺省 3 次不够多层弹窗叠加，取值落地时按弹窗层数定并注释口径）；⑦打桩测试六用例（新文件 `test_currency_war_app.py`——currency_war_app.py 的 src 镜像名，app 层测试单一文件禁双名并存；打桩先例 test_nameless_honor_app.py：大厅→exit 被调+置 None / 异常→exit 被调+置 None / max_rounds→零调用 / 假局守卫→零调用 / fail→零调用+失败收尾 / 积分奖励压大厅→守卫清〔两步动作〕→exit 被调）。
 **设计依据**：design.md §2.2、§2.3（清理口径）、§2.5、attack.md §3.1
 **文件面**：`src/sr_od/application/currency_war/currency_war_app.py`、`operations/cw_entry/cw_entry_start.py`（守卫规格扩展+注册表迁入）、`operations/cw_loop.py`（常量面）、sr-od-test 新测试文件
 **依赖**：无
@@ -60,5 +60,5 @@
 ## 4. 挂账板动作（T-4 执行，`.debug/progress/CW跨迭代挂账.md`）
 
 1. **§二.7④ 销账拆两半**：「局终收尾归属」半——收尾簿记是对局流程的终点账，归 loop 本职（用户模型推演 2026-11-19）；「分发回调簿记」（统一置战斗窗回调）半——loop 运行期管理的组成部分（所有战斗窗交回路径统一设置），同归 loop 本职。两半各自一句理由，不捆绑；
-2. **立新挂账两条**：a)「委托清理 loop 不参与运行记录生命周期（构造开关跳过启动门控）」——幻影 run/日志归属碎片化治理，涉及运行门控深水面（跳过后日志归属行为未实证）；b)「sim 走 app 全链需先补 exit 识别 sim 改道口」——exit 三处识别点接 sim_or_live_identity，后端答口已存在未接线；
+2. **立新挂账两条**：a)「委托清理 loop 不参与运行记录生命周期（构造开关跳过启动门控）」——幻影 run/日志归属碎片化治理，涉及运行门控深水面（跳过后日志归属行为未实证）；b)「sim 走 app 全链需先补 exit 识别 sim 改道口」——exit 三处识别点接 sim_or_live_identity，后端答口已存在、exit 未消费；
 3. **过时导航行订正**：§二.7 内对本批的「落地进行中」类导航行如仍指向旧态则一并订正。

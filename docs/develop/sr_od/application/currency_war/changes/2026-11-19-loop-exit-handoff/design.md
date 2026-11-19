@@ -18,7 +18,7 @@
 
 ### 1.2 根因归层
 
-- **流程层**：loop/exit 的所有权方向未按用户模型接线——退出语义（交接）与清理能力（画面处置）混在 exit 一个 op 里，loop 侧没有退出触发的交接出口。
+- **流程层**：loop/exit 的所有权方向未按用户模型归位——退出语义（交接）与清理能力（画面处置）混在 exit 一个 op 里，loop 侧没有退出触发的交接出口。
 
 ### 1.3 解决到哪 / 明确不解决
 
@@ -121,7 +121,7 @@ route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定�
 
 ### 2.9 测试面
 
-- **app 交接节点测试**（新文件，src 镜像 `sr-od-test/test/sr_od/application/currency_war/test_currency_war_app_handoff.py`，app 层轻量打桩，打桩先例 test_nameless_honor_app.py）：六用例——①大厅形态 → exit 被调 + cw_match 置 None；②异常交接形态 → exit 被调 + cw_match 置 None；③max_rounds → exit 零调用；④假局守卫形态（开局失败-中断）→ exit 零调用；⑤fail → exit 零调用 + 失败收尾；⑥弹窗守卫（积分奖励压大厅 → 守卫清弹窗 → exit 被调）；
+- **app 交接节点测试**（新文件，src 镜像名 `sr-od-test/test/sr_od/application/currency_war/test_currency_war_app.py`——currency_war_app.py 的镜像，app 层测试单一文件禁双名并存；app 层轻量打桩，打桩先例 test_nameless_honor_app.py）：六用例——①大厅形态 → exit 被调 + cw_match 置 None；②异常交接形态 → exit 被调 + cw_match 置 None；③max_rounds → exit 零调用；④假局守卫形态（开局失败-中断）→ exit 零调用；⑤fail → exit 零调用 + 失败收尾；⑥弹窗守卫（积分奖励压大厅 → 守卫清弹窗 → exit 被调）；
 - **loop 出口语义测试**（镜像位置 `test_cw_loop.py`）：既有耗尽透传测试改断言（FAIL → success 且文本带 `STATUS_HANDOFF_PREFIX` 前缀；「链尾不空跑」断言保留不删）；新增委托模式耗尽维持 fail 断言；大厅/max_rounds 出口文本不变断言（防出口文本漂移破坏交接判定——与 §2.5 常量面联动）；
 - **exit 面**：唯一改动 = route⑤ 构造点补 `cleanup_delegate=True` 一参。exit 本体**无既有直接测试**（sr-od-test 的 cw_entry/ 目录为空）；唯一关联 = back_to_normal_world_plus 的打桩测试（monkeypatch 假类，不触 route⑤ 节点图，不受一参改动影响）——T-2 顺手补 delegate_loop 传参最小冒烟用例；
 - harness：app 层用打桩，画面帧不涉及。
