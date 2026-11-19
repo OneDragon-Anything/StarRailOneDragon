@@ -61,7 +61,7 @@
 
 先说三层各装什么:
 
-- **GameState 状态容器** = **局内事实的唯一载体**:观察到的对局事实(血量/金币/牌面/板凳/等级/连胜/节点类型/词缀/池状态/已持投资策略等)全在这里,含 Field 域与非 Field 簿记(设计权威版本 = `docs/develop/sr_od/application/currency_war/game_state/README.md` + 代码字段定义注释)。策略器的全部输入从这里读;执行层不再设旁表状态载体。
+- **GameState 状态容器** = **局内事实的唯一载体**:观察到的对局事实(血量/金币/牌面/板凳/等级/连胜/节点类型/词缀/池状态/已持投资策略等)全在这里,含 Field 域与非 Field 簿记(设计权威版本 = `references/game-state.md` + 代码字段定义注释)。策略器的全部输入从这里读;执行层不再设旁表状态载体。
 - **策略器状态 StrategyState** = **策略器自己的中间变量**:意向状态机、限制器计数、推导缓存——实现包私有类(mandate_v1 的 MandateState),实例属性 `self.state` 承载(经 `_create_state` 钩子每局全新创建);setter 同步挂接 `gs.strategy_state`——单一状态对象两处引用,禁第二状态对象。
 - **StrategySession**(`kernel/cw_strategy_session.py`)= 一局总载体:装观察数据 + 框架设施(性能观测反馈跟踪器);策略器状态与 rng 已迁策略器实例属性,session 不再中转。
 

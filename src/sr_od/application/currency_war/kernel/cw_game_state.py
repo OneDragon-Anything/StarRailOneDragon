@@ -1,6 +1,5 @@
 """货币战争 GameState 局内记录(迁移批次一骨架)。
 
-**权威版本入口** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``(总纲);
 **字段级规格** = 本模块各字段定义处注释(语义/取值时机/写入端/边界逐字段就地声明);
 **状态容器行为规范**(值怎么进来、怎么算对错、字段怎么设计)=
 ``skills/sr-od-dev-currency-war/references/game-state.md``。
@@ -1189,7 +1188,7 @@ def _route_logic_mismatch(*, field_name: str, expected: Any, actual: Any,
     3. 真失配 → 缺陷行 + ``[cw!]`` 告警 + 失配告警钩子(槽缺省关)。
 
     覆盖照常(以实际观察为准),本函数只管留存证据与处置;处置序设计取舍见
-    game_state/README.md 观察对账与失配告警节。"""
+    skill game-state.md §6「对账与失配处置」。"""
     entry = lookup_mismatch_exempt(sig.screen, field_name, logic_evidence)
     if entry is not None:
         _emit_defect(field_name=field_name, expected=expected, actual=actual,

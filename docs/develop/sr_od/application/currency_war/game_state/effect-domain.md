@@ -1,8 +1,6 @@
 # effect-domain.md —— 效果域(在场效果账本的内容语义)
 
-> 本文档所属 = game_state 设计目录,总纲见 [README](README.md)(含 GameState/BoardState
-> 命名对应注)。术语与图例:保留词与数字来源标注四形态【注】【推】【拟】【拍】见
-> [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;
+> 本文档所属 = game_state 设计目录。对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;
 > 帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。本文 = 效果域内容语义权威版本(计数器模型/实例清单/分类清单/生命周期/
 > 逐效果规格),即旧排期件(已删,git 可溯)中「效果域内容语义设计件」事项的成文文件,
 > 旧遥测流 cw4_counters 键级审计并入(键并入)游戏效果键入域的设计依据。
@@ -10,7 +8,7 @@
 
 ## 1. 本篇管什么
 
-效果域 = 效果账本域 `effects`(总纲 §3.3 域清单行)的内容语义,管理五面:
+效果域 = 效果账本域 `effects`(gs_schema 域组织 effects 键)的内容语义,管理五面:
 
 1. **计数器模型**(§3):实例进展的唯一记录形态与计算侧导出规则;
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
@@ -24,15 +22,15 @@
 
 | 语义面 | 单一源 |
 |---|---|
-| 效果变化的捕获与落盘(不设专用写入入口/专用域行,变更随快照行自带) | [journal.md](journal.md) §4 效果域捕获声明 |
-| 逐效果「效果 → state 字段」四槽登记(官方原文/机制/state 影响/策略层消费)与逐条确定进度 | [strategy-env-impacts.md](strategy-env-impacts.md)(下称 impacts) |
+| 效果变化的捕获与落盘(不设专用写入入口/专用域行,变更随快照行自带) | skill `sr-od-dev-currency-war/references/journal.md` §6 效果域捕获声明 |
+| 逐效果确定进度与机制知识 | `docs/game/currency_war/research/invest_effects.md`(game 侧正本)+ `kernel/cw_investments.py` overlay 行注释;待定卡流程 = 跨迭代挂账板「投资策略效果逐条确定工程」条 |
 | 效果数值真值(官方卡文/经济字段数值) | 代码注册表:`data/cw_invest_data.py`(base 官方文本,数据权限序之首)> `kernel/cw_investments.py`(overlay);值只在代码 |
 | 节点推进判定与节点入口边界(counter +1 时机的判定基础) | [node-derivation.md](node-derivation.md)(派生规则单一源) |
 | 效果的游戏机制原文考证 | docs/game/currency_war/(game 子树) |
-| 单版本事务/渠道签名/派生序(节点判定→类型→效果推进) | [journal.md](journal.md) §2/§3/§4 |
+| 单版本事务/渠道签名/派生序(节点判定→类型→效果推进) | skill `sr-od-dev-currency-war/references/journal.md` §4-§6 |
 
-写入通道归属:效果域是唯一以 **inventory 方法域**为主写渠道的域(总纲 §2 设计理念 4
-「唯一写入口,禁旁路」的两个合法通道之一)——实例的登记/推进/计数/移除全部经
+写入通道归属:效果域是唯一以 **inventory 方法域**为主写渠道的域(「唯一写入口,禁旁路」
+规范(skill game-state.md §3)的两个合法通道之一)——实例的登记/推进/计数/移除全部经
 `ActiveEffectInventory` 方法,不经 `observe()`/`write_logic()`;效果改写**其他**域字段
 (金/免费刷新余额/容量)时,才按被改写域的写入口规则走(§6.3 归属判据)。
 
@@ -45,7 +43,7 @@
   session 无独立字段——历史兼容读取入口 property 已撤,写读直经
   `game_state_of(session).effects`(同一实例,防第二账本)。
 - 写入方(接入点)六处在用,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
-  效果域直摸测试(journal.md §6 硬约束①族)。
+  效果域直摸测试(journal.md §11 硬约束①族)。
 - 读取入口 = 查表方法(`by_source`/`first`/`counter`;原 `by_category`/`by_trigger`/
   `predict_for` 查询口已随死代码清偿移除——在用读取 = 按源过滤与逐条直取;
   `by_source` 按 source='strategy'/'affix' 取值分源读,词缀源读取入口)。
@@ -147,7 +145,7 @@ unit_buff);词缀源
 | 静态修改器 | 持有期常数覆写/倍率,无时点事件 | counter 空(声明即生效,消费点计算侧直读,§6.2) | 无 | 开源节流 interest_cap_override(cw_investments.py:171)、简单模式 difficulty_delta(:267) |
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
-| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:681)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 状态容器落位 = `strategy_gold_next_nodes_left` 递减形〔cw_game_state 字段注释〕,counter 口径权威版本 = strategy-env-impacts.md 用户裁决段) |
+| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:681)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 状态容器落位 = `strategy_gold_next_nodes_left` 递减形〔cw_game_state 字段注释〕) |
 | 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(§7.4,N=1 事件直结退化形) |
 | 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(`STRATEGY_ECONOMY['成长基金']`)、成长的快乐 xp_click_discount_from_level_at=8(`STRATEGY_ECONOMY['成长的快乐']`) |
 | 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链已登记——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
@@ -160,7 +158,7 @@ unit_buff);词缀源
 需要」分判:
 
 1. **随事件必须落账 → 单版本事务内急算**:计数器推进、发放、倒计时基数,在派生
-   管线效果域段同一事务内算完落账(journal.md §4 派生原子生效)。
+   管线效果域段同一事务内算完落账(journal.md §6 派生原子生效)。
 2. **消费时才被问 → state 内部惰性读取入口**:不随事件变化、消费时才需要的派生值,做成
    读取入口,消费时现算,不占存储。已确认实例:`effective_node_pos()`([node-domain.md]
    (node-domain.md) §3)/ `xp_buy_cost()`(商业间谍被动分支,§8)。
@@ -291,8 +289,8 @@ unit_buff);词缀源
   live 零写(游戏自扣自发,金整字段观察覆盖兜底),回流 = sim 节点窗把结果写进状态副本的实现分支。
   **t=5/6 对表**:注册行 `gold_at_node_offset=5`(cw_investments.py:681)的 offset
   语义 =「须完整过去的节点数」,发放入口序 = offset+1 = 拿卡后第 6 次节点入口
-  (单一源 = strategy-env-impacts.md 超发货币条目用户裁定 2026-09-10
-  「5个节点后=第6个节点才获取」;载体表达 = STRATEGY_EFFECTS 条目 duration_nodes=6)。
+  (单一源 = 用户裁定「5 个节点后 = 第 6 个节点才获取」;
+  载体表达 = STRATEGY_EFFECTS 条目 duration_nodes=6)。
 - **登记接入点纪律**:登记面 best-effort,失败不阻塞选卡主链(登记插入位置 = 获得链
   `kernel/cw_gain_chain.py::gain_invest_strategy` ②,选卡上报函数族驱动;唯一生产
   调用方 = 动作 op `operations/cw_op/cw_pick_invest_action.py`——原画面 op 写点
@@ -344,8 +342,8 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 零战斗结算触发、零选择触发条目(§8 全表);②结算数据链路已在用零缺口(结算屏
 观察 → settlement 域覆盖 → 策略器惰性消费);③inventory 触发过滤查询口已随死代码
 清偿移除(原 `by_trigger`/`predict_for` 无生产调用方;在用查询 = `by_source`/`first`/
-`event_count`,grep 可复核);④总纲设计理念「无独立事件流,
-一切派生产出都是 state 写入」(总纲 §2 理念 2)。
+`event_count`,grep 可复核);④「无独立事件流,一切派生产出都是 state 写入」
+(skill journal.md §6 派生原子生效:派生规则在单版本事务内完成)。
 
 ### 7.6 词缀源(source='affix')
 

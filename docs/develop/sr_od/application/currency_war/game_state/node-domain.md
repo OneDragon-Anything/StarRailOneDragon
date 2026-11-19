@@ -1,8 +1,6 @@
 # node-domain.md —— 节点域(索引篇:字段指针/生效序读取入口消费纪律/单一源引用)
 
-> 本文档所属 = game_state 设计目录,总纲见 [README](README.md)(含 GameState/BoardState
-> 命名对应注)。术语与图例:保留词与数字来源标注四形态【注】【推】【拟】【拍】见
-> [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;
+> 本文档所属 = game_state 设计目录。对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;
 > 帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
 > 节点推进规则本体唯一权威出处 = [node-derivation.md](node-derivation.md);本篇不复写判定
 > 语义(双处书写 = 漂移根因,文档拆分裁定),只记节点域的消费侧纪律、记录面分工
@@ -94,8 +92,8 @@ id_mark 确认 helper 的四分支显式处置(含读数倒退不采信并保留
 |---|---|
 | 字段结构与两态来源语义 | [node-derivation.md](node-derivation.md) §3.2-7 |
 | 规则本体(触发面/门与原语/id_mark 确认处置/推进语义) | [node-derivation.md](node-derivation.md) §3.3 |
-| 推进事实落账(journal 行) | [journal.md](journal.md) §1(推进写账 = 行型 1 写入行;门挡保留证据 = 行型 2 obs_event arbitrate) |
-| 渠道归属 | 总纲域清单(README §3.3);写入口语义见 node-derivation.md §3.2-7 |
+| 推进事实落账(journal 行) | skill `sr-od-dev-currency-war/references/journal.md` §3(推进写账 = 行型 1 写入行;门挡保留证据 = 行型 2 obs_event arbitrate) |
+| 渠道归属 | gs_schema 域组织(代码单一源);写入口语义见 node-derivation.md §3.2-7 |
 | 回归走查(多推进源叠加形态) | [node-derivation.md](node-derivation.md) §3.6 |
 
 ## 6. 级联走查指针

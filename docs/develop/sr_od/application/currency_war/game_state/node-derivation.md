@@ -1,6 +1,6 @@
 # 节点推进(node_enter)派生规则判定方案(派生规则单一源)
 
-> 本文档所属 = game_state 设计目录,总纲见 [README](README.md)。术语与图例:保留词(id_mark 确认/对账/帧/单一源等)与数字来源标注四形态【注】【推】【拟】【拍】见 [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
+> 本文档所属 = game_state 设计目录。对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
 > **定位**:本文 = 节点推进判定规则本体的唯一权威出处——只写现行规则(触发面/观察态门/三原语/四分支处置/类型派生/停用申报);旧版规则组的演进与勘误过程归 git 历史,正文不复写。
 > 实现引用 = kernel `report_node_advance`/`advance_node_effective`/`observe_node_anchor`(cw_game_state.py);载体规范(版本 id/单版本事务/渠道签名/行型)单一源 = skill `sr-od-dev-currency-war/references/journal.md` §4-§5,本文不复写。
 
@@ -33,7 +33,7 @@ id_mark 确认 helper,两写入位置共用:CwScreenPrep 备战顶栏 / CwScreen
 观察 node(经 `_write_derived_node_type`,简报屏仍是 boss 类型权威)。生效序读取入口 =
 `effective_node_pos` = max(node_pos 现值, node_hist_pos)(元组字典序取大,
 派生计算非存储)。载体
-规范(单版本事务/渠道签名/行型)单一源 = [journal.md](journal.md) §2-§3,本文不复写。
+规范(单版本事务/渠道签名/行型)单一源 = skill `sr-od-dev-currency-war/references/journal.md` §4-§5,本文不复写。
 
 ---
 
@@ -242,7 +242,7 @@ per_node_pick_node_grant.md,效果域细则 = [effect-domain.md](effect-domain.m
 
 **单一源边界申报**:本文管**判定规则本体**(触发面/候选值/门与守卫/推进语义/
 类型派生);**载体规范(版本 id 分配/单版本事务与原子性/渠道签名/行型 schema/
-落盘)单一源 = [journal.md](journal.md) §2-§3**(载体规范),本文不复写、不设副本。
+落盘)单一源 = skill `sr-od-dev-currency-war/references/journal.md` §3-§7**(载体规范),本文不复写、不设副本。
 
 ### 3.6 边界场景逐个走查(按动作上报 + 观察 id_mark 确认模型;每屏标注推进/确认通道)
 

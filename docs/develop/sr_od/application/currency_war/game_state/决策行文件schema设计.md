@@ -108,7 +108,7 @@
 |---|---|---|
 | state(全量 GameState 快照) | 统一 state 行行自足,state_ref 钉行即含全部字段 | 不发射(瘦身判据直接适用;回放重建读 journal,决策面切换批已切) |
 | hp / gold | 统一 state 经济域可算(钉行现值);gold 轨迹已改流水派生 | 不发射 |
-| hp_readable / gold_readable / level_readable | 读值质量维 = journal 渠道签名与来源注记的职责(单字段双值结构,game_state/README.md §2-3);生产决策行自首批写面删除批起本就无写入位置,新文件不发射 = 零回归 | 不发射 |
+| hp_readable / gold_readable / level_readable | 读值质量维 = journal 渠道签名与来源注记的职责(来源与质量由渠道签名承载,skill game-state.md §3);生产决策行自首批写面删除批起本就无写入位置,新文件不发射 = 零回归 | 不发射 |
 | active_strategies | 统一 state 局级事实域字段 | 不发射 |
 | form_score | 已停用字段(schema 自申报「历史数据只读」,新写入方不再写;替代披露口径 = b_t)——停用既成事实,非本设计新增停用 | 不发射 |
 | phase | 行字段 phase 在 schema 自申报「v2 相位机停用,无写入方恒缺省」(零消费)——无读写端的字段;注意与状态容器 StrategyState.v3_phase(在用每轮重算的相位观测)非同一载体,状态容器相位的行披露如需入行属新接入调用义务,不在本设计默认面 | 不发射 |
