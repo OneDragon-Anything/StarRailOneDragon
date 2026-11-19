@@ -1,5 +1,4 @@
 
-import time
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -42,6 +41,10 @@ class EntryPopupGuardSpec:
     零画面坐标进代码(坐标单一真相源在 screen_info)。循环语义统一 round_retry
     (具名状态),禁 round_wait——框架对 WAIT 不计 retry 且归零计数(
     §2.2 实证),会无界空转。
+
+    两段动作(领后关闭):积分奖励类弹窗的处置 = 先点领取区、领后取新帧再点
+    关闭钮,单守卫轮内完成;照单动作形态迁入会死循环重试「一键领取」(领完
+    按钮消失、点击落空)。缺省 None = 单动作形态(既有三条不变)。
     """
 
     # 画面档 screen_name(单一真相源;字段序即数据表列序,值来自各建档 yml)
@@ -54,6 +57,8 @@ class EntryPopupGuardSpec:
     retry_status: str
     # 关闭/领取动画等待秒数
     wait_seconds: float
+    # 两段动作(领后关闭)第二段的点击目标 area 名;None = 单动作形态
+    post_action_area_name: str | None = None
 
 
 # 列车补给每日弹窗(建档 assets/game_data/screen_info/currency_war_train_supply.yml):
@@ -103,15 +108,34 @@ _STAR_BADGE_GUARD = EntryPopupGuardSpec(
     wait_seconds=1.5,
 )
 
+# 积分奖励页(建档 assets/game_data/screen_info/currency_war_score_rewards.yml;
+# M58 停机建档:局末积分达标自动弹,bot 不认识此屏 → 干等超时 196s)。
+# 领后关闭两段动作(原进局链推进循环的内联分支,已迁入注册表):一键领取(有
+# 达标奖励)→ 领取动画(主动作 success_wait 覆盖)→ 点 X 关回原画面;领完弹窗
+# 自关或留 X 两种形态都由守卫循环重识别收敛(第二段点击落空无害,识别标志
+# 持续命中期间逐轮重清)。识别标志 = 「标识-积分奖励」4 字单识别标志,与
+# supply 同强度分层。本守卫是 app 交接节点守卫段的主消费场景(局末自动弹
+# 恰好压住大厅识别 → 不清则 exit 识别全落空)。
+_POINT_REWARD_GUARD = EntryPopupGuardSpec(
+    screen_name='货币战争-积分奖励',
+    identify_area_names=('标识-积分奖励',),
+    action_area_name='按钮-一键领取',
+    retry_status='积分奖励领取中',
+    wait_seconds=2,
+    post_action_area_name='按钮-关闭',
+)
+
 # 注册表元组顺序 = 调用点执行序:supply 在 detail 族之前(领取优先,
 # 调用点约定;叠层语义:supply 弹窗被 detail 盖住时其背景识别标志 OCR 不命中,
-# 自然让位给 detail,序位无害)。序位知识只住这一处数据;机械防线 = 测试仓
-# test_cw_screens_entry.py 的守卫序位测试(元组重排即红)。升级依据:
+# 自然让位给 detail,序位无害)。积分奖励殿后:领取类动作与 supply 同族,
+# 但触发场景是局末自动弹(压大厅),与入口链途中弹窗无同帧叠加路径,
+# 序位居后无冲突。序位知识只住这一处数据。升级依据:
 # 预约「第三个同族弹窗出现时升级为注册表」,由星徽落位触发。
 ENTRY_POPUP_GUARDS: tuple[EntryPopupGuardSpec, ...] = (
     _TRAIN_SUPPLY_GUARD,
     _JADE_DETAIL_GUARD,
     _STAR_BADGE_GUARD,
+    _POINT_REWARD_GUARD,
 )
 
 
@@ -124,6 +148,11 @@ def _handle_entry_popup_spec(
     (「点了≠成了」在循环层兑现):下一轮弹窗识别标志不命中 = 关闭/领取落地,交下游
     既有分支;点击始终不落地 = 每圈耗 1 次节点预算,预算耗尽以 spec.retry_status
     具名 FAIL(改形)。
+
+    两段动作(spec.post_action_area_name 非 None):主动作(领取)点击的
+    success_wait 覆盖领取结算动画,随后取新帧点第二段(关闭)——关闭前重截
+    是领后画面已变的实测语义(旧内联分支同款);第二段点击不落地无害,下一
+    轮守卫重识别再清(识别标志在弹窗未被关闭期间持续命中)。
 
     op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
     未命中返回 None;命中返回 round_retry(等关闭/领取动画回落)。
@@ -138,6 +167,10 @@ def _handle_entry_popup_spec(
     op.round_by_find_and_click_area(
         screen, spec.screen_name, spec.action_area_name,
         success_wait=2, crop_first=False)
+    if spec.post_action_area_name is not None:
+        op.round_by_find_and_click_area(
+            op.screenshot(), spec.screen_name, spec.post_action_area_name,
+            success_wait=2, crop_first=False)
     return op.round_retry(status=spec.retry_status, wait=spec.wait_seconds)
 
 
@@ -458,17 +491,8 @@ class CwEntryStart(CwOperation):
                              lcs_percent=0.8).is_success:
             self.ctx.controller.click(CW_BLANK_CLICK_RECT.center)
             return self.round_wait(wait=1)
-        # 3b) 积分奖励页( M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
-        #     到备战不认识此屏 → 干等超时 196s)。处理:一键领取(有达标奖励)→ 等结算动画 →
-        #     点 X 关回大厅,下轮 entry 重新推进(领完弹窗自关或留 X)。
-        if self.round_by_find_area(screen, '货币战争-积分奖励', '标识-积分奖励',
-                                   crop_first=False).is_success:
-            _ok = self.round_by_find_and_click_area(
-                screen, '货币战争-积分奖励', '按钮-一键领取', success_wait=1)
-            _log.info('[cw-entry] 积分奖励页 → 一键领取(%s)后关闭', '点' if _ok.is_success else '按钮未读到')
-            time.sleep(1.5)   # 领取动画
-            self.round_by_find_and_click_area(
-                self.screenshot(), '货币战争-积分奖励', '按钮-关闭', success_wait=1)
-            return self.round_wait(wait=2)
+        # 积分奖励页原为内联分支(3b,一键领取→关闭),已迁入模块级守卫注册表
+        # (_POINT_REWARD_GUARD,领后关闭两段动作):本节点顶部守卫先于一切
+        # 状态分支,内联分支不可达,删除(单一处置语义,禁两处各写一份)。
 
         return self.round_retry(wait=1)

@@ -26,7 +26,11 @@ from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
     CwEntryStart,
     try_handle_entry_popups,
 )
-from sr_od.application.currency_war.operations.cw_loop import CwLoop
+from sr_od.application.currency_war.operations.cw_loop import (
+    STATUS_HANDOFF_PREFIX,
+    STATUS_LOBBY_DONE,
+    CwLoop,
+)
 from sr_od.application.currency_war.telemetry import defects, state
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
@@ -58,7 +62,9 @@ class CurrencyWarApp(SrApplication):
     """货币战争应用。纯代码自主打完整局(无 LLM,实机验证):
 
     大世界 → 货币战争大厅(`CwEntryEnter`)→ 开始对局到备战(`CwEntryStart`)
-    → 对局循环到结束(`CwLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)。
+    → 对局循环到结束(`CwLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)
+    → 退出收尾(交接节点:弹窗守卫 + `CwEntryExit` 退局/大厅确认;max_rounds
+    停备战与假局守卫形态跳过退出)。
 
     **中间态接手**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
     已在 CW(大厅/对局中)就跳过 enter/start、直接进 loop。故 bot crash/重启/手动接管后,
@@ -245,3 +251,51 @@ class CurrencyWarApp(SrApplication):
         _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
         op = CwLoop(self.ctx, max_rounds=_cfg.max_rounds)
         return self.round_by_op_result(op.execute())
+
+    # 交接节点重试预算口径:守卫注册表现 4 条,最坏全叠 = 每层 1 轮守卫动作
+    # + 点击偶发不落地 ×2 余量 = 8 轮;再留 1 倍余量取 16。预算只在守卫命中轮
+    # 消耗(round_retry),未命中轮落 exit 段或跳过分支即非 RETRY 出口,
+    # 框架归零计数,不为无弹窗场景白付。框架缺省 3 次不够多层弹窗叠加。
+    EXIT_NODE_RETRY: ClassVar[int] = 16
+
+    @node_from(from_name='对局循环到结束')
+    @operation_node(name='退出收尾', node_max_retry_times=EXIT_NODE_RETRY)
+    def _exit_cleanup(self) -> OperationRoundResult:
+        """交接节点(loop→exit 交接):对局循环结束后把「该退出但还没退」的
+        状态移交 CwEntryExit 处置。
+
+        三形态判定,载体 = ``self._previous_round_result.status``(框架在节点
+        转移时写入;WAIT/RETRY 重入不覆盖,守卫段重试不污染载体;带动态后缀
+        的结束文本不能走节点边文本全等,故读上一轮结果对象):
+        - 大厅完成(STATUS_LOBBY_DONE):游戏已回大厅 → exit 大厅确认形态
+          (幂等确认,无弹窗压制时近 no-op);
+        - 异常交接(STATUS_HANDOFF_PREFIX 前缀,loop 外环 fail-streak 耗尽的
+          交接出口):残局留在对局内 → exit 按当前画面路由清场退局(备战点门/
+          战斗退局范式/其余画面委托 loop 清理),exit 不区分形态传参;
+        - 其余(max_rounds 停备战留局采样 / 假局守卫开局失败-中断〔已在大厅
+          且对局状态已清〕)→ 跳过退出直接结束。
+        loop fail(看门狗/框架超时/未捕获/未知兜底)不经本节点:success 边才
+        入,fail 无匹配出边 = app 失败收尾(残局下次启动预检兜底)。
+
+        两段式:守卫段复用进局链弹窗守卫注册表 ENTRY_POPUP_GUARDS,清掉局末
+        自动弹、会压住 exit 识别的弹窗(不守卫则 exit 识别全落空误入战斗链)
+        → exit 调用段。两交接形态 exit 成功后置 ``ctx.cw_match = None``
+        (兜底清理点:分层清理口径的 app 层,幂等;同进程下一局 CwLoop 新局
+        判定 ``ctx.cw_match is None`` 的前提)。exit 调用失败或守卫预算耗尽
+        → 本节点 FAIL → 无出边 → app 失败收尾(与硬失败同型,残局可见)。
+        """
+        prev = self._previous_round_result
+        prev_status = prev.status if prev is not None else None
+        is_handoff = (prev_status is not None
+                      and prev_status.startswith(STATUS_HANDOFF_PREFIX))
+        if prev_status != STATUS_LOBBY_DONE and not is_handoff:
+            return self.round_success(f'非退出交接形态,跳过退出({prev_status})')
+        screen = self.last_screenshot
+        popup = try_handle_entry_popups(self, screen)
+        if popup is not None:
+            return popup
+        op = CwEntryExit(self.ctx)
+        result = self.round_by_op_result(op.execute())
+        if result.is_success:
+            self.ctx.cw_match = None
+        return result

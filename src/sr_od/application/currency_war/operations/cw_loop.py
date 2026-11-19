@@ -145,6 +145,17 @@ from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategyS
 from sr_od.application.currency_war.telemetry import state
 from sr_od.context.sr_context import SrContext
 
+# loop 结束出口文本常量(loop 出口与 app 交接判定共用单一源,禁裸串散写)。
+# 消费方:CwLoop 大厅收尾出口(_lobby_return_collect)与 CurrencyWarApp
+# 退出收尾节点的交接形态判定。
+#: 大厅完成形态:终局结算回大厅、收尾簿记完成的出口文本。
+STATUS_LOBBY_DONE: str = '对局结束,回大厅'
+#: 异常交接出口文本前缀(完整文本 = 前缀 + 触发分发键;带动态后缀不能走
+#: 节点边的文本全等匹配,判定方按 startswith 消费)。loop 耗尽出口产出
+#: 该前缀文本的改写属 loop 出口语义调整,不在常量落位范围;当前消费方 =
+#: CurrencyWarApp 退出收尾节点及其打桩测试。
+STATUS_HANDOFF_PREFIX: str = '异常退出交接:'
+
 
 def _dispatch_pos(ctx: Any) -> tuple[int, int]:
     """[cw-op] 行位置键:状态容器节点读口现读(缺省镜像 kernel 读口 1 形态;
@@ -1203,7 +1214,7 @@ class CwLoop(CwOperation):
                 except Exception as e:   # noqa: BLE001  观测旁路,best-effort
                     log.warning('[cw][archive] 局终装配失败(不阻塞): %s', e)
                 self.ctx.cw_match = None
-            return self.round_success('对局结束,回大厅')
+            return self.round_success(STATUS_LOBBY_DONE)
 
         # C2:收尾面非推进画面,写端不随 op 化迁移;包装补
         # op='回大厅收尾' 行,链体零改(链形透传,轮次结果即分支出口)。
