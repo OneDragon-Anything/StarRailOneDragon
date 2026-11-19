@@ -57,7 +57,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 状态容器标准名
 │    弹窗被处理(银狼策划选择上报),授予 = 附带条件分支(代码 branch_type='rider')
 │    `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`
 │    (`active_env` 欢愉契约已登记 → `gain_character` 1★ rand=True,写端 =
-│    rider 链内落位/合成写),权威版本 = ../game_state/gain-chain.md §3)
+│    rider 链内落位/合成写),权威版本 = kernel/cw_gain_chain.py 枚举回调)
 ├─ 台账变异窗:选卡链派发**前**开窗(env_grace_until = now + 45s 常量
 │    ENV_GRACE_S)——环境选择是位面节点序列唯一变异源,确认到节点行
 │    重读之间的查表不一致是合法变异,三票校验不得落缺陷台账
@@ -90,13 +90,12 @@ act = match.strategy.decide_invest_env()(零参,输入 = 状态容器标准名
 - `active_env` 写入:动作落地获得链写(`kernel/cw_gain_chain.py::gain_invest_env`,
   写行署名 `GAIN_CHAIN_PRODUCER`;**写时点 = 动作执行时**——动作 op 点完确认
   立即上报,契约 = [../flow/action_ops.md](../flow/action_ops.md) §1「用户裁定(点完即写)」、
-  链式规范权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)
-  §2.1/§8;链内无效载荷拒绝 = 不写保留证据,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md) §2.1 步 0;本屏不写游戏状态)。
+  链式规范权威版本 = kernel/cw_gain_chain.py(原语与模块拆分);链内无效载荷拒绝 = 不写保留证据,权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring) §2.1 步 0;本屏不写游戏状态)。
 - portal 效果登记:`gain_invest_env` 链内分支 → `kernel/cw_effect_inventory.py::
   register_portal_from_env`(best-effort,失败保留证据不阻塞;经济判据接登记数据归后续批)。
 - 环境赠卡入席/席满溢出落位:`gain_invest_env` → `on_env_gained` 枚举 →
   `gain_character`(入席/溢出/升星链)。欢愉契约的附带条件授予不在本枚举
-  (触发条件/写端/权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md) §3;
+  (触发条件/写端/权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring) §3;
   见 §4 选卡分支申报)。
 - 候选观察:`report_screen_invest_env_obs` 候选写状态容器 `invest_env_opts` 槽 +
   刷新剩余写 `env_refresh_left`(观察写端,读缺跳写)。
@@ -112,7 +111,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 状态容器标准名
 - 刷新零效果保留证据(缺陷台账 L2 记录,不停机不改道);偏移错 → 刷新未命中时重进后计数未扣、预算仍在 → 再次刷新,每圈耗 1 次外环重进(能力退化非事故,复测即修)。
 - 读缺守卫:计数读缺 = 无授权(失败安全);无帧 = 刷新链跳过。
 - 台账变异窗(45s)防确认后节点行刷新窗口内的三票校验误报。
-- 获得链守卫(动作落地时点,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)):
+- 获得链守卫(动作落地时点,权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring)):
   portal 登记分支 best-effort 失败保留证据不阻塞(已迁链内);特邀专家(advisor)卡面
   不入席——经解锁写原语 `_unlock_experts` 写 `unlocked_experts`(顾问入商店;
   条件形态首例特邀专家:银狼含环境获得时点在场判定,未命中零写效果串空尾);

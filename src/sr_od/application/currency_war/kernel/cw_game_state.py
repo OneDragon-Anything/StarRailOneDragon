@@ -259,7 +259,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'env_grant_uid_seq': 1,     # 环境发放实例号发号计数器(int 保型
                                 # 直通免 rebuild 登记)。独立键版本 1,同上
     'pending_item_opens': 1,    # 环境倒计时件开盒队列(正本 =
-                                # game_state/gain-chain.md 倒计时件通道节;
+                                # kernel/cw_gain_chain.py 倒计时开盒通道;
                                 # 元素 (件名, 解锁序位 NodePos))。独立键
                                 # 版本 1,同 env_grants_done 先例不并入
                                 # 他域 bump
@@ -2876,7 +2876,7 @@ class GameState:
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(品质定序挂建模批;开局初始值=[]未持卡)
     unlocked_experts: Field[tuple[str, ...]] = field(default_factory=Field)  # 本局已解锁入池专家顾问规范名(economy.md §1:专家初始不参与普通商店招募,经投资环境/投资策略/专家邀请函等通道解锁后本局加入商店;池派生消费 = cw_pool 按名并入 EXPERT_COPIES_ASSUMED 副本)。开局初始值=()未解锁;只增不减(现役解锁通道无回收语义)。写入端 = 获得链 advisor 道(cw_gain_chain.on_env_gained/on_strategy_gained)+ 装备通道(on_equipment_gained 分身墨镜族)+ 条件形态触发判据(cw_gain_chain.expert_conditional_trigger 三渠道);成员闭集闸 = cw_chars.assert_expert_names。条件形态条目(现役首例 = 特邀专家:银狼)的写入时点 = 触发事件(首次获得银狼LV.999,含环境获得时点在场判定插入位置),非环境获得时点的即时名单
     # [索引定义] pending_item_grants = 已登记、未到点发放的定时道具队列(环境
-    # 定时发放通道,正本 = game_state/gain-chain.md 定时发放节)。entry 形 =
+    # 定时发放通道,正本 = kernel/cw_gain_chain.py::discharge_due_item_grants)。entry 形 =
     # {'env': 登记来源环境名, 'plane': 位面(1 基), 'round_num': 位面内轮
     # (1 基,与 node 域 plane/round_num 同坐标系), 'item': 道具名};
     # plane/round_num = 入队期从登记节点键 '位-轮' 解析好的目标节点,取值时机 =
@@ -2889,7 +2889,7 @@ class GameState:
     # [索引定义] pending_item_opens = 已获得、待倒计时归零开盒的战利品区
     # 倒计时件队列(状态副本发放域延迟开盒通道〔环境 ∪ 策略〕,环境首例 =
     # 命运礼物、策略首例 = 偶像经济火花礼盒;设计正本 =
-    # game_state/gain-chain.md 倒计时件通道节)。元素 = (item 件名,
+    # kernel/cw_gain_chain.py 倒计时开盒通道)。元素 = (item 件名,
     # unlock NodePos 解锁位);unlock 坐标系 = NodePos(位面,轮次)字典序、
     # 1 基(cw_node_schedule.NodePos 同式);取值时机 = 卡获得刻写(获得
     # 刻生效序位沿日程表步进 open_delay_nodes 步,deploy_lock 锁分支同式,步进按

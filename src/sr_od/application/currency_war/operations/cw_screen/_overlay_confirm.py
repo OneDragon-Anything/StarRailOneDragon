@@ -55,8 +55,8 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
       状态容器(GameState)单例金账,写通道单一源在 cw_exec_state;补给确认不在本族——
       其入栏/后果分支由 ``report_action_pick_supply_param`` 即时单相一口写);
     - ConfirmStrategy:本函数零写——投资策略选择事实经动作落地获得链写
-      (动作 op 即时上报 → gain_invest_strategy,权威版本 = game_state/
-      gain-chain.md;原 handler 确认写点已停用);
+      (动作 op 即时上报 → gain_invest_strategy,权威版本 = kernel/
+      cw_gain_chain.py 模块 docstring;原 handler 确认写点已停用);
     - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
       handler 的 ``GameState.write_logic``(选择落地即写,cw_screen_megastar
       /cw_screen_partner)。

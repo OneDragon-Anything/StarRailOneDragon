@@ -562,7 +562,7 @@ class GiftGrant:
       直读形态的结构化承载)。「不可具名不入」注释覆盖 chars_immediate/
       chars_conditional 两个估值域字段(档位机器按具名角色打分);本字段
       是状态副本这一侧的发放域形状,不进档位机器(恒判 off)。发放 = 采样支:规格过滤
-      池内均匀掷骰选名 → gain_character(rand=True,gain-chain.md §5
+      池内均匀掷骰选名 → gain_character(rand=True
       效果体含采样)。立形首例 = 人才引进(星级先验 1)
     - equips_random_immediate: 取环境当场发放的随机装备,元素 = 装备类别名
       (EQUIPMENTS category 词),数量 = 元素重复次数。发放 = 采样支:类别池
@@ -880,7 +880,7 @@ HYPEREMIT_SPEC_NAME: str = '超发货币'
 # (cw_sim_backend 选卡落地拍,状态副本真值)与获得链随机角色条目
 # (cw_gain_effects 效果体,发放数量)——数量口径必须同源,分写两处会
 # 在基数变化时漂移。放 kernel:两消费端中 sim 在 sim 包,import 方向
-# 只允许 sim→kernel(kernel 模块级禁 import sim,gain-chain 模块边界),
+# 只允许 sim→kernel(kernel 模块级禁 import sim,cw_gain_chain 模块边界),
 # 故函数不能住 sim 侧。
 
 #: 卡文「每损失4金币」直读(步进单位)。
@@ -1488,8 +1488,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # CONDITIONAL:词表注释明列本卡(LEVEL_UP = 每次升级语义,本卡仅
     # 9 级一次,不占);状态副本发放条目 = sim 到级检查函数
     # (kernel/cw_gain_chain.check_strategy_level_grants,advance 双点接
-    # 入调用,现役 sim 经验常量下 9 级不可达 = 休眠正确路径,gain-chain.md
-    #);登记条目本批零行为消费(登记端可见性优先,成功经验同姿
+    # 入调用,现役 sim 经验常量下 9 级不可达 = 休眠正确路径)
+    #;登记条目本批零行为消费(登记端可见性优先,成功经验同姿
     # 态),行为在检查函数不经 inventory 条目驱动。duties 全空(无计数
     # 器/无预知/无姿态消费面,本金充裕同形态);burst/板面两桥零行为
     # (payload 无 instant/burst 字段、非 BattlefieldEffect)。
@@ -3201,6 +3201,12 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
 
 
 # ===== 环境经济通道注册表(白名单制)=====
+# **估值通道**:结构化经济效果参数,消费面 = 策略层 env_economy(估值)
+# + 获得链 on_env_gained 即时金分支(gold_instant,两执行面同源落链)。
+# 分域边界:单一环境只落一个估值结构——无 import 期表间互斥校验,单一
+# 落点归评审把关;状态副本发放域各表(ENV_ORE_GRANTS/ENV_STREAK_
+# GRANTS/ENV_REFRESH_GRANTS/ENV_DELAYED_ITEM_GRANTS)非估值结构,可与
+# 本表同键共存(ENV_ORE_GRANTS/ENV_REFRESH_GRANTS 表头同款声明)。
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
 # 过热),通道分类全量。表外环境 economy 恒 None,禁从效果原文
 # 自动猜装(错装防线归评审与经济域测试;六条防错装对账校验已随
@@ -3338,7 +3344,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 队列 pending_item_grants,到点经 discharge_due_item_grants 发放
     # (环境发放 = 确定发放;生产插入位置 = sim 进节点收束,实机不接——队列登记
     # 后保持原样,备战真值归观察覆盖;sim/live 不对称申报正本 =
-    # game_state/gain-chain.md 定时发放节)
+    # kernel/cw_gain_chain.py::discharge_due_item_grants)
     '特权阶级': GiftGrant(items_scheduled=(('2-1', '特权武装箱'),)),
     # 随机支登记(id 109 效果原文「开局拥有1个随机4费角色。」直读,
     # PlazaPortal('109'));星级未标 = star 1 先验(晶矿 CHAR_DROP_STAR/
@@ -5163,7 +5169,7 @@ class EnvDelayedItemGrant:
       解锁位 = 获得刻生效序位沿日程步进本值(计数起点 =
       获得节点计入);
     - perfect_win_accel: 「战斗完胜后,倒计时额外减少1点」加速分支旗
-      (分支本体 = gain-chain.md 倒计时件通道节)。"""
+      (分支本体 = kernel/cw_gain_chain.py 倒计时开盒通道)。"""
     item: str
     open_delay_nodes: int
     perfect_win_accel: bool
@@ -6888,7 +6894,7 @@ STRATEGY_FACTION_COUNT_GRANTS: dict[str, tuple[str, int, str, int, str]] = {
 }
 # 条目2:节点类型条件(卡面「进入下一个奖励节点时，获得【波提欧】」直读)。
 # 值 = (发放角色, 星级);星级 1 = desc 未标 1★ 先验(获得链规范
-# gain-chain.md「星级未标 = 1★ 先验」惯例;实机判读后若校准,改表值
+# 获得链「星级未标 = 1★ 先验」惯例;实机判读后若校准,改表值
 # 常量即一行,响应停防线兜底)。
 # 「下一个奖励节点」判定 = 持卡后首个 kind=='reward' 节点入窗
 # (触发函数内嵌,表不设节点键——形状单一,扩形状各建各表)。
@@ -7009,7 +7015,7 @@ def _validate_strategy_reward_ore_grants() -> None:
 # ===== 底册,状态副本发放唯一通道 = 本表 +
 # ===== cw_gain_chain.check_strategy_plane_boss_grants)=====
 # 值 = (位面, 节点类型, 发放角色, 星级);星级 1 = 卡面未标先验(获得链
-# 规范 gain-chain.md「星级未标 = 1★ 先验」惯例)。卡面穿戴描述「穿着2个
+# 规范 获得链「星级未标 = 1★ 先验」惯例)。卡面穿戴描述「穿着2个
 # 【动能激发剑】和【列车同行星徽】」零建模不入表——穿戴非入栏,穿戴效果条目
 # 披露 = 家族键 strategy_worn_equip_unmodeled 申报(消费方名单见该键定义,
 # 本卡在其列);「1个【开拓者】」效果条目 = 裸名 ∉ CHARACTER_ROSTER 登记排除

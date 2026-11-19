@@ -41,7 +41,7 @@ consume=False 例外 = 不拒单、evidence 注记 tool_xy_unresolved 形态),
   特殊(银狼升星奖励专属 10 件在内)与骇客不可作用、亦不可产出;披露键
   :data:`FURNACE_MUTATE_POOL_ASSUMPTION_KEYS`;rng = pick_invest 关键字
   带缺省形态(缺省未播种 = 采样是猜测);
-- **失败安全**(沿 gain-chain §2.7 同款):库存未观察/费用门超门/桥零写
+- **失败安全**(沿链定时发放原语同款):库存未观察/费用门超门/桥零写
   分支 = bug 面零写 + 留存证据不停机(applied=True 保留);rand 写吸收
   工具消失的成败差异 = 预期自愈形态,不落缺陷。
 
@@ -77,7 +77,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     resolve_item_by_xy,
 )
 
-#: 链内写端署名(gain-chain 同纪律:新写端新名,不沿用旧名伪装连续;
+#: 链内写端署名(获得链同纪律:新写端新名,不沿用旧名伪装连续;
 #: 投影仪 ``gain_character`` 调用与各直写分支 produced_by 同值)。
 TOOL_USE_REPORT_PRODUCER: str = 'CwActionToolUseReport'
 
@@ -404,7 +404,7 @@ def _emit_consequence_candidates(gs: GameState, sig: ChannelSig,
                                  evidence: str) -> None:
     """变异后果采证钩子:采样命中 ``EQUIP_ACQUIRE_CONSEQUENCES`` 键集成员
     → 留存证据行,供实机局判读比对「变异产物是否触发后果」(推翻「变异不
-    触发」即升格 ``on_equipment_gained``;采证点正本 = game_state/gain-chain.md 获得回调枚举)。"""
+    触发」即升格 ``on_equipment_gained``;采证点正本 = kernel/cw_gain_chain.py 枚举回调)。"""
     for src, new_item in pairs:
         if new_item in EQUIP_ACQUIRE_CONSEQUENCES:
             _emit_defect(field_name='equips',

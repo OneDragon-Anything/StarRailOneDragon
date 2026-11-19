@@ -30,7 +30,7 @@ math_proofs P81)→ 返回刷新建议非空 ∧ 逐槽余量闸(obs 携带
 形态(投资两屏迁移批):观察一次读全 + 即时上报 + 结束本次访问;选择事实
 (active_strategies)经动作落地链写(动作 op 立即自上报 → gain_invest_
 strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记分支/on_strategy_
-gained 效果分派,权威版本 = game_state/gain-chain.md),画面 op 零选择写点。
+gained 效果分派,权威版本 = kernel/cw_gain_chain.py 模块 docstring),画面 op 零选择写点。
 本屏 sim 分支 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
 改道生成器产物),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
 候补登记的待办),行为支撑 = 实机已登记行为测试。

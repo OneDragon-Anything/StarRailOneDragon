@@ -3,7 +3,7 @@
 即时上报形态(action_ops.md §1 用户裁定增补 2):动作 op 机械链发出后
 调用本函数,一次调用 = 完整结果写入——整支走获得链 ``gain_invest_env``
 (active_env 注册 + portal 登记 + ``on_env_gained`` 环境赠卡效果枚举,
-权威版本 = game_state/gain-chain.md)。
+权威版本 = kernel/cw_gain_chain.py 模块 docstring)。
 
 本包 → 状态容器单向依赖:名字标准化契约 = 观察层(op-layer.md §1.1「观察
 标准化门」),状态容器 ``invest_env_opts`` 值域 = 标准注册名,本包零名字

@@ -1825,6 +1825,12 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
                              sig: ChannelSig | None = None) -> BenchGrantResult:
     """单位入席+合成级联共用核心(获得后果/投资效果函数单一实现体)。
 
+    与获得链(:func:`cw_gain_chain.gain_character`)双时序并存:本函数
+    落位后**立即**级联合并(:func:`merge_cascade_write` 一次到底),升星
+    产物不重进获得链——无 on_character_gained 回调、无升星产物回调
+    (链式版才有「回调先、升星后」的时机);各消费点迁移至链原语后本
+    函数停用。
+
     单位落备战席首空槽(bench_place,状态容器原生 BenchSlot 直落)→
     :func:`merge_cascade_write` 级联(全员正常推演)→ 逐步各落一行 →
     合并升星触发发放收尾(级联采集到的升星事实交给
@@ -1890,7 +1896,7 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
             log.warning('[cw-effect] 策略卡合成发放分支失败(不阻塞):'
                         f'{merge_facts} {e}')
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
-    #    特邀专家:银狼,设计 = game_state/gain-chain.md 专家解锁节
+    #    特邀专家:银狼,设计 = kernel/cw_gain_chain.py::expert_conditional_trigger
     #    (gs.unlocked_experts)):入席 + merge_cascade_write 级联 + 触发发放分支全毕后判据
     #    一次(「全毕后触发」与购买链同款时序;装备获得后果确定性通道
     #    数据拷贝仪Max 送银狼LV.999 由此承接)。rand 透传(采样链内获得
@@ -1923,7 +1929,7 @@ class EquipAcquireReport:
 def apply_equip_acquire_consequence(gs: GameState, item: str, *,
                                     frame: str = '', rand: bool = False,
                                     sig: ChannelSig | None = None) -> EquipAcquireReport:
-    """桥·装备获得后果应用(全渠道统一后置钩子;正本 = game_state/gain-chain.md 装备获得后果)。
+    """桥·装备获得后果应用(全渠道统一后置钩子;正本 = kernel/cw_gain_chain.py::on_equipment_gained)。
 
     件名查 :data:`EQUIP_ACQUIRE_CONSEQUENCES`:命中 → 送出单位经
     :func:`grant_bench_unit_cascade` 入席+级联(正常推演);表外件 →

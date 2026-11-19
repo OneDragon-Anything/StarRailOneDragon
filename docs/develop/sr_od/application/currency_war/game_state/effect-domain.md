@@ -266,7 +266,7 @@ unit_buff);词缀源
   live 零接入调用(金面禁直写,观察覆盖兜底)/披露键 =
   `strategy_level_grant_state_semantics`(状态检查型语义未经实机采证)+
   `strategy_level_grant_dormant_in_sim`(现役 sim 经验常量下 9 级不可达,
-  到级分支休眠)。链式契约权威版本 = [gain-chain.md](gain-chain.md) §2.12。
+  到级分支休眠)。链式契约权威版本 = kernel/cw_gain_chain.py(原语/枚举 docstring)2.12。
 - **条件族采样金窗**:`grant_effect_node_refresh_balance` 的条件判定族(本金充裕
   系)按效果推进段执行时点的 `gs.gold` 现值评估——推进挂节点边界终结动作上报
   (settle_confirm/supply_finish),动作帧的金 = 结算真值(结算观察链

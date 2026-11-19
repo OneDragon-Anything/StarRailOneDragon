@@ -5,7 +5,7 @@
 发出后调用本函数,一次调用 = 完整结果写入——整支走获得链
 ``gain_invest_strategy``(无效载荷拒绝 → active_strategies 按名字去重
 追加 → 效果账本登记分支 → ``on_strategy_gained`` 效果分派,权威版本 =
-game_state/gain-chain.md)。本包 → 状态容器单向依赖。
+kernel/cw_gain_chain.py 模块 docstring)。本包 → 状态容器单向依赖。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #8):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_invest_strategy``;``next_screen`` =

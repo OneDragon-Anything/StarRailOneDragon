@@ -3562,7 +3562,7 @@ class SimBackend:
         # 环境定时道具到点发放(「第 N 位面开始时」类环境效果):本收尾在窗口幂等守卫内,且位面过渡点空白与直进
         # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
         # 打开时点(位面过渡屏被点掉时),窗口重放不双发;环境发放为
-        # 确定发放 → rand=False(gain-chain.md §5),组名沿 sim:env 与
+        # 确定发放 → rand=False,组名沿 sim:env 与
         # 环境金同窗。
         discharge_due_item_grants(self.gs, plane=plane, round_num=r,
                                   rand=False, sig=logic_sig('sim:env'))
@@ -3582,7 +3582,7 @@ class SimBackend:
         # 同一收尾点继承窗口幂等守卫(重放不双发);递减点 = kernel 节点
         # 边界 tick(advance 尾段),动作上报/锚定补推两路径均先于本窗
         # 开——本 advance 递减到 0 的条目本窗发放 = 「第 N 个后继节点
-        # 窗」读法落点。确定发放行 → rand=False(gain-chain.md §5);
+        # 窗」读法落点。确定发放行 → rand=False;
         # 随机 choice-set 行(是钻石总会发光首例)发放效果条目内部采样并覆盖
         # rand=True,rng = 独立命名流 M26(采样消耗不与他流共享 → 同局
         # 其余随机事件流零移位,固定 seed 面只受状态副本值变化影响)。

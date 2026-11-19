@@ -386,7 +386,7 @@ def check_env_interest_grants(gs: GameState, sig: ChannelSig) -> str | None:
     6. 达标 → **发放两笔相邻写,同 evidence、同 sig、同 produced_by**
        (同窗原子语义面,streak/refresh 通道同纪律):
        - :func:`gain_character`(发放角色, 1★ 先验族, rand=False——
-         具名单名无采样,环境发放 = 确定发放,gain-chain.md §5,
+         具名单名无采样,环境发放 = 确定发放,
          特权阶级到点发放同款);
        - done 追加 ``(env, INTEREST_THRESHOLD_KEY)``(write_logic 登记
          事实直写);
@@ -589,7 +589,7 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
     if not hits:
         return ()
     # kernel 反向模块级零 import 契约:action_sampling_rng 住上报函数族
-    # 包,函数内惰性取(gain-chain.md §8 单向破环先例)。
+    # 包,函数内惰性取(链模块拆分单向破环先例)。
     from sr_od.application.currency_war.kernel.cw_action_report import (
         action_sampling_rng,
     )
@@ -698,7 +698,7 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
             break
         if roll_rng is None:
             # kernel 反向模块级零 import 契约:action_sampling_rng 住
-            # 上报函数族包,函数内惰性取(gain-chain.md §8 单向破环先例)
+            # 上报函数族包,函数内惰性取(链模块拆分单向破环先例)
             from sr_od.application.currency_war.kernel.cw_action_report import (
                 action_sampling_rng,
             )
@@ -827,7 +827,7 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
     之后,重复上报结构性不重查,T-30 同款性质)。
 
     判据(用户裁定 2026-10-18:结算胜利 ∧ 本节点未损失小队生命值;
-    设计 = game_state/gain-chain.md 环境定时发放节)=
+    设计 = kernel/cw_gain_chain.py on_env_gained 对应分支)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
     ``settlement_perfect_rescue`` True = 损血局亦判完胜,域规格 =
@@ -921,7 +921,7 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
     之后,重复上报结构性不重查,T-30 同款性质)。
 
     判据(用户裁定 2026-10-18 口径:结算胜利 ∧ 本节点未损失小队生命值;
-    设计 = game_state/gain-chain.md 倒计时件通道节)=
+    设计 = kernel/cw_gain_chain.py 倒计时开盒通道)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
     ``settlement_perfect_rescue`` True = 损血局亦判完胜,与 deploy_lock

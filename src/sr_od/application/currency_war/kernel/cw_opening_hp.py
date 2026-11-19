@@ -93,7 +93,7 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
                                  new_names: list[str] | None,
                                  source: str) -> None:
     """词缀域逻辑写尾的 HP 先验跟随回调(词缀失效删除分支;设计正本 =
-    game_state/gain-chain.md 词缀失效删除分支节,用户方案「词缀更新回调」
+    kernel/cw_gain_chain.py on_env_gained 词缀失效删除分支,用户方案「词缀更新回调」
     落定形态)。
 
     插入位置 = ``cw_game_state._write_logic_frame`` enemy_affixes 分支尾

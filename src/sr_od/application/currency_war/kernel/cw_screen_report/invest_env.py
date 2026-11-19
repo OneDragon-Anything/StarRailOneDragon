@@ -5,7 +5,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 刷新剩余次数)。report 摄入点 = operations/cw_screen/cw_screen_invest_env.py::
 ``CwScreenInvestEnv.observe``(观察 node);适用范围边界:选择事实
 (active_env)经动作落地链写(动作 op 立即自上报 → gain_invest_env,
-权威版本 = gain-chain.md);``env_refresh_left`` 观察写端在本 report
+权威版本 = kernel/cw_gain_chain.py 模块 docstring);``env_refresh_left`` 观察写端在本 report
 (读缺跳写)。
 """
 from __future__ import annotations
@@ -51,7 +51,7 @@ def report_screen_invest_env_obs(gs: GameState, obs: CwScreenInvestEnvObs, *,
 
     写点定位 = cw_screen_invest_env.py::``CwScreenInvestEnv.observe``(观察
     node 摄入)。选择事实不在本 report(active_env 经动作落地链获得链写,
-    权威版本 = game_state/gain-chain.md)。names 空 = OCR 未读得,整函数早退
+    权威版本 = kernel/cw_gain_chain.py 模块 docstring)。names 空 = OCR 未读得,整函数早退
     不写(含 env_refresh_left,摄入序 = 候选先于计数)。
     """
     if sig is None:

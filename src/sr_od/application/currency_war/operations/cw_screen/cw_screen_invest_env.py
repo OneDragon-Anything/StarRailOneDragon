@@ -24,7 +24,7 @@ node = 零参决策(候选自状态容器槽;空候选/无有效输出 = round_f
 
 选择事实(active_env)经动作落地链写:动作 op 确认后立即自上报 →
 ``gain_invest_env`` 整链(active_env 注册 + portal 登记 + on_env_gained
-效果枚举,权威版本 = game_state/gain-chain.md);画面 op 零选择写点。计数 =
+效果枚举,权威版本 = kernel/cw_gain_chain.py 模块 docstring);画面 op 零选择写点。计数 =
 屏上剩余次数观察真值(屏上数字即真值,剩余语义写端规范 =
 screens/op-layer.md §1.4),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
 不支持局外单独调用——op-layer.md §1.1;用户裁决 全族删门)。
@@ -380,7 +380,7 @@ class CwScreenInvestEnv(CwOperation):
             return self.round_fail(f'投资环境决策无有效选卡输出: {act!r}')
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
         # 选择事实零状态容器写(active_env 注册在动作落地获得链 gain_invest_env,
-        # 动作 op 即时上报;权威版本 = game_state/gain-chain.md)。
+        # 动作 op 即时上报;权威版本 = kernel/cw_gain_chain.py 模块 docstring)。
 
         # 点最优卡的**描述行**选中(Y = 建档「区域-卡牌描述行」rect 中心,缺失
         # 显式失败不再兜底常量)+ 确认链经工厂派发。实机点验画面事实:点立绘

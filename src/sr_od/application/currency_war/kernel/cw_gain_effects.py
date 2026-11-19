@@ -119,14 +119,14 @@ def _make_owned_emblem_copy_effect() -> Callable[..., list[str]]:
 # ===== 效果函数(策略卡获得时分派 = 字段写分支;键 = 注册表规范名)=====
 # 注册纪律:效果函数只覆盖「获得该卡后的字段写分支」(bench/装备/采样链),
 # 与 cw_investments.STRATEGY_EFFECTS(持卡经济效果聚合,aggregate_economy
-# 消费)职责不同不合并(对抗审查⑨)。全量收录 = 推广批(gain-chain design
+# 消费)职责不同不合并(对抗审查⑨)。全量收录 = 推广批(获得链设计
 #),未收录卡只走注册或零效果(查无效果安静不写)。
 
 
 def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
                               rng: random.Random) -> list[str]:
     """效果函数·骇客专家:银狼(策略卡,改走链原语,
-    权威版本 = game_state/gain-chain.md §2/§3)。
+    权威版本 = kernel/cw_gain_chain.py 模块 docstring §2/§3)。
 
     链序(逐步各落一行):
     1. **商店池分支**(权威状态):银狼解锁入池——官方卡文「获得专家顾问
@@ -135,7 +135,7 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
        (:func:`cw_gain_chain.on_strategy_gained`,本效果体注册于其效果体
        分支之后,解锁先于本函数执行),本函数零写该分支;
     2. **随机改件分支**(采样链):采样改件身份 → ``gain_equipment(rand=True)``
-       入栏(采样效果对子链翻转 rand,gain-chain §5)→ 后果送单位由
+       入栏(采样效果对子链翻转 rand,)→ 后果送单位由
        ``on_equipment_gained`` 回调自动消费(内联查表删除)。
 
     值不变翻来源域集(标记循环)的实现 = **调用前后值快照比对**(对抗审查
@@ -292,7 +292,7 @@ def _make_box_grant_effect(items: tuple[str, ...]) -> Callable[
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——开箱分支确定发放
-    (rand=False,gain-chain.md §5),无采样面。效果体只覆盖获得时点占席道具
+    (rand=False),无采样面。效果体只覆盖获得时点占席道具
     发放分支;表内持卡卡面另带的战斗被动类效果条目(能量恢复/伤害减免等)
     非获得时点效果,不在本体——零战斗效果条目词面的卡(快请专家·彩)与本
     工厂辖域无关,战斗被动条目由各自建模批登记 STRATEGY_EFFECTS
@@ -389,7 +389,7 @@ def _make_reinforcement_effect(
     cw_gain_chain.on_strategy_gained)。外层按表内对序循环,逐档
     ``roll_reinforcement_names`` 采样 → 逐名 ``gain_character`` 入席:
     同一 rng 实例跨档顺序推进不重置(掷序契约,改序 = 掷序漂移);采样
-    效果对子链传 rand=True(gain-chain.md §5 效果自身性质传参),升星
+    效果对子链传 rand=True(链随机态纪律:效果自身性质传参),升星
     级联(单级 3 合 1)/席满溢出/bench 未观察拒落全部沿链现役记账。星级
     1 = desc 未标星的句式先验(先验错走随机态观察覆盖,不响灯)。效果串
     = ``strategy_gift_random:<名>@1star``,前缀 + @ 后缀一体登记——
@@ -512,7 +512,7 @@ def _make_bound_char_grant_effect(
     批内同 rng 顺序推进不重置,抽重可复现为设计语义);前置值域校验
     cost ∈ 1..5 ∧ star ∈ 1..3 → ValueError(cost=0 系统单位不入随机
     发放池,援军族同款哨;star 值域 = Unit.star 合法域,越界 = 表行
-    笔误响应亮);采样效果对子链传 rand=True(gain-chain.md §5),升星
+    笔误响应亮);采样效果对子链传 rand=True,升星
     级联/席满溢出/bench 未观察拒落全沿链现役。效果串
     ``strategy_gift_random:<名>@<star>star``(前缀 + @ 后缀一体登记:
     @ 后缀 = 随机态校准数据归组键,只断前缀会漏校准分组)。
@@ -708,7 +708,7 @@ def _make_random_equip_effect(
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained)。逐件采样 → ``gain_equipment``
-    入栏:采样效果对子链传 rand=True(gain-chain.md §5 效果自身性质
+    入栏:采样效果对子链传 rand=True(链随机态纪律:效果自身性质
     传参),装备获得后果经 on_equipment_gained 回调自动消费;equips 未
     观察 = 原语现役拒落跳写(detail='equips_unobserved')。装备无星级,
     效果串不带 @<N>star 后缀:``strategy_random_equip:<名>``(落位)/
@@ -778,7 +778,7 @@ def _make_named_equip_grant_effect(
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——具名发放确定
-    (rand=False,gain-chain.md §5:卡文无随机词;与环境侧即时装备支
+    (rand=False:卡文无随机词;与环境侧即时装备支
     rand=True 随机态〔2026-10-17 用户裁定,猜测写 + 观察覆盖纠偏〕系
     两通道分野,终态口径 = 本模块头「rand 两通道分野」注记)。逐件
     ``gain_equipment`` 入栏,装备获得后果经 on_equipment_gained 回调
@@ -879,7 +879,7 @@ def _make_delayed_grant_effect(name: str) -> Callable[..., list[str]]:
     handler 只做注册表查行 + 原语调用,写通道单一收束在链模块)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参);``rng``
-    不消费——两条效果条目零采样(具名发放 = 确定发放,gain-chain.md §5
+    不消费——两条效果条目零采样(具名发放 = 确定发放
     rand=False 纪律)。两步:
 
     1. 即时条目:gain_equipment 具名入栏(equips 未观察 = 拒落零写
@@ -1053,7 +1053,7 @@ def _make_char_grant_effect(char: str, count: int = 1, *,
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——具名确定发放
-    (rand=False,gain-chain.md §5:卡文无随机词、选卡确认 = 确定性入口)。
+    (rand=False:卡文无随机词、选卡确认 = 确定性入口)。
     发放只数 = count(卡面明写结构值,如「获得3个」),循环逐次发放,
     每发独立过一遍落位/回调/升星判断/席满溢出链语义。
     ``star`` = 发放星级(生成段自表行第 3 元透传,缺省 1):佩佩/狸职狸狸
@@ -2178,7 +2178,7 @@ def apply_level_up_char_gift(gs: GameState, *, levels: list[int],
     # 惰性 import 链原语(运行时解析破环;沿骇客/箱条目先例,模块
     # docstring import 方向声明)
     # kernel 反向模块级零 import 契约:action_sampling_rng 住上报函数族
-    # 包,函数内惰性取(gain-chain.md §8 单向破环先例)。
+    # 包,函数内惰性取(链模块拆分单向破环先例)。
     from sr_od.application.currency_war.kernel.cw_action_report import (
         action_sampling_rng,
     )
