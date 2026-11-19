@@ -11,7 +11,7 @@
   5. **挂起局弃局重开**维持既定语义（模式选择-进行中 → 委托退出 op → 回大厅）；
   6. **debug 判断用框架现成** `env_config.is_debug`。
 - **关联账**：挂账板 §二.7⑥（本批销账目标）；交接批 design §2.5/§2.6（max_rounds 停点语义按裁定 4 修订，随本批）；loop→exit 交接批正本 loop.md §6（随批订正）。
-- **状态**：第 1 轮对抗修订稿（第 2 轮待发；报告=[attack.md](attack.md)）
+- **状态**：第 2 轮修订稿（判据定稿；第 3 轮判据专项核销待发；报告=[attack.md](attack.md)）
 
 ## 1. 问题与动机
 
@@ -75,12 +75,16 @@
 - **裁决流程不变**：探针点击（商店可开性）→ `probe_resolve` 两分支 → 锁定确认三字段同帧配对写 / 非锁定收店恢复常规接管。
 - **接管失效写**：挂「探针分支进入即写」——相对时序不变（先于探针点击），**触达面扩大申报**：从「候选过判（轮次>1）」扩为「接管必经（含 1-1 接管局）」，方向保守，heavy 观察同 visit 重锚补偿，净行为差近似零。
 
-### 2.4 每次运行重建的落地（判据定稿）
+### 2.4 每次运行重建的落地（判据定稿，第 2 轮 B-1/R-1 补全实现约束）
 
-- **容器记 `created_run_id`**：`establish_new_match` 内部**先确保运行记录已开（ensure_run_started 幂等前置）再记**当前 run → 字段恒非 None（外部装配直构容器不经此漏斗 → 缺省 None = 保留，sim 裸构造点零改动）。
-- **handle_init 判据**：容器存在 ∧ `created_run_id != 当前 run` → **先 `discard_stale_match_container` 再 `establish_new_match(takeover)`**（establish 首行幂等直过不弃旧——discard 必须显式前置，否则重整静默失效）；否则保留（本次运行入口链所建 / 外部装配）。
-- **全场景闭合推演**：正常开局（入口链建，run 一致 → 保留 ✓）；同进程连续两局（局终清容器 → 入口链新建 ✓）；重跑直撞（残留容器旧 run → 重建 takeover ✓——第三失活形态消解）；停点重跑（同 ✓）；继续进度（兜底建 takeover ✓）；sim 直构（created_run_id=None → 保留 ✓）。
-- **手动逐轮验证工作流变更申报**（核一/核三同点）：现状 handle_init 注释明写手动逐轮（max_rounds=1 反复 run_operation）靠跨 run 容器延用保策略 target 稳定；重整后每轮重建 → target 每轮重选 + 接管探针每轮一次。裁定 ③ 字面覆盖，**接受变更**；相关注释（handle_init 手动逐轮段 / `establish_new_match` 幂等分支「保手动逐轮延续语义」）随批改写。
+- **establish 三段式顺序（落法唯一，照字面实现禁变体）**：先建容器 → `ensure_run_started(match=新容器)` → 记 `created_run_id` = 当前 run。**禁把 ensure 放在建容器之前**（match=None 铸段后，入口链三分支 ensure（传容器）会再铸段 → created_run_id（第一段）≠ handle_init 时点 run（第二段）→ 每局入口链首 execute 误判重建）。此后入口链三 ensure 分支与 loop `__init__` ensure 全部认领同段，比对恒等。
+- **difficulty 参数配套**：入口链 establish 调用点（难度确认屏分支）在难度读取之前——establish 时难度恒空。配套挪序：**入口链难度读取段挪到 establish 之前（同节点相邻段）**，establish 内传 `ctx.cw_selected_difficulty or ''`（旧铸段时点的 difficulty 语义保持）。
+- **容器记 `created_run_id`**：经上述漏斗 → 字段恒非 None；外部装配直构容器（sim）不经漏斗 → 缺省 None = 保留（sim 裸构造点零改动）。run 提前开对运行记录 period/当日跳过判定**零副作用**（核二核过：currency_war_run_record 只 import 框架 AppRunRecord）。
+- **handle_init 判据（自足式，含 None 守卫）**：容器存在 ∧ `created_run_id is not None` ∧ `created_run_id != 当前 run` → **先 `discard_stale_match_container` 再 `establish_new_match(takeover)`**（establish 幂等直过不弃旧——discard 必须显式前置）；None 短路为保留（外部装配）；否则保留。
+- **保留集合括注（如实）**：本次运行入口链所建 / 外部装配（sim 直构）/ **上次运行未收尾残留**（假局提前 return、入口链 fail——行为无害：未锁定不探正确、商店防御 takeover 探照跑）。
+- **全场景闭合推演**：正常开局（入口链建，run 一致 → 保留 ✓）；同进程连续两局（局终清容器 → 入口链新建 ✓）；重跑直撞（残留容器旧 run → 重建 takeover ✓——第三失活形态消解）；停点重跑（同 ✓）；继续进度（兜底建 takeover ✓）；sim 直构（None → 保留 ✓）。**判据成立前提脚注**：残留容器判「旧 run」依赖 loop `after_operation_done` 全路径必达 `close_run`（停止/失败/超时均收尾；唯一不 close 分支 = 真假局，该分支无容器）——框架保证既有，申报依赖。
+- **遥测时序副作用申报**：①铸造点前移（简报/投资分支 → establish 点，三分支 ensure 退化为纯认领）；②难度确认帧 establish 先于原难度读存位（挪序后消除）；③重建路径双段（loop `__init__` ensure 先铸空段、establish 内 ensure 再铸正段——空段零 journal 行，无行为损伤，**已知代价接受**）；④telemetry「铸造单点」口径注释随批同步（T-1）。
+- **手动逐轮验证工作流变更申报**（核一/核三同点）：现状靠跨 run 容器延用保策略 target 稳定；重整后每轮重建 → target 每轮重选 + 探针每轮一次。裁定 ③ 字面覆盖，**接受变更**；相关注释（handle_init 手动逐轮段 / `establish_new_match` 幂等分支「保手动逐轮延续语义」）随批改写。
 
 ### 2.5 停点分模式与衔接（零 app 侧改动方案）
 
@@ -89,14 +93,16 @@
 - **max_rounds 配置用户语义变化申报**：配置声明「跑完 N 轮停备战屏（验证采样）」——非 debug 下行为变「弃局回大厅」。配置注释随批同步（T-5）。
 - **交接批修订面（修正后）**：交接批 design §2.5 三形态判定表「其余」行补「非 debug 停点已改走交接出口」一句 + §2.6 条目语义修订 + 正本 loop.md §6 停点行 + **交接批测试同步两处**：`test_currency_war_app.py` 用例③（max_rounds→exit 零调用）改 `is_debug=True` 前提 + 新增 False 分支用例；`test_cw_loop.py` 停点出口文本断言同步（False 分支带交接前缀）。
 
-### 2.6 消费方迁移清单（判据方向已定稿）
+### 2.6 消费方迁移清单（判据方向已定稿；等价性表述如实化）
 
 | 旧读点 | 旧判据 | 新判据 |
 |---|---|---|
-| SettlementState 新局标记注入（handle_init） | `is_new_match` | `opened_via == 'takeover'`（精确等价映射，核三 §2-1） |
+| SettlementState 新局标记注入（handle_init） | `is_new_match` | `opened_via == 'takeover'`（字段名不改——避免实现期两可，宿主限定 grep 口径与之兼容） |
 | 战斗帧恢复检测门（loop iter==1） | `is_new_match` | `opened_via == 'takeover'` |
 | 探针门（CwScreenPrep b 查） | `resume_probe_pending` | `opened_via == 'takeover' ∧ not probed` |
 | `resume_candidate` 输入 | `is_new_match ∧ (round>1 ∨ plane>1)` | 退役（§2.3） |
+
+**等价性如实申报（非「精确等价」）**：旧 takeover 集合 = 兜底新建；新 takeover 集合 = 兜底新建 ∪ **重建**（停点重跑/直撞重跑/手动逐轮每轮）——重建扩容为**有意变更**（方向 = 接管语义正确化：重建容器对局面无知，本就该走接管面）。连锁偏差逐点：①战斗帧恢复检测门在重建场景从「门关」变「门开」（`_invalidate_tracked_on_takeover` 失效写 → 关店 → heavy 重锚——方向正确）；②relaunch 残留标记（30s GRACE 窗）在手动逐轮/停点重跑重建后窗内首见结算屏会被**错标**「exe 重启残留」——观测面脏数据，已知代价接受；③SettlementState 注入字段名实相符（容器本次新建 ↔ session 全新）。
 
 ### 2.7 sim 面（第 1 轮修正稿）
 

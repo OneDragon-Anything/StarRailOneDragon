@@ -32,6 +32,29 @@
 - 核二提示2/3（验收凭据形式字段缺、影响面申报节缺）：前者本批 landing 补齐，后者为域级实践漂移提请规范侧，本批不个体加。
 - 核二提示7（AGENTS §10 所指 terminology.md 不存在）：terminology.md 已于 2026-11-19 解散删除（用户裁定 b），AGENTS 指针行同步删除属另一会话在飞面——非本批问题不动。
 
-## 第 2 轮
+## 第 2 轮（双核：核销 + 新眼）
 
-（待发）
+- 审对象：第 1 轮修订稿 design.md + landing.md（f4538e8b0）
+- **核 A（核销）**：第 1 轮裁定 A1-A4/B1-B11 处置全部落实、无走样；另抓 N1-N4 四项修订面遗漏（与核 B R 系大面积重合，合并处置，不单列）。
+- **核 B（新眼）**：1 阻断 + 7 修订 + 2 存疑；总评「需再修（轻），修完可进第 3 轮判据专项复核，无需再发全稿对抗」。
+
+### 裁定汇总表
+
+| 编号 | 发现 | 处置 |
+|---|---|---|
+| B-1 | establish 内 ensure_run_started 与建容器的先后未定序：若 ensure 前置，match=None 铸段后入口链三分支 ensure（传容器）再铸段 → created_run_id（第一段）≠ handle_init 时点 run → 每局入口链首 execute 误判重建 | 采纳：design §2.4 三段式定稿（先建容器 → ensure(match=新容器) → 记 created_run_id，落法唯一禁变体）；landing T-1 ② 同步 |
+| R-1 | 重建判据缺 None 守卫：外部装配容器（sim 直构）created_run_id=None，`!= 当前 run` 对 None 恒真 → sim 容器被误弃 | 采纳：判据自足式（容器存在 ∧ created_run_id is not None ∧ != 当前 run），None 短路为保留；design §2.4 + landing T-1 ③ |
+| R-2 | difficulty 配套缺口：入口链 establish 调用点在难度读取之前，establish 时难度恒空 | 采纳：难度读取段挪到 establish 之前（同节点相邻段），establish 传 `ctx.cw_selected_difficulty or ''`；design §2.4 + landing T-1 ② |
+| R-3 | 保留集合漏「上次运行未收尾残留」子集；重建路径遥测时序副作用（铸造点前移/双段 journal）未申报 | 采纳：design §2.4 补保留集合括注 + 遥测时序副作用申报（空段零 journal 行、口径注释随批同步，已知代价接受） |
+| R-4 | landing T-1 判据与 design 修订不同步（缺 None 守卫/三段式/difficulty 挪序），注释同步项漏列（battle_wait 注入注释 / telemetry 铸造口径 / cw_strategy 禁读清单 / handle_init 手动逐轮段） | 采纳：landing T-1 范围与文件面全量同步 |
+| R-5 | 停点 is_debug 两分支测试不显式 monkeypatch 则断言随环境缺省值随机红 | 采纳：landing T-3 ⑤ 补显式 monkeypatch 纪律 |
+| R-6 | 停点弃局后游戏侧真清还是留保存局未核验——留保存局则下次开局走接管而非新局（玩家预期偏差） | 采纳：landing T-4 ④ 实机清单补「停点弃局后下次开局应无继续进度弹窗」核验项 |
+| R-7 | landing §3 正本路径不完整（skill references 缺全前缀）、loop.md §6「非退出触发边界」段漏点名、T-1 注释改写项漏复核位 | 采纳：§3 补 skills 全前缀 + §6 段改写点名 + 新增注释同步复核项 |
+| N1-N4 | 核 A 修订面遗漏四项（landing T-1 判据/文件面未随 design 修订同步、测试前提、实机清单等，与 R-2/R-4~R-6 重合） | 合并处置于对应 R 行落点，不单列 |
+| Q-1 | 停点弃局后游戏侧保存局存留形态存疑 | 转 T-4 ④ 实机核验项（R-6 落点），实机回填 |
+| Q-2 | SettlementState 新局标记字段是否随批改名存疑 | 默认案定稿：字段名不改（design §2.6——避免实现期两可，宿主限定 grep 口径与之兼容） |
+
+### 修订面落点
+
+- design.md：§2.4 重写（三段式定稿 + None 守卫 + difficulty 挪序 + 保留集合括注 + close_run 依赖脚注 + 遥测时序副作用申报 + 手动逐轮申报）；§2.6 重写（等价性如实化——SettlementState 不改名 + takeover 集合扩容为有意变更 + relaunch 30s GRACE 窗错标申报）。
+- landing.md：T-1 范围/文件面、T-3 ⑤、T-4 ④、§3（见上表 R-4~R-7 行）。
