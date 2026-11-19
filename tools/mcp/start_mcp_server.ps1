@@ -53,6 +53,27 @@ Write-Host ""
 
 Set-Location $ProjectRoot
 
+# ── 0. 并发单飞锁:两会话同时跑本脚本时,彼时对方的 server 进程尚未发出, ──
+# 预检互相看不到 → 双双放行 → 双实例(实测事故形态)。锁文件独占打开
+# (FileShare.None)保证同一时刻只有一个脚本实例走「清理+启动」全流程,后来者排队。
+$LockPath = Join-Path $ProjectRoot ".log\mcp_start.lock"
+$lockStream = $null
+$lockDeadline = (Get-Date).AddSeconds(150)
+while ($true) {
+    try {
+        $lockStream = [System.IO.File]::Open($LockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+        break
+    } catch [System.IO.IOException] {
+        if ((Get-Date) -gt $lockDeadline) {
+            Write-Host "[lock] 150 秒内未取得启动锁(另一脚本实例长时间占锁),中止启动" -ForegroundColor Red
+            exit 1
+        }
+        Start-Sleep -Seconds 3
+    }
+}
+Write-Host "[lock] 启动锁已取得"
+try {
+
 # ── 1. 预检清理:停止旧 server 进程,等端口释放(双实例会抢端口+互锁日志文件) ──
 function Get-ServerProcesses {
     Get-CimInstance Win32_Process -Filter "Name='python.exe' or Name='uv.exe'" |
@@ -124,3 +145,7 @@ if ($ready) {
 }
 Write-Host "[warn] 90 秒内未观察到就绪标志(可能仍在冷启动或已失败),详情查 $FrameworkLog" -ForegroundColor Yellow
 exit 2
+} finally {
+    # 退出路径(exit 0/1/2)统一经此释放锁文件句柄,放行排队中的后续启动
+    if ($lockStream) { $lockStream.Dispose() }
+}
