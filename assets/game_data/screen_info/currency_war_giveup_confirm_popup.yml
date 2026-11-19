@@ -1,0 +1,46 @@
+screen_id: currency_war_giveup_confirm_popup
+screen_name: 货币战争-模式选择-结束结算确认
+pc_alt: false
+area_list:
+- area_name: 标识-确认文案
+  id_mark: true
+  pc_rect:
+  - 747
+  - 425
+  - 935
+  - 456
+  text: 确定结束进程吗
+  lcs_percent: 0.8
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-放弃并结算
+  id_mark: true
+  pc_rect:
+  - 915
+  - 725
+  - 1045
+  - 760
+  text: 放弃并结算
+  lcs_percent: 0.8
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-关闭
+  id_mark: false
+  pc_rect:
+  - 1440
+  - 320
+  - 1484
+  - 364
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
