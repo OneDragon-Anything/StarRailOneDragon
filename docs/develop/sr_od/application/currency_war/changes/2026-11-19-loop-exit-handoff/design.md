@@ -1,4 +1,4 @@
-# loop→exit 交接接线（退出架构归位）迭代设计（总纲）
+# loop→exit 交接（退出架构归位）迭代设计（总纲）
 
 ## 0. 元信息
 
@@ -13,7 +13,7 @@
 ### 1.1 现状症状（三处错位，代码现值实证）
 
 1. **正常完成不移交 exit**：终局结算链（`CwScreenBattleWait` 团灭分叉/胜利结算）回大厅 → loop 阶段一识别 `货币战争-大厅` → `_lobby_return_collect` 收尾簿记 → `round_success('对局结束,回大厅')` → loop op 结束 → app 结束。exit 全程不参与（`cw_loop.py` 大厅分支）。
-2. **异常退出不存在**：节点出错过多 = 外环 fail-streak 耗尽（`cw_loop.py` 模块常量 `OP_FAIL_REDISPATCH_LIMIT=5`，键 = 分发 journal 名或 chain_key）→ 耗尽点 `round_fail` → loop op 失败 → app 失败收尾。**残局留在游戏里**，兜底 = 下次启动暂停面板预检（app 恢复链）或 `_in_match` 续跑残局——「放弃本局回大厅」的语义没有实现。
+2. **异常退出不存在**：节点出错过多 = 外环 fail-streak 耗尽（`CwLoop` 类常量 `OP_FAIL_REDISPATCH_LIMIT=5`，键 = 分发 journal 名或 chain_key）→ 耗尽点 `round_fail` → loop op 失败 → app 失败收尾。**残局留在游戏里**，兜底 = 下次启动暂停面板预检（app 恢复链）或 `_in_match` 续跑残局——「放弃本局回大厅」的语义没有实现。
 3. **所有权反向**：`CwEntryExit` 路由⑤把对局中画面**委托给 loop**（`CwLoop(stop_at_prep=True)`，`cw_entry_exit.py` delegate_loop）——exit 当主人借 loop 的分发表清理；exit 现役生产消费点 = app 启动预检恢复链 + 回大世界链（`back_to_normal_world_plus.py`）两处。
 
 ### 1.2 根因归层
@@ -58,22 +58,22 @@ route⑤ 委托清理: cleanup_delegate=True → 耗尽维持 fail → exit 节�
 - loop 的两个交接出口都以 `round_success` 结束（对局完成/异常交接），app 交接节点对两种 success 都执行 exit 调用（exit 自己按画面路由分发：大厅→确认完成、备战态→点门、其余→route⑤ 清理）；
 - 硬失败（看门狗等）维持 `round_fail` → app 失败收尾不进交接节点（残局兜底 = 现状下次启动恢复语义，本批不扩）。
 
-**交接节点两段式**（attack.md §3.1）：**弹窗守卫段** → **exit 调用段**。守卫段复用进局链弹窗守卫注册表（`ENTRY_POPUP_GUARDS`，cw_entry_start.py），覆盖局末自动弹、会压住大厅识别的弹窗（积分奖励/星琼详情/星徽详情等大厅态白名单弹窗，cw_screen_state.py 白名单）——不守卫则 exit 识别全落空、误入战斗链盲点右上角关闭钮（attack.md §1 N2 实证）。守卫注册表现值与积分奖励段的迁移面在 T-1 落地时核对。
+**交接节点两段式**（attack.md §3.1）：**弹窗守卫段** → **exit 调用段**。守卫段复用进局链弹窗守卫注册表（`ENTRY_POPUP_GUARDS`，cw_entry_start.py），处置局末自动弹、会压住大厅识别的弹窗——不守卫则 exit 识别全落空、误入战斗链盲点右上角关闭钮（attack.md §1 N2 实证）。**注册表现值与迁移面（如实申报）**：注册表现有三条（列车补给/星琼详情/星徽详情），且守卫规格（`EntryPopupGuardSpec`）是单动作形态；积分奖励不在注册表、是进局链推进循环的内联分支（一键领取 → 关闭，两步动作）——照单动作形态迁入会死循环重试「一键领取」（领完按钮消失、点击落空）。迁移 = 守卫规格扩展支持「领后关闭」两段动作 + 注册表迁入 + 进局链内联段处置，非一句「缺则迁入」（T-1 范围已如实列）。
 
 **形态判定载体**（点名）：app 侧读 `self._previous_round_result.status`（框架每轮写入上一轮结果对象；节点间边匹配是文本全等，带动态后缀的结束文本不能走边表达）。载体唯一，禁另起炉灶。
 
 ### 2.3 异常超限出口语义（本设计最重裁定）
 
 - **触发面收窄申报**：耗尽点改 `round_success('异常退出交接:<键>')` 仅辖「外环 fail-streak 耗尽且画面态可识别」（节点出错过多 = 用户模型定义的异常退出触发）。以下出口维持 `round_fail`（框架级异常 ≠ 节点出错，残局兜底走现状启动恢复语义）：停滞看门狗、框架超时、未捕获异常、未知画面兜底（连续多轮画面全盲时 exit 同为识别驱动、无从处置，交接无意义）。
-- **出口语义与检测载体分离**（attack.md §2.1，A1 阻断修法）：loop 内投资环境链靠「返回结果 = FAIL」判断节点失败计数耗尽、提前结束不跑链尾——出口 success 化后该判定改读交接前缀常量 `STATUS_HANDOFF_PREFIX = '异常退出交接:'`（cw_loop 模块级常量，与 app 判定共用单一源），「链尾不空跑」语义保留；包装 docstring 的 FAIL 出口契约段与链首调用点注释同步重写。
+- **出口语义与检测载体分离**（attack.md §2.1，A1 阻断修法；第 2 轮 B-1 修定：判定改**双条件**）：loop 内投资环境链靠「返回结果 = FAIL」判断节点失败计数耗尽、提前结束不跑链尾——出口 success 化后该判定改为**双条件**：`result == FAIL` **保留**（接委托清理模式耗尽的 fail 出口、接钩子覆盖返回 FAIL 的既有透传契约）**或** status 以交接前缀 `STATUS_HANDOFF_PREFIX = '异常退出交接:'` 开头（接新 success 出口）——两种模式「链尾不空跑」都保留。前缀常量落 cw_loop 模块级，与 app 判定共用单一源。包装 docstring 的 FAIL 出口契约段按**双出口**（FAIL 枚举 + 交接前缀 success）重写，链首调用点注释同步。
 - **交接后语义**：异常交接 = 放弃本局回大厅（exit 的本体职责，「放弃当前对局进度不可恢复」——`CwEntryExit` docstring 既有申报）；run 收尾由 loop 既有 `after_operation_done` 幂等钩子承载（中止路径已在辖，零新增）。出口现场证据不丢：耗尽点 `[cw!]` ERROR 日志 + 截图 + 对局摘要 abandoned 标记（既有）全保留。
-- **cw_match 清理口径（统一）**：分层清理、app 兜底——loop 正常收尾分支既有清理不动；假局守卫既有置 None 不动；app 交接节点在两交接形态 exit 返回后置 None（兜底清理点，幂等无害，消除内存残留与遥测归属污染）。
+- **cw_match 清理口径（统一）**：分层清理、app 兜底——loop 正常收尾分支既有清理不动；假局守卫既有置 None 不动；app 交接节点在两交接形态 exit 返回后置 None（兜底清理点，幂等无害）。兜底清理是硬前提不只是卫生：同进程下一局 `CwLoop.handle_init` 的新局判定（`ctx.cw_match is None` → 建新局）在「绕过入口链直跑 loop」场景（run_operation 单跑）没有下游防线兜底，残留旧 match 会误判续跑、延用已弃局的会话——弃局后置 None 是下一局正确起步的前提。
 
 ### 2.4 route⑤ 语义重申（保留，非所有权）
 
 route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定位改申报为「exit 的清理原语」：交接契约保证 exit 被调用时画面 ∈ {大厅，A 类备战态，战斗/暂停态，其余对局中画面（仅异常交接面）}；异常交接面下 route⑤ 的委托 loop 仍是「把任意对局中画面清理到备战态」的现成能力（loop 停机位常开语义既有），不构成所有权反向——所有权在 app 编排。清理语义如实申报：**清理 = 处理到可交还态，期间按正常流程推进（含战斗），非瞬时放弃**。
 
-**委托清理模式参数**（attack.md §2.2，A2 阻断修法）：`CwLoop` 加构造参数 `cleanup_delegate: bool = False`——默认 False 为 app 主路径（耗尽 → 交接 success）；route⑤ 构造点显式传 True，True 时耗尽维持 `round_fail`（现状语义），由 exit 节点重试承接，重试预算耗尽 exit fail → app fail，残局可见非静默。**残局面申报**：委托清理覆盖 loop 分发表已知分支；分发表外画面（未建档浮层）委托耗尽 → app fail → 残局由下次启动预检兜底——显式接受。
+**委托清理模式参数**（attack.md §2.2，A2 阻断修法）：`CwLoop` 加构造参数 `cleanup_delegate: bool = False`——默认 False 为 app 主路径（耗尽 → 交接 success）；route⑤ 构造点显式传 True，True 时耗尽维持 `round_fail`（现状语义），由 exit 节点重试承接，重试预算耗尽 exit fail → app fail，残局可见非静默。委托模式的 fail 出口由 §2.3 双条件链判定接住（委托清理中遇粘滞投资环境画面链尾不空跑）。**残局面申报**：委托清理覆盖 loop 分发表已知分支；分发表外画面（未建档浮层）委托耗尽 → app fail → 残局由下次启动预检兜底——显式接受。**其余 CwLoop 构造点清单**（默认 False = 新语义）：测试 harness sim 驱动器（sr-od-test test/harness/sim_backend_runner.py `_WatchedLoop` 默认参构造）——sim 确定性驱动下耗尽不可达，若未来触达将拿到交接 success 文本（无消费方解析，无害）；skill 脚本直驱（skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py）同此。
 
 敌人信息浮层内联特判：**保留至浮层画面 op 落地，非终态申报**——清偿义务仍在挂账板 §二.9（用户已裁「建画面 op、终态零特判」），本批不动该项义务。
 
@@ -88,6 +88,8 @@ route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定�
 
 结束文本常量落 cw_loop 模块级（`STATUS_LOBBY_DONE` / `STATUS_HANDOFF_PREFIX`），loop 出口与 app 判定共用单一源，禁裸串散写。max_rounds 文本不设常量——三形态判定是互补结构，前两形态不中即落「其余」，文本漂移只会把错形态漏进行为安全的「其余」分支；正本留一句「可升级为结构化 data 载体（`round_success(status, data=…)` 框架既有支持）」备忘。
 
+**交接节点自身失败的走向（申报）**：守卫段预算耗尽或 exit 调用失败 → 交接节点 `round_fail` → 无出边 → app 失败收尾（残局可见，下次启动 `_in_match` resume 兜底）——与硬失败同型收尾，不另设路径。节点重试预算显式调高（框架缺省 3 次，守卫段多层弹窗叠加时不够），具体值 T-1 落地定。
+
 ### 2.6 max_rounds 停点与启动预检（不解决面的边界申报）
 
 - max_rounds 停点（停备战屏采样）**不是退出触发**：验证模式要求留局采样（analyze board/star 钩子），交接节点跳过即保语义；正本 loop.md 结束出口表随批申报。
@@ -97,18 +99,20 @@ route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定�
 
 | 面 | sim 可达性 | 申报 |
 |---|---|---|
-| 交接点①（正常完成） | **不可达**：sim 现役只直驱 `CwLoop`（cw_sim_match_drive），不经 app 编排链，交接节点不执行；且 exit 识别链三处均裸图像识别、无 sim 应答口改道（后端答口 cw_sim_backend/cw_sim_ports 已存在、exit 未消费） | sim 零影响；断裂不发生是因为不经此路径 |
+| 交接点①（正常完成） | **不可达**：sim 现役只直驱 `CwLoop`（skill 脚本 skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py + 测试 harness sim_backend_runner.py，不经 app 编排链），交接节点不执行；且 exit 识别链三处均裸图像识别、无 sim 应答口改道（后端答口 cw_sim_backend/cw_sim_ports 已存在、exit 未消费） | sim 零影响；断裂不发生是因为不经此路径 |
 | 交接点②（异常超限） | **不可达**：同上 + sim 决策链确定性驱动无节点出错形态 | 零影响 |
 | route⑤ 清理原语 | **不可达**（同①） | 零影响 |
 
 **立挂账待办**：「sim 走 app 全链需先补 exit 识别 sim 改道口（三处识别点接 sim_or_live_identity，后端答口已存在未接线）」。
 
+**sim 直驱耗尽出口翻转申报**：默认出口语义改 success 后，sim 直驱构造点（skill 脚本与测试 harness，见 §2.4 构造点清单）的耗尽出口同步翻转（fail → success 带前缀）——sim 决策链确定性驱动、耗尽不可达（本表前提），若未来触达按交接 success 文本处理（当前无消费方解析，无害）。
+
 **附注（运行记录噪音申报）**：route⑤ 委托清理 loop 在运行记录已关闭态会重铸新运行 id（幻影 run），清理段日志归属碎片化；正常完成+弹窗压大厅路还会触发对局状态重建又立刻被假局守卫拆除，伴随误导性警告「开局阶段即回大厅」。本批申报为已知噪音；「委托清理 loop 不参与运行记录生命周期（构造开关跳过启动门控）」立挂账待办——涉及运行门控深水面，跳过后日志归属行为未实证，不并本批。
 
 ### 2.8 关键取舍
 
-1. **交接挂 app 编排层，不挂 loop 内联**：所有权归编排（app 是单局主人），loop/exit 互不引用保持；「loop 交 exit」的语义由节点链表达，满足用户模型且 diff 最小。备选否决：loop 内联调 exit（破坏互不引用）；loop 转退出模式自清理（被退局范式节点守则「绝不点放弃并结算」红线结构性禁止——loop 触碰退局节点即违红线）。
-2. **异常超限 = success 交接出口，非 fail**：用户模型下异常退出是**预期内处置**（放弃本局回大厅），不是故障；fail 语义收紧给框架级异常。信息不丢：status 标注交接键 + 对局摘要 abandoned 标记 + `[cw!]` ERROR 日志承载。**app 账面后果申报**（attack.md §4 裁定项 B，用户已裁 2026-11-19）：一条龙通知按运行记录显示成败，弃局完成将显示「成功」——异常详情走日志与摘要标记查证；备选「具名 fail 收尾」驳回理由：弃局常态化后通知红噪声化、稀释真失败可见性。
+1. **交接挂 app 编排层，不挂 loop 内联**：所有权归编排（app 是单局主人），loop/exit 互不引用保持；「loop 交 exit」的语义由节点链表达，满足用户模型且 diff 最小。备选否决：loop 内联调 exit（破坏互不引用）；loop 转退出模式自清理（被 loop 分发消费的中断挑战弹窗 op `CwScreenInterruptDialog` 的「绝不点放弃并结算」红线结构性禁止——loop 自清理必须点该按钮即违红线；exit 是该语义的合法持有者，`dialog_giveup` 节点正是其本体职责）。
+2. **异常超限 = success 交接出口，非 fail**：用户模型下异常退出是**预期内处置**（放弃本局回大厅），不是故障；fail 语义收紧给框架级异常。信息不丢：status 标注交接键 + 对局摘要 abandoned 标记 + `[cw!]` ERROR 日志承载。**app 账面后果申报**（attack.md §4 裁定项 B——**待重裁**：第 2 轮核 B 补呈应用组消费面后原默认案信息不完整，见下）：原默认案 = 接受翻转（弃局完成显示「成功」）。**第 2 轮补呈的消费面**：应用组调度（group_application 的 `is_done` = 运行记录 SUCCESS 即当日跳过该应用）——翻转后含 CW 的应用组当日不再重跑 CW，「残局下次启动兜底」在应用组语境当日失效、直到日切；旧语义（fail）下组会重跑、`_in_match` resume 接手。三个选项：a) loop 层交接 success 不动（架构归位不受影响），仅 app 收尾时对异常交接形态以具名 fail 收尾 → 组当日重跑 → 大厅起新局（自愈恢复）；b) 维持 success + 显式申报「应用组语境当日跳过 = 接受」；c) 其他。**推荐 a)**：弃局是罕见异常，通知红 = 有效信号非噪声；调度自愈有当日产出价值；「成功」账面对无产出的一局是失实申报。落定后本条与 attack.md §4 同步。
 3. **route⑤ 保留为清理原语**：删它 = exit 要自建对局中画面处置全套（商店/事件/弹窗清理），重复 loop 的分发表 = 旧版退出 op「复制体漂移」事故的重演（cw_entry_exit.py 模块头事故史申报）；保留 + 语义重申（原语非所有权）零成本归位。
 4. **收尾簿记不动**（④ 销账依据）：簿记是 loop 正常流程的终点账（依赖 run 级状态），交接是退出动作——两件事分开；销账随本批 T-4 拆两半落挂账板（attack.md §3.9）。
 5. **正常完成的 exit 调用 = 幂等确认（有界）**：游戏已回大厅且无弹窗压制时，exit 路由④ → lobby_check 即完成，近 no-op；弹窗压制窗口由交接节点守卫段先行清弹窗（§2.2 两段式），不再有「识别全落空误入战斗链」的反例窗。
@@ -118,7 +122,7 @@ route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定�
 
 - **app 交接节点测试**（新文件，src 镜像 `sr-od-test/test/sr_od/application/currency_war/test_currency_war_app_handoff.py`，app 层轻量打桩，打桩先例 test_nameless_honor_app.py）：六用例——①大厅形态 → exit 被调 + cw_match 置 None；②异常交接形态 → exit 被调 + cw_match 置 None；③max_rounds → exit 零调用；④假局守卫形态（开局失败-中断）→ exit 零调用；⑤fail → exit 零调用 + 失败收尾；⑥弹窗守卫（积分奖励压大厅 → 守卫清弹窗 → exit 被调）；
 - **loop 出口语义测试**（镜像位置 `test_cw_loop.py`）：既有耗尽透传测试改断言（FAIL → success 且文本带 `STATUS_HANDOFF_PREFIX` 前缀；「链尾不空跑」断言保留不删）；新增委托模式耗尽维持 fail 断言；大厅/max_rounds 出口文本不变断言（防出口文本漂移破坏交接判定——与 §2.5 常量面联动）；
-- **exit 面唯一改动**（route⑤ 构造点补 `cleanup_delegate=True` 一参）→ 既有 exit 测试零回归 + 委托参数用例；
+- **exit 面**：唯一改动 = route⑤ 构造点补 `cleanup_delegate=True` 一参。exit 本体**无既有直接测试**（sr-od-test 的 cw_entry/ 目录为空）；唯一关联 = back_to_normal_world_plus 的打桩测试（monkeypatch 假类，不触 route⑤ 节点图，不受一参改动影响）——T-2 顺手补 delegate_loop 传参最小冒烟用例；
 - harness：app 层用打桩，画面帧不涉及。
 
 ### 2.10 正本更新清单
