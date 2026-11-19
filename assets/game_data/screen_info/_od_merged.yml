@@ -7472,10 +7472,10 @@
   - area_name: 标识-本场对局首领
     id_mark: true
     pc_rect:
-    - 1435
-    - 735
-    - 1600
-    - 780
+    - 474
+    - 172
+    - 691
+    - 229
     text: 本场对局首领
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -9390,10 +9390,10 @@
   - area_name: 按钮-确认
     id_mark: false
     pc_rect:
-    - 880
-    - 950
-    - 1040
-    - 1012
+    - 1044
+    - 958
+    - 1119
+    - 1009
     text: 确认
     lcs_percent: 0.5
     template_sub_dir: ''

@@ -5,10 +5,10 @@ area_list:
 - area_name: 标识-本场对局首领
   id_mark: true
   pc_rect:
-  - 1435
-  - 735
-  - 1600
-  - 780
+  - 474
+  - 172
+  - 691
+  - 229
   text: 本场对局首领
   lcs_percent: 0.5
   template_sub_dir: ''

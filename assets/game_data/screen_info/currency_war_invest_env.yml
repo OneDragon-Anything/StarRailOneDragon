@@ -33,10 +33,10 @@ area_list:
 - area_name: 按钮-确认
   id_mark: false
   pc_rect:
-  - 880
-  - 950
-  - 1040
-  - 1012
+  - 1044
+  - 958
+  - 1119
+  - 1009
   text: 确认
   lcs_percent: 0.5
   template_sub_dir: ''
