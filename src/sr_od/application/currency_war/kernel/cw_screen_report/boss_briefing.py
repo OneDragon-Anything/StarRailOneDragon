@@ -2,8 +2,7 @@
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口裁决:门判定 + 稳定帧引用。report 写点 = **BOSS 类型直定**
-(自旧 BOSS 简报分支迁移,正本 =
-game_state/node-domain.md 节点类型权威链):简报屏上报经 kernel ``_write_derived_node_type`` 直定
+(自旧 BOSS 简报分支迁移):简报屏上报经 kernel ``_write_derived_node_type`` 直定
 boss 类型,目标 = 现 hist——简报屏仍是 boss 类型权威。
 """
 from __future__ import annotations
@@ -30,8 +29,8 @@ class CwScreenBossBriefingObs:
 def report_screen_boss_briefing_obs(gs: GameState,
                                     obs: CwScreenBossBriefingObs, *,
                                     sig: ChannelSig | None = None) -> None:
-    """BOSS 简报屏观察上报:boss 类型直定(目标 = 现 hist;正本 =
-    game_state/node-domain.md 节点类型权威链)。
+    """BOSS 简报屏观察上报:boss 类型直定(目标 = 现 hist;节点类型权威链
+    的规则本体 = kernel `_write_derived_node_type` 注释)。
 
     - **直定前置守卫(去证据门形态,用户裁定 2026-09-21)**:结算确认
       点击即上报(无证据等待)⇒ 上报先于下一节点任何画面渲染恒成立

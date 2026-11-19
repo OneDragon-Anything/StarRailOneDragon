@@ -312,8 +312,8 @@ class CwScreenPrep(CwOperation):
                     is_merge_effect_window,
                 )
                 _gs_obs = gs_of_ctx(getattr(self, 'ctx', None), session)
-                # 备战帧节点锚定(正本 = game_state/node-derivation.md
-                # 观察锚定;写端申报见 flow/README.md 推进喂入节):heavy 观察回执携带本帧
+                # 备战帧节点锚定(观察锚定 = kernel
+                # observe_node_anchor;写端申报见 flow/README.md 推进喂入节):heavy 观察回执携带本帧
                 # plane/round → observe_node_anchor(处置规则 = kernel
                 # helper 单一源:first_anchor/advance 补推/reanchor/
                 # stale_dropped)。锚定输入与旧备战分支同源(read_phase_round
@@ -325,8 +325,7 @@ class CwScreenPrep(CwOperation):
                         and _st.round_num is not None:
                     with contextlib.suppress(Exception):
                         # 锚定输入即键((位面,轮) 元组直传;键表示下调用方
-                        # 零坐标换算义务,正本 =
-                        # game_state/node-domain.md)——
+                        # 零坐标换算义务)——
                         # 备战帧锚定是位面内全部战斗/奖励节点含 boss 的唯一
                         # node_pos 观察写端(漏传/错读的越域形态由 kernel
                         # 位面在表守卫丢弃保留证据)。

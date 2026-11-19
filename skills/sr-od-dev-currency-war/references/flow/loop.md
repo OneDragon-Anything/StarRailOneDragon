@@ -6,7 +6,7 @@
 
 四层分工判据:**外层循环管「现在是哪个画面、交给谁」;画面指挥管「一次访问内观察→决策→执行的编排」;策略步进管「给一帧期望态提什么动作」;动作执行管「一个动作怎么落地」(机械发出、零判效;落地判定归观察侧对账)**。
 
-节点推进喂入 = **动作上报 + 画面 op id_mark 确认**:战斗/补给节点终结动作 op 上报(kernel `report_node_advance`,trigger 封闭集 {settle_confirm, supply_finish})+ 画面 op 观察 id_mark 确认(`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`);观察漏斗与外循环分支写点不写推进域(判定语义单一源 = `docs/develop/sr_od/application/currency_war/game_state/node-derivation.md`)。
+节点推进喂入 = **动作上报 + 画面 op id_mark 确认**:战斗/补给节点终结动作 op 上报(kernel `report_node_advance`,trigger 封闭集 {settle_confirm, supply_finish})+ 画面 op 观察 id_mark 确认(`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`);观察漏斗与外循环分支写点不写推进域(判定语义单一源 = kernel 三原语注释,cw_game_state.py)。
 
 ## 1. 循环骨架
 

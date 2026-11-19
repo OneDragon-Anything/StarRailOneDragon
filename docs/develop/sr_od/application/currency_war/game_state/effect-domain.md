@@ -25,7 +25,7 @@
 | 效果变化的捕获与落盘(不设专用写入入口/专用域行,变更随快照行自带) | skill `sr-od-dev-currency-war/references/journal.md` §6 效果域捕获声明 |
 | 逐效果确定进度与机制知识 | `docs/game/currency_war/research/invest_effects.md`(game 侧正本)+ `kernel/cw_investments.py` overlay 行注释;待定卡流程 = 跨迭代挂账板「投资策略效果逐条确定工程」条 |
 | 效果数值真值(官方卡文/经济字段数值) | 代码注册表:`data/cw_invest_data.py`(base 官方文本,数据权限序之首)> `kernel/cw_investments.py`(overlay);值只在代码 |
-| 节点推进判定与节点入口边界(counter +1 时机的判定基础) | [node-derivation.md](node-derivation.md)(派生规则单一源) |
+| 节点推进判定与节点入口边界(counter +1 时机的判定基础) | kernel 三原语注释 `report_node_advance`/`advance_node_effective`/`observe_node_anchor`(cw_game_state.py) |
 | 效果的游戏机制原文考证 | docs/game/currency_war/(game 子树) |
 | 单版本事务/渠道签名/派生序(节点判定→类型→效果推进) | skill `sr-od-dev-currency-war/references/journal.md` §4-§6 |
 
@@ -160,8 +160,8 @@ unit_buff);词缀源
 1. **随事件必须落账 → 单版本事务内急算**:计数器推进、发放、倒计时基数,在派生
    管线效果域段同一事务内算完落账(journal.md §6 派生原子生效)。
 2. **消费时才被问 → state 内部惰性读取入口**:不随事件变化、消费时才需要的派生值,做成
-   读取入口,消费时现算,不占存储。已确认实例:`effective_node_pos()`([node-domain.md]
-   (node-domain.md) §3)/ `xp_buy_cost()`(商业间谍被动分支,§8)。
+   读取入口,消费时现算,不占存储。已确认实例:`effective_node_pos()`(kernel
+   cw_game_state.py docstring)/ `xp_buy_cost()`(商业间谍被动分支,§8)。
 3. **派生管线前段只放原始读数整理**:依赖 state 内部知识的派生,禁放前段。
 
 ### 6.2 观察优先、兜底逻辑通用模式
@@ -175,7 +175,7 @@ unit_buff);词缀源
   kernel `xp_click_cost`,cw_economy.py:485;升级总价 `upgrade_plan_fee`
   :1196 同源委托,禁第二处独立折扣实现)。
 
-与节点序键同款单字段双值结构([node-domain.md](node-domain.md) §2);impacts §2 通用
+与节点序键同款单字段双值结构(cw_game_state.py 字段注释);impacts §2 通用
 模式节为其消费侧申报,两处互指,细则以本节为准。
 
 ### 6.3 写入归属判据(效果改写其他 state 字段时)
@@ -476,7 +476,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   规则 2);禁买禁刷 = 策略层决策规则(效果域含躺平 ∧ counter<3 → 禁排买牌/刷新
   计划),**无执行闸**、策略器自己负责(用户裁定,2026-09-10);尾款金面 = 观察覆盖
   兜底(§7.3)。节点入口边界(入口=进入该节点备战画面;补给节点特例=补给选择画面
-  即入口)单一源 = [node-derivation.md](node-derivation.md),本篇不复写。
+  即入口)判定基础 = kernel `report_node_advance` 一族注释,本篇不复写。
 
 #### 免战牌(151301)
 
@@ -1249,8 +1249,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 4. **躺平 +20 金入账时点**:达 3 当刻 vs 下一次节点入口两读法;裁定倾向 = 冻结三节点
    结束进 N+3 时入账(与 §10-3 同源,实采一并定案)。
 5. **躺平遭遇节点入口归类**:入口 = 遭遇屏 vs 备战帧——counter +1 时机依赖此归类;
-   现判定规则下两形态均恰一次推进,不影响判定本体([node-derivation.md]
-   (node-derivation.md) 场景走查)。
+   现判定规则下两形态均恰一次推进,不影响判定本体。
 6. **连胜联动类 counter 有无**:记录形态两案(§5 表)——counter 空(连胜流为既有
    观察面)或按连胜事件 +1;该类在用无规格条目(关联字段 win_reward_mult/
    difficulty_per_streak 注册行已登记 `STRATEGY_ECONOMY['伟大征服']`,消费直读注册表不经

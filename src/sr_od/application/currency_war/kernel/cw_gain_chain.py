@@ -3522,7 +3522,7 @@ def check_strategy_equip_expiry(gs: GameState, *,
 def _node_frame(gs: GameState) -> str:
     """链内 frame 字符串(「位面-轮」统一标识,如 ``2-3``;节点未观察 =
     空——登记分支 evidence 用;编号时代的 p{plane}-r{round} 双形态随键
-    表示统一,消除同 run 双形态并立;正本 = game_state/node-domain.md)。"""
+    表示统一,消除同 run 双形态并立)。"""
     _nd = gs.node.value
     return (f'{_nd.plane}-{_nd.round_num}' if _nd is not None else '')
 

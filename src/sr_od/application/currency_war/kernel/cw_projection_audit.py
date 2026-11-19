@@ -659,7 +659,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='两态序键:锚定态 observe_node_anchor 直写 observation / '
               '推进态 report_node_advance 经推进原语写 logic(值 = '
-              '(位面,轮) 元组键;正本 = game_state/node-domain.md)'),
+              '(位面,轮) 元组键)'),
     # —— 回执与局终 ——
     'receipts': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,

@@ -94,8 +94,8 @@ chain_rewritten(view, plane) -> set[int]                # 已证伪改写位集:
                                                         #   基线值禁用作类型兜底(消费侧执行)
 ```
 
-消费方=节点域类型派生规则四②「商店查现行链」(规则本体归节点推进判定方案,见
-[node-domain.md](node-domain.md) §5/§7)。兜底序(记录表合并视图等)归规则本体适用范围;
+消费方=节点域类型派生规则四②「商店查现行链」(规则本体归 kernel `_write_derived_node_type`
+注释与 `chain_node_type` 接口)。兜底序(记录表合并视图等)归规则本体适用范围;
 基线不入兜底序、改写位禁令由消费侧执行。冲突保留证据走既有 obs_event `arbitrate` 词,
 载荷 {chain, direct} 双值并陈,仲裁谁赢=规则本体。
 

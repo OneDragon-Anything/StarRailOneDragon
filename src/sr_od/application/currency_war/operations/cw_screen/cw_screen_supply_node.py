@@ -63,8 +63,8 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 形态:观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node 另承载节点条锚定(顶部「备战阶段 X-Y」→
 ``observe_node_anchor``;锚定写端已登记 = `screens/op-layer.md` §2.1;
-节点条锚定四分支处置规则表权威版本 = `game_state/node-derivation.md`
-(E10 行)——补给「自动弹」形态的唯一识别标志点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
+四分支处置规则表 = kernel ``observe_node_anchor`` 注释——补给「自动弹」
+形态的唯一识别标志点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
 进了下一节点 = 节点完成,success 结束本次访问外层)+ 选项一次读(每访问恰一次,与
 现役决策体读同帧等价,迁移不增加读屏)→ ``report_screen_supply_node_obs``
 落状态容器 ``supply``(空 = 读缺零点击终结路径,闸在 report 内)→ obs 挂
@@ -206,8 +206,8 @@ class CwScreenSupplyNode(CwOperation):
         同款;crop_first=False 全帧识别按带过滤,防小框裁剪漏检)。
         正则命中 + 值域内(plane∈1-3/round ≤ node_round_cap(场字段现值),
         与 read_phase_round 值域守卫同源——OCR 抓错源当 miss)→ **节点序位
-        元组 (plane, rnd) 直返**(键表示下读数即键,零坐标换算,正本 =
-        game_state/node-domain.md;越域位面形态由 kernel
+        元组 (plane, rnd) 直返**(键表示下读数即键,零坐标换算;
+        越域位面形态由 kernel
         锚定位面在表守卫丢弃留存证据)。
         读不得/值域外 → None(调用方 = 跳过,禁猜)。纯读。
         """
@@ -272,7 +272,7 @@ class CwScreenSupplyNode(CwOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 节点条锚定(补给「自动弹」形态——结算确认直接弹补给屏,无备战帧
         # 可锚定——的唯一识别标志点;divert 形态 = 备战帧已锚定,本读数走处置规则表
-        # reanchor/stale_dropped 分支承接,处置规则表权威版本 = `game_state/node-derivation.md`(E10 行))。
+        # reanchor/stale_dropped 分支承接,处置规则表 = kernel observe_node_anchor 注释)。
         # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
         # 来源 C 形态门随本锚定判(T-27 利息条件分支,中途审查复裁):
         # 处置 token = 'reanchor' → 备战帧已锚定本节点 = 常规形态(基座 =

@@ -64,11 +64,9 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 只钉 :func:`game_state_of` 建立路径,GameState 构造器零装配逻辑;无开关;
 行落盘另以 sink 在场与 run_id 在场为准,sink 缺席 = 行不落而写路径照常——
 记录被动,不改写路径语义)。新增**逻辑态
-派生域与画面上下文域**(字段面 as-built =
-``docs/develop/sr_od/application/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
+派生域与画面上下文域**:``prev_screen``/``current_screen``
 (①观察汇聚写)+ ``top_bar_raw``(顶栏原文,**观察层**,observe() 只落原始
-读数)+ ``node_pos``(**两态序键**,正本 = game_state/node-domain.md +
-``game_state/node-derivation.md``:观察锚定态 = observe_node_anchor 直写
+读数)+ ``node_pos``(**两态序键**:观察锚定态 = observe_node_anchor 直写
 observation / 推进未确认态 = 终结动作上报 write_logic;值载体 =
 ``(位面, 轮)`` 元组键(:data:`cw_node_schedule.NodePos`),全局编号
 表示已废弃)。
@@ -363,8 +361,8 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 不并入他域 bump
     'node_seq_by_plane': 1,     # 逐位面节点序列场字段(「人身意外险」设计迭代:
                                 # 键 = 位面 1 基,值 = 节点类型序;逻辑态,
-                                # 写点唯一 = gain_invest_env 尾段,注册后
-                                # 恒全量。独立键版本 1,同 env_grants_done
+                                # 注册后恒全量;双写端与 None 回退契约见
+                                # 字段定义注释。独立键版本 1,同 env_grants_done
                                 # 先例不并入他域 bump)
     'substate': 1,          # 分类子态/事件浮层
     'shop': 2,              # 商店开态 payload(域版本 2 = ShopPayload 扩
@@ -381,8 +379,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'settlement': 1,        # 结算真值组 + hp 保底事件位
     'effects': 1,           # 在场效果激活账本(非 Field 载体)
     'derivation': 5,        # 逻辑态派生域与画面上下文域(R1 §3.1.4;域版本 5 =
-                            # 节点域换键(正本 = game_state/node-domain.md:
-                            # 序键字段整体停用换 (位面,轮) 元组键
+                            # 节点域换键(序键字段整体停用换 (位面,轮) 元组键
                             # node_pos/node_hist_pos 承载);历史:4 = node_ord
                             # 两态生命周期 + 四推断分支整体停用(切换批:
                             # 推进 =
@@ -3372,12 +3369,13 @@ class GameState:
     # (evidence='node_seq:env');② 策略卡触发刻 = sim 节点窗开插入位置
     # (evidence='node_seq:strategy',载体 = cw_sim_backend._enter_node_
     # window,登记表 = cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS,
-    # 一局至多一次)——观察对账面 = 备战帧
+    # 一局至多一次;两个写端都发生时**后写赢**——先策略改写后选改写
+    # 环境 = env 注册值覆盖策略值,双改写叠加零特判)——观察对账面 = 备战帧
     # 节点行动态槽数 CV 读(cw_node_reader)→ live 台账 seq_by_plane
     # (cw_exec_state),台账与本字段可逐位对照,失配留存证据不自动改写。
     # 消费面 = 节点序列正反解/next_screen 推导/观察锚定/round 值域上限
-    # (node_round_cap)全部经本字段,坐标系从固定 9 制改按局修饰变长制
-    # (权威版本 = game_state/node-domain.md §1)。开局初始值 = None(A 类
+    # (node_round_cap)全部经本字段,坐标系从固定 9 制改按局修饰变长制。
+    # 开局初始值 = None(A 类
     # 未注册口径)。恢复局随快照存续 = 修饰局接管坐标系不断。
     node_seq_by_plane: Field[dict[int, tuple[str, ...]] | None] = field(
         default_factory=Field)
@@ -3655,7 +3653,7 @@ class GameState:
     top_bar_raw: Field[str] = field(default_factory=Field)
     # [索引定义] node_pos = 节点序位 (位面,轮) 二元素整数元组,1 基
     # (:data:`cw_node_schedule.NodePos`,节点身份唯一表示;字典序 = 序列
-    # 全序)。**两态序键(正本 = game_state/node-derivation.md)**:观察锚定态(source=observation,写端 =
+    # 全序)。**两态序键**:观察锚定态(source=observation,写端 =
     # observe_node_anchor 直写,「禁 observe 直写序键」旧裁决已推翻)解锁
     # 下一次终结动作上报;推进未确认态(source=logic,写端 =
     # report_node_advance 经 advance_node_effective)等观察锚定翻态。
@@ -4335,7 +4333,7 @@ class GameState:
           (:func:`chain_node_type`)直定,链缺/位越界/未辨 = 零写(禁猜,
           链权威版本 §6 零内建回落)。
 
-        **适用范围(正本 = game_state/node-derivation.md)**:本口已退出**推进域**(``node_pos``/
+        **适用范围**:本口已退出**推进域**(``node_pos``/
         ``node_hist_pos`` 写入与效果推进尾段随四推断分支停用)——节点推进唯一
         落账入口 = :func:`advance_node_effective`(动作上报/观察锚定);
         ``gs.node`` 观察镜像写端保留在漏斗(决策层坐标供给端,与 gold/hp
@@ -4448,7 +4446,9 @@ def effective_node_pos(gs: GameState) -> NodePos | None:
     run 内已见最大序位(跃迁去重键 ``(run_id, 生效序位)`` 载体);两者之
     差仅存在于纠偏写序中间态,取 max 即生效语义,None 安全(双空 = 未定);
     max = 元组字典序(= 序列全序,键表示下零序列依赖);消费面恒逻辑层,
-    观察层(top_bar_raw)不参与序比较。"""
+    观察层(top_bar_raw)不参与序比较。**消费纪律**:一切序比较/节点判定
+    一律经本读口取值——不消费 top_bar_raw 原文,不按 node_pos 来源分叉
+    判先后(读取入口取 max 已吸收两态差,消费侧无需再判来源)。"""
     vals = [v for v in (gs.node_pos.value, gs.node_hist_pos)
             if v is not None]
     return max(vals) if vals else None
@@ -4618,9 +4618,9 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
     project_effect_capacity(gs)
 
 
-# ============================================================ 节点推进动作上报(正本 = game_state/node-derivation.md §3)
+# ============================================================ 节点推进动作上报
 
-#: 动作推进 trigger 封闭集(正本 = game_state/node-derivation.md;集外显式炸错)。
+#: 动作推进 trigger 封闭集(集外显式炸错)。
 #: supply_finish = 补给节点出战完成(2026-10-29 流程模型对齐:补给选完
 #: 回备战,出战即完成节点进下一回合,无战斗无结算屏;supply_confirm 已随
 #: 「确认即推节点」旧语义废止删除)。
@@ -4753,7 +4753,7 @@ def node_screen_now(gs: GameState) -> str:
 def advance_node_effective(gs: GameState, candidate: NodePos, *,
                            actor: str, sig: ChannelSig,
                            source: FieldSource = 'logic') -> bool:
-    """推进生效原语:序位前进的唯一落账入口(正本 = game_state/node-derivation.md §3;candidate =
+    """推进生效原语:序位前进的唯一落账入口(candidate =
     (位面,轮) 元组键,比较 = 元组字典序即序列全序)。
 
     序位前进的任何合法写点(动作上报/观察补推)都必须经本原语——账本
@@ -4788,9 +4788,9 @@ def advance_node_effective(gs: GameState, candidate: NodePos, *,
 
 def report_node_advance(gs: GameState, *, trigger: str,
                         sig: ChannelSig | None = None) -> LogicOutcome:
-    """终结动作上报推进(动作路径唯一入口,正本 = game_state/node-derivation.md §3)。
+    """终结动作上报推进(动作路径唯一入口)。
 
-    - 观察态门(**双条件**,正本 = game_state/node-derivation.md):node_pos value 在场 ∧ source ==
+    - 观察态门(**双条件**):node_pos value 在场 ∧ source ==
       observation 才放行——只有已被观察确认的节点值可被动作推进,重复
       上报/重试在结构上不可能。**value 守卫不可省(攻击 R1)**:Field 缺省
       source='observation',新状态容器 = (None, 'observation'),只查 source 会在
@@ -4806,7 +4806,7 @@ def report_node_advance(gs: GameState, *, trigger: str,
       ``WorldDecl(next_screen='', trigger='node_advance')``——终结动作
       落地事实即 applied(**applied 语义扩展申报**:在库「applied = 实际
       推进落账位」单点扩展为「终结动作落地事实(落地但无后继可写)」,
-      正本 = game_state/node-derivation.md applied 契约;终局后重复上报恒
+      applied 契约;终局后重复上报恒
       过观察态门重复发出 match_end,零状态破坏,判读按同 run 同一终局
       事件);
     - sig 缺省 = logic_action 族按 trigger actor 构造;显式传入须同族。
@@ -4932,8 +4932,7 @@ def clear_pending_loss(gs: GameState, *, sig: ChannelSig) -> None:
 def observe_node_anchor(gs: GameState, pos: NodePos, *,
                         trigger_screen: str, actor: str,
                         sig: ChannelSig | None = None) -> str:
-    """观察锚定 helper(备战帧顶栏/补给屏节点条两写端共用;正本 =
-    game_state/node-derivation.md;
+    """观察锚定 helper(备战帧顶栏/补给屏节点条两写端共用;
     入参 = (位面,轮) 元组键,调用方零坐标换算义务;旧正解穿参通道
     已停用)。
 
@@ -5277,8 +5276,7 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
       于迁移函数一处);新档两键均不现;
     - **旧编号键忽略(零迁移)**:编号表示存档的 ``node_ord`` 值键与
       ``node_hist_ord`` 顶层键不在现状态容器字段面(getattr 落空/顶层不读)
-      自然忽略——历史语料不迁移(离线判读面裁定,键表示切换批
-      正本 = game_state/node-domain.md),零迁移函数;
+      自然忽略——历史语料不迁移(离线判读面裁定),零迁移函数;
     - source/evidence 取 prov 面(缺 = observation/None 缺省);
     - write_seq/工程结构不恢复(判读面不需要版本续接)。
     """
