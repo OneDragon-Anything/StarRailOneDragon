@@ -58,3 +58,26 @@
 
 - design.md：§2.4 重写（三段式定稿 + None 守卫 + difficulty 挪序 + 保留集合括注 + close_run 依赖脚注 + 遥测时序副作用申报 + 手动逐轮申报）；§2.6 重写（等价性如实化——SettlementState 不改名 + takeover 集合扩容为有意变更 + relaunch 30s GRACE 窗错标申报）。
 - landing.md：T-1 范围/文件面、T-3 ⑤、T-4 ④、§3（见上表 R-4~R-7 行）。
+
+## 第 3 轮（判据专项核销，单核）
+
+- 审对象：第 2 轮修订稿 design.md §2.2/§2.4/§2.6/§2.7 + landing.md T-1（358230cca）
+- **总评**：「需再修（轻）后进定稿」——判据本体全部核过可实现且方向正确；必修一处事实订正 + 一处插槽澄清（均已落，表述级，不触判据本体）。
+
+### 判据核销表（摘要）
+
+| # | 判据 | 结论 | 要点 |
+|---|---|---|---|
+| 1 | establish 三段式可实现性 + 禁前置论证 | PASS | 幂等门/容器构造/ensure 铸段自赋证据齐；入口链三分支 ensure（简报/投资环境/投资策略）传容器，「ensure 前置必二次铸段 → created_run_id 错位」论证在真实代码成立 |
+| 2 | handle_init 六场景判据闭合 + None 短路 + discard 前置 | PASS | 六场景逐个走查结果与设计表一致；establish 幂等直过不弃旧 → discard 显式前置必要；discard+establish 衔接有生产先例（cw_screen_shop） |
+| 3 | 消费点迁移方向（旧 True ≙ takeover） | PASS | 宿主限定 grep 全集（一写入点 + 三消费点）方向正确；SettlementState/战斗等待 op 同名字段甄别与 B5/Q-2 裁定吻合 |
+| 4 | 缺省值方向与 sim 零改动 | PASS | 两直构点路径属实、裸构造吃缺省；「不探针 + handle_init 保留」方向正确 |
+| 5 | close_run 依赖脚注 | PARTIAL → 已订正 | 框架全路径收尾属实；但「唯一不 close 分支该分支无容器」与代码不符——假局提前 return 分支可带容器触发且不清容器（该残留 = 保留集合括注已申报的无害形态，判据体系无洞）；脚注订正对齐括注 |
+| 6 | difficulty 挪序可实现性 | PASS | 同节点相邻段换序无副作用依赖；establish 职级就地吸收接住已读难度，语义连续 |
+| 7 | run_record 零副作用 | PASS | 运行记录只 import 框架 AppRunRecord，period/当日跳过判定与 CW telemetry run 零耦合 |
+
+### 新发现与处置
+
+1. **真假局提前 return 分支可带容器**（核销 5）→ design §2.4 脚注订正（已落）。
+2. **establish 内 ensure 插槽未定**：若 ensure 插在容器赋值后、就地吸收段前，吸收 journal 行落重建路径「空段」，§2.4 副作用申报③失真 → landing T-1 ② 插槽澄清（ensure 在吸收段之后，已落）。
+3. **「继续进度 × 假局残留容器」组合判保留**（opened_via 沿旧值，非六场景表第 5 行的兜底建 takeover）——与保留集合括注申报一致，非洞；表述澄清记录在案，不改判据。

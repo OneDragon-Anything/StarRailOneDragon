@@ -11,7 +11,7 @@
   5. **挂起局弃局重开**维持既定语义（模式选择-进行中 → 委托退出 op → 回大厅）；
   6. **debug 判断用框架现成** `env_config.is_debug`。
 - **关联账**：挂账板 §二.7⑥（本批销账目标）；交接批 design §2.5/§2.6（max_rounds 停点语义按裁定 4 修订，随本批）；loop→exit 交接批正本 loop.md §6（随批订正）。
-- **状态**：第 2 轮修订稿（判据定稿；第 3 轮判据专项核销待发；报告=[attack.md](attack.md)）
+- **状态**：**定稿**（三轮对抗完成：三核 → 双核核销 → 判据专项核销；报告=[attack.md](attack.md)）
 
 ## 1. 问题与动机
 
@@ -82,7 +82,7 @@
 - **容器记 `created_run_id`**：经上述漏斗 → 字段恒非 None；外部装配直构容器（sim）不经漏斗 → 缺省 None = 保留（sim 裸构造点零改动）。run 提前开对运行记录 period/当日跳过判定**零副作用**（核二核过：currency_war_run_record 只 import 框架 AppRunRecord）。
 - **handle_init 判据（自足式，含 None 守卫）**：容器存在 ∧ `created_run_id is not None` ∧ `created_run_id != 当前 run` → **先 `discard_stale_match_container` 再 `establish_new_match(takeover)`**（establish 幂等直过不弃旧——discard 必须显式前置）；None 短路为保留（外部装配）；否则保留。
 - **保留集合括注（如实）**：本次运行入口链所建 / 外部装配（sim 直构）/ **上次运行未收尾残留**（假局提前 return、入口链 fail——行为无害：未锁定不探正确、商店防御 takeover 探照跑）。
-- **全场景闭合推演**：正常开局（入口链建，run 一致 → 保留 ✓）；同进程连续两局（局终清容器 → 入口链新建 ✓）；重跑直撞（残留容器旧 run → 重建 takeover ✓——第三失活形态消解）；停点重跑（同 ✓）；继续进度（兜底建 takeover ✓）；sim 直构（None → 保留 ✓）。**判据成立前提脚注**：残留容器判「旧 run」依赖 loop `after_operation_done` 全路径必达 `close_run`（停止/失败/超时均收尾；唯一不 close 分支 = 真假局，该分支无容器）——框架保证既有，申报依赖。
+- **全场景闭合推演**：正常开局（入口链建，run 一致 → 保留 ✓）；同进程连续两局（局终清容器 → 入口链新建 ✓）；重跑直撞（残留容器旧 run → 重建 takeover ✓——第三失活形态消解）；停点重跑（同 ✓）；继续进度（兜底建 takeover ✓）；sim 直构（None → 保留 ✓）。**判据成立前提脚注**：残留容器判「旧 run」依赖 loop `after_operation_done` 全路径必达 `close_run`（停止/失败/超时均收尾；唯一不 close 分支 = 真假局提前 return，该分支可带容器残留且不清容器，残留行为按本节保留集合括注申报）——框架保证既有，申报依赖。
 - **遥测时序副作用申报**：①铸造点前移（简报/投资分支 → establish 点，三分支 ensure 退化为纯认领）；②难度确认帧 establish 先于原难度读存位（挪序后消除）；③重建路径双段（loop `__init__` ensure 先铸空段、establish 内 ensure 再铸正段——空段零 journal 行，无行为损伤，**已知代价接受**）；④telemetry「铸造单点」口径注释随批同步（T-1）。
 - **手动逐轮验证工作流变更申报**（核一/核三同点）：现状靠跨 run 容器延用保策略 target 稳定；重整后每轮重建 → target 每轮重选 + 探针每轮一次。裁定 ③ 字面覆盖，**接受变更**；相关注释（handle_init 手动逐轮段 / `establish_new_match` 幂等分支「保手动逐轮延续语义」）随批改写。
 
