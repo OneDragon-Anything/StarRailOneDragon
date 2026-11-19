@@ -169,7 +169,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionLevelUpParam: CwActionLevelUpOp,
     # (CwActionDeployMoveParam/CwActionSwapDeployParam 注册行已随部署统一
     #  批戊批纳入统一管理时删除:零发出点,词表类同批退役——unified-deploy-order
-    #  §2.7/§4;统一拖动 = 唯一拖动承载。)
+    # 统一拖动 = 唯一拖动承载)
     CwActionSellDeployedParam: CwActionSellDeployedOp,
     # 统一拖动(部署统一批:全域移动四元组;旧 DeployMove/SwapDeploy
     # 两类随消费面切换退役,本行 = 唯一拖动承载)

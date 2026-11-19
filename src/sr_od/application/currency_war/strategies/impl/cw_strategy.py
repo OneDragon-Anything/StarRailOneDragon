@@ -208,7 +208,7 @@ class CwStrategy(ABC, Generic[_TState]):
     AUTHOR: str = ""             # 参赛者/作者
     VERSION: str = "0.1"         # 语义化版本
     DESCRIPTION: str = ""        # 一句话描述打法
-    # 扫描器内部:True = 中间辅助 ABC,不注册;非展示元数据(§11.5)
+    # 扫描器内部:True = 中间辅助 ABC,不注册;非展示元数据
     _abstract: bool = False
 
     def __init_subclass__(cls, **kwargs) -> None:

@@ -69,7 +69,7 @@ DEFAULT_FLUSH_EVERY: int = 64
 REAL_RUN_ID_RE: re.Pattern[str] = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 
 #: journal 段保留窗(天;实机段,寿命契约保留窗 = 跨期语料窗,retirement.md
-#: §6-5。30 天 = 跨月对照语料窗的保守值;窗口数值随常开化后真实数据积累定,
+#:。30 天 = 跨月对照语料窗的保守值;窗口数值随常开化后真实数据积累定,
 #: 无观察窗计时——r5-migration-plan.md §4-5)。
 JOURNAL_RETENTION_DAYS: int = 30
 
@@ -130,7 +130,7 @@ class StateJournal:
     def append(self, row: dict[str, Any]) -> None:
         """追加一行(完整自足行 dict;局外行拒写)。"""
         if not str(row.get('run_id', '') or ''):
-            return   # 局外写入拒绝(§3.2.3;写入口已门,防御性再门)
+            return   # 局外写入拒绝(写入口已门,防御性再门)
         self._buffer.append(row)
         if len(self._buffer) >= self._flush_every:
             self.flush()
@@ -385,7 +385,7 @@ def state_journal_instance() -> StateJournal | None:
 
 
 def default_journal_path() -> Path:
-    """生产缺省落盘路径(``<live 根>/state/journal.jsonl``;§3.0 与旧流同根)。
+    """生产缺省落盘路径(``<live 根>/state/journal.jsonl``;与旧流同根)。
 
     单独成函数 = 测试隔离缝:conftest autouse 把本口重定向到 tmp 根,
     兜底装配(见 :func:`ensure_journal_assembly`)在测试进程里永远落 tmp,
@@ -403,7 +403,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
     - 常开化:本口无开关语义,生产 = currency_war_app
       装配段无条件调用;影子双写/缺省关纪律已销案(被推翻);
     - path = 流水落盘路径;None = 生产缺省 ``<live 根>/state/journal.jsonl``
-      (§3.0 落盘根:与旧流同根,哨兵/装配路径习惯延续);
+      (落盘根:与旧流同根,哨兵/装配路径习惯延续);
     - run_id_provider = run 归属读取函数(必传,生产 = telemetry 现读口;
       kernel 禁依 telemetry——桶依赖矩阵锁,依赖倒置经本参数注入);
       None = 行全视为局外拒写(装配只启半,生产勿用);

@@ -16,7 +16,7 @@ retry 网承接。
 只负责「机械执行一个动作」(用户裁定:动作 op 只管机械执行,
 禁止做任何验证——点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧
 reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
-``execute`` 无返回,发出即职责完成)。失败路径(§13.2 修订):
+``execute`` 无返回,发出即职责完成)。失败路径(修订):
 - 参数非法 → 对应动作 op 内守卫断言 AssertionError(集中式 validate
   已退役进各 op,flow/action_ops.md §1 决策侧参数现算契约;异常上抛
   通道 = 执行异常同款);
@@ -478,7 +478,7 @@ class PrepActionExecutor:
         - 回执行以分派为单位:每分派恰一条 logic_action 行(受阻
           动作也产行 = reason 非空受阻码;停机短路在分派之前抛出 =
           执行被拒不产行——停机非动作);
-        - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;
+        - ``extra`` = 执行面结构化字段透传(质量词表执行面;
           现役唯一项 = 免战跳过子态 ``skip_substate``);
         - journal 常开(影子闸折叠)回执写入无条件;无局
           (session 缺)跳过;best-effort 不阻塞动作链。
@@ -687,7 +687,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 # (达标分支 G1 准入预估 readiness_admission_report 与 deploy_swap_no_victim
 #  计数位已随部署统一批丁并入统一结构而删除:统一部署搜索下板满帧经交换交互上场,
 #  「无合格 victim → 出战无腾位」形态结构性不存在——unified-deploy-order
-#  §2.7/§4 M4 姊妹出口行;victim 资格判据面的纳入统一管理随 kernel swap 机器批。)
+# M4 姊妹出口行;victim 资格判据面的纳入统一管理随 kernel swap 机器批)
 
 
 def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:

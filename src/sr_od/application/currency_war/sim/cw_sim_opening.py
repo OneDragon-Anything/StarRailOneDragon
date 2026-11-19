@@ -1,7 +1,7 @@
 """sim 重做·对局开局(M01)。
 
 设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
-(§1.2 局级输入/§3.4 初始序列)现役口径:
+(局级输入初始序列)现役口径:
 
 - 开局 HP = ``kernel/cw_opening_hp.opening_hp_prior`` 查表(唯一单一
   承载方;「开局不利」恒 −20 内嵌于该表,词缀采样分支禁再实现 HP 类修正);

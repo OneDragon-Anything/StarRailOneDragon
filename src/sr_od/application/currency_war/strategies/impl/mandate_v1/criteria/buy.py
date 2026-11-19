@@ -1,4 +1,4 @@
-"""criteria/buy——EV 买面(§2.1;支配族 dominance_buy 已随通道退役删除
+"""criteria/buy——EV 买面(支配族 dominance_buy 已随通道退役删除
 ——富余买入并入 M6 一星兜底带,comp-structure-unification 3.4)。
 
 动作发出面 = ``ev_buy_candidates`` + ``ev_buy_veto`` 一体(R7-1):候选生成
@@ -42,7 +42,7 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
     fail 方向(R3-4 显式判据 fail-closed 常开):
     - ``shop_cards`` 无(商店线覆盖外/pick 帧域)⇒ 空候选 + 'shop_domain';
     - u/U_X 未标定(None)⇒ 序 3-5 消费无载 ⇒ 空候选 + 'u_unavailable'
-      (对称 fail-closed:买面缺输入 = 不放行,§2.1 E_rev 镜像);
+      (对称 fail-closed:买面缺输入 = 不放行,E_rev 镜像);
     - 金 < cost + S 预留(检查点③覆盖 EV 买面;P56 起 s_reserve =
       可变现利息线下界 g* − Σ活期退金投影,语义单一源 = shop.py 预算投影段)
       ⇒ 过滤 + 'ev_buy_s_reserve_reject' 分键计数(R3-R5 分键遥测)。

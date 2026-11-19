@@ -4,9 +4,9 @@
 **纯加权和,一个公式** + 数量级表——四轮对抗审查定稿,特殊处理全退役,
 排除 = 极大减分非布尔特判)。本模块承载:
 
-- **线分数值化**(§1.1 单值和;数量级常数单一源 =
+- **线分数值化**(单值和;数量级常数单一源 =
   :mod:`kernel/cw_line_scales`,本模块零裸数字)+ top3 候选;
-- **候选入选证据门**(§1.2:线分量 env ∨ carry ∨ 插件 > 0——
+- **候选入选证据门**(线分量 env ∨ carry ∨ 插件 > 0——
   **不含热度**,热度只作有证据线间的排序,不是入选理由);
 - **锁定 = P2 时点兜底唯一路径**(12 号稿 §1.3:硬规则查表/角色硬锁/
   策略即时锁全退役——拿到什么都不直接锁,分数说话;锁定 =
@@ -176,9 +176,9 @@ class LineScore:
     plugin: int     # 证据·插件层(线成员 − carry,+500/名)
     equip: int      # 证据·装备层(key_equips 逐件持有,+500/件=插件档;批 3)
     heat: int       # 攻略热度(LINE_HEAT × +1/点)
-    invest: int     # 投资环境分 + 投资策略分(通道派生,§3.1/§3.2)
+    invest: int     # 投资环境分 + 投资策略分(通道派生)
     affix: int      # 词缀分(吃怕表 §3.3,含重开级/无燃料底线/兜底泛化)
-    boss: int       # 敌情克制分(§3.4:Σ三只 boss + 非 boss 强敌——红绿灯/扑满)
+    boss: int       # 敌情克制分(Σ三只 boss + 非 boss 强敌——红绿灯/扑满)
 
     @property
     def total(self) -> int:
@@ -187,7 +187,7 @@ class LineScore:
 
     @property
     def gate_positive(self) -> bool:
-        """候选入选证据门(§1.2;命名访问,禁切片——分量集显式定义)。"""
+        """候选入选证据门(命名访问,禁切片——分量集显式定义)。"""
         return (self.invest > 0 or self.carry > 0
                 or self.plugin > 0)
 
@@ -210,12 +210,12 @@ def equip_evidence_bonus(comp: Comp,
 
 def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
                          opening_ctx: OpeningCtx) -> LineScore:
-    """线分数值分解(§1.1 单值和的分量计算;纯函数,同输入同值)。
+    """线分数值分解(单值和的分量计算;纯函数,同输入同值)。
 
     证据层逐名一档(基准 > 其余 core > 插件 > 装备件——同名角色跨层
     不重复计分:插件 = 线成员命中 − carry;装备 = key_equips 逐件持有);invest = 持有名逐个过环境/策略
     两通道派生(一名只命中自家注册表,无双计);boss = Σ三只克制 + 非
-    boss 强敌(§3.4——红绿灯经词缀行通道/扑满经投资持有通道)。
+    boss 强敌(红绿灯经词缀行通道/扑满经投资持有通道)。
     """
     anchor = carry_anchor(comp)
     carry = carry_set(comp)
@@ -255,7 +255,7 @@ def _line_sort_key(comp: Comp, held_chars: frozenset[str],
 def compute_candidates(held_chars: frozenset[str],
                        opening_ctx: OpeningCtx, *,
                        evidence_gate: bool = False) -> tuple[str, ...]:
-    """全 21 线算分取 top N 候选(§1.2:每帧对全部线算分,top3 为候选;
+    """全 21 线算分取 top N 候选(每帧对全部线算分,top3 为候选;
     签名幂等——同持有面重算同值)。返回线名元组(分数降序,注册序终局)。
 
     ``evidence_gate``(候选快照消费开启版):只收证据门为正的线
@@ -287,7 +287,7 @@ def evaluate_lock(candidates: tuple[str, ...],
     拿到什么都不直接锁,分数说话;触发 = ``plane2_started``(窗口谓词,
     首入 (2,*) 段)∧ ``p2_strategy_pick_done``(P2 起首次投资策略三选一
     完成侦测)→ **候选首名**(候选元组已按全序降序)。**空候选兜底分支**
-    (§1.3:证据门下空候选可达,兜底为真规则):候选空 → 锁全 21 线全序
+    (证据门下空候选可达,兜底为真规则):候选空 → 锁全 21 线全序
     首名(缺省全量版重算取首;零证据帧首名 = 热度首线)。
 
     锁后只读由调用侧(``session_scope`` 锁定守卫)承载:本函数只在

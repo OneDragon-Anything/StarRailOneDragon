@@ -28,7 +28,7 @@ def stockpile_buy(gold: int, s_reserve: int, bench_free: int,
     if bench_free < 1:
         return False, 'bench_full'
     # V_slot 净门(压牌库规格「free=1 → 过 V_slot 净门」,01_math_framework
-    # §3.5;V_slot 本体=statefn/vopt.v_slot)。规格未落位登记:净门数值输入
+    #;V_slot 本体=statefn/vopt.v_slot)。规格未落位登记:净门数值输入
     # =被阻断动作净 EV,系 u/V_ms 标定派生量(U_X 不可标定、显式
     # None+豁免在案,CALIB_REPORT_V2 §2.2)⇒ 全式落位前本门无载,
     # 缺省行为=放行(V_slot 按下界 0 代入)。依据:发出已限定 1★

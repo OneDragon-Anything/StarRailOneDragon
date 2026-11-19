@@ -138,7 +138,7 @@ class CwScreenMegastar(CwOperation):
         _match = self.ctx.cw_match
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         clicked = self._clicked_of(_match)
         options = [] if clicked else read_megastar_options(self.ctx, screen)
@@ -174,7 +174,7 @@ class CwScreenMegastar(CwOperation):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
         # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         _fail = self._do_action()
         if _fail is not None:
@@ -212,7 +212,7 @@ class CwScreenMegastar(CwOperation):
             if _match is not None:
                 # 置位经 kernel strategy_state_of(None-safe 不每局全新创建):状态
                 # 对象缺席跳过写(局级:跨 re-dispatch 持久,session.md
-                # §2.4 B1 定案的宿主级语义)。
+                #B1 定案的宿主级语义)。
                 _st = strategy_state_of(_match.session)
                 if _st is not None:
                     _st.megastar_clicked = True

@@ -216,7 +216,7 @@ def node_loss_kind(node_type: str) -> str:
 
 # (C4 换线存活轮数门机械已删除(随旧方案清退)——开关族
 #  line_switch_survival_gate_enabled / rounds_two_state_enabled 出局,
-#  清查报告 OLD_MIX_AUDIT §1.3;连同删除 rounds_alive / gate_need /
+# 清查报告 OLD_MIX_AUDIT §1.3;连同删除 rounds_alive / gate_need /
 #  gate_counterfactual / survival_gate / register_gate_block 与
 #  cw_intention._switch_gate_open 接入调用、v3_line_gate_* 决策位/标志、
 #  line_gate_blocked/line_gate_cf_blocked 遥测键。损血档归一

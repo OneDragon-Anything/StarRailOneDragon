@@ -307,7 +307,7 @@ def _build_equip_wear_plan(session: Any,
                          _round_now + 1)
         if (_hold_node is not None
             and _round_now is not None) else None)
-    #  装备环境信号单源(设计 §2.2):构造点唯一 = 本函数,一次打包
+    # 装备环境信号单源(设计 §2.2):构造点唯一 = 本函数,一次打包
     # 传递;state 缺失(离线/旧栈)= 空集 → 判据安全默认不启用。
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         apply_equip_env_variants as _apply_env_variants,

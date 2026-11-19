@@ -2,7 +2,7 @@
 
 目标线 K 的在产实现:终局成员集(core ∪ shared,成员集单一源 =
 cw_comps.Comp.members;口径 = strategy-docs/12_line_and_intention.md
-§2 与 strategy-telemetry `k_members` 行)与零重叠资格。升级触发不落
+与 strategy-telemetry `k_members` 行)与零重叠资格。升级触发不落
 本模块——单判据三分派单一源 = criteria/levelup.upgrade_trigger。
 
 (「挂后台效果」资格谓词族 bench_effect_qualified/bench_effect_context
@@ -151,7 +151,7 @@ def p2_blood_floor(state: GameState) -> bool:
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
                 cap_resolved: int) -> bool:
-    """T5 未锁定止血买的结构判据支撑谓词(/§4;p46 P1 谓词
+    """T5 未锁定止血买的结构判据支撑谓词(p46 P1 谓词
     原式,判据 = loss_exact 现算,不按任何帧集清单)。
 
     ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出 p46 否决域(D =

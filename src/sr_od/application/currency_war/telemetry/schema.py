@@ -178,7 +178,7 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   (gold_short 分支唯一行为)——分支随 gold_short 臂整删停产。
 # - session_funding_sell 取用键族(session_funding_sell/_tier_<1..8>/
 #   _rng_tail_hit)与 session_funding_exhausted:会话内筹资键族——
-#   随统一获取让位评估并入统一结构退役(11 号稿 §4.0
+# 随统一获取让位评估并入统一结构退役(11 号稿 §4.0
 #   第 4 项 + 用户裁定 2026-10-30:金不足与席满同一评估,session_
 #   funding 场景行/funding 通道/专属计数整链删除),取用计数并入
 #   acquire_swap_sell 键族。
@@ -205,10 +205,10 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   去尾后全同(等价牌群内部随机定序对该取用实际生效)的取用计数
 #   (随机域判读:非等价件命中即键构造异常哨兵);
 # - node_end_interest_exempt_depleted(凑息豁免剔光帧观测键,
-#   32 号稿 §9):凑息豁免
+# 32 号稿 §9):凑息豁免
 #   剔光帧计数——节末凑息跨档止盈后的可行池全为线内未达标成员、被
 #   豁免剔空 → 零卖出动作(该帧形态在豁免落地前不可观测;
-#   无豁免时该帧会卖出在建阵容件 → 有豁免零动作,§2.5「凑息频率
+# 无豁免时该帧会卖出在建阵容件 → 有豁免零动作,「凑息频率
 #   略降」判读落到此形态的份额)。写点 = criteria/sell_candidates.
 #   evaluate_sell_candidates(counters 载体;消费位 = mandate_v1/
 #   entry.py 第 8 步传 cw4_counters);
@@ -515,7 +515,7 @@ class DecisionTrace:
     #  已删(已定案清理链收尾:写端早已停用,全域零读端);
     #  旧语料行该两键按缺键读 None,schema 兼容。)
     # (支出门·买侧收门拒因枚举计数键已停用——旧方案清退批,
-    #  旧键名见清查报告 OLD_MIX_AUDIT §1.3;存量 runs.jsonl 判读脚本按
+    # 旧键名见清查报告 OLD_MIX_AUDIT §1.3;存量 runs.jsonl 判读脚本按
     #  缺键读 None。)
     # 预算-回执契约·对账门声明(预注册判据;
     # strategy_state_of(session).v3_posture_unfulfilled 透传):{auth_id, channel, reason,
@@ -533,7 +533,7 @@ class DecisionTrace:
     # 嵌套行携带不重复平铺。缺省 None=无意向/采集失败/旧记录(不破坏 schema)。
     # (方向重估三观测键(sess_dir_candidate/switch/supply_drought)的
     #  写入面已停用——旧方案清退批,清查报告
-    #  OLD_MIX_AUDIT §1.3;字段按历史数据只读口径保留,新数据恒 None。)
+    # OLD_MIX_AUDIT §1.3;字段按历史数据只读口径保留,新数据恒 None)
     # 补给轮决策行采集(观察层数据移交批):补给节点选卡确认后的合成
     # 决策帧(extra.phase='supply_pick')携带的选定快照——
     # {char, equip, has_diamond, refresh_left, options:[{char,equip,has_diamond}...],
@@ -813,7 +813,7 @@ class DefectRecord:
     evidence: dict[str, Any] = field(default_factory=dict)   # {shot?, refs:[{stream,key}]}
     reader_source: str = ""                         # 沿用既有 source 词表
     note: str = ""                                  # 处理提示,一行
-    # `w512_obs_surfaces/`(观测自检设计 §2.10/§5-B6):识别置信度快照,末尾追加可选字段
+    # `w512_obs_surfaces/`(观测自检设计 §2.10):识别置信度快照,末尾追加可选字段
     #(旧记录缺省 None 兼容)。语义 = 缺陷发生时点的 reader 分数(SIFT 内点数
     # 等数值面;读空=0),不设即时告警,离线做分布监控——某 reader 读空率
     # 环比翻倍是系统性退化的最早信号(`w501_gold_read_fix/` 金读数窄区裁切类缺陷先于大额漂移

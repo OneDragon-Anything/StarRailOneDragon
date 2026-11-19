@@ -120,7 +120,7 @@ def _make_owned_emblem_copy_effect() -> Callable[..., list[str]]:
 # 注册纪律:效果函数只覆盖「获得该卡后的字段写分支」(bench/装备/采样链),
 # 与 cw_investments.STRATEGY_EFFECTS(持卡经济效果聚合,aggregate_economy
 # 消费)职责不同不合并(对抗审查⑨)。全量收录 = 推广批(gain-chain design
-# §1.4),未收录卡只走注册或零效果(查无效果安静不写)。
+#),未收录卡只走注册或零效果(查无效果安静不写)。
 
 
 def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,

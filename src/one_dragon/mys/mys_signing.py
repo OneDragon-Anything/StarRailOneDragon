@@ -1,15 +1,15 @@
 """米游社 DS 签名与 RSA 加密（纯函数）。
 
 口径出处：docs/develop/sr_od/application/account_profile/miyoushe-api-flow.md：
-- 登录 DS（§2.3）：``{t},{r},{md5(salt={LOGIN_SALT}&t={t}&r={r})}``，
+- 登录 DS（miyoushe-api-flow.md §2.3）：``{t},{r},{md5(salt={LOGIN_SALT}&t={t}&r={r})}``，
   t 默认秒级时间戳、r 默认 6 位小写 hex；
-- game_record DS2（§4.1）：``{t},{r},{md5(salt={RECORD_SALT}&t={t}&r={r}&b={b}&q={q})}``，
+- game_record DS2（miyoushe-api-flow.md §4.1）：``{t},{r},{md5(salt={RECORD_SALT}&t={t}&r={r}&b={b}&q={q})}``，
   本模块只服务 GET 形态（b 恒空串）；q = 参数按 key 排序后做
   application/x-www-form-urlencoded 序列化再以 ``&`` 拼接，序列化规则与参考实现
   ``URLSearchParams.toString()`` 逐字节一致（Node 24 实测：空格 → ``+``；
   仅 ``[A-Za-z0-9*-._]`` 原样保留，其余字节一律大写十六进制百分号编码，
   含 ``~``/``!``/``+`` 等其它编码器会放行的字符）；
-- RSA（§2.2）：1024 位公钥 PKCS#1 v1.5 padding + base64，账号与密码都加密。
+- RSA（miyoushe-api-flow.md §2.2）：1024 位公钥 PKCS#1 v1.5 padding + base64，账号与密码都加密。
 """
 
 import base64

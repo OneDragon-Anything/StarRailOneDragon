@@ -42,7 +42,7 @@ class ScreenRecognizer:
     同样从简。recognize 不得写 ``self.``;
     不得复用带**业务语义**进程级可变状态的 reader(如 ``_last_phase_round`` 这类会影响 operation 决策的
     last-known-good 缓存)—— 但**透明缓存类**共享状态(如 ``ocr_service._cache``,其并发异常已被内部兜住)
-    可放心复用。详见实现文档 / spec §6「并发安全」。
+    可放心复用。
     """
 
     screen_name: str   # 关联画面名;与 analyze 命中的 ScreenMatch.screen_name 一致

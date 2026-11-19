@@ -157,7 +157,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         form_progress 现读恒 False——该帧族的 form_ok 读数是「观察帧
         board 口径」,与部署放行判定「轮入口全量 state 口径」存在帧差,判读
         时以 sim 账本(全量 state)为准。
-        (终态契约 §2.5 impl 层:状态宿主 = 显式 ``_ms`` 形参。)
+        (终态契约 §2.5 impl 层:状态宿主 = 显式 ``_ms`` 形参)
         """
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             board_target_line_weight,
@@ -245,7 +245,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                      ist.phase, ist.last_event)
         _ms.v3_last_intention_event = ist.last_event
 
-    # ===== 决策入口统一内务:黑板帧代次消费(/§3.4)=====
+    # ===== 决策入口统一内务:黑板帧代次消费=====
 
     def _consume_prep_direction_frame(self) -> None:
         """备战黑板帧代次消费(备战入口与 pick 族入口共用;触发面)。
@@ -254,7 +254,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         帧 = view(破墙派生帧/finalize 买后暂存帧)→ 只刷派生视图;帧 = none
         → 读后复位即返回。
         读后即复位 'none'(消费即清,防同帧重复刷新;
-        复位 = 读协议半部,非新鲜度宣告——帧类写点收敛归流程观察段,§3.4/D6)。
+        复位 = 读协议半部,非新鲜度宣告——帧类写点收敛归流程观察段,/D6)。
         刷新失败不阻塞决策(沿用原 ops 侧守卫语义,日志哨兵 [cw!] 保持)。
         终态契约 §2.1:决策输入一律 self.gs/self.state 自取(零参)。"""
         cls = self.gs.frame_class_prep
@@ -400,7 +400,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 选卡结果喂 CommitSignals(条件活遥测;建议帧不落此段)。
         self._feed_invest_strategy_signals(options)
         # margin 拷入(词表动作字段通道,产物透传键契约 = strategy-telemetry
-        # §2 键表:决策产物次名分量 → 动作实例,经 decision_payload 钩子
+        #键表:决策产物次名分量 → 动作实例,经 decision_payload 钩子
         # 键 pick_margin 透传;建议帧不选卡,自然不拷)。
         return pick_param_cls(idx=out.idx, reason=out.reason,
                               margin=out.margin)
@@ -413,7 +413,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         数量级:实证升档 750/定义卡 500/强档 300/中档 150/flex 软档
         30;批 2 起含顾问入商店通道中档),**非**旧 ``augment_affinity``
         的 0..1 亲和权重——跨批判读勿混读两口径。喂入面申报(29 号稿
-        §4 遥测条款):建议帧跳过喂入——常规建议帧被帧级门拦顶级卡
+        遥测条款):建议帧跳过喂入——常规建议帧被帧级门拦顶级卡
         → 通道加分键喂入恒空,跳过即零漂移;E-豁免角例外 = 被禁顶级卡
         不拦建议帧,该帧会喂入非空加分,跳过 = 纯遥测漂移(决策面零
         消费、罕见角,如实申报)。词缀/boss 敌情分口径(批 2 申报):
@@ -730,7 +730,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         终态零参口 §2.1:决策输入一律 self.gs/self.state/self.config)。
 
         输入 = gs 状态容器(黑板契约结构化,设计件《商店黑板容器化方案》
-        §2.2-1:入口观察/单动作逻辑态直写/状态副本写点);输出 = **恰一个
+        入口观察/单动作逻辑态直写/状态副本写点);输出 = **恰一个
         动作**,全函数永不 None——「无动作可做」由 ``CwActionCloseShopParam`` 恒可用
         终结表达(决策 5/6)。决策本体 = ``mandate_v1/shop.
         decide_shop_action``(选择序 = 决策本体候选扫描序,逐帧恰取一个
@@ -751,7 +751,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
             shop,
         )
-        # 决策入口状态容器契约(设计件《商店黑板容器化方案》§2.2-1):
+        # 决策入口状态容器契约(设计件《商店黑板容器化方案》):
         # 输入 = 状态容器单例,无二次快照;在屏前置 = ``gs.shop.value is not
         # None`` 才可决策——离屏帧进决策 = 观察层失约同型抛错(黑板契约
         # None 检查的状态容器等价物,「禁静默按空牌面决策」语义不变)。开店态

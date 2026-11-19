@@ -203,7 +203,7 @@ class MandateFrame:
         return [d.char_id or '' for d in self.deployed]
 
 
-# ===== 四硬约束检查点(§3.2;唯一合法拦截集)=====
+# ===== 四硬约束检查点(唯一合法拦截集)=====
 
 def check_affordable(gold: int, cost: int, *, batch_cost: int | None = None,
                      ) -> tuple[bool, str]:
@@ -553,7 +553,7 @@ def sold_this_round(session, state: GameState, name: str) -> bool:
 # (dominance_buy_eligible 资格门已随 dominance_buy 通道整删——富余买入
 #  并入 M6 一星兜底带(shop.py),金位面 = M6 富余判定(gold > g*)、
 #  席位面 = M6 现行席位维承载,comp-structure-unification 3.4,
-#  press-stockpile §1;金维支配论证与 P76 甲/P78-1 基准随通道归档,
+# press-stockpile §1;金维支配论证与 P76 甲/P78-1 基准随通道归档,
 #  原文考古走 git 历史。)
 
 
@@ -612,7 +612,7 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 
 
 # (P88 买侧收窄全套已退役整删——comp-structure-unification 3.4,
-#  press-stockpile §3:富余金占位买入通道(dominance_buy)并入 M6 一星
+# press-stockpile §3:富余金占位买入通道(dominance_buy)并入 M6 一星
 #  兜底带后,原特殊帧(终局锁定 ∧ 未成型 ∧ 上场满员)从「禁买」变
 #  「兜底带可买、席位紧张让位序列末位让路」;1★ 全额退 + 让位序末位档
 #  = 占位件可无成本即时让出,所防「席位阻断」在现行防线栈中无剩余真实
@@ -642,7 +642,7 @@ def run_mandate(frame: MandateFrame,
                 state: GameState,
                 registry: DecisionV2Registry | None = None,
                 ) -> list[Emitted]:
-    """骨架 pass(§3.1 执行序;返回发出列表,执行序=列表序)。
+    """骨架 pass(执行序;返回发出列表,执行序=列表序)。
 
     ``state`` = 决策状态容器 gs(prep 链结构化段 2;R4:arm1
     消费位的 cap 真值在消费点现读 ``max_units_of`` 派生链——单一真值源,
@@ -768,7 +768,7 @@ def run_mandate(frame: MandateFrame,
         _count('overflow_no_fuel')
         return []
 
-    # M5 开局板(§2.9 无数学面:开局帧(round_num≤1)板空且有 bench 件;
+    # M5 开局板(无数学面:开局帧(round_num≤1)板空且有 bench 件;
     # 载体 = 统一部署搜索 + 差分执行器链,部署定型口与 entry 第 6 步/
     # 出战链同链,旧七桶 _deployable 前置随选人族纳入统一管理时删除)
     deploy_intent_emitted = False
@@ -858,7 +858,7 @@ def run_mandate(frame: MandateFrame,
             _count('t1_interest_prep_emit')
 
     # (dominance_buy 前置开店段已随通道整删——富余买入并入 M6 一星
-    #  兜底带,comp-structure-unification 3.4,press-stockpile §1;
+    # 兜底带,comp-structure-unification 3.4,press-stockpile §1;
     #  富余帧开店意图由下方 M6 段承载,原文考古走 git 历史。)
 
     # M2 线成员买入(+M2→M4 重试环 R8-8)
@@ -1114,7 +1114,7 @@ def run_mandate(frame: MandateFrame,
 #  搜索定型 + 差分执行器交换交互,被换下者回 bench 由卖出场景处置——
 #  kernel swap 机器随统一部署搜索退役;SellDeployed 在役
 #  发出点自此收敛为三处(卖出评估器 deployed 支/计划变量执行位/同名
-#  异星换),与部署段正本(24 号稿 §1.4)发出点清单同口径。)
+# 异星换),与部署段正本(24 号稿 §1.4)发出点清单同口径)
 
 
 # ============================================================

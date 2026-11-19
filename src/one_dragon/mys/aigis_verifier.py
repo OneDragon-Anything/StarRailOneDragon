@@ -2,12 +2,12 @@
 
 设计出处：docs/develop/one_dragon/mys/README.md（模块表 aigis_verifier 行）；
 组件调用参数与双载口径：login-verification-research.md §3.2；取消闭环与
-自动弹出手法：同文档 §10.5-3（Moonward）。
+自动弹出手法：login-verification-research.md §10.5-3（Moonward）。
 
 - 挑战不下沉 URL：服务端持有「当前 pending 挑战」，页面
   加载/刷新时 GET /challenge 取最新挑战——刷新即换新题，不存在旧 URL 解旧题。
 - 页面模板是纯静态模块常量：挑战数据完全经 GET /challenge 的 JSON 流转，
-  模板零插值——research §10.5-3 的「参数 base64 后嵌入 HTML 防转义」手法在
+  模板零插值——login-verification-research.md §10.5-3 的「参数 base64 后嵌入 HTML 防转义」手法在
   本形态下退化为「无参数可嵌」，HTML 注入面天然不存在（base64 防转义注意点
   的落点即此设计）。
 - POST /ticket 防线照参考实现 server.mjs:16 手法：``sec-fetch-site`` 为
@@ -48,9 +48,9 @@ _VERIFIER_CSP: str = (
 _MAX_TICKET_BODY_BYTES: int = 8192
 
 # 验证页模板（纯静态：双组件脚本同载 + no-referrer meta + 挑战经 /challenge 取）。
-# 组件脚本出处（research §3.1/§3.2/§10.3-7）：gt4 = 官方登录页在用的
+# 组件脚本出处（login-verification-research.md §3.1/§3.2/§10.3-7）：gt4 = 官方登录页在用的
 # webstatic.mihoyo.com 副本；gt3 = static.geetest.com gt.0.5.0.js（参考实现与
-# genshin.py 同款）。双载防服务端下发 gt3 形态时组件缺失（research §8.1.3）。
+# genshin.py 同款）。双载防服务端下发 gt3 形态时组件缺失（login-verification-research.md §8.1.3）。
 _VERIFIER_HTML: str = '''<!doctype html>
 <html lang="zh-CN">
 <head>

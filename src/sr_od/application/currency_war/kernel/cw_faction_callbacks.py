@@ -191,7 +191,7 @@ def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
 def on_star_changed(gs, old_star, new_star, source: str) -> None:
     """星级回调 → S3 planner 判据:新值 ≥ 2 ∧ 该费用档未弹过
     (旧值无关——覆盖无→2 / 1→2 / 无→3[暂按会弹,实机复核标注 =
-     §4]/ 2→3 不弹[档已弹];口径同上
+     / 2→3 不弹[档已弹];口径同上
     值域回调级联表)。费用档读 ``gs.lv999_cost_tier``(未观察 None =
     语义起始档 3,与 cw_economy.effective_cost 同缺省口径)。"""
     if new_star is None or new_star < 2:

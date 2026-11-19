@@ -17,7 +17,7 @@
   (K 目标未锁期源切换 = 策略层候选快照三线并集
   ∪ 过渡层贡献名单;丙分支保利息缺省保留);
 - **定型权威**(:func:`committed_authority`/:func:`committed_from`):
-  规则④「位面 ≥ 2 恒定型」支已停用(P2 时点兜底锁定替代;§1.6 行为
+  规则④「位面 ≥ 2 恒定型」支已停用(P2 时点兜底锁定替代;行为
   差申报:P2 入口至兜底锁帧的短窗 = 双轨期口径)。
 
 **教义边界(已退役口述登记簿)**:[21] final 件「买而不上」→ 本模块
@@ -642,7 +642,7 @@ def hoard_target_set(gs: GameState, ist: IntentionState,
       恒空」位面分带废除,过渡机制生命周期挂钩终局锁定事件)——
       过渡锁定 → 锁定条目采购集(见即买集);未过渡锁定 → **两层候选
       并集**(过渡候选条目并集 ∪ 终局候选三线成员并集,候选快照槽);
-    - 两层候选皆空的帧 → 过渡库全体条目见即买并集(§3 死循环防线:
+    - 两层候选皆空的帧 → 过渡库全体条目见即买并集(死循环防线:
       见即买 → 持有 → 计分 > 0 → 候选形成,闭环)。
     过渡装备随意([20] 装备语义:简易装备随便给,合成件归 final
     key_equips 判定)——过渡支 equip_targets 恒空。
@@ -667,7 +667,7 @@ def hoard_target_set(gs: GameState, ist: IntentionState,
                 chars |= set(c.members)
     if chars:
         return HoardTarget(frozenset(chars), frozenset(), 'p1_pair')
-    # 候选槽为空的回退:过渡库见即买并集(§3)
+    # 候选槽为空的回退:过渡库见即买并集
     return HoardTarget(transition_library_buy_now_union(), frozenset(),
                        'p1_transition')
 

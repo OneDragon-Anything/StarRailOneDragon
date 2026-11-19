@@ -73,7 +73,7 @@ def _k_members_key(gs: GameState,
 
     算法与备战帧同源(:func:`entry.emit` 顶段,K 空窗回退分支同参):
     k_members = 统一线内名单(:func:`sell_line_membership`,单一准入
-    §2.1——候选 ∪ 配方 ∪ 锁定线并集)为空(名单真空)且意向载体在场时,
+    ——候选 ∪ 配方 ∪ 锁定线并集)为空(名单真空)且意向载体在场时,
     走 :func:`cw_intention.k_empty_window_fallback` 回退分支取成员集;
     ``k_fallback`` 记回退分支是否产出成员(hit)与分带名(band):
     band 非空 ⟺ 回退分支已运行(带值 = cw_intention 分带 token,

@@ -76,7 +76,7 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
     终结化零窗口),状态容器零写。applied 出口构造后果声明(open_box;
     武装箱选择画面出现;喂入与消费面 = ``cw_sim_ports.declare_world`` /
     sim 后端 advance)。点击直弹登记(
-     §1.7:点备战栏箱位「开启」直接弹四选一——
+     点备战栏箱位「开启」直接弹四选一——
     统一入登记,kind = box_card;声明 next_screen 语义回归底层屏归
     3.4 消费面,本模块不改声明)。
 
@@ -205,7 +205,7 @@ def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig)
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """专家邀请函选卡上报:状态容器零写(现金为王回金 = dict 确认族通道)。
     applied 出口构造后果声明(纯转移返回当前节点屏,详设 world-decl.md
-    §2 表 #17)。
+    表 #17)。
 
     专家解锁登记缺口申报:选中卡(idx≥0)对应的专家名不可观察
     (``expert_invite`` payload 只有羁绊解析无候选名;羁绊 → 名非唯一

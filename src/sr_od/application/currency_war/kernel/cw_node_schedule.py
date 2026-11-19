@@ -1,7 +1,7 @@
 """货币战争节点日程真值表(kernel 纯数据件;零依赖)。
 
 设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
-(§3.3 位面过渡/节点序列)现役口径:
+(位面过渡/节点序列)现役口径:
 
 - 节点身份唯一表示 = ``(位面, 轮)`` 序位元组(:data:`NodePos`,1 基,
   字典序即节点全序);「推进 +1」后继 = :func:`sequence_next`(全仓

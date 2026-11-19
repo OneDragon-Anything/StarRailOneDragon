@@ -89,7 +89,7 @@ def strategy_state_of(session: StrategySession) -> object:
 
 @dataclass(eq=False)
 class StrategySession:
-    """一局货币战争的观察数据载体(框架每局新建,局终销毁;/§11.4)。
+    """一局货币战争的观察数据载体(框架每局新建,局终销毁)。
 
     ``rng`` 可种子化(公平/replay;default=固定种子 0 的独立实例,确定
     性由构造保证,真实随机面由消费方显式注入);``performance`` 是观测
@@ -143,7 +143,7 @@ class StrategySession:
     # pending_round_outcomes 槽已停用——结算真值
     # 归宿 = gs 结算覆盖写端(apply_settlement_cover)+ performance.history。
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
-    # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);
+    # 类型由实现包自定义(mandate_v1 = StrategyState,改名归位);
     # 框架经 create_state 工厂按局每局全新创建、只搬运引用不识内部(所有权归策略器;
     # 生命周期 = 一局,局终随 session 销毁)。第三方策略未覆写 create_state
     # → None(其策略器沿用惰性建模式;B4 兼容承诺的收缩口径 = 「缺省 None

@@ -91,7 +91,7 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool]:
     - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁)。
     (旧第四位 ``top``〔顶级判定,消费 = 已停用的「新卡达顶级停链」〕
     已随统一阵容评分清理退役(正本 = strategy-docs/12_line_and_intention.md
-    §1.1)——顶级判定现经线分引擎派生且依赖
+    ——顶级判定现经线分引擎派生且依赖
     选卡识别标志线〔gs 面〕,D*-free 单名签名承载不了;刷新链守卫三闸
     均不消费顶级位,随手清理。)
     帧级 D*-dependent 判据(对齐档 N/max_N)只在 kernel:handler 禁直调 kernel
@@ -277,7 +277,7 @@ class CwScreenInvestStrategy(CwOperation):
             return self.round_fail('投资策略候选 OCR 读缺(零盲发,显式失败)')
         match = self.ctx.cw_match
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         # 零参决策(写槽已由观察轮 report 落状态容器 invest_strategy_opts)。
         # 输出 = 单一 CwAction:CwActionRefreshInvestCardsParam(逐卡刷新

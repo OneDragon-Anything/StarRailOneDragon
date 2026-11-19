@@ -33,7 +33,7 @@ round_fail 返回主循环重新识别)+ 弹窗载体一次读(四卡区羁绊�
 同帧等价)→
 ``report_screen_expert_invite_obs`` 落状态容器 ``expert_invite``(payload 打包:
 card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
-§1.1 选择坐标观察上报)→ obs 挂实例属性进决策 node。决策动作 node = 重入
+选择坐标观察上报)→ obs 挂实例属性进决策 node。决策动作 node = 重入
 裁决顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻才写 chosen_expert +
 现金为王到账登记 + success 返回主循环;在 = 点击未落地 → 清标志重走)→ 决策从
 状态容器零参读(两守卫:返回词表外/None = 具名 fail 零盲发;idx 域外 = 守卫
@@ -213,7 +213,7 @@ class CwScreenExpertInvite(CwOperation):
         # 写槽已由 report 落状态容器 → 零参决策。
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_expert_invite()
         # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail

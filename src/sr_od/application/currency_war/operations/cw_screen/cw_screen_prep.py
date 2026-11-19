@@ -1464,7 +1464,7 @@ class CwScreenPrep(CwOperation):
             self._reconcile_faction_display(obs)
 
 
-# ===== 节点行观察消费位(§2.8 归位:识别零新增,写点自商店域迁入)=====
+# ===== 节点行观察消费位(归位:识别零新增,写点自商店域迁入)=====
 
 #: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:备战/商店画面
 #: op 每轮重建,实例属性跨环零存活 → 300s 窗失效(同 idx 每环各采一张,
@@ -1482,7 +1482,7 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
     ``plane_lengths_seen``(位面长度真值序列,P3 进表即自适应)。
 
     返回是否写入(供调用方记日志)。纯簿记写入,无画面依赖,可单测。
-    (终态契约 §A′:宿主 = gs.node_books,session 中转停用。)
+    (终态契约 §A′:宿主 = gs.node_books,session 中转停用)
     """
     if not seq or plane is None:
         return False

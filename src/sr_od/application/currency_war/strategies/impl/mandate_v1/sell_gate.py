@@ -44,7 +44,7 @@ criteria/priority.sell_order 承载「谁后卖」(32 号稿 §9);本模块保�
    ``funding_hold_fallback``)随身份段退役整删——豁免对象(常规面
    禁卖的持有件)不再存在。
 
-动作发出登记统一(/§3):``LaunchCause`` 闭集
+动作发出登记统一:``LaunchCause`` 闭集
 {obligation, press, stall_protect}(hold 类随 C1 单卡核心与囤货臂
 两买臂退役删除——3.4;登记闭集外值拒收),买入分支逐一映射
 (``LAUNCH_CAUSE_BY_ARM``,定稿载体);T3 垫保簿与 ②(b) 压牌库簿
@@ -198,7 +198,7 @@ def _entry_norm(value: object) -> tuple[str, int | None]:
     return 'stall_protect', None
 
 
-# ===== 动作发出登记 API(写端 + 四出口生命周期;/§3)=====
+# ===== 动作发出登记 API(写端 + 四出口生命周期)=====
 
 
 def register_launch(session: StrategySession,
@@ -415,7 +415,7 @@ def line_switch_orphans_of(session: StrategySession, base: set[str],
 def _autonomous_round(session: StrategySession) -> int | None:
     """读端自治轮号(黑板结构化:原 last_state 优先/
     shop_state_frame 兜底的双槽解析改状态容器 node 读口——与登记相位写端
-    同源,设计件《商店黑板容器化方案》§2.4-2)。NodeKey 未定 = None
+    同源,设计件《商店黑板容器化方案》)。NodeKey 未定 = None
     (调用方按 fail-closed 方向处置:硬面不 carve)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         round_num_of,
@@ -789,7 +789,7 @@ def sell_exclusions(session: StrategySession,
                     k_members: tuple[str, ...], *, channel: str,
                     current_round: int | None = None,
                     cap_hold: int | None = None) -> frozenset[str]:
-    """统一装配 A 单一入口(P78 INV 主不变量;/§3)。
+    """统一装配 A 单一入口(P78 INV 主不变量)。
 
     任何卖出通道的资格排除必须经本入口装配——「不许卖谁」独占于 A,
     消费位禁手搓排除集。全量形态 = **循环防线三构件**(32 号稿 §9/11 号稿 §4.1):

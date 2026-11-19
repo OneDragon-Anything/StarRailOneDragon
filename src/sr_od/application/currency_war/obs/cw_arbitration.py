@@ -1,7 +1,7 @@
 """观察层读数多源仲裁·统一注册面(15 号稿 §2.4)。
 
 设计出处 = ``docs/develop/sr_od/application/currency_war/strategy-docs/15_observation_multisource_arbitration.md``
-§2.2(量纲分类与泛化规则)/§2.4(统一注册面)。病灶 = 家族内六处成型仲裁各自
+(量纲分类与泛化规则)(统一注册面)。病灶 = 家族内六处成型仲裁各自
 私写裁决规则/分歧带/保留证据键,判读侧要拼多文件才能回答「这个量现在怎么裁」;
 本模块把「裁决规则 + 分歧带 + 分键」收敛为声明式注册表,证据通道**不新建**
 ——原始证据行仍走 ``kernel.cw_observe.obs_conflict``,不一致率分键仍走
@@ -11,9 +11,9 @@
 交叉核对:deployed 全格交叉核对 + board 分歧帧×帧态矩阵)钉死;裁决值/schema/分键
 锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,交叉核对不校验)。
 
-量纲四类(§2.2):count(计数,朝声明方向取值或弃权)/nominal(标称,优先级+
+量纲四类:count(计数,朝声明方向取值或弃权)/nominal(标称,优先级+
 否决+帧态门)/scalar(连续标量,显式通道优先序)/layout(布局,实测>推导+
-未知态)。hp/level 通道仲裁**暂不迁**(§5/§8⑥:先例最复杂迁移收益最低);
+未知态)。hp/level 通道仲裁**暂不迁**(⑥:先例最复杂迁移收益最低);
 布局三信号归后续批,本模块先立 ``DIM_LAYOUT`` 与 unknown verdict 的注册面形态。
 """
 from __future__ import annotations
@@ -22,14 +22,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-# ===== 量纲类常量(§2.2 四类;值即注册声明,判读按字符串聚合)=====
+# ===== 量纲类常量(四类;值即注册声明,判读按字符串聚合)=====
 
 DIM_COUNT: str = 'count'
 DIM_NOMINAL: str = 'nominal'
 DIM_SCALAR: str = 'scalar'
 DIM_LAYOUT: str = 'layout'
 
-# ===== verdict 五态(§2.4)=====
+# ===== verdict 五态=====
 
 VERDICT_OK: str = 'ok'                  # 双源齐且一致(带内零差)
 VERDICT_NOISE: str = 'noise'            # 带内分歧(合法读数差,不行动不保留证据)
@@ -40,7 +40,7 @@ VERDICT_UNKNOWN: str = 'unknown'        # 全源弃权(布局未知态等;后续
 
 @dataclass(frozen=True)
 class ArbitrationRule:
-    """单量仲裁声明(§2.4 注册面 schema;交叉核对锁 schema 面)。
+    """单量仲裁声明(注册面 schema;交叉核对锁 schema 面)。
 
     - ``combine``:类内泛化规则的量实例(纯函数,``**readings`` 按源名传参),
       返回 ``(采信值, 是否真分歧)``;
@@ -88,7 +88,7 @@ def combine_board_frame_gated(badge_ocr: dict[str, int],
                               computed: dict[str, int],
                               prep_like: bool,
                               board_honest: bool) -> tuple[dict[str, int], list[tuple[str, str, bool]]]:
-    """board 阵营计数帧态门仲裁内核(标称类②画面事实优先 + 帧态门,§1 行 8)。
+    """board 阵营计数帧态门仲裁内核(标称类②画面事实优先 + 帧态门,行 8)。
 
     - computed(tracked 身份全集)= 基础数据;badge_ocr(可视区徽标 OCR)= 画面
       事实,分歧时备战帧覆写(裁决翻转);
@@ -160,7 +160,7 @@ def _board_rule_combine(badge_ocr: dict[str, int], computed: dict[str, int],
     return merged, bool(decisions)
 
 
-# ===== 统一裁决入口(§2.4)=====
+# ===== 统一裁决入口=====
 
 def arbitrate(key: str, readings: dict[str, Any],
               ctx: Any = None) -> tuple[Any, str, bool]:

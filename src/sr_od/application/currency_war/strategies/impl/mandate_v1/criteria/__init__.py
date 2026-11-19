@@ -1,8 +1,8 @@
 """cw4 EV 判据层(criteria 七面);判据族规格=01_math_framework §3。
 
 包树:buy/sell/levelup/refresh/stockpile 五模块(第七面
-「换线」在 proof,line_selector,12_line_and_intention §1-§3)。判据族
-数学口径=01_math_framework §3.1-§3.5(本包实现消费 statefn 单一源,
+「换线」在 proof,line_selector,12_line_and_intention §1-)。判据族
+数学口径=01_math_framework §3.1-(本包实现消费 statefn 单一源,
 禁自算状态量)。
 
 **分支①旁路集函数级枚举表**(本模块 ``BYPASS_TABLE``=单一源;

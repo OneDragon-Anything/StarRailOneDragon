@@ -1,4 +1,4 @@
-"""criteria/sell——EV 卖面(§2.2;fuel_sell/protected_sell 在 mandate/谓词层)。
+"""criteria/sell——EV 卖面(fuel_sell/protected_sell 在 mandate/谓词层)。
 
 两个动作发出/通道位:sell_for_interest(凑利息档 EV 面,分支①旁路)、
 funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两分支同开、
@@ -6,7 +6,7 @@ mandate=false+funding_support=true)。换线清仓出口(line_switch_sell)
 已删除(候选-锁定制:锁定为一次性决策,无换目标后的清场需求——
 停用面申报;V_MS 槽随函数删除撤槽)。
 
-fail 方向(§2.2.1 唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
+fail 方向(唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
 第四态无载/sell_refund 损坏)⇒ 不评不卖。凑息卖(T1 语义重写)
 = 回拉动作发出点(金位触发+目标量止盈,
 函数 docstring 单一源),无 fail-closed 输入面。

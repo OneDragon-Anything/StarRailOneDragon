@@ -178,5 +178,5 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
 #  protect_names_of、部署围栏 DEPLOY_FENCE(振荡熔断份)已随部署统一批
 #  丁纳入统一管理删除:统一部署搜索下板满帧 bench core 经交换交互上场,「无合格
 #  victim → 出战无腾位」形态结构性不存在,消费位(cw_loop 达标臂 G1
-#  预估块)同批删除——unified-deploy-order §2.7/§4;部署在途观测改由
+# 预估块)同批删除——unified-deploy-order §2.7/§4;部署在途观测改由
 #  质量维 deploy_pending 承载。)

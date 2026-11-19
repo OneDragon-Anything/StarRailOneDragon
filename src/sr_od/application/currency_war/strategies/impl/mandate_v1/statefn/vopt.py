@@ -72,7 +72,7 @@ def v_slot(bench_free: int, blocked_net_evs: list[float]) -> float:
     """V_slot(bench 槽价,P41 ③):有空槽=0;free≤1 = max 被阻断动作净 EV。
 
     合成完备购不入阻断集(P41 ③);标定后组装规格=逐阻断动作按该动作目标
-    卡落位格取该消费位端点后取 max(R25-低2/§E4.0 χ 条同款聚合语义——
+    卡落位格取该消费位端点后取 max(R25-低2χ 条同款聚合语义——
     端点注入随标定批,本函数收净 EV 列表)。"""
     if bench_free > 1:
         return 0.0

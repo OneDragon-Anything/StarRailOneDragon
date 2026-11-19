@@ -16,7 +16,7 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
 - 方向分组件恒 0(strength/方向分链整线下线,28 号稿 §2 方向分行废止,
   环境方向差异由赠卡分/立场分承载);
 - 赠卡分 = gift_value 具名口径(ENV_GIFTS)+ 概念股随机阵营口径(28 号稿
-  §2 赠卡分行);
+  赠卡分行);
 - 立场分 = :data:`STANCE_SCORE`(【拍】形态,每行带理由;
   宪法五:策略立场归策略层,合法性来自裁定本身);
 - 转向轴 = user-priority + :data:`STEERING_PRIORITY_BONUS`(软偏好,立场
@@ -127,7 +127,7 @@ class StanceRow:
     """立场分表行。
 
     score = 立场分(统一标尺上的量,分差有含义——「分值思维」,design
-    §2.2 加法合法前提);reason = 裁定理由(表的裁决记录,经用户裁定窗过目)。
+    加法合法前提);reason = 裁定理由(表的裁决记录,经用户裁定窗过目)。
     """
     score: float
     reason: str
@@ -459,7 +459,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
     scores, steers, components, excluded = _score_frame(
         options, gs, locked_comp, demoted_endgame, frozenset(evicted),
         env_priority, env_forbid, basis)
-    # forbidden_slot 含出域槽(护栏出域并入 excluded 通道,§2.4——
+    # forbidden_slot 含出域槽(护栏出域并入 excluded 通道——
     # 出域占槽应刷掉换本线方向机会,与禁选槽同路同形,零新出口形态)
     forbidden_slot = any(excluded)
     if forbidden_slot or max(scores) < REFRESH_THRESHOLD:

@@ -49,7 +49,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     P1 状态容器原生(benchchar-retirement §3.2):bench 工作副本 = BenchView
     槽序(元素即状态容器 BenchSlot)、deployed 工作副本 = 行域下标派生表
-    (Unit,§2.1);合成引擎状态容器原生直写,零中间形。元素
+    (Unit);合成引擎状态容器原生直写,零中间形。元素
     frozen → 浅拷贝列表即快照(推演以 replace 新构造,零别名风险)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -215,7 +215,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 合并升星触发发放分支(升星分支写毕后收尾发火:引擎 A 内嵌发火会被
     #    本函数 bench/deployed 整表写覆盖,故采集在级联、发火在顶层全部
-    #    写毕后——设计 §2.4 发火时序)。sig 沿动作分支 _grp_sig 口径(触发
+    # 写毕后——设计 §2.4 发火时序)。sig 沿动作分支 _grp_sig 口径(触发
     #    分支行与动作分支同组同窗)。best-effort:触发分支异常不阻塞上报主链
     #    (下 on_buy 回调分支同纪律)。kernel 反向模块级零 import 契约:
     #    函数内惰性取。拒买(applied=False 早退)不可达本段。——
@@ -310,7 +310,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = game_state/gain-chain.md 专家解锁节(gs.unlocked_experts)
-    #    §2.3):购买事实确立后判据一次——购买 = 银狼LV.999 的现役主流
+    # ):购买事实确立后判据一次——购买 = 银狼LV.999 的现役主流
     #    获得渠道(3 费档基础池恒可刷),插入位置与 on_buy 回调分支同位
     #    (简单分支 + 合成连锁 + 升星分支全毕后,拒买 applied=False 早退
     #    不可达本段);rand=False = 购买全链确定面。状态写沿主链零吞错

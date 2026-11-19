@@ -216,7 +216,7 @@ DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
 
 
 def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
-    """BenchSlot → 内嵌 Unit 的解包读口(§2.4 字段映射约定的读法单一源):
+    """BenchSlot → 内嵌 Unit 的解包读口(字段映射约定的读法单一源):
     ``kind='unit'`` 且内嵌非空 → 该 Unit;占位件(kind ∈ tome/bookcard/
     supply_box)/空槽/None 洞 → None。身份(char_id)/星级/装备/槽号
     信息位的消费面统一经本口解包,禁消费点各自内联 kind 判断。"""
@@ -228,7 +228,7 @@ def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
 def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
 
-    状态容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
+    状态容器原生形状:元素 = ``BenchSlot | None``——None 洞(卖出/上阵
     置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已停用(Unit.slot
     不再承载):权威槽位 = 表下标,落位归一分支为恒等
     (保留函数形状供调用方零改动;非 unit kind 原样落槽)。

@@ -139,7 +139,7 @@ class CwActionSellDeployedOp(CwOperation):
             time.sleep(1.0)
         else:
             # sim:机械拖拽静默跳过(直连旁路 port 检查,sim-design.md
-            # §6.5);自上报照走(两执行面同源)。
+            #);自上报照走(两执行面同源)。
             pass
         # —— 自上报(机械发出后;槽位反查记账,op 零感知)——
         outcome = None

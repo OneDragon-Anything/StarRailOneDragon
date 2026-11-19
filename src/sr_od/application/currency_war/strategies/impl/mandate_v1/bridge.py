@@ -322,7 +322,7 @@ class MandateV1Strategy(CwFlowStrategy):
                           group_id=f'act:MandateV1Strategy@{gs.write_seq + 1}')
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
         # 内登记,与生产执行侧同一载体)。状态宿主 = self.state(终态契约
-        # §2.5 impl 层;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
+        #impl 层;与旧 state_of(session) 同一对象,过渡桥)。
         self.state.cw4_visit_bought_names = []
         # 段序号置位(驱动器商店 visit 入口;生产对应位 =
         # 商店画面 op 观察 node,一并推进):visit = 腾席拒绝结论的输入不

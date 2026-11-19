@@ -275,7 +275,7 @@ class CwScreenInvestEnv(CwOperation):
         """零参决策 → 环境刷新结束本次访问 / 选卡+确认后立即终结 → round_success。
 
         选卡链派发后本访问即终结返回主循环(选完即结束本次访问 = op-layer.md
-        §1.1;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
+        确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
         识别重派,修法 = 点击链可靠性,action_ops.md §1)。"""
         obs = self._obs
         return self._decide_and_act(obs)
@@ -302,7 +302,7 @@ class CwScreenInvestEnv(CwOperation):
         状态容器 env_refresh_left)→ 点最优卡底 → 确认链派发(动作 op 内
         即时上报)→ round_success 结束本次访问。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发 = op-layer.md §1.1 + action_ops.md
-        §1 「没有选到就是代码 bug」);无 match 局外不设早退支
+        「没有选到就是代码 bug」);无 match 局外不设早退支
         (画面 op 不支持局外单独调用——op-layer.md §1.1;用户裁决
         全族删门)。"""
 
@@ -317,7 +317,7 @@ class CwScreenInvestEnv(CwOperation):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
         match = self.ctx.cw_match
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         # 零参决策(写槽已由观察轮 report 落状态容器 invest_env_opts;候选 =
         # 标准注册名)。输出 = 单一 CwAction:CwActionRefreshInvestCardsParam

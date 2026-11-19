@@ -215,7 +215,7 @@ if TYPE_CHECKING:
 
 
 # (R1 路径总账装配侧 _r1_ledger_terms 已随三段式刷新判据实现停用——
-#  判据替换申报(11 号稿 §3):期望比较的连续判据 → 目标状态的
+# 判据替换申报(11 号稿 §3):期望比较的连续判据 → 目标状态的
 #  结构判据,消费面改由 criteria/refresh.refresh_warranted 查表承载;
 #  P40/P47/P54 命题本体保留已登记。)
 
@@ -229,12 +229,12 @@ def _r2_card_reserve(gs: GameState) -> int:
 
 #: 冷启动臂成员域 = 过渡库全体条目见即买并集(键域改读单一源派生,
 #: 不再手抄三羁绊体系键——构造块点名件与量子/贝放大器经各块计分域
-#: 自然入域;§3 死循环防线:见即买 → 持有 → 计分 > 0 → 候选形成)。
+#: 自然入域;死循环防线:见即买 → 持有 → 计分 > 0 → 候选形成)。
 _COLD_START_NAMES: frozenset[str] = cw_intention.transition_library_buy_now_union()
 
 
 def _cold_start_member(name: str) -> bool:
-    """冷启动成员域判定(§2.3-8 键域改造):成员 ∈ 过渡库见即买并集。"""
+    """冷启动成员域判定(键域改造):成员 ∈ 过渡库见即买并集。"""
     return name in _COLD_START_NAMES
 
 
@@ -394,15 +394,15 @@ def shop_unbought_reasons(gs: GameState,
                 #   m2_stockpile 三处门同口径)——优先于持有形态细分,拒因
                 #   = ``star_goal_met`` 可观测(旧口径落「四臂够不着,拒因
                 #   混杂」的 owned 桶,追查件缺陷 4);
-                # - 合并完成段(cnt=2 ∧ 无 2★):§3.6 满栏例外后买入直发
+                # - 合并完成段(cnt=2 ∧ 无 2★):满栏例外后买入直发
                 #   (免 bench_free 门),'merge_bench_full' 键停用;金不足
                 #   仍记 merge_unaffordable,金席俱足未发 = merge_ready
                 #   (判读关注面);
-                # - 分支①囤分支段(cnt1=1 ∧ 无 2★,§3.2):中性 'owned' 停用
+                # - 分支①囤分支段(cnt1=1 ∧ 无 2★):中性 'owned' 停用
                 #   ——同帧实际动作 = m2_stockpile 义务买入,拒因按其门序
                 #   细分(stockpile_bench_full/stockpile_unaffordable/
-                #   stockpile_ready),§7.3 owned 命中占比观测面随之真实;
-                # - 其余(含 cnt2>0 让渡死库存,§3.7):中性 'owned'。
+                # stockpile_ready),owned 命中占比观测面随之真实;
+                # - 其余(含 cnt2>0 让渡死库存):中性 'owned'。
                 copies = []
                 for c in bench:
                     u = mandate._slot_unit(c)
@@ -641,10 +641,10 @@ def _face_names(gs: GameState) -> set[str]:
 def _session_close(gs: GameState, st, counters: dict) -> CwActionCloseShopParam:
     """会话收工(收工判定/清单落库/标记判定/旗标清理,23 号稿 §1)。
 
-    - 清单 = 会话内暂存记录按**收工时牌面**过滤后落库(§4.2 牌面代次
+    - 清单 = 会话内暂存记录按**收工时牌面**过滤后落库(牌面代次
       边界:会话内刷新后旧牌面记录随过滤消亡);
     - 标记:读数会话(意图标记 ∧ 本会话零处理动作)与受限 visit 不置
-      (契约 A/§1 路径③),其余正常收工置 ``shop_handled``;
+      (契约 A路径③),其余正常收工置 ``shop_handled``;
     - 旗标清理:读数意图/处理旗标(受限 visit 标记随 visit 生命周期,
       下一 visit 入口重取快照)。
     """
@@ -868,11 +868,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         # 未终局锁定 = 候选态(双层候选;12 号篇 §4):
         # - 义务面 = **实候选(证据门版快照)∪ 过渡层贡献名单**
         #   (过渡半边单一源 = cw_intention.transition_member_union,
-        #   锁定条目成员或候选条目并集;§2.2-6 逐面定版:零信号期买面
+        # 锁定条目成员或候选条目并集;逐面定版:零信号期买面
         #   收窄——实候选经证据门点亮、过渡候选承载过渡半边;开局双
-        #   空窗 = 空买面合法形态,冷启动臂/货架资格臂兜底,§2.3-8);
+        # 空窗 = 空买面合法形态,冷启动臂/货架资格臂兜底);
         # - 买面名单 = 义务面(宽集收窄:原「义务面 ∪ 保护集」的宽集
-        #   前提 = 保护集囤货语义,囤货臂退役后前提消亡,11 号稿 §4.1)。
+        # 前提 = 保护集囤货语义,囤货臂退役后前提消亡,11 号稿 §4.1)。
         _cand_names: set[str] = set(
             cw_intention.transition_member_union(_st))
         for _cn in _st.line_candidates:
@@ -994,7 +994,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                             gold_gap: int | None = None,
                             shelf_signature: tuple[str, ...] | None = None,
                             ) -> None:
-        """机会清单暂存(收工时按收工时牌面过滤后落库;§4.2)。
+        """机会清单暂存(收工时按收工时牌面过滤后落库)。
 
         三字段载荷(priority_insufficient_gold 解拦分轴数据载体,
         design S5-4/S6-4):gold_snapshot/gold_gap 供金位增量轴
@@ -1108,7 +1108,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         任一或叠加,两类受阻同一评估不分流;接入调用纪律 = 买入臂内联消费
         统一序列,禁经 SCENE_SPECS 注册、禁再立筹资/凑金/腾位类场景)。
 
-        评估步骤(§2.2 第 4 项步 1-6):
+        评估步骤(第 4 项步 1-6):
         1. 快照(``mandate.snapshot_frame``,禁状态容器深拷贝、零遥测);
         2. 虚拟阵容 = 快照 + X 置入备战位 + 升星连锁模拟;合成净释放
         席位 ∧ 金不受阻 → 直买(发射器在位 = 臂内门链已走全;缺省
@@ -1140,7 +1140,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         victim ∈ 备战席 → 本帧店内卖出,下帧重入买入臂自然重评(需让
         多张 = 跨帧收敛,每帧取当前末位分流,无固定先 bench 次序);
         victim = 场上部署外件 → 写跨画面计划变量(前缀全件按让位序入
-        卖步骤 + 席位语境驱板至 T)+ 关店不置标记(返程;§2.2 第 4 项
+        卖步骤 + 席位语境驱板至 T)+ 关店不置标记(返程;第 4 项
         写端);池穷尽仍不可足 → 机会清单(拦因 ``gold_short``)。
 
         前置(调用方保证):X 已过买入判类 ∧ 获取受阻(席满 ∨ 金不足);
@@ -1502,7 +1502,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # m2_stockpile(分支① 囤分支,j=1 第二份;现行判据本体不动——含 P77
     # 现货比较子;席满 → 六步流程,金不足 → 筹资。遍历域 = 义务面,design
-    # §2.2:囤货面成员同名副本退出义务类买入/筹资,恢复压牌库/凑星通道)。
+    #:囤货面成员同名副本退出义务类买入/筹资,恢复压牌库/凑星通道)。
     for m in obligation_members:
         if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
             continue
@@ -1602,7 +1602,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # (换轴:旧「三羁绊支持度现算全 0」退出判据随体系对机器退役)。
     # 买面 = 货架 ∩ 过渡库见即买并集的 **1 费 1★ 件见即买**(义务类;
     # 1 费档收窄保守向,1★ 全额退 ⇒ 义务可逆;防「K 空 → 零买入 →
-    # 计分来源永不涨」死锁环,§3 承接)。门链 = m2 义务臂同款(无金线
+    # 计分来源永不涨」死锁环,承接)。门链 = m2 义务臂同款(无金线
     # 闸;金不足/席满走统一获取让位评估,席位检查走买入管线自带)。
     if not _line_view.locked and not _st.line_candidates \
             and not (getattr(_st, 'transition_candidates', None) or ()):
@@ -1643,7 +1643,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 外部分 0,声明接受(虚拟评估只回答「买这张牌点亮哪条线」,词缀/boss
     # 分量对全线的相对排位与主链一致,不构成虚拟偏差)。买入写持有 →
     # 签名变 → 实候选经证据门点亮 → 整线义务面跟进(信号进 → 买入 →
-    # 点亮闭环)。锁定态不评:义务面 = 锁定线名单(§2.2-6 逐面定版),
+    # 点亮闭环)。锁定态不评:义务面 = 锁定线名单(逐面定版),
     # 资格臂的方向点亮语义与「锁后不换线」不变式互斥。
     if not _line_view.locked:
         _shelf_names = _face_names(gs)
@@ -2199,13 +2199,13 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # ===== 序 6:纯冗余停买(反向门——不命中任何序即停)=====
     # (dominance_buy 邻位通道已随富余买入并入压牌库整删——M6 一星兜底带
     #  承接其富余金 1★ 占位语义,comp-structure-unification 3.4,
-    #  press-stockpile §1;P88 特殊帧收窄同步退役,见 mandate.py 墓注。)
+    # press-stockpile §1;P88 特殊帧收窄同步退役,见 mandate.py 墓注)
 
     # ===== 刷新链三组件:判据 → 金线闸 → 发射(11 号稿 §3;
     # 金线闸算式 = 刷新链三组件定型口径;目标可买合取拆除 =
     # 免费效果条目先行批 + 预测门整拆批,判据收敛见 11 号稿 §3)=====
     # W11 刷新负结果记忆(轻量形态,非期望式;正本 = 11 号稿
-    # §3 发射段与负结果记忆行):刷新提案被拒(金线不足;「目标不可买」置位分支已
+    #发射段与负结果记忆行):刷新提案被拒(金线不足;「目标不可买」置位分支已
     # 随预测门退役,11 号稿 §3)→ 本帧置会话标记 + 照常收店;外循环
     # 重进商店入口观察时标记存在且状态三元组无变化 → 本帧跳过刷新提案
     # (按六序买面/关店走;免费效果条目与付费同闸——置位标记帧免费刷同跳),

@@ -75,7 +75,7 @@ def extract_frame(ctx, img, templates) -> dict:
     """关键帧 → 结构化记录(识别全量;失败字段安全默认,不抛)。"""
     rec: dict = {'ts': datetime.now().isoformat(timespec='seconds')}
     try:
-        # round_caps = 场字段现值(§2.5 实时态语料接入调用:修饰局 r10/r8
+        # round_caps = 场字段现值(实时态语料接入调用:修饰局 r10/r8
         # 帧记 (1,10)/(2,8);局外/--replay 态无 session → None 回退默认
         # 口径,披露 10②)。
         _caps_gs = game_state_from_ctx(ctx)

@@ -230,7 +230,7 @@ def close_run(result: str = "", plane_reached: int = 0,
 
 
 # —— 复现计数(分级判据③;进程内状态,按 run 切换清空)——
-# key=(surface, kind, expected 特征前 80 字符);第 2 次起算复现(§4 判3:
+# key=(surface, kind, expected 特征前 80 字符);第 2 次起算复现(判3:
 # 同特征连续 2 次/2 帧,所有 L0 都过防抖,单帧永不直接停机)。
 _defect_seen: dict[tuple[str, str, str], int] = {}
 

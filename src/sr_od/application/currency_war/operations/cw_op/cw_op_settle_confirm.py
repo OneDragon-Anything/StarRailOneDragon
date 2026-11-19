@@ -1,6 +1,6 @@
 """货币战争 结算确认动作 op(规范 = flow/action_exec.md §2.1 触发点 1;
 screens/op-layer.md §2.1 画面框 op 形态;game_state/node-derivation.md
-§3.3 跃迁判定)。
+跃迁判定)。
 
 非策略动作面(不经动作注册表、无 CwAction param;画面框 op 惯例形态,
 动作 op 规范 = flow/action_ops.md §1)。职责 = 点击「货币战争-结算/按钮-继续挑战」
@@ -141,7 +141,7 @@ class CwOpSettleConfirm(CwOperation):
             # 点击即上报(去证据门):重复上报被
             # kernel 观察态门挡(零推进),死点击重试链自愈。
             # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md
-            # §2.2 契约 3;实机端口未装 = no-op,sim 装配后驱动后端
+            #契约 3;实机端口未装 = no-op,sim 装配后驱动后端
             # node_advance);round 结果 data 携带声明(journal 记账面)。
             outcome = self._report_node_advance()
             world_decl: WorldDecl | None = (

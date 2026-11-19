@@ -19,7 +19,7 @@ op-layer.md §1.1 观察标准化门)+
 才写 chosen_tome + 到账登记 + success 返回主循环;在 = 点击未落地 → 清标志重走
 重选)→ 决策出口守卫(无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门;候选空/返回 None/词表外 = 具名 fail 零盲发[出口③];idx 越界
-= 守卫断言[§1.3])→ 决策从状态容器零参读 → 点卡
+= 守卫断言[])→ 决策从状态容器零参读 → 点卡
 (坐标 = 动作 op 自状态容器 ``star_tome_opts_xy`` 按 idx 取,op-layer.md §1.1
 :35)→ round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与
 ConfirmTome 到账登记 = 落地复查点留在原位(动作事实边界,不进 report;
@@ -81,7 +81,7 @@ class CwScreenBookcard(CwOperation):
     源 = ``strategies/impl/flow.py::decide_star_tome``),本 op 零选卡倾向
     判断——决策出口守卫:无 match 局外不设早退支(用户裁决 2026-09-22
     全族删门);候选空/返回 None/词表外 = 具名 fail 零盲发(出口③);
-    pick idx 越界 = 守卫断言(§1.3)。选卡坐标 = 动作 op 自状态容器 ``star_tome_opts_xy`` 按 idx
+    pick idx 越界 = 守卫断言。选卡坐标 = 动作 op 自状态容器 ``star_tome_opts_xy`` 按 idx
     取(坐标单一真相源 = 观察上报,op-layer.md §1.1 :35)。
     """
 
@@ -235,7 +235,7 @@ class CwScreenBookcard(CwOperation):
         # 断言(op-layer.md §1.3)。
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         if not cards:
             return self.round_fail(

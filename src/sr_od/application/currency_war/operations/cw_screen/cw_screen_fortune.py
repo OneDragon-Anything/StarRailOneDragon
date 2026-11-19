@@ -106,7 +106,7 @@ class CwScreenFortune(CwOperation):
             pt = area_center(self.ctx, f'卡-强化{i + 1}', self.SCREEN_NAME)
             if pt is None:
                 # 兜底常量与建档同真值( live 已实测确认字面量平移),
-                # 防建档误删致观察断裂,非第二坐标源(§3.4.5a「禁二次取点
+                # 防建档误删致观察断裂,非第二坐标源(a「禁二次取点
                 # 回退」覆盖动作/上报层读端,观察写门内唯一出口不受涉)。
                 log.warning('[cw][fortune] 建档「卡-强化%d」读缺,坐标回退兜底常量',
                             i + 1)
@@ -153,7 +153,7 @@ class CwScreenFortune(CwOperation):
         texts = self._obs.options if self._obs is not None else []
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_fortune()
         # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail 零盲发

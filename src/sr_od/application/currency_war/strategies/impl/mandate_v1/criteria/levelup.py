@@ -128,7 +128,7 @@ def _plane_round_of(state: GameState) -> tuple[int, int]:
     return plane_of(state), round_num_of(state)
 
 
-# ============================================================ 最优概率带(§2.1 停留门)
+# ============================================================ 最优概率带(停留门)
 
 
 def prob_band_of_cost(cost: int) -> tuple[int, int]:
@@ -171,12 +171,12 @@ def _held_max_star(state: GameState, name: str) -> int:
 
 
 def unfinished_star_targets(state: GameState) -> list[tuple[str, int, int]]:
-    """未完成星级目标集(11 号稿 §1 序 1 星级口径/§2;锁定线 need_star
+    """未完成星级目标集(11 号稿 §1 序 1 星级口径;锁定线 need_star
     驱动)。
 
     锁定线 need_star 表中持有最高星 < 必要星级的成员,返回
     (角色名,必要星级,当前实费档)。定义 3★ 就追到底无降档、定义
-    2★ 即完成(§1.5);辅助 1★ 持有即完成,未持有者入集(首张即目标)。
+    2★ 即完成;辅助 1★ 持有即完成,未持有者入集(首张即目标)。
     费用档 = ``effective_cost`` 当前实费 resolved 口径(银狼系变费后
     实档,档漂移时带随之重取)。未锁定期 = 空集(停留门覆盖锁定后,
     11 号稿 §2)。

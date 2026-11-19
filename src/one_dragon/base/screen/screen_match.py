@@ -69,7 +69,7 @@ def find_area_with_detail(
     """单 area 强化匹配,返回命中详情;纯定位区域或未命中返 None。
 
     与 ``find_area_in_screen`` 的差异:返回 ``AreaMatchDetail`` 详情而非布尔枚举
-    (``crop_first`` 两者默认一致,均 False 走全图 OCR 缓存复用,性能见 spec §2.5)。
+    (``crop_first`` 两者默认一致,均 False 走全图 OCR 缓存复用)。
 
     Args:
         ctx: 运行上下文(提供 ``ocr_service`` / ``tm``)。
@@ -131,7 +131,7 @@ def find_screen_matches(
     回写由 backend ``analyze`` 层负责。
 
     每个画面算所有 area(同时得 ``id_mark`` 全中标志 + 命中数),精准判定与命中数
-    在同一次遍历得到,无独立「模糊阶段」重复遍历(见 spec §2.1.2)。
+    在同一次遍历得到,无独立「模糊阶段」重复遍历。
 
     遍历顺序:``current``/``last`` 有值 → BFS 扩散(+ 兜底全量);均 None → 全量。
     精准早停:遇 ``id_mark`` 全中画面即返、停止。无精准 → 按命中数 top_n(命中数

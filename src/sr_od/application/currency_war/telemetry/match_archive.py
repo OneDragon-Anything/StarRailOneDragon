@@ -1175,7 +1175,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         elif rid and rid != walk_seg:
             # 段界重新校准(步进链):换段 → 该段恢复帧 hp 重新校准游标。重新校准差
             # ≠0 → 边界差暴露(本处单一落点:步进链游标含 hp_pay 事件推进,
-            # 是「事件已解释边界差 → 重新校准零差」的唯一知情者,§2.3 形态②;
+            # 是「事件已解释边界差 → 重新校准零差」的唯一知情者,形态②;
             # rounds 链基准点静默切换)。跨段未决对账随重新校准落账不追溯。
             walk_seg = rid
             if rid not in resume_cache:

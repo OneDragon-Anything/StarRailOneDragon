@@ -630,7 +630,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 本金充裕系:官方「获得26/45金币。每次进入新节点时,若拥有超过50金币,
     # 每额外10金币就会获得1次免费刷新(最多3次)」(cw_invest_data.py:251-252,
     # id 301001/301002)。两卡条件分支卡文逐字同文 → 三元组同值;棱彩加强值
-    # 只在 instant_gold(26 vs 45)。条件分支发放经节点桥(§3.3.6)。
+    # 只在 instant_gold(26 vs 45)。条件分支发放经节点桥。
     '本金充裕': EconomyEffect(instant_gold=26, free_refresh_cond_gold_above=50,
                               free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
     # 存款回报:官方「每次进入新节点时,如果在上个节点没有花费金币,则获得
@@ -846,7 +846,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   (MechanismMutation.refresh_price_mult=0.50)
     '奋斗协议': EconomyEffect(xp_buy_hp_cost=6, boss_end_heal_hp=50),
     # ↑ 「购买经验值消耗6点小队生命值而非金币。首领战斗结束时回复50点小队生命值」——
-    #   金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;
+    # 金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;
     #   回血条目 = 战斗结算型 HP 写入状态副本的实现(每首领战结算都发,数值直读),
     #   消费单一源 = cw_gain_chain.check_strategy_boss_end_heal(纯读零写)
     #   → sim 结算段策略卡效果发放区尾段发放,live 游戏自算观察覆盖;建模假设经
@@ -1053,8 +1053,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 免战牌:官方「进入战斗节点时,直接跳过战斗并进入下一个节点,可生效2次。
     # 获得30点经验。」(cw_invest_data.py:109,PlazaAugment 151301)。建模批件
     # 落注册表条目(设计 §次三件 5):次数类余量首例
-    # (duration_uses=2 → remaining_uses,§3.2.19 权威版本=effect_inventory
-    # .remaining_uses,§8.6-3),递减插入位置 = 跳过型出战上报(kernel
+    # (duration_uses=2 → remaining_uses,权威版本=effect_inventory
+    # .remaining_uses),递减插入位置 = 跳过型出战上报(kernel
     # 出战 op 自上报(report_action_start_battle_param)
     # 子态,上报时递减——出战域重设计),用尽移除;sim 消费面 =
     # battle_skip 声明分支(跳过过程,战斗不发生、节点照常推进)。
@@ -1073,9 +1073,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 每额外10金币就会获得1次免费刷新(最多3次)」(cw_invest_data.py:251-252,
     # id 301001/301002)。条件判定族(GameState 设计 §3.3.6 免费刷新余额的
     # 条件性来源):触发=节点进入、条件=金>50、梯度=每 10 金 1 次、封顶=3;
-    # 发放经 grant_effect_node_refresh_balance 桥自动生效(§3.3.6「结构化后
+    # 发放经 grant_effect_node_refresh_balance 桥自动生效(「结构化后
     # 经同一桥」):桥按 gs.gold 现值逐条目评估,金未读(None)保守零授予。
-    # counter 不建(无剩余/门槛累计量,授予量由当拍金现值决定,§3 计数器
+    # counter 不建(无剩余/门槛累计量,授予量由当拍金现值决定,计数器
     # 模型无动态需求为空);duties 全空(无计数器/无预知/无姿态消费面)。
     # payload 引 STRATEGY_ECONOMY 同一实例(单一源);棱彩加强值口径 =
     # instant_gold 26/45,条件分支两卡逐字同文同值。
@@ -1489,7 +1489,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 9 级一次,不占);状态副本发放条目 = sim 到级检查函数
     # (kernel/cw_gain_chain.check_strategy_level_grants,advance 双点接
     # 入调用,现役 sim 经验常量下 9 级不可达 = 休眠正确路径,gain-chain.md
-    # §2.12);登记条目本批零行为消费(登记端可见性优先,成功经验同姿
+    #);登记条目本批零行为消费(登记端可见性优先,成功经验同姿
     # 态),行为在检查函数不经 inventory 条目驱动。duties 全空(无计数
     # 器/无预知/无姿态消费面,本金充裕同形态);burst/板面两桥零行为
     # (payload 无 instant/burst 字段、非 BattlefieldEffect)。
@@ -2229,7 +2229,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # (cw_invest_data.py:245)。付费域口径 = 研究文档现值
     # (invest_effects.md「现按付费域建模」,待实机实证任意刷是否 proc;
     # 官方原文无「付费」限定,二义未实采 → pending 如实标注)。
-    # 状态副本写入面 = §6.3 随机分支:概率写免费刷新余额不建逻辑写入方,
+    # 状态副本写入面 =随机分支:概率写免费刷新余额不建逻辑写入方,
     # 交由观察收尾;live 真值 = 商店观察漏斗直达状态容器,零新增写端;
     # sim 产出面零建模(同族淘金客 +2XP 把结果写进状态副本的
     # 实现分支已接入调用 = 刷新上报写端 grant_effect_refresh_xp,
@@ -2281,7 +2281,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # EffectSpec = payload 永不入 gs.effects,节点边界桥对其恒零
     #(per_node_pick_node_grant.md §6 登记缺口待办,本条履约);拿卡当
     # 节点不发放(句①无「现在/立刻」立即措辞,per_node_pick_node_grant.md
-    # §3.2 b 组,burst=0 与游戏真值一致);句② boss 价值金条目不落本条目
+    #b 组,burst=0 与游戏真值一致);句② boss 价值金条目不落本条目
     #(条件金非静态注册数值,载体 = STRATEGY_BOSS_CLEAR_GOLD_GRANTS
     # 白名单表 + cw_gain_chain.check_strategy_boss_clear_gold)。
     '搜打撤': EffectSpec(
@@ -2859,7 +2859,7 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     「多条目不同触发位」有损(两笔不同等级/时点的触发被折叠到最早位)——
     精确多条目消费暂无独立载体(逐策略消费视图未建),需要时先建再依赖。
     聚合语义机器可读单一源 =
-    测试位分型表(test_cw_economy_aggregate_typing,§E6 裁决:代码即载体)。
+    测试位分型表(test_cw_economy_aggregate_typing,裁决:代码即载体)。
     """
     eff = EconomyEffect()
     caps: list[int] = []
@@ -3168,7 +3168,7 @@ def env_faction_scope(env_name: str) -> frozenset[str]:
 
 
 def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
-    """投资策略的阵容指向集(STRATEGY_BINDINGS 阵营分支 + 角色入账分支两源;§2.1)。
+    """投资策略的阵容指向集(STRATEGY_BINDINGS 阵营分支 + 角色入账分支两源)。
 
     - 阵营分支:绑定阵营直接入集;
     - 角色入账分支 ch 两源:① ``get_char(ch).factions`` **全集**入集(多阵营
@@ -4251,7 +4251,7 @@ class StrategyPoolRewrite:
       刷新只换卡不换槽品质)
     - extra_pick_refreshes: 策略取卡刷新次数增量(银·金·彩 +2,策略屏逐卡
       免费刷新计数,cw_node_obs.read_invest_refresh_counts('strategy') 通道;
-      数量通道登记,§2.2.4;消费端 = sim 策略屏刷新呈现与刷新状态副本写入分支
+      数量通道登记,;消费端 = sim 策略屏刷新呈现与刷新状态副本写入分支
       (基准每卡 1 次 + 本增量;2026-10-19 用户裁定 sim 与实机一致提供
       刷新次数批接入);live 不经本字段——bot 读屏幕现值)
     - extra_strategy_offer_node: 额外策略三选一发生的插入位置所在节点,**坐标系 =
@@ -4268,7 +4268,7 @@ class StrategyPoolRewrite:
     - difficulty_exempt: 敌人难度不随高品质策略提高(白银时代第二条效果;
       游戏【注·交叉核对】口径 = 白银 +0/黄金 +3/棱彩 +6 每拥有 1 个,
       docs/game/currency_war/research/economy.md 难度精确口径行——数值已登记
-      不折金,难度→收益需战力/胜率建模属宪法禁域 00_framework §1.1,§2.2.3)
+      不折金,难度→收益需战力/胜率建模属宪法禁域 00_framework §1.1)
     - pending_notes: 效果原文歧义待办(单张改写型 offer 覆盖面歧义:三卡全改
       还是仅点名张)——pending 条目必填
       (_validate_env_pool_rewrite 构建闸,_validate_strategy_effects 先例
@@ -4295,7 +4295,7 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
     '彩虹时代': StrategyPoolRewrite(rewrite_quality='棱彩', rewrite_picks=(1, 2, 3)),
     '黄金时代': StrategyPoolRewrite(rewrite_quality='金', rewrite_picks=(1, 2, 3)),
     # 白银时代第二效果「敌人难度不会由于选择高品质投资策略而提高」=
-    # difficulty_exempt 如实登记(§2.2.3 适用范围声明:数值不折金,不产生分值)
+    # difficulty_exempt 如实登记(适用范围声明:数值不折金,不产生分值)
     '白银时代': StrategyPoolRewrite(rewrite_quality='银', rewrite_picks=(1, 2, 3),
                                     difficulty_exempt=True),
     '头彩': StrategyPoolRewrite(
@@ -4318,7 +4318,7 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
                       '(用户裁定 2026-10-19 卡面即真值;旧实测记录作废);'
                       '数量通道 = 策略屏逐卡刷新 +2'),
     # 联席决策 = 数量通道(2-6 节点一次额外投资策略三选一);与 A 类策略大师
-    # 「额外取卡不计」同口径,价值由裸分承载(§2.2.4)
+    # 「额外取卡不计」同口径,价值由裸分承载
     # 执行消费端 = sim JOINT_DECISION_EXTRA_SLOT 派生(单一源,勘误/改值
     # 只改本登记处,sim 自动跟随);
     # 插入位置候选选选实机对账:7 局在场样本全部止步 P2r4 或更早,无一达 P2r6;
@@ -7207,7 +7207,7 @@ _validate_strategy_ore_open_effects()
 # 值 = (触发时机, 金门槛, 改写词) 三元组:
 # - 触发时机 'battle_entry' = 「进入战斗时」卡面直读,类型读法仅普通
 #   战斗(kind=='battle' 节点窗开;词义边界先例 = 投资环境迭代设计
-#   T-18 §2.3:卡文体系指称奖励节点时显式写「奖励节点」,触发句泛称
+# T-18 §2.3:卡文体系指称奖励节点时显式写「奖励节点」,触发句泛称
 #   不入 reward 轴、遭遇类同理不入——sim 结构事实 = reward 位窗开亦走
 #   战斗结算,排除依据 = 词面体系非结构;轴取舍直接决定首触发点位次,
 #   判读申报制);

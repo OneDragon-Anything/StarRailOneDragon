@@ -225,7 +225,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
     """便捷:用 current_run_id 记一条缺陷台账(与 record_spend_unit 同模式)。
 
     severity 显式传入优先;否则写入端按 judge_severity 初判(带复现计数)。
-    run_id 空 → no-op(与其他便捷入口同门控)。confidence 透传(§2.10)。
+    run_id 空 → no-op(与其他便捷入口同门控)。confidence 透传。
     """
     if not _telstate._CURRENT_RUN_ID:
         return
@@ -290,7 +290,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
             gap_large = True
     except (TypeError, ValueError):
         gap = None   # 文本面:gap 不填,差用 expected/observed 表达
-    # `w512_obs_surfaces/`(§2.10):原流行 ctx 里带数值 confidence 时透传进台账
+    # `w512_obs_surfaces/`:原流行 ctx 里带数值 confidence 时透传进台账
     #(缺省/非数值 → None,该缺陷面无置信度语义)
     conf: float | None
     try:

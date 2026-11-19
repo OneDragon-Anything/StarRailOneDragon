@@ -138,7 +138,7 @@ def _bonds_named(char_id: str) -> set[str]:
 # (点火增益/配方底线门/仙舟供给谓词/围栏集(DEPLOY_FENCE)与七桶选人
 #  消费面(cap_roomy_of/tier_completes/ignition_gain/recipe_floor_holds/
 #  xianzhou_supply_exists/RECIPE_FLOOR_*/deploy_target_sets/residual_
-#  fill_plan)已随部署统一批丁丁批纳入统一管理删除——unified-deploy-order §2/§4:
+# fill_plan)已随部署统一批丁丁批纳入统一管理删除——unified-deploy-order §2/§4:
 #  选人 = 统一部署搜索定型,围栏/底线门/点火序 = 旧线性序补丁史;
 #  deployed_bond_counts/board_target_line_weight 支撑观测面保留。)
 
@@ -281,7 +281,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 #  swap_plan_up_names / evolution_swap_arm_trigger / assemble_swap_plan_inputs /
 #  bond_gate 门族 / SwapGroupOrder / _select_swap_group_plan / select_swap_plan)
 #  已随部署统一批丁纳入统一管理删除:要不要换/换谁下 = 统一部署搜索定型,
-#  kernel swap 资格链与让渡序的独立度量退役——unified-deploy-order §2.7/§4;
+# kernel swap 资格链与让渡序的独立度量退役——unified-deploy-order §2.7/§4;
 #  被换下者回 bench 由卖出场景按统一让位序处置,让渡序消费面同批改接。
 #  保留:fresh 账本族 / board_unique_key /
 #  engines_count 族 / deployed_bond_counts / board_target_line_weight。)
@@ -294,7 +294,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 
 def board_unique_key(bc: Unit) -> str | None:
     """板上同名唯一性判据键(设计裁定:场上同角色仅 1;P4 状态容器形重写:
-    入参 = 行域/工作表 ``Unit``,唯一消费域;§2.4)。
+    入参 = 行域/工作表 ``Unit``,唯一消费域)。
 
     - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
     - 其余 = char_id 本身。

@@ -1,4 +1,4 @@
-"""criteria/refresh——刷新面(§2.4)。
+"""criteria/refresh——刷新面。
 
 刷新链三组件定型:判据(:func:`refresh_warranted`,三段式查表)→
 金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve` 供给,调用方

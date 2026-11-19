@@ -21,7 +21,7 @@ class BuyPurchase:
     count = 该牌本单元购入张数 k——常态=1;备战栏满且可触发合成时 =
     游戏自动多买 min(店内同牌张数, 3−已有数 mod 3)(merge_mechanics §2.5,
     【置信:低】,由对账网实证修正);unit_cost = 单体招募费(无折扣:
-    总价 = k×unit_cost,§2.5 无价格优惠)。
+    总价 = k×unit_cost,无价格优惠)。
     """
     name: str
     star: int

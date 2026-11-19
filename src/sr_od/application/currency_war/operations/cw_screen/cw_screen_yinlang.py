@@ -175,7 +175,7 @@ class CwScreenYinLang(CwOperation):
 
         动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果分支
         (单相即时上报,权威版本 = ``flow/action_ops.md`` §1  与
-        §4.5 PickPlanner 行)——本 op 派发即终结返回主循环重新观察,零重入
+        PickPlanner 行)——本 op 派发即终结返回主循环重新观察,零重入
         裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
         当前画面重识别重派)。"""
         options = self._obs.options if self._obs is not None else []

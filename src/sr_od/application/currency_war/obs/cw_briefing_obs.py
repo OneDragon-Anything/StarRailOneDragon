@@ -165,7 +165,7 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 #: 简报卡 boss 名可能是俗称/简称(如「电视机」vs 规范「造梦互动娱乐」)或 OCR 形变:
 #: ①俗称/简称经 ``cw_enemy_data.normalize_boss_name``(``BOSS_NICKNAMES`` 映射)
 #: 精确命中规范名;②不中再 LCS 相似匹配归一(次高分差拒判,同 op-layer
-#: §1.1 全族统一);任一读数两段皆不中或歧义 = 转换失败返回 None
+#:全族统一);任一读数两段皆不中或歧义 = 转换失败返回 None
 #: (op-layer.md §1.1 观察标准化门失败语义;禁原名透传带病上报)。
 _LCS_CLEAN_THRESHOLD: float = 0.5   # LCS 占规范名长度比例下限(项目 OCR 名匹配通用档,见 AGENTS「OCR 文本匹配与修复」)
 #: LCS 歧义拒判分差(与阈值同量纲;过阈值的最高分与次高分之差低于本值

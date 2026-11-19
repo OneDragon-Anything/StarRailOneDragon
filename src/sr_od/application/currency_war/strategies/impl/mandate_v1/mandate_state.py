@@ -1,7 +1,7 @@
 """货币战争 mandate_v1 策略器状态对象(StrategyState;session.md as-designed
-§3.1 裁决 1 与设计权威版本 §8.5/§8.6-6 的落地载体)。
+裁决 1 与设计权威版本 §8.5/§8.6-6 的落地载体)。
 
-**命名归位**(§8.6-6):本类即设计所称 StrategyState,消费面一律
+**命名归位**:本类即设计所称 StrategyState,消费面一律
 import StrategyState(历史名 MandateState 已无兼容别名)。**归属判据**(设计 §1):换一个
 策略实现就不存在的字段归这里;归策略实现层私有,框架策略器基类仅以泛型
 参数携带(``CwStrategy``/``CwFlowStrategy`` 链的 ``_TState``),kernel/
@@ -148,7 +148,7 @@ class YieldPlan:
     """连续无进展重观察次数(驱板步骤卡死计数;进展恢复即清零;
     计数域 = 观察帧对账后,被第 0 步自救抢占的帧不累加也不清零)。"""
     pending_reobserve: bool = False
-    """[索引定义] 拖动/重观察交替位(§3.5 D8-1):True = 上帧已发
+    """[索引定义] 拖动/重观察交替位(D8-1):True = 上帧已发
     统一拖动、本帧提案应返回 CwActionObsParam(in_place 环内重观察)
     后清位。取值时机 = 拖动发出帧置位 / obs 发出帧清位。"""
 
@@ -157,7 +157,7 @@ class YieldPlan:
 class StrategyState:
     """mandate_v1 策略器一局状态(局首由工厂每局全新创建,局终随 session 销毁)。
 
-    即设计权威版本 §8.5 的 StrategyState(改名归位见模块 docstring;§8.5 五
+    即设计权威版本 §8.5 的 StrategyState(改名归位见模块 docstring;五
     语义槽映射亦在彼)。生命周期契约(session.md §3.1 条款 2):每局新建
     即天然清零,禁跨局复用实例;意向状态机段级重入守卫
     (``v3_intention_key``)语义自原 session 字段原样平移,不变。字段
@@ -307,7 +307,7 @@ class StrategyState:
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
-    # 统一发出登记簿(§3,P78 窗口段载体):
+    # 统一发出登记簿(P78 窗口段载体):
     # 名 → (买因,登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
     # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压牌库簿
     # 完全合一(编者裁);属性名沿用旧簿:执行侧 cw_op_deploy 按鸭子
@@ -497,7 +497,7 @@ class StrategyState:
     # 已消费/搜索失败)。
     deploy_margin: dict | None = None
 
-    # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
+    # ===== scratch(原 session.memory 消解宿主;纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:
     # ①键名加模块前缀防冲突;②生命周期 = 局级(状态对象每局新建自然
     # 清零),节点级清理归使用者;③不入 decisions 遥测;④高频共用/需

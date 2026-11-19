@@ -1710,7 +1710,7 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
 # 该牌当前星级的实付费用(费用倍数体系 merge_mechanics §2.6:费用 = 原费用 ×
 # 3^(星级−1),1★=原费、2★=×3、3★=×9;用户定稿:数字可为两位,
 # 如饮月 2★=6、4费2★=12)。旧链 cost 从 roster 查表派生 → 2星/3星直出按 1星
-# 记错星级;改读画面数字即可闭环(§2.7 识别缺口条,落地)。
+# 记错星级;改读画面数字即可闭环(识别缺口条,落地)。
 #: 数字模板目录(assets/template/ 下子路径)。
 _SHOP_COST_TMPL_DIR: str = 'currency_war/shop_cost'
 #: 费用 area 名后缀(screen_info「货币战争-备战-开商店」屏,商店牌-N-费用)。
@@ -1854,7 +1854,7 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
     """徽章读数 + 1星基准费 → ``(cost, star, cost_source)``(纯函数可单测)。
 
     语义(费用倍数体系 = 3^(星级−1):1★×1/2★×3/3★×9,merge_mechanics
-    §2.6;星级 = 读数 ÷ 基准费)。**基准费 = 当前费用档**——银狼LV.999
+    星级 = 读数 ÷ 基准费)。**基准费 = 当前费用档**——银狼LV.999
     升费后档 ≠ 注册表起始费,调用方传
     ``cw_economy.effective_cost``(唯一读口;普通角色两值恒等,零行为差):
     - badge 缺失 / base_cost≤0(名字未识别)→ 按基准费兜底,
@@ -2591,7 +2591,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             else _gso_mirror(_match.session)
         active_strategies_val = list(_gs_m.active_strategies.value or [])
         active_env_val = str(_gs_m.active_env.value or '')
-        # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级交叉核对,消费侧):
+        # `w512_obs_surfaces/`(观测自检设计 §2.9/,策略激活态事件级交叉核对,消费侧):
         # 「声明选中名」暂存槽在此消费——写链已先于暂存发生(handler 先
         # append session 再暂存),故本时点声明名应已在持卡列表;不在 = 写链
         # 断或选择落空 → 台账保留证据(中相关面,默认 L2;离线按复现分级)。
@@ -2663,7 +2663,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         if session is not None:
             gs = game_state_of(session)
             frame = f'p{plane}-r{round_num}'
-            # 渠道①签名(显式签名铺满;§3.2.1 ①类属 = 观察汇聚
+            # 渠道①签名(显式签名铺满;①类属 = 观察汇聚
             # 模块):真读/沿用两 mode 各一;screen = 调用方画面建档名
             # (失配豁免精确键的观察侧维度);hp 等带质量维的专项 sig 在各自写点。
             _sig_read = ChannelSig(family='obs', actor='cw_observation',
@@ -2673,10 +2673,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
 
             # 节点(phase_round 全阶段必读;node_type 仅 spec 门内为帧读值)。
             # P1-1(审查):kind 未读帧(battle_or_transit spec 无 node_type /
-            # 备战帧三源仲裁全空)禁合成 'prep' 占位假值(§2.2 失读口径;与本口
+            # 备战帧三源仲裁全空)禁合成 'prep' 占位假值(失读口径;与本口
             # 「禁拿兜底默认值当观察」同义)——kind 从 gs.node 现值继承合成新键
             # (plane/round 真读更新),evidence 标继承;无现值且未读 → 不写
-            # (禁猜)。kind 的权威写端 = 结算屏三源仲裁(§3.5.2/§3.2.1),批次二
+            # (禁猜)。kind 的权威写端 = 结算屏三源仲裁,批次二
             # 接入调用;继承窗口内 kind=「上一已知节点类型」,备战帧真读即覆盖。
             if node_type is not None:
                 gs.observe(gs.node, NodeKey(plane=int(plane),
@@ -2708,13 +2708,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     gs.observe(gs.level, int(level), sig=_sig_read)
                 else:
                     gs.carry(gs.level, frame=frame,
-                             sig=_sig_carry)   # 启发式兜底值不是观察(§2.2)
+                             sig=_sig_carry)   # 启发式兜底值不是观察
             if _w('xp') and xp_progress is not None:
                 gs.observe(gs.xp, tuple(xp_progress), sig=_sig_read)
             if _w('hp'):
                 # v3.2-G1:判读面质量标记照落 sig.quality(决策消费统一经
                 # 政策层读口 decision_hp;
-                # 词表 = real_read/prior,§3.2.1 起步词表;终态契约 §A:
+                # 词表 = real_read/prior,起步词表;终态契约 §A:
                 # same_node_carried 帧龄门退,沿用统一 carried)。
                 if hp_readable:
                     gs.observe(gs.hp, int(hp_val), sig=ChannelSig(
@@ -2743,10 +2743,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 gs.observe(gs.level_up_cost, int(level_up_cost),
                            sig=_sig_read)
             if _w('deploy_cap'):
-                # deploy_cap 观察写端(入状态容器,§2.3;spec 键已登记,状态容器喂入
+                # deploy_cap 观察写端(入状态容器,;spec 键已登记,状态容器喂入
                 # 沿用既有键门):采信门输出才 observe——防抖核
                 # (read_deploy_cap_debounced/_debounce_cap,双帧一致)
-                # 已在读取半部,None = 拒信/失读帧 → carry 沿用(§2.2 处置①;
+                # 已在读取半部,None = 拒信/失读帧 → carry 沿用(处置①;
                 # 宝钻只增不减,沿用值方向安全),禁拿 None/兜底当观察。
                 if deploy_cap is not None:
                     gs.observe(gs.deploy_cap, int(deploy_cap),
@@ -2777,16 +2777,16 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 # 照旧决策、执行侧核对兜底」);真离屏结构事实由下方 elif 承载。
             elif gs.shop.value is not None:
                 gs.leave_screen(gs.shop,
-                                sig=_sig_read)   # 离开商店画面 = 结构事实(§2.2 例外)
+                                sig=_sig_read)   # 离开商店画面 = 结构事实(例外)
             if phase in (PHASE_PREP_SHOP_OPEN,):
-                # 刷新费现场识别通道(§3.3.4 识别失败=None 禁兜底)。
+                # 刷新费现场识别通道(识别失败=None 禁兜底)。
                 # 写入口经按钮态 composite(读链接入):免费态按钮渲染的
                 # 剩余次数与标价**同 rect**——免费帧次数数字会被标价解析误读,
                 # 「免费帧不写」的免费判定输入 = 按钮态识别标志命中(结构性满足),
                 # 不再依赖「免费帧渲染无数字」旧假设(实机取证推翻:
                 # 免费帧 = 「免费刷新」+次数)。非免费帧 price 语义与旧直读
                 # 逐位一致(识别标志失读/未中分支 composite 内部同源 read_shop_
-                # refresh_price);免费帧 → carry 沿旧值(§3.3.4 None≠0 同门)。
+                # refresh_price);免费帧 → carry 沿旧值(None≠0 同门)。
                 from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
                     read_shop_refresh_button,
                 )
@@ -2814,13 +2814,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     gs.observe(gs.shop_refresh_cost, int(_btn.price), sig=_sig_read)
                 else:
                     gs.carry(gs.shop_refresh_cost, frame=frame, sig=_sig_carry)
-            # —— 开局域/持卡/环境镜像(迁移批次二,§3.1/§3.4;任务书件 8)——
-            # 载体中继收敛(§2.1,批次二扩单件 3):这些字段的真写端在各自画面
+            # —— 开局域/持卡/环境镜像(迁移批次二,;任务书件 8)——
+            # 载体中继收敛(批次二扩单件 3):这些字段的真写端在各自画面
             # (难度确认屏/简报/事件屏 handler),中继只补写**从未写过**的字段
             # (source=logic + evidence='session_carrier',已有正式值一律跳过——
             # 禁把 handler 已写的 logic 翻成 observation);值恒等(同一事实),
             # 归档 gs_prov 按 evidence 可分。
-            # 渠道③签名(§3.2.4 relay 契约):中继走 logic_hook 族,actor =
+            # 渠道③签名(relay 契约):中继走 logic_hook 族,actor =
             # 本汇聚模块,行内身份可对账(签名必填)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig as _ChannelSig,

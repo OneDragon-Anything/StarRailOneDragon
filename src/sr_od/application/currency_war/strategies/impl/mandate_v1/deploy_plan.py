@@ -23,7 +23,7 @@
   ``readiness_launch_decision`` 的 ``deploy_pending_fn`` 注入单一实现
   (diff 非空语义;推判重放虚拟面板同族);
 - 单件可上场预检(:func:`can_deploy_single_unified`):快照+X 跑统一
-  搜索、X ∈ target 判定(§4 can_deploy_single 行;序有关语义申报同彼)。
+  搜索、X ∈ target 判定(can_deploy_single 行;序有关语义申报同彼)。
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 #  can_deploy_single)与部署计划装配 deploy_plan_moves/
 #  DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY 已随部署统一批纳入统一管理时删除:
 #  围栏/成对/点火序/核心桶/必需件首桶/cap/同名去重/配方底线门/板空保底 =
-#  旧线性序补丁史,选人 = 统一部署搜索定型单属(24 号稿 §1);
+# 旧线性序补丁史,选人 = 统一部署搜索定型单属(24 号稿 §1);
 #  紧缩占席序 × 状态容器槽位表对位防线由差分执行器的状态容器直读
 #  坐标系承载。)
 
@@ -68,7 +68,7 @@ def deploy_row_pref(char_id: str, comp: object | None) -> str:
     ① 阵容 站位覆盖:``Comp.char_positions``(字段契约「阵容 特定站位
        要求(角色→front/back),覆盖注册表 position_pref 默认」;已登记实例
        = 爻光必后台/万敌独前排/知更鸟前台,攻略实证);
-    ② 注册表派生:``get_char(char_id).position_pref()``(24 号稿 §1.1:
+    ② 注册表派生:``get_char(char_id).position_pref``(24 号稿 §1.1:
        「position_pref 不入形状,消费点经注册表按 char_id 派生;禁全局
        get_role_position」——旧链路备战候选恒按后排、注册表偏好恒被
        丢弃的行为变化申报项在此生效);
@@ -235,8 +235,8 @@ def launch_deploy_pending(session: StrategySession, gs: GameState) -> bool:
 def launch_deploy_pending_virtual(session: StrategySession, gs: GameState,
                                   bench_slots: list, field_units: list,
                                   ) -> bool:
-    """发射在途谓词·虚拟面板路径(商店受限态推判重放的注入形态;§4
-    「推判重放自动继承」——同一谓词族,虚拟 bench/场上单位替换,§1
+    """发射在途谓词·虚拟面板路径(商店受限态推判重放的注入形态;
+    「推判重放自动继承」——同一谓词族,虚拟 bench/场上单位替换,
     接口契约③虚拟路径)。
 
     ``bench_slots``/``field_units`` 语义与 :func:`mandate.select_deployment`
@@ -269,7 +269,7 @@ def launch_deploy_pending_virtual(session: StrategySession, gs: GameState,
 
 def can_deploy_single_unified(session: StrategySession, gs: GameState,
                               name: str, star: int) -> tuple[bool, str]:
-    """单件可上场预检(快照+X 跑统一搜索、X ∈ target 判定;§4
+    """单件可上场预检(快照+X 跑统一搜索、X ∈ target 判定;
     can_deploy_single 行)。
 
     语义变化申报(D2-14):预检从「单候选可入性(序无关)」变「定型含 X

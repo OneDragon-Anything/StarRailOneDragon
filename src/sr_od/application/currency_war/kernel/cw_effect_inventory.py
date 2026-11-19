@@ -181,8 +181,8 @@ class EffectSpec:
     duties: DutyFlags = DutyFlags()
     duration_nodes: int = 0       # N_NODES 类的持续节点数;**自然数计数非索引**(躺平=3);
                                   # 恒稳(注册期常量,登记时拷入 ActiveEffect.remaining_nodes)
-    duration_uses: int = 0        # 次数类余量种子(免战牌=2,官方「可生效2次」;§3.2.19
-                                  # 权威版本=ActiveEffect.remaining_uses,§8.6-3);恒稳
+    duration_uses: int = 0        # 次数类余量种子(免战牌=2,官方「可生效2次」;
+                                  # 权威版本=ActiveEffect.remaining_uses);恒稳
                                   # (注册期常量,登记时拷入 ActiveEffect.remaining_uses)
     pending: bool = False         # True=效果文本有二义未实采定案
     verdict: str | None = None    # 实采定案回填('改道吞引擎XP' 等);None=未定案
@@ -236,7 +236,7 @@ BOARD_REWRITE_SELL_ALL_DEAL: str = 'sell_all_deal'      # 全场出售+发牌条
 # .STRATEGY_EFFECTS,官方文 cw_invest_data.py:60/:351);重掷面 = 随机分支零逻辑
 # 写、观察收尾,写归属单一源 =
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
-# §6.3/§6.4 与 §8 同名条。姊妹乱成一锅粥+(352102)未建条目(单卡纪律,
+#与 §8 同名条。姊妹乱成一锅粥+(352102)未建条目(单卡纪律,
 # 族级展开批另落)。
 BENCH_REROLL_RIGHT3: str = 'right3_same_cost'   # 备战席最右 3 位变为随机同费角色
 BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随机同费角色
@@ -248,7 +248,7 @@ BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随
 # 已登记条目 = 公司军火更新·银(cw_investments.STRATEGY_EFFECTS,官方文
 # cw_invest_data.py:86);变异面 = 随机分支零逻辑写、观察收尾,写归属单一源 =
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
-# §6.3/§6.4 与 §8 同名条。「同品质」语义先验 = 同 category(冶金炉
+#与 §8 同名条。「同品质」语义先验 = 同 category(冶金炉
 # furnace_mutate_pool 已登记先例,tool_use 域),未证零消费。银/金/彩三卡
 # 变异条目同文共用本常量(银/金/彩三卡 SE 条目全建,差异全在发放条目)。
 EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备变为
@@ -261,7 +261,7 @@ EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备�
 # cw_invest_data.py:324);变换面 = 游戏侧自动改写(卡文「本局游戏中」持续
 # 标记),bot 零执行端、备战帧 equips 整表观察收真值,写归属单一源 =
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
-# §6.3/§6.4 与 §8 同名条。与 EQUIPS_REROLL_SAME_QUALITY 互不复用(语义
+#与 §8 同名条。与 EQUIPS_REROLL_SAME_QUALITY 互不复用(语义
 # 顶替禁制:变异 = 同品质随机重掷,变换 = 固定目标具名件,两语义异型)。
 EQUIPS_TRANSFORM_ADVANCED_MATTER: str = 'advanced_to_matter_all'   # 物品栏全部进阶装备变为物质分解液
 
@@ -315,7 +315,7 @@ class ActiveEffectInventory:
     (既有);结算插入位置 = CwScreenBattleWait 结算观察写端(_record_round_outcome
     非 telemetry_only 分支,apply_settlement_cover 同分支同时序;现役注册表
     零战斗结算触发条目 = 零效果条目推进,零条目 = 零驱动,effect-domain
-    §7.4)。
+    。
     """
 
     def __init__(self) -> None:
@@ -364,7 +364,7 @@ class ActiveEffectInventory:
     def _seed_progress(spec: EffectSpec) -> tuple[int | None, int | None]:
         """余期播种双轨(登记端共用):N_NODES → remaining_nodes=duration_nodes;
         duration_uses>0 → remaining_uses=duration_uses(次数类,免战牌首例,
-        §3.2.19)。两类维度同装一条记录(§5.1 账本形状),互不排斥。
+        。两类维度同装一条记录(账本形状),互不排斥。
         """
         return (
             spec.duration_nodes if spec.duration == DurationKind.N_NODES else None,
@@ -437,11 +437,11 @@ class ActiveEffectInventory:
     # —— 追踪端(插入位置调用;纯逻辑,sim 与生产同一实现)——
     def advance_node(self, node_key: tuple[int, int] | None = None
                      ) -> tuple[bool, list[ActiveEffect]]:
-        """进节点边界推进(§5.1「节点推进=倒计时递减」「到期=移除+触发
+        """进节点边界推进(「节点推进=倒计时递减」「到期=移除+触发
         尾款」),返回 ``(是否真实推进, 本次到期移除的条目)``。
 
         - **是否真实推进**(advanced)是账本→字段桥的余额累加闸门(批次三
-          B1):per-node 形态(§3.3.5)每节点恰累加一次,靠本位判——同节点
+          B1):per-node 形态每节点恰累加一次,靠本位判——同节点
           重复调用 advanced=False,调用方跳过累加(与余期递减同一去重键)。
         - ``node_key`` 给定时做**同节点去重**:插入位置每备战环采样,同节点
           多次调用只推进一次(键 = (位面,轮) 节点序位元组,
@@ -483,7 +483,7 @@ class ActiveEffectInventory:
         return self.advance_node(node_key)[1]
 
     def consume_use(self, spec_id: str) -> int | None:
-        """次数类余量递减(插入位置 = 跳过执行落地,§3.2.19/§5.1「插入位置现读递减」)。
+        """次数类余量递减(插入位置 = 跳过执行落地,「插入位置现读递减」)。
 
         remaining_uses −1;归零移除(用尽 = 效果离场;「用尽后按钮恢复
         出战」待实机验,设计 §3.2.19 挂观察工作清单)。无已登记条目或该
@@ -584,7 +584,7 @@ class ActiveEffectInventory:
             e.counters[key] = value
 
     def bump_key(self, key: str, n: int = 1) -> None:
-        """动作侧全量计数推进(插入位置 = 刷新上报函数,§5.1「刷新=计数累加」;
+        """动作侧全量计数推进(插入位置 = 刷新上报函数,「刷新=计数累加」;
         生产单点 = report_action_refresh_shop_param 统一触发)。
 
         对全部**声明过记账义务**(duties.track=True)的已登记条目推进
@@ -650,7 +650,7 @@ class ActiveEffectInventory:
 
     def bump_equip_progress(self, equip_name: str, wearer: str,
                             n: int = 1) -> int:
-        """装备效果进度推进(单调计数器,§3 模型:事件发生就 +1、永不递减
+        """装备效果进度推进(单调计数器,模型:事件发生就 +1、永不递减
         永不重置)。返回推进后的累计值;n 非正数 = 调用错显式炸错(单调
         计数器无递减语义)。同 (装备名,装备者) 键天然隔离,不串账;
         同名装备多件同主合并计数(实例区分无观察基准,合并 = 少发不多发,
@@ -945,7 +945,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
     **归属两行(单一源 = GameState 数据结构设计 §5)**:
     - 全员晋升(BOARD_REWRITE_UPGRADE_ALL):替换面 = 随机(全场升为高 1 费
-      随机角色),不可准确算 → **零逻辑写端,观察收尾**(§5.3 归属判据随机
+      随机角色),不可准确算 → **零逻辑写端,观察收尾**(归属判据随机
       分支)——本桥对它零写入,报告作负写端留存证据;附带「获得 2 个拆装扳手」
       = 装备库存精确增量,已结构化出列(策略卡获得效果条目 =
       cw_gain_effects.PICK_INVEST_EFFECTS['全员晋升'],具名装备授予工厂经
@@ -953,7 +953,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
       docstring),不在本桥建模——本桥只辖板面重写句,装备句经获得链
       ③段效果体分派(两条效果条目状态容器域不相交,板面 equips)。
     - 出售支(BOARD_REWRITE_SELL_ALL 素出售/BOARD_REWRITE_SELL_ALL_DEAL
-      兼发牌条目):出售面 = 确定性 → 逻辑写(§5.3
+      兼发牌条目):出售面 = 确定性 → 逻辑写(
       归属判据确定性分支;状态容器清空写经锚定标志择道,未锚定期走随机态,
       见清空写段注释)——前台/后台/备战席清空 + 退款按卖价公式入金
       (退款单一源 = cw_economy.sell_refund,费用查表单一源 =
@@ -975,7 +975,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     零写入留存证据(报告 partial_read=True + 日志),等观察收尾——禁把部分
     退款以 logic 标写成权威值(观察帧覆盖前记录层留错误金)。gold 未读
     (None)= 无累加基座,跳过金写入(禁把退款当余额);退款合计为 0
-    (出售域全未读/空场)同样跳过——禁把观察金翻标成 logic(§2.1 来源
+    (出售域全未读/空场)同样跳过——禁把观察金翻标成 logic(来源
     标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量逻辑态
     直写桥适用范围,两桥互不越界)。
 
@@ -1047,7 +1047,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     partial_read = front is None or view is None
 
     ev = f'effect_board_rewrite@{frame}' if frame else 'effect_board_rewrite'
-    # 组签名:一次出售清空 = 一次逻辑计算,组内行同 group(§3.2.1 group_id
+    # 组签名:一次出售清空 = 一次逻辑计算,组内行同 group(group_id
     # 语义);actor 复用同族写入者名 EffectLedgerBridge。
     sig = ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                      mode='compute',
@@ -1086,8 +1086,8 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
         cleared.append('bench')
     # 金写入门三条件齐备才 write_logic:基座已读 + 退款非零 + 出售域全读。
     # 零退款(出售域从未读过/空场)无可入账增量;partial_read 时输入不完整
-    # (§6.3)——两种情形金字段都保持原来源不动,禁把观察金翻标成 logic
-    # (§2.1 来源标记到字段);部分读的已读面退款在报告留存证据(refund_gold ×
+    # ——两种情形金字段都保持原来源不动,禁把观察金翻标成 logic
+    # (来源标记到字段);部分读的已读面退款在报告留存证据(refund_gold ×
     # partial_read)。
     if partial_read and refund > 0:
         log.warning(
@@ -1125,7 +1125,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 #
 # **窗口独占性分形**(确定性面两种实现形的分界):观察覆盖字段的 logic 直写,
 # 只有「写入 → 下一次观察」窗口内无其他同字段变更源时才是完全预测,失配才
-# 等价推算 bug(§2.3 以实际观察为准);窗口内有未接写端的共享变更源(节点边界金面与
+# 等价推算 bug(以实际观察为准);窗口内有未接写端的共享变更源(节点边界金面与
 # 轮首收入三支同窗——live 写端载体未指派,设计 §8.7 尾批行)时,直写=系统性
 # 失配刷缺陷台账。故装备确定性面按触发窗口独占性分两形实现:
 # - **写端桥**(apply_/spawn_/grant_/transform_ 前缀):触发窗口天然独占
@@ -1244,7 +1244,7 @@ def equip_diamond_phase_gold(gs: GameState, *, phases_elapsed: int) -> int:
 def equip_wrench_duplicate_gold(gs: GameState) -> int:
     """贡献算术·精密拆装扳手金面(持有精密后再获得拆装扳手改 +1 金):
     获得结算载体的合计项,纯算术零直写——获得时点窗口与到账战利品共享
-    (晶矿/补给内容即时入账等观察覆盖,§4 CwActionCollectOreParam),单独直写=部分预测
+    (晶矿/补给内容即时入账等观察覆盖,CwActionCollectOreParam),单独直写=部分预测
     刷缺陷台账。调用时机 = 拆装扳手获得回执(每次一件);返回本笔应得金
     (0 = 精密不在场,扳手照常入栏不发金)。定额与持有件数无关(官方文
     「改为获得1金币」)。"""
@@ -1256,7 +1256,7 @@ def apply_equip_acquire_hp(gs: GameState, *, frame: str = '') -> int:
     直写 hp + :data:`TREASURE_ACQUIRE_HP`。
 
     - 窗口独占(获得回执 → 下一次 hp 读数之间无其他 hp 变更源),完全预测
-      ——失配等价推算 bug(§2.3);
+      ——失配等价推算 bug;
     - hp 从未读(None)= 无累加基座,跳过零写入返回 0(hp 写入闸覆盖:不可信
       不写,禁造假基座;同族先例 = 板面重写桥金面跳过);
     - 生产插入位置 = 获得回执(接入调用批);接入调用前观察覆盖兜底,与现状零行为差。
@@ -1288,7 +1288,7 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
       游戏端拒拖拽语义;员工投影仪 =3,无门传 0);费用查表单一源在调用侧
       (cw_state.bench_char_cost 同源域);
     - 席满(无空槽,与派生 bench_free_slots==0 同源)或 bench 从未观察
-      → False 零写入:游戏端拒落/无状态容器,落位真值由观察给出(§3.2.8
+      → False 零写入:游戏端拒落/无状态容器,落位真值由观察给出(
       「席满点不动」同源);
     - star 集 1..3 外 = 调用错,显式炸错(禁静默写错;银狼LV.999 星级已
       随获得后果定案为 1★[口述·权威 2026-09-18],走后果函数不入本桥);
@@ -1450,7 +1450,7 @@ def transform_equip_to_privilege(gs: GameState, source_name: str, *,
 # - **获得回执窗**(:func:`settle_wrench_duplicate_gold`):精密扳手重复
 #   获得金(申报行「组合写归获得结算载体」的实现位)——获得回执 → 下一次
 #   金读数之间无其他金变更源,窗口独占,直接 +1 直写(与极·阿瓦隆获得 hp
-#   桥同形)。到账战利品的金面仍走观察覆盖(§4 CwActionCollectOreParam),本载体不
+# 桥同形)。到账战利品的金面仍走观察覆盖(CwActionCollectOreParam),本载体不
 #   吸收——随机/观察收尾面不进组合写。
 #)
 
@@ -1487,9 +1487,9 @@ def settle_node_boundary_gold(
       载体供给——进度载体缺位属缺口申报面,本载体禁内发明第二份,
       缺省 0 = 保守零授予,与现状观察覆盖零行为差)。
     - **单次写入**:全部同窗增量合并为一次 write_logic(窗口独占完全预测,
-      失配等价推算 bug,§2.3);金未读(None)= 无累加基座,整拍跳过零
+      失配等价推算 bug);金未读(None)= 无累加基座,整拍跳过零
       写入(禁造假基座,板面重写桥金面同族先例);合计 0 同样跳过(无可
-      入账增量,禁把观察金翻标成 logic,§2.1 来源标记到字段)。
+      入账增量,禁把观察金翻标成 logic,来源标记到字段)。
     - **适用范围排除**:到期尾款金(effect-domain.md §7.3 禁 logic 直写防双计)、
       事件金、STRATEGY_ECONOMY 的 gold_per_node 族(
       「'invest' 键单列」)不在本载体——各自接入调用面另批;sim 收入路径
@@ -1534,7 +1534,7 @@ def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
       金面);返回实际入账金(0 = 精密不在场/金未读,零写入——扳手照常
       入栏不发金);
     - 窗口独占(获得回执 → 下一次金读数之间无其他金 logic 写;到账战利品
-      金面走观察覆盖,不与本写冲突),完全预测,失配等价推算 bug(§2.3)。
+      金面走观察覆盖,不与本写冲突),完全预测,失配等价推算 bug。
     """
     amount = equip_wrench_duplicate_gold(gs)
     if amount <= 0 or gs.gold.value is None:
@@ -1630,7 +1630,7 @@ def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
 # (数据拷贝仪族「装备者每参与 N 场战斗,获得自身的一个 1 星复制」的进度
 # 载体(「拷贝仪参与计数进度载体」的实现位):参与计数 =
 # 装备效果进度侧栏(:meth:`ActiveEffectInventory.bump_equip_progress`,
-# 单调计数器模型 §3);成熟判定 = 计数 ÷ 阈值整除(每 N 场一次,§3 规则 3
+# 单调计数器模型 §3);成熟判定 = 计数 ÷ 阈值整除(每 N 场一次,规则 3
 # 计算侧);成熟写端 = 入席桥 :func:`spawn_equip_bench_unit`(申报行
 # 「成熟回执时点窗口独占」,1★ 自身复制)。**现值观察面**:参与事实由
 # 当前观察态现读(战斗结算时点的前台+后台已登记单位 = 参战者;备战席未
@@ -1666,11 +1666,11 @@ def settle_copy_machine_participation(gs: GameState, *,
     成熟即经入席桥落一个穿戴者 1★ 复制进备战席。返回成熟结果列表
     (零成熟返回空表)。
 
-    - 参战者口径 = 前台 + 后台(上场单位站两排、两排皆参战,§3.2.7);
+    - 参战者口径 = 前台 + 后台(上场单位站两排、两排皆参战);
       备战席单位未上场不计;行字段从未观察(None)= 该排无参战读数,
       跳过不猜;
     - 进度键 = (装备名,装备者 char_id):跨排移动计数随键延续(单调,
-      §3 永不重置);同名装备多件同主合并计数(实例区分无观察基准,合并
+      永不重置);同名装备多件同主合并计数(实例区分无观察基准,合并
       = 成熟放慢的少发向,不多发——多发会造 phantom 单位刷缺陷台账);
     - 成熟落位失败(席满/席未观察)不回退计数——该次成熟已消费,落位
       真值由下一观察帧给出(报告 placed=False 留存证据);
@@ -1755,7 +1755,7 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
     存在定案,分组键 (char_id, star) 无跨档歧义)。
 
     P1 状态容器原生形状:``work_bench`` = list[BenchSlot | None](工作槽表)/
-    ``work_dep`` = list[Unit | None](定长 10 下标工作表,§2.3;窗口期桥,视图同源派生);逐级合并后受影响域各落一行
+    ``work_dep`` = list[Unit | None](定长 10 下标工作表,;窗口期桥,视图同源派生);逐级合并后受影响域各落一行
     (:meth:`cw_merge_simulate._merge_bench` on_step 范式;行域载体在场上 =
     bench + deployed 两行——deployed 单字段视图整值替换,合一写):
     rand=False 走 write_logic(确定面),rand=True 走 write_logic_rand
@@ -1830,7 +1830,7 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
     合并升星触发发放收尾(级联采集到的升星事实交给
     ``cw_env_grants.check_env_merge_grants`` 检查发放,best-effort:触发
     分支异常 log 不阻塞入席主链,沿 buy_card on_buy 回调分支同纪律)。
-    P1 状态容器原生:工作副本 = BenchView 槽序 + 行域下标派生表(§2.1);
+    P1 状态容器原生:工作副本 = BenchView 槽序 + 行域下标派生表;
     占位件槽位 kind 随工作表原样保留(零换形降级)。
     ``rand`` = 写通道(False = write_logic 确定面 / True =
     write_logic_rand 采样链);``sig`` 缺省 = 装备桥 logic_hook 签名,

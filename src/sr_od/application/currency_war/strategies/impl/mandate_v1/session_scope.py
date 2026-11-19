@@ -67,7 +67,7 @@ if TYPE_CHECKING:
 #
 # 清单(前若干项 = 重置动作,尾项 = 负登记):
 # ① shop_handled → 清值(新节点牌面全换,旧标记语义死亡;机制依据 =
-#    economy §2.1「节点切换自动刷新全店」);
+# economy §2.1「节点切换自动刷新全店」);
 # ② shop_opportunities → 清空(牌面变了,旧机会作废);
 # ③ line_eval_signature → 置失效(强制下帧重算——节点变动伴随结算
 #    收入与自然经验,资产面可能变化);
@@ -252,7 +252,7 @@ def _sync_derived_lock_cache(st: StrategyState) -> None:
 
 
 def _update_p2_pick_done(gs: GameState, st: StrategyState) -> None:
-    """时点兜底触发分支之二:P2 起首次投资策略三选一完成侦测(§1.4)。
+    """时点兜底触发分支之二:P2 起首次投资策略三选一完成侦测。
 
     基线 = **P1 滑动基线**(每次 P1 帧刷新持续覆写,进 P2 冻结)——
     P1 期间获得的策略(白银投资类加场卡)入基线不计增长;进 P2 后的
@@ -282,7 +282,7 @@ def _update_p2_pick_done(gs: GameState, st: StrategyState) -> None:
 
 def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
     """方向状态重算(签名变化时执行;统一阵容评分真内核,12 号篇
-    §1.2-§1.3;判据本体单一源 = :mod:`line_select`)。
+    判据本体单一源 = :mod:`line_select`)。
 
     - 锁定后只读锁定线:锁定线槽(``target_comp``)非空时本段在缓存
       同步后直接返回(候选快照停算,锁定写入时已清空——
@@ -296,7 +296,7 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
       随后求值锁定判定(:func:`line_select.evaluate_lock`——P2 时点兜底
       唯一路径:硬规则/即时锁全退役,``plane2_started ∧ P2 投资策略选卡
       完成`` → 候选首名),命中即经 :func:`write_line_lock` 写入(锁定
-      动作发生的域内立即生效,§3)。
+      动作发生的域内立即生效)。
     """
     _sync_derived_lock_cache(st)
     if st.target_comp is not None:

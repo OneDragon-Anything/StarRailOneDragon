@@ -95,7 +95,7 @@ def read_journal_stats(
 
     为什么不走 query.read_jsonl:那边 json.loads 失败直接抛(旧流是本框架
     自己写的行,坏行 = 事故);新账按设计就是「截断尾合法存在」的流
-    (§3.3 flush 纪律:崩溃丢失窗 = 未 flush 尾部),读面必须容忍并计数。
+    (flush 纪律:崩溃丢失窗 = 未 flush 尾部),读面必须容忍并计数。
     字节层 ``errors='replace'``:物理截断可劈开多字节字符,替换不抛;
     计数口径按「行内出现 U+FFFD」近似(合法数据天然不含 U+FFFD,误计
     风险可忽略)。装配消费方(match_archive ``_load_slice``)与判读读面
@@ -307,7 +307,7 @@ def view_hp(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
 
 
 def view_rounds(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
-    """逐轮表(按节点分段;段界 = 行内快照 node 键,§3.3「跨行对照 = 行间
+    """逐轮表(按节点分段;段界 = 行内快照 node 键,「跨行对照 = 行间
     差分」)。段内 hp/gold 取该段首末快照读数(末值 = 段末账面,与旧视图
     「代表帧 = 轮末账面」同语义)。开局链段(尚无 node 读数)标「未定节点段」,
     不猜节点身份。"""

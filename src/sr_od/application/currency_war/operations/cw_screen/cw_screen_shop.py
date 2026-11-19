@@ -571,7 +571,7 @@ class CwScreenShop(CwOperation):
         match = self.ctx.cw_match
         # 决策异常留存证据(完整栈到 log,再向上抛,行为不变)。
         try:
-            action = match.strategy.decide_shop_action()   # 终态零参口(§2.1)
+            action = match.strategy.decide_shop_action()   # 终态零参口
         except Exception:
             import traceback
 

@@ -403,8 +403,8 @@ def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
 
     单一源派生 = saturation_line(cap_resolved_of_session(session)),与
     利息线 g*/arm2 保利息门同链,零新自由参数;买断制语境(cap_resolved = 0)
-    不适用恒 False(§2.1,该语境金出口归一般判据)。适用范围 = 有动作决策点帧
-    (shop/备战决策入口调用点;§3.4)。
+    不适用恒 False(该语境金出口归一般判据)。适用范围 = 有动作决策点帧
+    (shop/备战决策入口调用点)。
 
     消费点(接入调用位):shop.py 出口③ L2 第二触发源(∨ 合并)/L3 富余段
     升级/R1 域内残形切分线/EV 域内降排序——四点共用本判定,禁再内联
@@ -412,7 +412,7 @@ def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
     """
     cap = cap_resolved_of_session(session)
     if cap <= 0:
-        return False   # 买断制不适用(§2.1)
+        return False   # 买断制不适用
     return gold > saturation_line(cap)
 
 
@@ -422,10 +422,10 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
     = ``gold > saturation_line(cap_resolved_of_session(session))``——与
     :func:`in_must_spend_zone` 共享 g* 单一源(saturation_line 同链,
     禁内联第二份);买断制语境(cap_resolved = 0)不适用恒 False(与富余段
-    §2.1 同口径)。
+    同口径)。
 
     **与富余段同 g* 不同域,禁并键**(DESIGN v1.1 §5;launch_gold_tradeoff
-    §3 边界①同判):富余段覆盖「有动作决策点的 shop/备战帧」,本谓词覆盖
+    边界①同判):富余段覆盖「有动作决策点的 shop/备战帧」,本谓词覆盖
     「动作发出帧溢出段」(出战就绪帧发出前的受限访问入段判定;两域互斥 =
     调用点约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账
     表)。消费点:mandate_v1 前置动作发出点帧级金判定
@@ -434,7 +434,7 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
     """
     cap = cap_resolved_of_session(session)
     if cap <= 0:
-        return False   # 买断制不适用(§2.1 同口径)
+        return False   # 买断制不适用(同口径)
     return gold > saturation_line(cap)
 
 
@@ -444,7 +444,7 @@ def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
 
     双轨迹对照:基线 B(不花,守饱和线,富余即花)vs A(花后守线);每轮息损
     = interest(B) − interest(A),两轨迹同收入演化。截断视界 R=rounds 由
-    调用方按场字段求和现算(视界量不入框架,裁决点 9;禁写死,§6.1)。
+    调用方按场字段求和现算(视界量不入框架,裁决点 9;禁写死)。
     溢金域先实金扣
     再守线截断(IMPL_ADV_R194 症2);gold<0 钳 0。
     """
@@ -529,7 +529,7 @@ def loss_compensation_base(plane: int, round_num: int, node_type: str) -> int:
     """战斗败轮的补发基项(败补分支的 base 分量单一源)。
 
     记账口径 = 玩家裁定 2026-09-09「看节点基础奖励」(GameState 设计
-    §4.2 败轮行):按**被败节点**的基础奖励取值——平面感知键与奖励轮
+    败轮行):按**被败节点**的基础奖励取值——平面感知键与奖励轮
     同款,``round_num`` 语义=被败轮节点(败 P1r9 后 P2r1 补发按 P1r9
     口径取键)。
 
@@ -939,7 +939,7 @@ def _expected_level(round_num: int, plane: int) -> int:
 class NodeGoal:
     """某节点(位面-轮)的节奏目标(阵容无关骨架;阵容相关参数只有找牌目标 core 通道;14 §2.0)。"""
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
-    spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
+    spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(经济档位)
                                 # 'release' 档现役无生产位(原帧级态生产口
                                 # decision_v2.posture_release 已随死代码清偿
                                 # 移除;义务语义现役 = economy_cycle 义务核算
@@ -1056,7 +1056,7 @@ def effective_refresh_prob(gs: GameState, level: int, cost: int) -> float:
     return bar
 
 
-# ===== 经济循环接缝族(自 decision_v2.economy_cycle 下沉;§3.3-①a/①b) =====
+# ===== 经济循环接缝族(自 decision_v2.economy_cycle 下沉) =====
 # 原址:decision_v2.economy_cycle(kernel→decision 断环:本文件是 kernel 层,
 # cw_economy.get_node_goal 标量投影消费接缝,原函数体内懒 import 决策包
 # 成环)。函数体零行为变化(等价测试=sr-od-test test_cw_w695_economy_seam.py +

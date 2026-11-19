@@ -8,11 +8,11 @@
 from __future__ import annotations
 
 #: 简报:点「下一步」离开识别标志(简报标识消失,CwScreenBriefing 出口已验)后的固定时长
-#: ( 01-opening §1,#1 口述「识别标志出现后 ~1s 动画完结」)。
+#: (01-opening §1,#1 口述「识别标志出现后 ~1s 动画完结」)。
 BRIEFING_SETTLE_S: float = 1.0
 
 #: 备战触发型 overlay 族(盛会之星/列车同行/武装箱/祈愿/策划/命运/秘典)确认后
-#: 固定等待( 06-overlays §4/§5:关闭速度都快,固定 1.0s 结束本次访问循环)。
+#: 固定等待(06-overlays §4/§5:关闭速度都快,固定 1.0s 结束本次访问循环)。
 CW_OVERLAY_SETTLE_S: float = 1.0
 
 #: 1-1 开局动画等待上界(用户口径 ~10s,待校准; 01-opening §2:

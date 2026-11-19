@@ -62,7 +62,7 @@ AIGIS_HEADER_NAME: str = 'x-rpc-aigis'
 
 #: 票据被拒 retcode（处置一致——携带新挑战则继续、未携带则补发裸登录取新挑战；
 #: -3102 依据 login-verification-research.md §2.3（genshin.py 映射 + 实测记录
-#: S6 真机往返），-3202 依据同文档 §10.4-1（Snap.Hutao 码表），两码并存待实测定案）
+#: S6 真机往返），-3202 依据login-verification-research.md §10.4-1（Snap.Hutao 码表），两码并存待实测定案）
 TICKET_REJECTED_RETCODES: frozenset[int] = frozenset({-3102, -3202})
 
 
@@ -180,8 +180,8 @@ def _assemble_aigis_header(challenge: AigisChallenge, ticket: dict) -> str:
 
     v4 票据（以 lot_number 在场识别）补 ``captcha_id``（取挑战 data 的 gt，
     缺则补——组件一般自带）与 ``userInfo={"session_id": …}``（QRscanner 规格，
-    逐字节复刻官方行为，research §4.2）；gt3 三元组原值透传，不拼 ``|jordan``
-    （research §10.4-5：参考实现裸三元组实测可用）。不改动调用方传入的 ticket。
+    逐字节复刻官方行为，login-verification-research.md §4.2）；gt3 三元组原值透传，不拼 ``|jordan``
+    （login-verification-research.md §10.4-5：参考实现裸三元组实测可用）。不改动调用方传入的 ticket。
     """
     assembled = dict(ticket)
     if 'lot_number' in assembled:

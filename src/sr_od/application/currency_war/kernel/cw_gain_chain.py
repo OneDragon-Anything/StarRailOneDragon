@@ -545,7 +545,7 @@ def _write_merge_step(gs: GameState, pool: _WorkPool, *, rand: bool,
 
 class _ChainAcc:
     """链内递归帧共享累计器(效果名/合成级数/写步编号/升星事实;gain-chain.md
-    §2 evidence 后缀 ``#mergeN`` 编号沿 merge on_step 先例)。
+    evidence 后缀 ``#mergeN`` 编号沿 merge on_step 先例)。
 
     ``facts`` = 每级合并的产物身份 ``(角色名, 新星级)``(合并升星触发
     发放采集用,进程内瞬态不入状态容器;顶层 :func:`gain_character` 收尾
@@ -3559,7 +3559,7 @@ def gain_invest_strategy(gs: GameState, session: object,
        安静不写)。
 
     rand 纪律:投资策略确认 = 确定性入口(False);效果体含采样(骇客
-    改件)→ 对其子链翻转 rand=True(§5)。``rng`` = 采样注入点(缺省
+    改件)→ 对其子链翻转 rand=True。``rng`` = 采样注入点(缺省
     ``random.Random()`` 生成点在 :func:`on_strategy_gained` 内;sim 可
     播种)。字段写分支零吞错;登记分支 best-effort。
     """
@@ -4175,7 +4175,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         # 随机装备支(状态副本发放域,首例劳务派遣合同分支1「获得随机星徽」):
         # 类别池(equips_by_category,注册表派生单源)内均匀掷骰选名 →
         # gain_equipment 入栏;效果体含采样 → 子链 rand=True(gain-chain.md
-        # §5);rng 缺省回退自掷(采样是猜测口径,观察校准;正式接入调用 =
+        #);rng 缺省回退自掷(采样是猜测口径,观察校准;正式接入调用 =
         # 上报函数条件解析传入,sim 装配 = 流键 rng 即状态副本真值,
         # chars_random_immediate 支同款)。落地序 = items_immediate 支之后、
         # 定时支之前。绑定门(ENV_BOSS_GRANTS 成员资格,模块级 import,
@@ -4246,7 +4246,7 @@ def discharge_due_item_grants(gs: GameState, *, plane: int, round_num: int,
     即时通道同阶)。
 
     - rand 语义:环境发放 = 确定发放,调用方传 ``rand=False``(gain-chain.md
-      §5;写通道仍经 :func:`_select_write` 单一收束);
+      写通道仍经 :func:`_select_write` 单一收束);
     - 零吞错:落位异常上抛(gain-chain.md §6),队列回写收尾;生产插入位置
       (sim 进节点收束)无重入面 = 无幂等需求,未来实机插入位置接入调用时按其
       重入面另评(不对称申报,正本 = game_state/gain-chain.md 定时发放节);
@@ -4720,7 +4720,7 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
        ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
        查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
        ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
-       rand=True,§5)。"""
+       rand=True)。"""
     canon = normalize_invest_name(strategy_name)
     effects: list[str] = []
     _grant = STRATEGY_GRANTS.get(canon)

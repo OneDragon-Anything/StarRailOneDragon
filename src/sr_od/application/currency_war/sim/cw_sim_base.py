@@ -1,7 +1,7 @@
 """sim 基座:状态容器写入签名/证据标签的共用面。
 
 设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
-(§1.3 与 live 的同一性:sim 真值写 obs 渠道——与 live 同一状态容器、同一渠道
+(与 live 的同一性:sim 真值写 obs 渠道——与 live 同一状态容器、同一渠道
 架构;动作效果经动作 op 上报函数族走 logic_action 渠道)。本模块只承载
 「sim 侧怎么署名写入」,不含任何游戏规则。
 

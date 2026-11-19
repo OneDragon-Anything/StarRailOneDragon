@@ -49,7 +49,7 @@ def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
     SHOP_SLOTS 个槽位命中独立;注册表权威形态(``_refresh_dist``)是
     「槽位数~B(5,p) + 同店内无放回超几何」——无放回使命中负相关 ⇒
     P(全空)_无放回 ≤ (1−q)^5 ⇒ 独立式**低估** P_shop。适用依据:01_math_framework
-    §2「P_shop」行声明形态即独立式(闭式带的近似门,q 单槽量级 ≤~0.05
+    「P_shop」行声明形态即独立式(闭式带的近似门,q 单槽量级 ≤~0.05
     时二阶差量 ~C(5,2)·q² 相对偏差 ≤1e-3 量级);消费位影响:a7_lower_
     bound=c/P_shop 高估(保守端)、v_opt 的 c/P_shop 分量高估(fail-open
     端)——与 p_miss 消费面同申报,接入调用日交叉核对复核(精确式可经注册表

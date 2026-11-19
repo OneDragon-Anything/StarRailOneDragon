@@ -5,7 +5,7 @@
 ``operations/cw_op/cw_pick_<snake>_action.py``(snake 与上报侧
 ``kernel/cw_action_report/pick_<snake>.py`` 对称)。域 env = :class:`OverlayPickExecEnv`
 (结构化包,构造时传入);机械参数适用范围(申报单一源 = flow/action_ops.md
-§4.5 段首)= 选卡定位 + 域载荷经 env 传入;确认钮不属机械参数,由本 op
+段首)= 选卡定位 + 域载荷经 env 传入;确认钮不属机械参数,由本 op
 执行体瞄准查找(action_ops.md §1  已登记例外)。op 类体内零决策零读
 决策输入(决策 = 选中哪个与分支类型载荷,瞄准定位查找非决策)。
 
@@ -37,7 +37,7 @@ class OverlayPickExecEnv:
     公共字段 ``op``/``match``/``config`` + 域字段 = 机械参数(选卡定位/域载荷 =
     决策半产物,构造时显式传入;确认钮 = 本 op 执行体 ``round_by_find_and_click_area``
     查找点击,不入 env——机械参数适用范围申报单一源 = ``flow/action_ops.md``
-    §4.5 段首,本模块头同文转抄):``idx`` = 生效选中下标(决策半
+    段首,本模块头同文转抄):``idx`` = 生效选中下标(决策半
     钳位后)、``target`` = 点卡定位点(已停用——选择坐标观察上报收敛,
     已收敛屏停喂;全族收敛后删字段)、``picked`` = 选定快照(到账登记
     输入)、``unselected`` = 未选中提示在场实证。

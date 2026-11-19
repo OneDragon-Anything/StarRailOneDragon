@@ -144,7 +144,7 @@ class CwScreenWishTrial(CwOperation):
         # 不再被吞);空候选 = 策略侧自主决策(策略器返回 idx=0),非兜底。
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_wish_trial()
         if not isinstance(pick, CwActionPickWishTrialParam):

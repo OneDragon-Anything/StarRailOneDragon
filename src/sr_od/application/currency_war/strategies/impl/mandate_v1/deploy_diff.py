@@ -3,10 +3,10 @@
 diff = 现板面 vs target_board(就位判定粒度 = **名 + 排 + 星**,
 D2-1——槽不进判定)→ 统一拖动/换星直卖动作序列;diff 空 = 显式零
 动作。与第 6 步(常规部署调整,零读屏循环 + 入口 heavy 对账)和
-计划执行期(拖动与重观察交替,§3.5)共用本执行器——target 来源
+计划执行期(拖动与重观察交替)共用本执行器——target 来源
 不同(第 6 步 = 当前搜索;计划 = 写端定型 T),执行器逻辑同一。
 
-收敛论证(§3.4):非卖步每步至少一名字就位且不被挤回(落位槽选择
+收敛论证:非卖步每步至少一名字就位且不被挤回(落位槽选择
 规则保证——禁占已就位者的槽);卖步(换星低星直卖)不减少已就位
 名字集;排错修正一步到位;星分量两步收敛(低星下场后高星上场即
 就位)。
@@ -40,7 +40,7 @@ def deploy_diff_actions(
         *,
         fresh: frozenset[str] = frozenset(),
         ) -> list:
-    """现板面 → target 的统一拖动/换星直卖动作序列(§3;幂等——每帧
+    """现板面 → target 的统一拖动/换星直卖动作序列(幂等——每帧
     重算取序,执行进度由状态容器逻辑态自上报推进)。
 
     target 值 = (排, 星, 槽位或 None);槽位级(char_positions 槽位
@@ -49,7 +49,7 @@ def deploy_diff_actions(
     被占/超容回退 D-4 自适应序;**不触发已就位件(名+排+星全对)
     的槽位重排**(软约束,避免无谓扰动)。
 
-    动作序 = 换星直卖(同名异星对两步之一,§3.3)→ 缺位者上场(bench
+    动作序 = 换星直卖(同名异星对两步之一)→ 缺位者上场(bench
     → 场上,D-4 落位槽选择)→ 错位者排修正(场上直拖一步)→ 多余者
     下场(场上 → bench 空槽)。返回 [] = diff 空(显式零动作)。
     """
@@ -332,7 +332,7 @@ def _disembark_extra(target, front: list, back: list, bench: list,
 def diff_settled(gs: GameState,
                  target: dict[str, tuple[str, int, int | None]]) -> bool:
     """就位判定(名+排+星全对):diff 空 = 已收敛。计划执行期的卡死
-    检测数据源(§3.5:观察帧对账后的已就位集)。"""
+    检测数据源(观察帧对账后的已就位集)。"""
     return settled_count(gs, target) == len(target) and not _extra_on_board(
         gs, target)
 
@@ -340,7 +340,7 @@ def diff_settled(gs: GameState,
 def settled_count(gs: GameState,
                   target: dict[str, tuple[str, int, int | None]]) -> int:
     """已就位名字数(名+排+星全对者;计划游标 progress_mark 数据源,
-    §3.5 计数域 = 观察帧对账后的已就位集)。"""
+    计数域 = 观察帧对账后的已就位集)。"""
     front, back = _rows_of(gs)
     n = 0
     for u, domain in ((*[(u, 'front') for u in front],

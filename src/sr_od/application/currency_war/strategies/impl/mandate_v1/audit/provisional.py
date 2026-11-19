@@ -32,7 +32,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class CalibValue:
     """标定注入值(带 CI;端点选择随消费位走——组-端取端纪律,原 design_economy
-    §E4.1 组-端对照表已删除,沿革见 git 历史,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
+    组-端对照表已删除,沿革见 git 历史,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
 
     value: float
     ci_lo: float | None = None

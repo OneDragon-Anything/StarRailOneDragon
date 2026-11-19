@@ -243,7 +243,7 @@ class CwActionSellBenchParam:
     #                            变现两键);仅放行位填写,''=未标恒不豁免。
     #                            line_switch_collapse 不入本字段:孤儿证明
     #                            打标语义与豁免资格耦合留在 reason(
-    #                            §4,防窗口段回归洗白),检查器按键分工判定
+    # 防窗口段回归洗白),检查器按键分工判定
     #                            (转化类读本字段/孤儿读 reason),迁移期不
     #                            并读零双源。
     route_tag: str = field(default='', kw_only=True,
@@ -340,7 +340,7 @@ class CwActionLevelUpParam:
                            metadata={'action_key_exclude': True})
 
 
-# (CwActionDeployMoveParam 已随部署统一批戊批纳入统一管理删除:统一拖动 = CwActionMoveUnitParam 承载全部 bench→board/换位交互——unified-deploy-order §2.7/§4; 执行 op/report/registry 同批退役。)
+# (CwActionDeployMoveParam 已随部署统一批戊批纳入统一管理删除:统一拖动 = CwActionMoveUnitParam 承载全部 bench→board/换位交互——unified-deploy-order §2.7/§4; 执行 op/report/registry 同批退役)
 @dataclass
 class CwActionRefreshShopParam:
     cost: int = 0    # 刷新花费(实机 OCR 补)
@@ -472,7 +472,7 @@ class CwActionSellDeployedParam:
         return action_param_from_dict(cls, d)
 
 
-# (CwActionSwapDeployParam 已随 kernel swap 机器/部署统一批戊批纳入统一管理删除:场上去留 = 统一部署搜索定型 + 差分执行器,换位交互由统一拖动承载——unified-deploy-order §2.7/§4。)
+# (CwActionSwapDeployParam 已随 kernel swap 机器/部署统一批戊批纳入统一管理删除:场上去留 = 统一部署搜索定型 + 差分执行器,换位交互由统一拖动承载——unified-deploy-order §2.7/§4)
 @dataclass
 class CwActionMoveUnitParam:
     """统一拖动(全域移动:front/back/bench 任意源 → 任意目标;部署统一批
@@ -1020,7 +1020,7 @@ class CwActionOpenShopParam:
     受限会话(出战就绪 ∧ 金超利息线)同走本普通开店形态:前置动作发出点发出
     普通开店动作,访问内消费 = 策略侧自限(flow.decide_shop_action 提案后
     经 kernel launch_arbitration_gate 谓词检;分层依据 = flow/README.md
-    §1 决策控制分层铁律)——受限访问标记
+    决策控制分层铁律)——受限访问标记
     字段随动作发出帧仲裁段停用删除,本类 = 唯一开店动作形态。
     """
     route_tag: str = field(default='', kw_only=True,

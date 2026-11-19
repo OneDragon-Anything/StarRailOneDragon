@@ -186,17 +186,17 @@ class DecisionV2Registry:
     #(第 4 份副本不可用/纯烧),sim 实测绑定集中于此。
     refresh_find_quantile: float = 0.8
 
-    # ===== 血预算停手·终止分支(P1「止损转支出」;设计  v2 §0/§2)=====
+    # ===== 血预算停手·终止分支(P1「止损转支出」;设计 v2 §0/§2)=====
     #: 总开关:True=数学已定案恒接入调用口径(金零值引理+EV 对比式:守钱局面
     #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径
     #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照分支/回退基准,
     #: 两态注入面)。
     terminal_release_enabled: bool = True
     #: 守钱局面存活概率上界释放阈 ε(S0=Π 单发穿透场条件胜率 ≤ ε →
-    #: 终止分支触发)。默认 0.03 = 设计  v2 §2.2 EV 对比式反解的
+    #: 终止分支触发)。默认 0.03 = 设计 v2 §2.2 EV 对比式反解的
     #: 最悲观角 ε*=ΔS·V_live/(g+ΔG)≈0.02×300/212≈0.0283 的诚实带
     #: 下沿档(诚实带 [0.03,0.10],超保底部分≈0.36 金当量/帧,显式
-    #: 接受)。**重标定登记的待办(§2.4)**:p_i 源 streak_floor_win_rate 为
+    #: 接受)。**重标定登记的待办**:p_i 源 streak_floor_win_rate 为
     #: sim 档证据;Δp(piece)(停手窗买 1★ 件次战胜负面差分 n≥30)与
     #: ε*(g) 随金自适应均未标定——落地后 ε 全带重推(敏感
     #: 性口径)。首批适用范围 P1 only(谓词内 state.plane==1 硬门);
@@ -518,7 +518,7 @@ class DecisionV2Registry:
     # | R5 | armA 触发样本不足(可达性短跑 E02 形态样本<30)→ 不合入,
     #      通道判「sim 内不可达」,转构造账本锁评估 |
     #: 全通道总闸(False=通道整体不评估,现行为零漂移;True=press 分支
-    #: +candidates 守卫豁免分支+§3.3 三相位 [11] 地板前置分支+检查器
+    #: +candidates 守卫豁免分支+三相位 [11] 地板前置分支+检查器
     #: C-B/C-C 发出同步开——A/B 捆绑为一分支,双分支同尺,V-B4.2)。
     #: 默认开(`w368_press_ab/` A/B:n=300/分支 R2 成立——seg 真拦 −85.6%、通道开通
     #: copy_press_channel_closed 41→0、439 轮替代买进、core2≥1 +24.7pp 显著、
@@ -534,14 +534,14 @@ class DecisionV2Registry:
     #: press 候选逐轮采纳笔数上限(V-B8.1,更严一级;量级=单轮至多
     #: 一笔压牌库副本,与 p1_early_round_cap=1 同式轮键计数)。
     press_copy_round_cap: int = 1
-    #: [11] 同档/1费豁免分支(§3.3 三相位共用前置分支)逐轮放行笔数上限
+    #: [11] 同档/1费豁免分支(三相位共用前置分支)逐轮放行笔数上限
     #: (V-B8.1;量级基准=`w179_gate/` p1_early_round_cap=1 先例,取 2 因该分支覆盖
     #: 方向内候选+press 候选两股)。
     press_exempt_round_cap: int = 2
 
 
     # ===== `w242_star_directed/`/末窗星级定向授权(`w232_filler_star/` 待办项;设计件 08
-    # §4.2 Phase 1b 星级投资方向)=====
+    #Phase 1b 星级投资方向)=====
     #: 末窗星级定向授权无条件启用:依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的
     #: 正解且 sim 无挤出(量级不足属参数调优非行为开关)。行为语义:
     #: P1 末窗承接缺口 gap>=1 对**同名副本买入**给定向授权
@@ -592,7 +592,7 @@ class DecisionV2Registry:
     delta_hp_boss: float = 4.30
     # (换线判据四参数族 line_switch_enabled/theta/debias_delta/min_dwell
     #  已随候选-锁定制撤账:唯一消费者 should_switch_e 已删——锁定一次性
-    #  决策无换线判据对象(12 号篇 §1.4);零消费死字段,
+    # 决策无换线判据对象(12 号篇 §1.4);零消费死字段,
     #  清理归后续批。)
     # (release 帧活栈消费门开关已随 第 4 态清理:开分支
     # A/B 结案,消费门恒接入调用;判据单一源 = economy_cycle 义务核算
@@ -654,7 +654,7 @@ class DecisionV2Registry:
     #  rounds_two_state_enabled/line_switch_survival_margin)与投影参数
     #  (encounter_heal_est/line_switch_boss_ci_halfwidth)已随旧方案清退批
     #  删除:双开关默认关+开分支判据登记的待办未跑即整体出局,清查报告
-    #  OLD_MIX_AUDIT §1.3;门机械(cw_line_switch.survival_gate 族)与
+    # OLD_MIX_AUDIT §1.3;门机械(cw_line_switch.survival_gate 族)与
     #  cw_intention._switch_gate_open 接入调用同批删。损血表与两态 p_win 表
     #  保留——阈值层(cw_first_passage._loss_dist / cw_plane_table.
     #  p_win_p2)仍消费,math_proofs P12/P15v2 方向级引用。)
@@ -744,7 +744,7 @@ class DecisionV2Registry:
 
     # ===== `w607_affix_consumption/` 词缀消费面三开关(`w628_migration_b2/` 已修复)=====
     # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
-    # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释;
+    #);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释;
     # H2②/H3 读端 = kernel 判据消费位(`cw_equip_wear_plan._build_equip_wear_plan`
     # 判据链);原执行器读端已随装备组合壳停用。
     #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
@@ -811,7 +811,7 @@ class DecisionV2Registry:
     def interest_floor(self) -> int:
         """利息线单一源(D3 双源已修复,`w628_migration_b2/`):派生 = interest_cap × 10。
 
-        - 恒等式出处 = `w611_econ_cycle/` §2.2(满息平台 = 封顶档 × 10 金);
+        - 恒等式出处 = `w611_econ_cycle/`(满息平台 = 封顶档 × 10 金);
           原独立字段 ``interest_floor``(=50)与派生式并存构成双源,标定
           批动 interest_cap 时两源分歧——本方法并入为唯一取值口;
         - 覆盖通道 = ``interest_floor_override``(仅纪律视图 ALL IN 清零,

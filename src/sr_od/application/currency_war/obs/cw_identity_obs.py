@@ -359,7 +359,7 @@ def identify_slots(
         read_row_equipped 独立通道)。
 
     每槽:裁 ``screen[y1:y2, x1:x2]`` → ``identify_character``(SIFT 对脸库)→ ``resolve_char_name``
-    → 规范名。阵营/位置偏好不入形状(§2.1:消费点经注册表按 char_id 派生);star =
+    → 规范名。阵营/位置偏好不入形状(消费点经注册表按 char_id 派生);star =
     ``read_star``(立绘底部金星计数)。
 
     **相邻幽灵去重**:部署位的角色卡牌比槽窗宽(实测约 170 vs 142px,VLM
@@ -393,7 +393,7 @@ def identify_slots(
                     avatar_id = avatar_id.split('#')[0]
         if avatar_id is None:
             # 三态判定面增态(裁定①):亮度≥50 的 miss =
-            # 应有内容但识别失败 → unknown 显态落缺陷台账(§7.2 豁免
+            # 应有内容但识别失败 → unknown 显态落缺陷台账(豁免
             # 延后:写端仍沿用不写,本记录只解除「失读与真空」沉默二义);
             # <50 = 确证空位,良性 miss 不留痕(与 shop 亮度判定表同源)。
             try:
@@ -535,7 +535,7 @@ def _session_level(ctx: SrContext) -> int | None:
 
     布局选档的 level 源(后排槽数由 level 驱动)。离线/无
     session 场景返 None(调用方退 6 槽基线)。**单一源可信门**(15 号稿
-    §2.3/§6):启发式兜底帧的 level 值不参与——状态容器侧该门由喂入结构性
+    启发式兜底帧的 level 值不参与——状态容器侧该门由喂入结构性
     满足(``read_game_state`` 仅 authoritative 帧观察写 level,兜底帧走
     carry 沿用),取状态容器值直取即可信域。
     """
@@ -607,7 +607,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
     _lt = None if level is not None else _level_trusted(ctx)
     _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
     if _lay.get('unknown') and not _lay.get('frozen'):
-        # 单帧未知(§3.2④):跳过后排身份读(宁缺勿造,同 paddle None
+        # 单帧未知):跳过后排身份读(宁缺勿造,同 paddle None
         # 对齐跳过先例);JSONL 保留证据(resolve 侧每帧落证)。
         front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4),
                                'front',
@@ -616,7 +616,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
                                center_gate=_DEPLOYED_CENTER_GATE)
         return front, []
     if _lay.get('unknown'):
-        # 冻结帧读类(§3.2④ B2):退 6 档基线继续读(读面可重读可纠正,
+        # 冻结帧读类(④ B2):退 6 档基线继续读(读面可重读可纠正,
         # 下一帧覆盖;写类冻结在消费面 cw_op_deploy 侧)。
         back_slots = fallback_back_slots()
     else:
@@ -1136,7 +1136,7 @@ def read_deployed_rows_tiered(session, ctx: SrContext, screen: MatLike,
                                          list[tuple[int, Unit]]]:
     """:func:`read_deployed_rows` 的漏斗版(签名多 session;布局解析/
     保留证据钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。
-    布局未知态语义与旧实现同款(§3.2④):单帧未知只返前排(后排命中恒空);
+    布局未知态语义与旧实现同款):单帧未知只返前排(后排命中恒空);
     冻结帧读类退 6 档基线。"""
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,

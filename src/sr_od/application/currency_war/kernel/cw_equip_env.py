@@ -11,7 +11,7 @@ data/affix_effects_data。)
 保留件:
 - ``build_equip_env_signals``:equip_all 决策调用处的环境信号单源
   构造点(生锈豁免等门变体仍消费 ``signals.enemy_affixes``,设计
-  §2.2「变体不各自摸 state」纪律不变);
+  「变体不各自摸 state」纪律不变);
 - ``apply_equip_env_variants``:EquipAll 唯一分配入口(签名保留,
   调用零改),现恒返回 ``cw_comps.equip_allocation`` 基分配。
 
@@ -24,12 +24,12 @@ data/affix_effects_data。)
   限输出侧罚则族;载体 = data/affix_wear_semantics_data 结构化缓存)。
 
 21 号稿实现批新增——opening 窗口收窄 + 工具件消费判据面:
-- ``resolve_wear_release`` 扩展:O1 战斗前置释放门(§2.3 三门)+ 自由件
+- ``resolve_wear_release`` 扩展:O1 战斗前置释放门(三门)+ 自由件
   谓词;row1(opening hold)从「无条件扣留」收窄为「三门全不中 ∧ 保留域
   命中才扣」,row2(committed)语义零改动(21 号稿 §2.3);
 - ``classify_item_hold``:逐件扣留判定(B1 伴生:帧级布尔无法表达
   「自由件穿+key 扣留」混合态,消费位改件级输出);求值序 = O3 豁免 →
-  O1/O2 释放门 → 保留域①-⑤ → 清单外一律释放(§2.3);
+  O1/O2 释放门 → 保留域①-⑤ → 清单外一律释放;
 - ``evaluate_tool_actions``/``admitted_tool_actions``:工具件消费判据
   (全量并入 10 号稿 §2.1 三道门,现只落冷启动分支 = 炉准入+扳手闸,
   其余 fail-closed 带拒因分键)+ G1 动作发出点准入(防第四个标志;
@@ -127,12 +127,12 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
 class WearReleaseDecision:
     """释放判据表评估产物(18 号稿 §2.1;执行层只消费 ``hold`` 布尔释放位)。
 
-    合并规则(§2.1):判据表按行序评估,扣留行「任一命中即扣留」,
+    合并规则:判据表按行序评估,扣留行「任一命中即扣留」,
     豁免行「命中即解除其对应扣留域」(豁免取并集,无次序依赖):
     - row4 生锈豁免覆盖「一切扣留」(opening ∨ committed 都解);
     - row5 输出侧词缀豁免只覆盖已定型(committed)扣留域,不覆盖 opening hold
       (不对称理由 = 罚则结算时点:生锈按 owned 滞留计罚,软弱无力族只在
-      战斗结算时点施罚,r≤2 奖励轮无罚结算点,§2.1)。
+      战斗结算时点施罚,r≤2 奖励轮无罚结算点)。
     最终 ``hold`` = (opening_hold ∧ ¬rust) ∨ (committed_hold ∧ ¬rust ∧ ¬penalty)。
 
     21 号稿收窄后(v2,B1/B3):row1(opening) 域的帧级布尔不再表达真实
@@ -141,7 +141,7 @@ class WearReleaseDecision:
     ``hold`` 属性降格为 row2(committed) 遗留释放位,仅作观测/兼容,
     opening 域消费一律走件级判定。新增字段:
     - ``battle_precede_release`` = O1 战斗前置释放门(后随节点为战斗类,
-      备战帧是穿戴唯一发生点,扣到战斗帧就晚了,§2.3 三门表);
+      备战帧是穿戴唯一发生点,扣到战斗帧就晚了,三门表);
     - ``node_type_unknown`` = row1 帧域内 node_type 缺失(保留域⑤
       「维持 hold」的判据输入;None 回查失败时 True)。
     """
@@ -164,7 +164,7 @@ class WearReleaseDecision:
     行为输入已就绪,按开关生命周期门不悬置默认关)。"""
     battle_precede_release: bool = False
     """O1(21 号稿 §2.3):后随节点为战斗类时,备战帧释放自由件+key 命中件
-    (保留域④唯一件除外,§2.5 有意行为变化)。"""
+    (保留域④唯一件除外,有意行为变化)。"""
     node_type_unknown: bool = False
     """保留域⑤判据输入(21 号稿 §2.3):row1 帧域内 node_type 缺失
     (既有 None 回查);仅 row1 帧域内有意义。"""
@@ -206,7 +206,7 @@ def is_unique_equipment(name: str) -> bool:
 
     注册表 effect 正文标记「唯一装备」(全角/半角括号并存,取子串免括号
     形态漂移)。全场唯一/一人一件三解读未实测 → 现按最强解读保守扣留
-    (§2.5);实测定案为弱解读时随 §2.5 收窄撤销。
+    实测定案为弱解读时随 §2.5 收窄撤销。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENTS,
@@ -221,7 +221,7 @@ def is_free_item(name: str, comp) -> bool:
     自由件 = 非 key_equips 候选 ∧ 非 RESERVED_COMPONENT ∧ category≠工具
     ∧ 非唯一件。阵容=None(target 真空)→ key 集为空,其余三条件照判
     (与 18 号稿 key 白名单「target 真空→白名单空」同向)。工具件在调用方
-    穿戴候选过滤已排除,此处重复排除 = 判据面防御(不进表语义,§3.2)。
+    穿戴候选过滤已排除,此处重复排除 = 判据面防御(不进表语义)。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIP_TOOL_CATEGORY,
@@ -250,7 +250,7 @@ def classify_item_hold(decision: WearReleaseDecision, item_name: str,
       1. O3 豁免:生锈在场 → 释放(无条件压倒保留域全体,含唯一件/node
          None 共现帧——v1 保留域优先对该帧的第二答已作废);
       2. O1/O2 释放门:row1 帧域内,O1(后随战斗)释放自由件+key 命中件、
-         O2(自由件 ∧ 有空槽)释放自由件——唯一件两门均不适用(§2.5:唯一
+         O2(自由件 ∧ 有空槽)释放自由件——唯一件两门均不适用(唯一
          key 件扣留是有意行为变化,非 18 号稿语义偏离);
       3. 保留域①-⑤(仅 row1 帧域;row2 域语义 = 18 号稿原样):
          ② RESERVED_COMPONENT(key 未命中;P1 判据面第一道,消费端排除
@@ -289,9 +289,9 @@ def classify_item_hold(decision: WearReleaseDecision, item_name: str,
         if item_name in RESERVED_COMPONENTS and not key_hit:
             return True   # ②
         if unique:
-            return True   # ④(含唯一 key 件,§2.5)
+            return True   # ④(含唯一 key 件)
         if (not key_hit) and decision.committed_hold:
-            return True   # ①(两行共现帧承接,§2.3 叠加关系)
+            return True   # ①(两行共现帧承接,叠加关系)
         # ⑤:node_type 缺失对剩余非 key 件维持 hold,其余清单外一律释放
         return (not key_hit) and decision.node_type_unknown
     if decision.committed_hold:   # row2 域:18 号稿 row2 原样
@@ -349,7 +349,7 @@ def output_penalty_release_active(enemy_affixes: list[str] | None) -> bool:
     判据源 = data/affix_wear_semantics_data 结构化载体:已登记词缀集判定
     规则 = 结构条目存在 ∧ ``wear_predicate`` 非空 ∧ ``penalty_side ==
     'output'``(缺结构化条目的散文词缀不进,防解析散文)。附带跑互检
-    显警(§3.1 检测面,显警不拦截、只 log——防新词缀漏建模静默)。
+    显警(检测面,显警不拦截、只 log——防新词缀漏建模静默)。
     """
     from sr_od.application.currency_war.data.affix_wear_semantics_data import (
         WEAR_AFFIX_SEMANTICS,
@@ -409,7 +409,7 @@ def resolve_affix_priority_order(comp, view,
     ``view`` = 上阵视图 :class:`DeployedView`(位置 =
     子表下标派生,occupied 键 (row,行内槽号))。
 
-    判据(§3.2,零新自由参数——N 与罚值全部来自结构化载体):
+    判据(零新自由参数——N 与罚值全部来自结构化载体):
     1. 已登记词缀集 = 载体条目 ∧ wear_predicate 非空 ∧ penalty_side=='output';
     2. 谓词涉及角色集合 = **在场角色全集**(不限已终局阵容锁定成员——罚则按角色
        个体结算,不按阵容资格);
@@ -427,7 +427,7 @@ def resolve_affix_priority_order(comp, view,
     ——重排不可能取下已穿 key 件。
     """
     if comp is None:
-        return None   # §3.3:未定型帧词缀谓词集合退化,零重排
+        return None   #:未定型帧词缀谓词集合退化,零重排
     from sr_od.application.currency_war.data.affix_wear_semantics_data import (
         WEAR_AFFIX_SEMANTICS,
     )
@@ -479,7 +479,7 @@ def resolve_affix_priority_order(comp, view,
 
 # ===== 21 号稿 §3:工具件消费判据面(全量并入 10 号稿 §2.1,零改写)=====
 
-#: G1 动作发出点准入(21 号稿 §2.4-2/§3.2;流程:197 常驻锁,ARCH_REFLECTION_
+#: G1 动作发出点准入(21 号稿 §2.4-2;流程:197 常驻锁,ARCH_REFLECTION_
 #: 3STALLS 防第四个标志):工具动作是**新的执行动作类**,不骑 M7
 #: 穿戴通道。
 #: 执行通道前置(开分支判据,两件均随工具执行批交付):

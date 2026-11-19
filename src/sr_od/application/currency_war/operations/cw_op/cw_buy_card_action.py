@@ -72,7 +72,7 @@ class CwActionBuyCardOp(CwOperation):
         env = self.env
         op, ledger, state = env.op, env.ledger, env.state
         # 点击定位解析恰两档 = 契约(action_exec.md §4 / action_ops.md
-        # §4.1 同口径):①payload 定长槽阵列身份同一性(action 由决策核自
+        #同口径):①payload 定长槽阵列身份同一性(action 由决策核自
         # payload 产出,`is` 匹配)②(name, star) 退化。槽号主源 = payload
         # 定长槽阵列位置(三态模型:数组下标+1 = 物理槽)。card.slot 旧档
         # 字段兜底已删:静默兜底把「payload 无此牌」的提案数据 bug 掩盖成

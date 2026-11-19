@@ -128,7 +128,7 @@ def _faction_count(gs: GameState, faction: str) -> int:
     deployed 与 board 应一致(cw_state 头注);单侧 miss(OCR 漏/重建缺身份)时
     取 max 容错——**判激活侧非计费侧**,漏判激活比多判更伤(体系卡是 P1 战力主体)。
     身份口径 = C6 ``board_by_row_of`` 全板合计视图(全仓按排聚合单一源;
-    口径:get_char(char_id) 羁绊全集,多羁绊角色每系都计;§2.1 faction
+    口径:get_char(char_id) 羁绊全集,多羁绊角色每系都计;faction
     类2 注册表派生,未知名不计)。"""
     cnt_board = (gs.board.value or {}).get(faction, 0)
     cnt_ident = board_by_row_of(gs).count(faction)

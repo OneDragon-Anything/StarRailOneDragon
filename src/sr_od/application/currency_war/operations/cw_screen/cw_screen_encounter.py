@@ -16,7 +16,7 @@
   (观察 node 同帧「剩余次数:N」读数经 report 摄入,读缺跳写)。原
   per-visit 位与「已用」计数读闸随剩余闸停用。
   收敛语义(**防线**,迭代-encounter-screen-strategy-migration
-  §2.5):建议刷 ∧ 刷新圆钮识别标志读缺 → 重调一次(纯函数同输入同输出仍建议
+  建议刷 ∧ 刷新圆钮识别标志读缺 → 重调一次(纯函数同输入同输出仍建议
   刷)→ ``round_fail`` 结束本次访问——失败计入外循环 ``OP_FAIL_REDISPATCH_LIMIT``
   (零点击 round_success 结束本次访问不计数,外循环对识别标志持续读缺无防护,故落防线,
   有界收敛;持续重现 = OCR 读缺,回观察批);拒绝帧(剩余 ≤0/None)
@@ -50,7 +50,7 @@ supersession 注;候选读缺的失败安全 = act 空候选零点击终结返�
 刷新 = 点钮一次 + 2s → ``round_success`` 结束本次访问 / 选卡 = 派发确认链
 (机械链 + ``chosen_encounter`` 即时上报在动作 op 内)→ ``round_success``
 结束本次访问 / 空候选 = 零点击终结返回主循环重新识别画面——三出口均终结访问,
-``round_wait`` 循环面对刷新建议不存在。防线出口(§2.5):建议刷 ∧ 识别标志
+``round_wait`` 循环面对刷新建议不存在。防线出口:建议刷 ∧ 识别标志
 读缺重调仍建议刷 → ``round_fail`` 结束本次访问(计入外循环重派上限,有界收敛)。
 决策返回词表外/None = 具名
 round_fail 零盲发;pick idx 越界 = 守卫断言 AssertionError;两守卫均在
@@ -161,7 +161,7 @@ class CwScreenEncounter(CwOperation):
         round_success 结束本次访问;③空候选 = 零点击终结返回主循环重新识别画面
         (attack3 X2:候选读缺禁盲选派发——选卡确认不可逆消耗本节点)。
         防线出口(迭代-encounter-screen-strategy-migration
-        §2.5):建议刷 ∧ 刷新圆钮识别标志读缺 → 重调一次(纯函数同输入同输出
+        建议刷 ∧ 刷新圆钮识别标志读缺 → 重调一次(纯函数同输入同输出
         仍建议刷)→ round_fail 返回主循环,失败计入外循环
         OP_FAIL_REDISPATCH_LIMIT(零点击 round_success 结束本次访问不计数且清零
         计数窗——外循环对「识别标志持续读缺 ∧ 建议刷恒成立」无防护,故落防线;
@@ -180,7 +180,7 @@ class CwScreenEncounter(CwOperation):
             return self.round_success('候选读缺,零点击终结交回重读',
                                       wait=1.5)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1):缺上下文沿正常链路在此失败即预期,禁回填此类单跑防御分支。
+        #):缺上下文沿正常链路在此失败即预期,禁回填此类单跑防御分支。
         gs = match.gs
         # 刷新剩余闸读源 = 状态容器 encounter_refresh_left(观察轮 report
         # 摄入的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。

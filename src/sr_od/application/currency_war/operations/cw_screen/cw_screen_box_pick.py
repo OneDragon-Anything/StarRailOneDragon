@@ -2,7 +2,7 @@
 
 武装箱 4 选 1 的访问面 = **独立建档画面**「货币战争-备战-武装箱选择」,
 外循环阶段一身份分发进本 op(分发判定单一源 = ``flow/outer_loop.md``
-§2.2);武装箱选卡不属备战动作词表(单选族例外:选卡即终结,判据 =
+武装箱选卡不属备战动作词表(单选族例外:选卡即终结,判据 =
 ``screens/README.md`` §3)。链路:备战环 ``CwActionOpenBoxParam`` 点开启
 (**终结化**——开箱即结束本次访问)→ 外循环按本画面分发本 op → OCR 卡名 →
 选卡决策(局内策略 ``decide_box_card`` 契约面;无 match 局外不设早退
@@ -42,7 +42,7 @@ miss 未发 = round_fail 返回主循环按画面重分发)+ OCR 卡名行读数
 将决策为前提」由门 + 非空闸保证,桩无 gs(有 match)→ 跳过写、决策
 照走)。obs 读数(名 + x)与坐标
 一并上报入状态容器(同门双写,坐标单一真相源 = 观察上报,op-layer.md
-§1.1 :35);决策动作 node 零坐标现算。决策动作 node = 选卡决策
+35);决策动作 node 零坐标现算。决策动作 node = 选卡决策
 (``_decide_card_index`` 局内专用,fail-closed 契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选中即确认 +
 动画等待 + 自上报住动作 op,机械链契约 = ``flow/action_exec.md`` §2;
 点击坐标 = 状态容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
@@ -197,7 +197,7 @@ class CwScreenBoxPick(CwOperation):
         局外不设早退支(op-layer.md §1.1;用户裁决 全族删门)。
         派发实例携真实选中下标(上报 param 即真实选择)。"""
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+        #;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         idx = self._decide_card_index([n for n, _ in self._cards])
         chosen = self._cards[idx][0]

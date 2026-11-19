@@ -15,7 +15,7 @@ screen.md §2 现金分行;迁移批的删除面对照
   不读 ``gs.effects`` 刷新计数、不消费 refresh_p/refresh_after 估算参数,
   改为拍值注册(:data:`_GOLD_AFTER_REFRESHES_FIXED`;拍值锚定 =
   docs/develop/sr_od/application/currency_war/proofs/p97-refresh-budget.md
-  §7 消费契约,下称 P97 §7;历史频率参数 refresh_total_ge20_p/
+  消费契约,下称 P97 §7;历史频率参数 refresh_total_ge20_p/
   refresh_paid_ge30_p 随拍值注册停用,P97 §7);
 - 其余 A/B/C 通道公式、fail-closed 门、估算注册表、C 类治理校验原样保留。
 
@@ -68,7 +68,7 @@ _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 _REWARD_BONUS_KEY = 'reward_node_bonus_{}'
 
 # (刷新分布两参数键 refresh_{scope}_ge{阈值}_p / refresh_{scope}_after{阈值}_e
-#  随 gold_after_refreshes 拍值注册停用,不再约定——P97 §7 消费契约;
+# 随 gold_after_refreshes 拍值注册停用,不再约定——P97 §7 消费契约;
 #  tools 重采脚本的对应重采面归 3.2 随 kernel 删除面一并处理。)
 
 # C 类环境 → 增益参数变体映射(单一源;新 C 类环境先落映射再落参,漏映射
@@ -140,7 +140,7 @@ class EconomyEstimate:
 #:   ×1)但遥测无扑满战利品独立字段,奖励轮收支差分混入备战净支出,增益不可
 #:   分离 → 经济过热/经济严重过热 fail-closed(补采建议见口径文档)。
 #: (refresh_total_ge20_p / refresh_paid_ge30_p 随 gold_after_refreshes 拍值
-#: 注册停用,不再登记——P97 §7 消费契约。)
+#: 注册停用,不再登记——P97 §7 消费契约)
 ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
     # —— 位面到达率(原 invest-env 迭代需估参数①;完成局命中 110/114 与 10/114)——
     'plane_arrival_p2': EconomyEstimate(
@@ -243,7 +243,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     经济通道处理。
 
     **品质改写分派**(沿原 kernel 模块 3.6,details/env-value-models.md
-    §2.2.5):name ∈ ENV_POOL_REWRITE 且条目带估值语义字段
+    name ∈ ENV_POOL_REWRITE 且条目带估值语义字段
     (``rewrite_quality`` 或 ``offer_structure`` 非空)→
     :func:`_pool_rewrite_value`(层 E ΔV 公式,读
     STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参 fail-closed,v1

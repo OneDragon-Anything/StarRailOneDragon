@@ -138,7 +138,7 @@ class CwActionSellBenchOp(CwOperation):
             time.sleep(1.0)
         else:
             # sim:机械拖拽静默跳过(直连旁路 port 检查,sim-design.md
-            # §6.5);自上报照走(两执行面同源)。
+            #);自上报照走(两执行面同源)。
             pass
         # 商店访问账(shop 域 visit 汇总口径;备战 env 无 ledger 字段 =
         # 备战域无访问账概念,跳过——发出即记账,与买/刷 op 同位)。

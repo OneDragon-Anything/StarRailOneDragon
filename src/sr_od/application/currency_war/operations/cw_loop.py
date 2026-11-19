@@ -273,8 +273,8 @@ class CwLoop(CwOperation):
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
     # 结算真值现役归宿 = GameState settlement 域 apply_settlement_cover。
-    # 结算链常量族(SETTLE_* 族)现役单一源 = CwScreenBattleWait( 05-battle §1)。
-    # 备战稳定门防护替身( §2.6/03-prep §1):①逐动作回流程层确认画面
+    # 结算链常量族(SETTLE_* 族)现役单一源 = CwScreenBattleWait(05-battle §1)。
+    # 备战稳定门防护替身(§2.6/03-prep §1):①逐动作回流程层确认画面
     # (overlay 弹出当步即见,转入 overlay op)②触发计算式追加等待
     # (03-prep §3 部署动作行,载体已切 CwActionMoveUnitParam)③director 环入口清场+自动开店预收探针。
 
@@ -414,7 +414,7 @@ class CwLoop(CwOperation):
         # 清理完成 → 残局遗留且账面成功(静默失败)。
         self._cleanup_delegate: bool = cleanup_delegate
         # (轮计数 _rounds_done 已随结算链并入 CwScreenBattleWait → SettlementState
-        #  .rounds_done( 05-battle §1);本类经 self._settle.rounds_done 读。)
+        # .rounds_done(05-battle §1);本类经 self._settle.rounds_done 读)
         # r119 停滞 watchdog 状态:画面指纹采样(OCR 关键词 frozenset 哈希)。
         # 战斗窗口宽限计时起点(monotonic;出战/战斗帧双入口赋值)。中断恢复的对局首帧
         # 可直接落战斗窗口(先于任何出战),必须在此初始化——否则 1213 行
@@ -450,7 +450,7 @@ class CwLoop(CwOperation):
         ``_init_before_execute`` 调用;见类注 R4-1 迁移说明)。"""
         # run 启动时刻/新局标记在下方 was_new 求值后注入;首见结算屏标记
         # (relaunch 残留结算判据)现役宿主 = CwScreenBattleWait(SettlementState,
-        #  05-battle §1)。
+        # 05-battle §1)。
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
@@ -466,7 +466,7 @@ class CwLoop(CwOperation):
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
         if was_new:
             # match 建立(兜底分支):正常路径已由 CwEntryStart 在
-            # 进对局时经 establish_new_match 前移建立( §2.1,CwScreenBriefing
+            # 进对局时经 establish_new_match 前移建立(CwScreenBriefing
             # 直写 session 的时序前提);此处覆盖「绕过入口链直跑 loop」
             # 的场景(如 run_operation 单跑),同一 helper 无逻辑分叉。
             from sr_od.application.currency_war.strategies.impl.cw_strategy_manager import (
@@ -484,7 +484,7 @@ class CwLoop(CwOperation):
         # locked_sync_done 不在此重置(配对不变量):置 False 与锁定确认同帧
         # 配对、置 True 与发出核发出后写同帧配对;出战段仅经 locked_resume=True
         # 可达,未经锁定确认的 Match 依赖字段初值 True。
-        # 战斗/结算链状态机 + CwScreenBattleWait 实例( 05-battle §1 并入):
+        # 战斗/结算链状态机 + CwScreenBattleWait 实例(05-battle §1 并入):
         # 结算读点/点继续/败局链/终局分叉的状态随 op 迁移,本 loop 只持引用
         # (3c 收尾/summary 读真值)。op 实例跨场复用(状态机生命周期 = 局级;
         # 每 execute 重handle_init → run 启动时刻/新局标记随之刷新,与原
@@ -494,7 +494,7 @@ class CwLoop(CwOperation):
         self._battle_wait = CwScreenBattleWait(self.ctx, self._settle, self._cw_config)
         # 入口链 ctx 中转吸收(P3b 收缩:仅剩职级难度——难度确认屏读存
         # ctx.cw_selected_difficulty,非简报信箱域)。简报词缀/boss/敌人难度
-        # 的 ctx 信箱已停用( §2.1「消灭 ctx 信箱」P3 批口径):唯一写点 =
+        # 的 ctx 信箱已停用(「消灭 ctx 信箱」P3 批口径):唯一写点 =
         # CwScreenBriefing 直写 session,本段不再吸收。
         self._absorb_selected_difficulty(self.ctx.cw_match.session)
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
@@ -763,7 +763,7 @@ class CwLoop(CwOperation):
 
     # (局终归档现役归宿 =  已落位(gs_prov=快照来源注记/局终速查=
     #  match_final 行,retirement.md §2);存量数据文件归档只读
-    #  (不删不写,裸读考古,r5-migration-plan §4-6)。)
+    # (不删不写,裸读考古,r5-migration-plan §4-6))
 
     def _write_terminal_summary_if_needed(self) -> None:
         """局终/中止收尾(幂等:_summary_written 守卫)。
@@ -857,7 +857,7 @@ class CwLoop(CwOperation):
 
     def _route_clear_stale_payloads(self, match_name: str | None) -> None:
         """路由点陈旧清点(策略器终态契约,契约形状 = flow/session.md):画面附加域离屏是
-        结构事实非失读(§2.2 显式例外),插入位置钉在「识别产出后、身份分发前」,
+        结构事实非失读(显式例外),插入位置钉在「识别产出后、身份分发前」,
         复用当轮识别结果零二次识别。
 
         语义三定义(design §2.3):命中映射内屏 = 只清属屏 ≠ 它的槽;
@@ -1322,7 +1322,7 @@ class CwLoop(CwOperation):
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 self._invalidate_tracked_on_takeover()   # D2:接管置观察态失效
                 # (恢复局形态现役证据 = journal 派生行段界;状态容器旗标已停用。)
-            # 中断恢复的对局补采(boss+词缀)插入位置 = 干净备战观察( §2.1,CwScreenPrep
+            # 中断恢复的对局补采(boss+词缀)插入位置 = 干净备战观察(CwScreenPrep
             # 环入口 gate 后稳定帧执行;稳定门停用后由备战观察承担)。
 
         # [停机钩子纪律] 钩子停机的前提是该屏**偶发**出现;建档完成后立即删除,
@@ -1412,7 +1412,7 @@ class CwLoop(CwOperation):
         if prep_anchors_hit(self, screen):
             self._fallback_clear_pending()
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
-            # 标志位已停用, §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
+            # 标志位已停用,:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)
             # 备战交互三段链(上游选择屏返回按钮 / 恢复局候选探针+锁定直出战 /
             # 补给分流)已迁 CwScreenPrep 特殊流程段(观察 node 段1 子态识别
@@ -1420,7 +1420,7 @@ class CwLoop(CwOperation):
             # flow):本分支坍缩 = 识别(两识别标志)→ 兜底清 → 停点 → 派发。
             # 停点新语义(迭代设计 §2.2-4 申报):停点先于派发,三类子态不再
             # 处置(候选挂起、锁定不确认、返回按钮不点,直接停屏)。
-            # 中断恢复的对局补采(boss+词缀)已迁 CwScreenPrep( §2.1/01-opening §2.1:
+            # 中断恢复的对局补采(boss+词缀)已迁 CwScreenPrep(§2.1/01-opening §2.1:
             # 稳定门停用后插入位置 = 干净备战观察;见 cw_screen_prep.CwScreenPrep.observe)。
             # 策略失活防线现役 = 哨兵 journal 面断流探测(skills 侧 cw_sentinel)。
             # 过渡门说明:阶段一身份分发与阶段三特殊规则分支(上方)先于本分支检查同截图同三元组(id_mark
@@ -1452,7 +1452,7 @@ class CwLoop(CwOperation):
                     # 标志只表达「出战已发出」,CwScreenBattleWait 对非战斗帧走宽限等待,
                     # 白名单识别标志(备战两识别标志中单标志命中的宽判定)命中即 success 结束本次访问,零风险)。
                     self._battle_wait_active = True
-                # 环让位重入契约( §2.9,实机 P1-r6 bail ping-pong 修复):
+                # 环让位重入契约(实机 P1-r6 bail ping-pong 修复):
                 # director 返回(含环入口分诊结束本次访问/事件 overlay bail)后**必经本
                 # return → 下轮 loop 顶全分支重判**(阶段一/阶段三 overlay 分支先于备战两识别标志同帧命中判定),
                 # 不在同一迭代内直接回备战分支/环。日志留痕 = 重入可观测
@@ -1465,7 +1465,7 @@ class CwLoop(CwOperation):
                 CwScreenPrep(self.ctx), journal_name='备战',
                 frame_tag='flow_prep_entry', wait=1.0, on_result=_on_prep_round)
 
-        # 战斗/结算窗口 → CwScreenBattleWait( 05-battle §1:原 1f/2/3/3b/5/6
+        # 战斗/结算窗口 → CwScreenBattleWait(05-battle §1:原 1f/2/3/3b/5/6
         # 内联分支并入;三段式 = 等结算画面 / 结算处理(遥测读点 + 点继续挑战)
         # / 完成判据白名单;团灭终局分叉(多页 → 返回货币战争 → 大厅)结束本次访问本
         # 循环 3c 收尾——runs summary/分配器/存档写端不随 op 化迁移,遥测

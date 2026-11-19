@@ -242,7 +242,7 @@ class CwScreenPartner(CwOperation):
             if not options:
                 return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
             # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-            # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
+            #;用户裁决 全族删门):单跑缺上下文沿正常链路
             # 在此失败即预期,禁回填此类单跑防御分支。
             # 守卫②(返回契约,op-layer §1.3):None/词表外 = 策略器 bug 具名
             # fail 留存证据(原 AttributeError 异常出口分支并入,消息含原值)。

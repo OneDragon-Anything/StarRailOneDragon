@@ -1,7 +1,7 @@
 """买经验动作 op(CwActionLevelUpOp)——动作 op 重组换壳(原
 ``PrepLevelUpOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_level_up_param``,零分派,op-layer.md
-§1.2 动作 op 契约)。
+动作 op 契约)。
 
 **整批连点形态**(迭代-prep-shop-workflow-redesign;
 line_and_upgrade §2.2「一次买齐」):动作参数携带授权批击数

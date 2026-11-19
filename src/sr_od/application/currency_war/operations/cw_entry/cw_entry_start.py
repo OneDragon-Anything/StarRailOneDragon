@@ -40,7 +40,7 @@ class EntryPopupGuardSpec:
     守卫不发明第二套识别语义。动作只用该弹窗自己建档的控件,
     零画面坐标进代码(坐标单一真相源在 screen_info)。循环语义统一 round_retry
     (具名状态),禁 round_wait——框架对 WAIT 不计 retry 且归零计数(
-    §2.2 实证),会无界空转。
+    实证),会无界空转。
 
     两段动作(领后关闭):积分奖励类弹窗的处置 = 先点领取区、领后取新帧再点
     关闭钮,单守卫轮内完成;照单动作形态迁入会死循环重试「一键领取」(领完
@@ -270,7 +270,7 @@ class CwEntryStart(CwOperation):
         self._stale_discarded = discard_stale_match_container(self.ctx, reason)
 
     def _establish_match_once(self) -> None:
-        """新局确凿信号处建立本局 match 状态容器(GameState)( §2.1 match 生命周期前置)。
+        """新局确凿信号处建立本局 match 状态容器(GameState)(match 生命周期前置)。
 
         与 ``_discard_stale_once`` 同址衔接(先弃置残留,再建立本局):
         session 建立时机从 run 首帧 handle_init 前移到进对局——简报观察

@@ -22,7 +22,7 @@ mechanics 为准修齐(单一语义源,双载体是 tracked 原地推进 vs 期�
 ——本引擎出参断言,违例即抛(模型错当场暴露,不进对账静默)。
 
 载体形状(benchchar-retirement P1 定形、P5 单形收窄):bench =
-``list[BenchSlot | None]`` / deployed = ``list[Unit | None]``(§2.3);
+``list[BenchSlot | None]`` / deployed = ``list[Unit | None]``;
 元素 frozen → 推进 = replace 新构造 + 定位符索引,素材摘除 = 置 None
 (保洞)。条目身份读协议(:func:`_entry_identity`)状态容器单形状,引擎
 全链状态容器单形状。
@@ -63,7 +63,7 @@ class MergeStep:
     [定义注释] landing_kind/landing_slot = 升星产物的落点坐标系:
     'bench' 时 landing_slot = 物理槽位 1-9(最左合成);'deployed' 时
     = deployed 槽位表下标 0-9(场上吸收)。inherited_equips =
-    被消耗两只的装备全量(§4 规则 4,玩家定案)。
+    被消耗两只的装备全量(规则 4,玩家定案)。
     """
     name: str
     from_star: int
@@ -77,7 +77,7 @@ class MergeStep:
 class MergeSimResult:
     """merge_simulate 出参:终态 + 合成链 + 实际购入张数(benchchar-
     retirement P1 起状态容器原生形状:bench = BenchSlot | None 槽表 /
-    deployed = Unit | None 下标槽表,§2.3)。"""
+    deployed = Unit | None 下标槽表)。"""
     bench_after: list[BenchSlot | None]
     deployed_after: list[Unit | None]
     chain: list[MergeStep]
@@ -160,9 +160,9 @@ def merge_simulate(bench: list[BenchSlot | None],
     """买牌 (name, star,请求张数 k) 的合成终态推演(纯函数;不改入参;
     P1 起状态容器原生形状 §2.3)。
 
-    - 常态:逐张落入备战空槽(§1 最左空位)→ 不动点合并;
+    - 常态:逐张落入备战空槽(最左空位)→ 不动点合并;
     - 满栏:仅当本次购买能触发合成(``merge_buy_completes``)才放行,
-      自动多买 k = ``min(店内张数, 3 − 已有 mod 3)``(§2.5;in_shop_count
+      自动多买 k = ``min(店内张数, 3 − 已有 mod 3)``(in_shop_count
       缺省按 3-mod 保守取,调用方有店内真值时显式传);
     - 合成链逐级记录(落点/继承);出参断言「场上同名同星 ≤1」。
     - 合成产物实例号承继 = _merge_inherit_uid 单一源(链端
@@ -189,9 +189,9 @@ def merge_simulate(bench: list[BenchSlot | None],
     eff_k = 0
     multi_buy = False
     if k > 0:
-        # 满栏例外(§2.5):自动多买张数取 min(店内张数, 3−已有 mod 3),复用
+        # 满栏例外:自动多买张数取 min(店内张数, 3−已有 mod 3),复用
         # merge_buy_k/merge_buy_completes 单一源(禁消费方手搓同式)。
-        # 假牌构造 = 状态容器类型 + 映射函数边界转换(双 ShopCard 归一,§2.5:
+        # 假牌构造 = 状态容器类型 + 映射函数边界转换(双 ShopCard 归一,:
         # 转换只许在映射函数发生;helper 只消费 name/star,转换体 x 置 0
         # 不消费)。
         eff_k = k
@@ -284,7 +284,7 @@ def merge_simulate(bench: list[BenchSlot | None],
             break   # 重扫(结构已变)
         if not merged:
             break
-    # 溢出归位:合成腾出的空槽优先(§2.5 满栏购买先腾后落)
+    # 溢出归位:合成腾出的空槽优先(满栏购买先腾后落)
     still_overflow: list[BenchSlot] = []
     for slot in overflow:
         if bench_place(bench_t, slot) is None:
@@ -375,7 +375,7 @@ def _merge_bench(bench: list[BenchSlot | None],
     语义源。合成载体:场上同名卡升星优先(触发处常见态),无场上卡则
     bench 首张升星。
 
-    P1 起状态容器原生形状(§2.3):bench = ``list[BenchSlot | None]`` /
+    P1 起状态容器原生形状:bench = ``list[BenchSlot | None]`` /
     deployed = ``list[Unit | None]`` 下标槽表;素材摘除 = 置 None 腾槽
     (保洞语义,合成载体留在原槽位);载体升星 = frozen
     replace 新构造(装备继承随之写回载体)。
@@ -533,7 +533,7 @@ def merge_material_stale_names(bench: list[BenchSlot | None],
     「滞留」语义:对在场即 2/3 进度悬置;持续 N 轮计数仍增长 = N 轮
     未合成(合成后计数停止增长,轮差分归零)——轮级时长由消费端按
     键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:
-    §4 滞留暴露待修项(G-B1 第四级)。
+    滞留暴露待修项(G-B1 第四级)。
     """
     names = {ident[0] for _x, ident in _slots_iter(bench, deployed)
              if ident is not None and ident[1] == 1}
@@ -595,11 +595,11 @@ def merge_buy_completes(name: str, star: int,
 
     own≥1 门:own=0(全场 bench∪deployed
     无同名同星)时合成买不成立,按满栏非合成买拒收——merge_mechanics
-    §2.5 的满栏例外以「已有素材/载体在场、买入可完成合成」为前提,
+    的满栏例外以「已有素材/载体在场、买入可完成合成」为前提,
     own=0 时首张买入既无空槽落位、也无进行中的合成可完成,游戏侧该
     点击被拒(金不扣、牌不下架)。缺此门的旧形态:own=0+店内 3 张
     误判可合成 → k=3 全为尾挂张、合成载体落 idx9 被 ``del bench[9:]``
-    截删,双账同错且共同偏离游戏拒买真值。边界:§2.5「连升同理」
+    截删,双账同错且共同偏离游戏拒买真值。边界:「连升同理」
     (own=0 于基础星、栏满连买 3 张)为自标低置信口述未亲见,本门
     按拒买语义实现;若拖动对账网实证连升可行,须回本单一源改门。
     """

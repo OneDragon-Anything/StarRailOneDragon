@@ -109,7 +109,7 @@ def main() -> None:
         _cfg = _Cfg()
         gs: GameState = game_state_of(sess)
         strat = MandateV1Strategy(gs, _cfg)
-        sess.strategy_state = strat.state   # 状态同源接入(§2.6 过渡桥)
+        sess.strategy_state = strat.state   # 状态同源接入(过渡桥)
         # (gs 宿主接入调用 = CwStrategy.state setter 内建,构造即挂。)
         restore_state_snapshot(gs, snaps[key])
         try:

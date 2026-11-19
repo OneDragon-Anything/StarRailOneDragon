@@ -204,7 +204,7 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
             score=FEAR_PENALTY,
             note='final_jizi_train §6 脆弱点「能量逃逸(150 能量大招受能量逃逸影响)」(史料级)'),
         '时间刺客': AffixStance(score=FEAR_PENALTY, note='final_jizi_train A 节「怕时间刺客」'),
-        # 重症难题:§6 脆弱点「重症难题(治疗/护盾削弱)克三月七盾循环
+        # 重症难题:脆弱点「重症难题(治疗/护盾削弱)克三月七盾循环
         # (史料级)」(final_jizi_train L212-213)。
         '重症难题': AffixStance(score=FEAR_PENALTY, note='final_jizi_train §6 脆弱点「克三月七盾循环」(史料级)'),
     },
@@ -223,7 +223,7 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
     # 昼神阿雅:counter 仅 boss 面(「counter:电视机 boss → 避」,boss 表辖)。
     # 反甲白厄:忌「燃血类/回血 buff 减行动值」均无注册名(52 词缀表无对应
     #   词条,待实机采集);受击触发类两推断打架(受击多→反甲触发多 vs
-    #   受击多→白厄本体先死)标 0 待 sim 不登(正本 §1.1 白厄节)。
+    # 受击多→白厄本体先死)标 0 待 sim 不登(正本 §1.1 白厄节)。
 }
 
 #: 无燃料底线登记线(正本 §1.1:词缀依赖独例 = 万敌;开局词缀 ∩

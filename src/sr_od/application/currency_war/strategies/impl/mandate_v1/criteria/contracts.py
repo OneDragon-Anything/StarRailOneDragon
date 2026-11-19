@@ -221,7 +221,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),
     # —— 三先例的非 criteria 消费位 ——
     # (契约键 ('mandate','dominance_buy') 已随 dominance_buy 通道退役
-    #  整删——富余买入并入 M6 一星兜底带(20 号稿 §3 出口序申报行),
+    # 整删——富余买入并入 M6 一星兜底带(20 号稿 §3 出口序申报行),
     #  S 预留语境前提由 M6 侧
     #  ('stockpile','stockpile_buy') 键继续承载。)
     # (契约键 ('mandate','core_single_card_buy_eligible') 已随 C1 支

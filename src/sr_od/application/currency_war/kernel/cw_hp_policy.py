@@ -1,7 +1,7 @@
 """货币战争 hp 施门 kernel 政策层(决策消费面的统一读口)。
 
 **适用范围**:决策内存消费面消费 hp 的统一读口单点。识别防御基准停用后,本层收敛为 **gs.hp 直读**:
-「上一真值」职责由结算覆盖写端(``cw_screen_battle_wait`` §3.5.1)+
+「上一真值」职责由结算覆盖写端(``cw_screen_battle_wait``)+
 失读沿用语义(carry 通道,evidence 标来源帧)承载;旧结算新鲜度门
 (``apply_hp_freshness_gate``,session.last_hp/last_hp_t 基准 + gap 窗)
 随基准停用删除——失读窗不再有基准补,实机识别失准走识别优化批

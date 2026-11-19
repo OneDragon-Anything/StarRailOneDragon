@@ -353,7 +353,7 @@ def _panel_row_value(items: list, label: str,
 def parse_settle_interest(items: list) -> int | None:
     """「获得金币总览」面板息行读数(纯函数,可单测;输入 =
     :func:`read_settle_interest_panel` 产物)。三态语义(T-27 迭代设计
-    §2.5 来源 A 计数判据,消费端按 None 不计数/0 与 N 入账):
+    来源 A 计数判据,消费端按 None 不计数/0 与 N 入账):
 
     - ``None`` = 面板识别标志不在(异常形态,该刻不计数,宁缺勿造,不猜)
       ∨ 息行在而数值失读(0 是合法读数,失读非零值,不冒认);

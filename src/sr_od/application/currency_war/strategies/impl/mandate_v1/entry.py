@@ -177,7 +177,7 @@ def classify_frame_stability(action: CwAction) -> str:
     """单动作帧稳定分类(契约 v2 §3.2 逐类判的机器可读形式)。
 
     返回:'continue' / 'conditional' / 'truncation' / 'terminal' /
-    'unknown'(词表外/无分类 ⇒ §3.3 fail-closed)。
+    'unknown'(词表外/无分类 ⇒fail-closed)。
     """
     for t in _TERMINAL:
         if isinstance(action, t):
@@ -198,7 +198,7 @@ def truncate_frame_stable(actions: list[CwAction],
                           session: StrategySession | None = None,
                           *, bench_slots: set[int] | None = None,
                           ) -> list[CwAction]:
-    """帧稳定截断动作发出器(契约 §2 帧稳定域 + §3 分域枚举 + §3.3)。
+    """帧稳定截断动作发出器(契约 §2 帧稳定域 +分域枚举 +)。
 
     逐动作判「本动作执行后的画面状态能否静态推出」:可续/条件续 →
     继续发出;截断点 → 该动作作为序列最后一个动作发出;终点 → 序列
@@ -437,7 +437,7 @@ def emit(session: StrategySession,
         return _rescue   # 含 [] = 防御分支零动作返回主循环(不出战)
 
     # —— 前置步:计划游标逐帧消化(第 0 步溢出自救后新插;roster-
-    #    11 号稿 §4.0 执行端 + 用户裁定补录「跨画面
+    # 11 号稿 §4.0 执行端 + 用户裁定补录「跨画面
     #    计划变量终版」:商店决策一次定型,备战照单执行零重验)——
     # 槽在期间本步优先于第 1-9 全部步(含第 5 步开店与第 9 步出战——
     # 计划未完成不出战);被第 0 步自救抢占的帧本步不运行(告警帧零
@@ -447,11 +447,11 @@ def emit(session: StrategySession,
         return _plan_out
 
     # —— 第 1 步:商店随机态重开(22 号稿 §1 第 1 步/
-    # §2.4)——信号在 = 商店有未处理的随机态新牌面(含商业间谍偷入备战席
+    #)——信号在 = 商店有未处理的随机态新牌面(含商业间谍偷入备战席
     # 的 3 张,用户裁定「很高的优先级」;置于溢出自救之后、资源动作之前):
     # 清 handled 标记 → 开店进店(入口观察读真牌面,会话循环正常评估)
     # → 清信号。信号写端 = 升级值变更回调(源 = 任意经验来源升级,经
-    # 调度器 cw_levelup_callbacks spy 分支);重开触发计数键 = §2.6③
+    # 调度器 cw_levelup_callbacks spy 分支);重开触发计数键 =③
     # 随机态闭环批跑取数口(商业间谍升级次数 ↔ 重开触发次数恒等式)。
     if shop_randomized_pending_of(gs):
         session_scope.clear_shop_handled(gs)
@@ -1056,7 +1056,7 @@ def _step4_shop_unblock_recheck(session: StrategySession,
       (路径③;**标记不动**——标记门内锚定后即关,锚定后的下帧复核
       自然继续);
     - 方向锁定不走清单解拦(锁定写入直接清标记,12 号篇
-      §1.4)。复核唯一触发点 = 本步入口,不在部署/卖出后挂触发钩子。
+      。复核唯一触发点 = 本步入口,不在部署/卖出后挂触发钩子。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         shop_session as shop_sess,
@@ -1093,7 +1093,7 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     与前置步级联共用同一执行器)。
 
     形态 = 常规部署差分(非计划执行期):**零读屏多动作循环 + 入口
-    heavy 对账**现状维持(§3.5 D9-3:无卡死判定需求,收敛由下一入口
+    heavy 对账**现状维持(D9-3:无卡死判定需求,收敛由下一入口
     对账兜底;假收敛最坏 = 带误差板打完当前节点、战后对账纠回——
     常规纯移动可逆故入口对账足够)。溢出告警帧 = 搜索与差分执行器
     全跳过(emit 溢出门早退承载);上场锁过滤在搜索段 0(枚举硬约束)。

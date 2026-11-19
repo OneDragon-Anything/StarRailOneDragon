@@ -163,7 +163,7 @@ def arm_key_of(comp: Comp) -> str:
 
 @dataclass
 class MatchOutcome:
-    """一局货币战争的终局结算(框架构造,局终收束消费:跨局分配器/runs summary;/§11.4)。
+    """一局货币战争的终局结算(框架构造,局终收束消费:跨局分配器/runs summary)。
 
     ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(生命周期
     钩子随 并入删除后,消费面 = cw_loop 局终分支,

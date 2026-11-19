@@ -16,7 +16,7 @@
 - 扫描目录下所有 ``.py``(**无后缀过滤** —— 区别 app 插件的 ``*_factory.py`` rglob),找 ``CwStrategy``
   的子类(``__module__`` 匹配本文件,排除导入的基类 + ``_abstract=True`` 中间辅助 ABC)。
 - **一个文件只注册一个策略**(多真实策略取首个);``STRATEGY_ID`` 唯一性强校验(重复报错,指明首注册位)。
-- 无 ``_factory.py`` / ``_const.py`` 配对(元数据全类属性,§11.3.1)→ 实例化 ``cls()``(无参)。
+- 无 ``_factory.py`` / ``_const.py`` 配对(元数据全类属性)→ 实例化 ``cls``(无参)。
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见 ADR(D-34/036)。
 """
@@ -105,7 +105,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # 等价,实现/夹具可渐进迁移(session 兼容位删除时旧读法随之消亡)。
     _session.strategy_state = _strategy.state
     # (gs 宿主挂接 = CwStrategy.state setter 内建,构造即挂 gs.strategy_state。)
-    # Match 终形(§2.1):{gs, strategy, performance} + session 兼容位
+    # Match 终形:{gs, strategy, performance} + session 兼容位
     #(session 兼容类移除时随删)。
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,
                                     performance=getattr(_session, 'performance', None))
@@ -155,7 +155,7 @@ class StrategyInfo:
 
 
 class StrategyManager:
-    """货币战争策略发现管理器(扫描 / 加载 / 刷新 / 实例化;/§11.5)。
+    """货币战争策略发现管理器(扫描 / 加载 / 刷新 / 实例化)。
 
     构造签名对标 ``ApplicationFactoryManager``(收 ctx + plugin_dirs 元组列表),但发现逻辑为策略
     定制(无 ``_factory``/``_const`` 配对、无 default group/priority)。

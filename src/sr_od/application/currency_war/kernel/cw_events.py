@@ -102,7 +102,7 @@ def _equip_value(equip: str) -> int:
 @dataclass
 
 class MegastarOption:
-    """一个巨星候选(OCR 读角色名(``obs/cw_megastar_obs.py::read_megastar_options``);/§11.3.4⑥)。
+    """一个巨星候选(OCR 读角色名(``obs/cw_megastar_obs.py::read_megastar_options``);⑥)。
 
     char_id:候选角色名(空 = 读缺(画面 op 观察失败 round_fail 零盲发);非空 = cw_chars 规范名(观察侧标准化门产出))。
     xy:该候选的点击坐标 ``tuple[int, int]``(x, y,1080p 游戏空间;
@@ -287,7 +287,7 @@ def _similar_equip_hits(text: str) -> list[str]:
 
 def normalize_equip_name(text: str) -> str:
     """卡面 OCR 文本 × 装备注册表相似归一(longest-match 优先;design
-    §2.1① equip 件名归一单一源)。
+    ① equip 件名归一单一源)。
 
     - 判据 = :func:`_similar_equip_hits`;**唯一命中**才返回归一件名,
       零/多命中返回 ''(未解析——禁猜名,记账侧走值不变翻来源留存证据);

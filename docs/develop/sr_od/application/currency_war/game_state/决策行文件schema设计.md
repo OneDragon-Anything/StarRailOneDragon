@@ -1,5 +1,4 @@
 # 策略侧决策行文件 schema 设计(两文件模型②权威版本)
-> 术语:本篇所用货币战争域术语的统一定义见 [../terminology.md](../terminology.md)。
 
 > **文档定位**:本文是两文件模型②(策略侧决策行文件)的行 schema **权威版本设计终版**,位于
 > 货币战争模块设计区 design/ 子目录(`docs/develop/sr_od/application/currency_war/design/`,
@@ -331,7 +330,7 @@ JSONL 追加写约束下存在行内替代方案(局终收尾时点追加「尾�
 | ④预注册披露 | 原载体 = 批末读 session 状态容器(ab_core_swap 披露抽取),已随旧引擎停用拆除;现无独立预注册披露面 | 局终聚合读链不变 | ①读链恒等 |
 
 > **①前提注记(定案 C8)**:「恒等(同一字段同一读链)」以 replay_to_md 渲染链存活为
-> 前提——键级审计 §2.1① 的渲染读者 = tools/cw/replay_to_md.py `_render_counters`,
+> 前提——键级审计 §2.1① 的渲染读者 = skills/sr-od-dev-currency-war/scripts/replay_to_md.py `_render_counters`,
 > 该工具面(离线考古工具面)去留 = **一项待裁决事项**(原排期件开放决策点条 6;未裁,排期件已删 git 可溯)。
 > 该事项裁「保留只读考古」→ 本注记零改写,§6① 恒等与 §7-T2 可选面完好;该事项裁
 > 「随删」→ 本行与 §1 三分表①行判读档位按已登记预案连带改写,实机窗「判读面计数可见性
@@ -460,5 +459,5 @@ JSONL 追加写约束下存在行内替代方案(局终收尾时点追加「尾�
   operations/cw_loop.py(两收尾点与快照 helper)/ strategies/impl/mandate_v1/entry.py
   (门簿记账读回点)/ strategies/impl/mandate_v1/mandate.py(deploy_emit held 族写入位置侧
   去重)/ strategies/impl/mandate_v1/contracts.py(SNAPSHOT_SCHEMA_VERSION 独立版本
-  常量先例)/ sim/runner.py(sim 自有 decisions.jsonl 写入方)/ tools/cw/replay_to_md.py
+  常量先例)/ sim/runner.py(sim 自有 decisions.jsonl 写入方)/ skills/sr-od-dev-currency-war/scripts/replay_to_md.py
   (复盘渲染读者 `_render_counters`)

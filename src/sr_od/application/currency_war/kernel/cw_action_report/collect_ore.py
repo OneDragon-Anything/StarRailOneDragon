@@ -111,7 +111,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
       'ore_reward_attach_missing_level'(优先于前两条表达具体原因——
       批内含非席满跳点即非「全部席满跳过」,全跳批亦报此 reason)。
 
-    P1 状态容器原生(§3.2):bench 工作副本 = BenchView 槽序、deployed =
+    P1 状态容器原生:bench 工作副本 = BenchView 槽序、deployed =
     行域下标派生表;整表写 = bench_view_of_working 直构(原
     ``_bench_view_keep_items`` 占位件保留补丁随换形口停用自然消失——
     工作表元素即状态容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
@@ -355,7 +355,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     if opened == 0:
         # 批内含缺项∧level 缺读跳点即非「全部席满跳过」——具体原因
         # reason 优先于 bench_full_no_open 表达(详设 ore-click-consume
-        # §1:reason 是零写跳过的唯一可断言通道)
+        #:reason 是零写跳过的唯一可断言通道)
         if missing_level:
             return LogicOutcome(applied=False, reason=_MISSING_LEVEL_REASON)
         return LogicOutcome(applied=False, reason='bench_full_no_open')

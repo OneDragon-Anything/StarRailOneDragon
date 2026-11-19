@@ -571,15 +571,15 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     - ``n_raw``:对账后原始格数(不一致采 CV;未建档值保留原值供钩子判档;
       未知态帧 = None);
     - ``n``/``prefix``:运行值(未建档档 → 8 格超集,已建档档直读;未知态
-      帧 → ``None``/``''``,消费方按读写分级处置,§3.2④);
+      帧 → ``None``/``''``,消费方按读写分级处置,④);
     - ``cap``/``level``/``diff``:读数快照(判读/保留证据);
-    - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键(§3.2④)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
+    - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
       (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零);
     - **状态容器接入调用(back_max 语义裁决·闸门二)**:已知帧裁决值随写
       ``GameState.back_layout``(值/superset 标记判据与跳过条件见
       :func:`_observe_back_layout_to_container`;零新增读,best-effort)。
 
-    **公式输入净化(§3.2①消费端)**:``level_trusted`` 三态——
+    **公式输入净化(①消费端)**:``level_trusted`` 三态——
     ``False`` = level 为 derived/启发式(未过可信门)→ 公式通道**弃权**
     (n_raw 依 CV/仲裁;CV 也不可判 → 双弃权进未知态);``None`` = 调用方
     未声明 → 维持现行为(diff=0 退 6 档基线,零行为变更);``True`` =
@@ -611,7 +611,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     except Exception:   # noqa: BLE001  读源失败 → 退基线(失败安全侧)
         cap, level = None, None
     if level_trusted is False:
-        # §3.2① 公式输入净化:derived/启发式 level 不作裁决依据 → 公式弃权
+        #① 公式输入净化:derived/启发式 level 不作裁决依据 → 公式弃权
         # (不是退 6 档——现行 diff=0 → 6 把「不知道」当「无扩展」)。
         diff = None
         formula_raw = None
@@ -625,7 +625,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     cv_readings: list[int | None] | None = None
     _arb_n: int | None = None   # 冲突最终裁决档(None=无冲突/保 CV 旧规)
     if formula_n is None and cv_n is None:
-        # 布局未知态(§3.2④):双弃权 → 不固定选任何档。连续计数按
+        # 布局未知态):双弃权 → 不固定选任何档。连续计数按
         # 「一次判定全不可判计 1」(B3 换算规则),每帧 JSONL 保留证据不节流。
         _unknown_streak += 1
         _frozen = _unknown_streak >= UNKNOWN_FREEZE_FRAMES
@@ -680,7 +680,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                 'unknown_streak': _unknown_streak}
     _unknown_streak = 0   # 已知帧清零复位(B3;= 干净裁决解冻)
     if formula_n is None:
-        # 公式弃权 ∧ CV 单源可用:采 CV 实测(布局类「实测>推导」,§2.2;
+        # 公式弃权 ∧ CV 单源可用:采 CV 实测(布局类「实测>推导」,;
         # 占用态门三态探针已给结构判据,不存在「采信启发式」问题)。
         # 防护对齐(审查C2):未建档读数与双通道路径同过 三读门
         #(防单源幻影高档当帧生效);未确认 → CV 弃权进未知态;分键保留证据。
