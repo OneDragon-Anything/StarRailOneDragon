@@ -40,8 +40,8 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 # 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(配置=用户偏好单一职责)——
 # 单一源在策略层 pick_common.AFFIX_COUNTERS_FACTIONS(词缀→克制羁绊名
 # 直写表),消费 = pick_common.counter_pick_penalty(两屏选卡克制减分)。
-# 配置面单一源:
-# docs/develop/sr_od/application/currency_war/config.md。
+# 配置面单一源(归属判据与字段语义):
+# skills/sr-od-dev-currency-war/references/config.md。
 
 
 class CurrencyWarConfig(YamlConfig):
@@ -57,9 +57,10 @@ class CurrencyWarConfig(YamlConfig):
         # —— 策略偏好(meta,版本依赖)——
         self.faction_priority: list[str] = self.get('faction_priority', DEFAULT_FACTION_PRIORITY)
         self.character_priority: list[str] = self.get('character_priority', DEFAULT_CHARACTER_PRIORITY)
-        # 用户转向轴(config.md §3,用户 2026-08-17 确认全四类实体×三档):forbid 硬过滤 +
-        # build_around 必含(cw_comps._passes_steering 读)+ priority 软加分(_priority_boost /
-        # 两屏选卡策略器)。默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
+        # 用户转向轴(四类实体×三档,语义单一源 = skill references/config.md §3):
+        # forbid 硬过滤 + build_around 必含(character 档消费 = strategies/impl/flow.py
+        # 选靶;faction 档暂无消费端,保留接预设)+ priority 软加分(两屏选卡策略器)。
+        # 默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
         self.character_forbid: list[str] = self.get('character_forbid', [])
         self.character_build_around: list[str] = self.get('character_build_around', [])
         self.faction_forbid: list[str] = self.get('faction_forbid', [])

@@ -9,7 +9,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 ## 1. 代码架构(先建立整体认知)
 
-图 A 术语:game state 每字段三态——**观察态**(实读值)/ **逻辑态**(动作执行后按游戏规则推算的预期值)/ **未观察**;**对账** = 推算的预期值与下一帧实读逐项比对,对不上 = 有 bug。
+图 A 术语:game state 每字段三态——**观察态**(实读值)/ **逻辑态**(动作执行后按游戏规则推算的预期值)/ **未观察**;**帧** = 一次截取画面并做一轮决策的时点;**对账** = 推算的预期值与下一帧实读逐项比对,对不上 = 有 bug。
 
 ### 1.1 一局怎么跑(图 A:主数据流)
 
@@ -154,7 +154,6 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 改入口链 / 退出链 / 弹窗守卫族 | 改前必读 [references/flow/entry-exit.md](references/flow/entry-exit.md)(三层结构/退出分发序/A 类名单与停机位同源契约) | flow/entry-exit |
 | 改守卫 / 停机闸 / 降级链 | 改前必读 [references/flow/guards.md](references/flow/guards.md)(重派网/未知兜底/停机闸处理流程/降级链表) | flow/guards |
 | 改策略契约面 / 状态分离(session/StrategyState/GameState 分工) | 改前必读 [references/flow/strategy-contract.md](references/flow/strategy-contract.md)(四身份分离/17 接口/三条契约) | flow/strategy-contract |
-| 改备战执行臂(部署/换人/卖出/装备)或逻辑态面字段 | 改前必读 [references/flow/prep-contract.md](references/flow/prep-contract.md)(坐标系/写入端不变式/生成期 vs 执行期时序/逐臂读法) | flow/prep-contract |
 | 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据) | telemetry-reading |
 | 单局深度复盘 / 复盘模板修订 | match-review(粒度=外层循环画面op调用序,报告按画面章组织:0 观察+动作节+策略评价;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选清单,落点=报告文末复盘者附加) | match-review |
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
@@ -163,6 +162,8 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 阵容定义字段设计(Comp schema 新增/修订/评审) | comp-definition(两条定谳:①不抄攻略三阶段,按终局形态定义,时间过程归策略机制层;②角色靠深入游戏理解逐个敲定(统计只给候选),两层分离=文档层完全理解/实现层策略消费最小集;字段准入五判据;先读再动) | comp-definition |
 | 游戏版本更新(CW 侧适配) | version-update 清单(判型/各域明细/换赛季战役组织;总流程归 sr-od-dev-version-update-adaptation) | version-update |
 | 数据采集 / 版本重采 / 新字段建模 | §3单一源地图·数据行(权威序;生成器分层) | data-collection |
+| 改用户配置字段(增/删/语义) | 改前必读 [references/config.md](references/config.md)(归属判据红线:用户会因个人目的想改它吗;转向轴四类×三档语义表) | config |
+| 改状态容器(写入入口 / 上报函数 / 字段增删) | 改前必读 [references/game-state.md](references/game-state.md)(三种来源与对账 / 上报函数族形态 / 字段设计纪律) | game-state |
 | 自主推进(实机探索期:派实机探索 agent / 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill);CW 实机探索期运转细则 → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
 | ADR / as-built 维护 | §4文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查 §3 单一源地图,仍定位不了 → 给分诊表补行 | — |
