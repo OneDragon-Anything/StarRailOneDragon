@@ -164,6 +164,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 数据采集 / 版本重采 / 新字段建模 | §3单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 改用户配置字段(增/删/语义) | 改前必读 [references/config.md](references/config.md)(归属判据红线:用户会因个人目的想改它吗;转向轴四类×三档语义表) | config |
 | 改状态容器(写入入口 / 上报函数 / 字段增删) | 改前必读 [references/game-state.md](references/game-state.md)(三种来源与对账 / 上报函数族形态 / 字段设计纪律) | game-state |
+| 改状态流水 / 判读账本(行结构 / 渠道签名 / 版本号 / 落盘 / 寿命清理) | 改前必读 [references/journal.md](references/journal.md)(两种行型 / 签名字段面 / 单版本事务 / 三道闸滚动清理 / 常开装配) | journal |
 | 自主推进(实机探索期:派实机探索 agent / 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill,需求线流水线);CW 实机探索期运转细则+领域叠加件(核心面清单/共享资产枚举/串行模式映射) → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
 | ADR / as-built 维护 | §4文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查 §3 单一源地图,仍定位不了 → 给分诊表补行 | — |

@@ -1,15 +1,15 @@
 """统一 state 状态流水落盘(无条件常开)。
 
-设计裁定(原 ADR 0630/0634,已停用删除(随 ADR 档案);journal 无条件常开,无开关无影子期)
+设计裁定(journal 无条件常开,无开关无影子期)
 
 (记录机制
-as-built 权威版本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md``)。
+as-built 权威版本面 = ``skills/sr-od-dev-currency-war/references/journal.md``)。
 形态:流程侧唯一落盘流 ``state/journal.jsonl``,每次 state 写入一行,行 =
 改了什么 + 渠道签名 + 版本 id + **写入后完整 state 快照**——行行自足,
 查询直接读行(journal.md §1);无快照基准、无周期节奏、无对账自检、无前溯
 推导(v2 增量账+快照基准+对账自检整套随 v3 根本性纠正作废,禁回归)。
 
-落盘形态(journal.md §5):内存追加 + 规范化序列化,磁盘批量 flush(缓冲满
+落盘形态(journal.md §7):内存追加 + 规范化序列化,磁盘批量 flush(缓冲满
 阈值落盘)——同步关键路径零逐行 open/write;崩溃丢失窗 = 未 flush 尾部,该窗
 内时点无行 = 诚实缺失,无补建机制。
 
@@ -17,19 +17,19 @@ as-built 权威版本面 = ``docs/develop/sr_od/application/currency_war/game_st
 装配段无条件调 :func:`install_state_telemetry` + 局状态容器单例建立点兜底
 (:func:`ensure_journal_assembly`;生产调用方 = kernel/cw_game_state
 :func:`game_state_of` 建立路径——遥测装配 = game state 职责(用户
-裁定 2026-09-15 精化令,同桶直调,注入漏斗 = establish_new_match
+裁定:同桶直调,注入漏斗 = establish_new_match
 状态容器建立点);写路径(字段写入/版本分配)
 不因本模块存在与否分支,行落盘另以 sink 在场与 run_id 在场为准——缺实例
 (单元测试/工具环境)= 行不落,诚实缺失。单文件 + 行内 run_id 列(per-run
 分文件候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,
-journal.md §5)。
+journal.md §7)。
 
 寿命契约(装配端):滚动清理以 **run 段**
 为整体单元(段 = 行内 run_id 归属,整段淘汰禁切半段),已淘汰段的 state_ref
 钉 = 永久 unverified,淘汰动作在本模块 manifest(``journal.retirement.jsonl``,
 journal 同目录)逐段暴露(archived_out;判读者钉解析失败时查 manifest 可辨
-「清理」与「丢数据」)。淘汰分三道闸(策略语义权威版本 = journal.md §5「寿命
-(滚动清理)策略」):实机段龄窗(跨期语料窗承诺适用范围 = 实机对局语料)/
+「清理」与「丢数据」)。淘汰分三道闸(策略语义权威版本 = journal.md §9「寿命:
+滚动清理三道闸」):实机段龄窗(跨期语料窗承诺适用范围 = 实机对局语料)/
 非实机段龄窗(sim 批与 harness 段短窗——全消费面不采信,30 天窗对其无效,
 是账面体积无上界的根源)/体积兜底窗(容量失控时从最老段清,可击穿实机窗,
 manifest 暴露保考古)。清理时点 = 装配(:func:`install_state_telemetry`
@@ -57,9 +57,8 @@ from typing import Any
 
 from one_dragon.utils.log_utils import log
 
-#: 缺省批量 flush 阈值(行数;崩溃丢失窗上限 = 阈值;量级对齐 journal.md §5
-#: 「批量 flush(阈值随实现批定)」——首版取 64,实测后随单局体积口径
-#: (后果节 M1 三个登记入口径)耦合调)。
+#: 缺省批量 flush 阈值(行数;崩溃丢失窗上限 = 阈值;量级语义 = skill
+#: journal.md §7 批量落盘——首版取 64,随单局体积实测口径调)。
 DEFAULT_FLUSH_EVERY: int = 64
 
 #: 实机形态 run_id 正则(实机段分型判据;telemetry/state.start_run 铸造口径
@@ -165,7 +164,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
                               ) -> dict[str, Any]:
     """run 段粒度滚动清理(寿命契约;装配前置时点调,单进程写端未启动)。
 
-    契约(策略语义权威版本 = journal.md §5):
+    契约(策略语义权威版本 = journal.md §9):
     - 清理单元 = **run 段整体**(行内 run_id 归属;禁切半段——段内版本序
       完整性是 state_ref 钉解析的前提);
     - 三道闸按序判定(测试可传参覆写常量):

@@ -2,7 +2,7 @@
 
 > 本文档所属 = game_state 设计目录,总纲见 [README](README.md)。术语与图例:保留词(id_mark 确认/对账/帧/单一源等)与数字来源标注四形态【注】【推】【拟】【拍】见 [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
 > **定位**:本文 = 节点推进判定规则本体的唯一权威出处——只写现行规则(触发面/观察态门/三原语/四分支处置/类型派生/停用申报);旧版规则组的演进与勘误过程归 git 历史,正文不复写。
-> 实现引用 = kernel `report_node_advance`/`advance_node_effective`/`observe_node_anchor`(cw_game_state.py);载体规范(版本 id/单版本事务/渠道签名/行型)单一源 = [journal.md](journal.md) §2-§3,本文不复写。
+> 实现引用 = kernel `report_node_advance`/`advance_node_effective`/`observe_node_anchor`(cw_game_state.py);载体规范(版本 id/单版本事务/渠道签名/行型)单一源 = skill `sr-od-dev-currency-war/references/journal.md` §4-§5,本文不复写。
 
 ---
 ## ① 结论(判定方案一句话版)

@@ -1,15 +1,13 @@
-"""统一 state 账本判读读面(R3-1 消费方迁移第一批:离线工具族读新账)。
+"""统一 state 账本判读读面(离线工具族读新账)。
 
-设计裁定权威版本(
-0630-unified-state-journal.md``,后果节消费方迁移/M4 档案行;记录机制 as-built
-权威版本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
+设计裁定权威版本(记录机制 as-built
+权威版本面 = ``skills/sr-od-dev-currency-war/references/journal.md``;设计
 工作稿存 .debug/temp 为临时档,禁作权威版本指针):判读/装配/策略回溯 = 按行
 直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
-本模块 = 统一 state 新账的**唯一**判读读面(权威版本 =
-r5-migration-plan.md §2:journal 为唯一被读账本;旧 12 流视图族已随
-写入端停用,拆除);判读 CLI query 命令唯一走本读面。
+本模块 = 统一 state 新账的**唯一**判读读面(journal 为唯一被读账本;
+旧 12 流视图族已随写入端停用,拆除);判读 CLI query 命令唯一走本读面。
 
-行模型(journal.md §1 两行型,写端 = kernel/cw_game_state ``_swap``/
+行模型(journal.md §3 两行型,写端 = kernel/cw_game_state ``_swap``/
 ``note_obs_event``,落盘 = kernel/cw_state_journal 批量 flush 追加 JSONL):
 - 行型 1 ``row='write'``:v/ts/run_id/row/field/after/same_value/state/sig/
   note/evidence_refs;
@@ -23,7 +21,7 @@ obs_phase/evidence_refs)缺位不炸——取值口回退行内快照或显式�
 面对的是崩溃截断尾、跨版本行与未来字段演进;判读工具炸在坏行上会让整段
 语料不可读(obs_conflicts journal 截断行容错读先例,replay_to_md 同判据)。
 
-**撕裂行消费契约全消费方覆盖**(journal.md §5 宽容消费契约,v3.5-低-2:
+**撕裂行消费契约全消费方覆盖**(journal.md §7 宽容消费契约:
 批量 flush 的半行/
 坏行 = 逐行跳过 + 坏行计数留痕,判读 CLI/装配器/哨兵统一遵守;写端批量
 flush 崩溃丢失窗 = 未 flush 尾部,半行 = 合法输入):读入口单一源 =
