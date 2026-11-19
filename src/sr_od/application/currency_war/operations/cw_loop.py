@@ -540,26 +540,6 @@ class CwLoop(CwOperation):
                                screen='', mode='compute'))
             self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
 
-    def _snap(self, tag: str) -> None:
-        """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。
-
-        见 od-dev-gameplay-automation「开发时预留日志 + 截图开关 / 信息密度论」:让一次
-        实跑暴露尽量多的问题(选人选项长啥样 / OCR 误读 / 坐标漂移 / 漏事件),而非每次只测
-        一种情况。截图存 ``.debug/images/``(``save_screenshot``),日志带当前帧全量 OCR 文本
-        (选人/事件选项 OCR 现无策略评估 → 先靠 snap 看清每局都 offered 什么,再建评估)。
-        非关键路径:try 兜底,debug 失败不影响对局推进。
-        """
-        try:
-            ocr_map = self.ctx.ocr_service.get_ocr_result_map(
-                image=self.last_screenshot, rect=None, color_range=None, crop_first=False,
-            )
-            texts = [k for k, mrl in ocr_map.items() if mrl.max is not None]
-            path = self.save_screenshot(prefix=f'cw_{tag}')
-            log.info(f'[cw-snap] {tag} iter={self._iter} shot={path} ocr={texts[:15]}')
-        except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
-            log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
-
-
     def _cw4_counters_snapshot(self, session: Any) -> dict[str, int] | None:
         """策略行为观测计数局终聚合快照(R5  键并入载体,r5-migration-plan.md §2)。
 
@@ -925,7 +905,6 @@ class CwLoop(CwOperation):
         + CW_DISPATCH_SCREENS 登记,三处缺一不可。
         """
         if name == '货币战争-列车同行':
-            self._snap('choose_partner')   # 选人选项(立绘名)→ 后续建策略评估用
             return self._dispatch_screen_op(
                 CwScreenPartner(self.ctx), journal_name='选择伙伴',
                 frame_tag='overlay_partner', wait=2)
@@ -951,13 +930,11 @@ class CwLoop(CwOperation):
                 on_fail_retry=True)
 
         if name == '货币战争-盛会之星':
-            self._snap('megastar')   # 巨星候选(立绘名)→ 后续建策略评估用
             return self._dispatch_screen_op(
                 CwScreenMegastar(self.ctx), journal_name='巨星强化',
                 frame_tag='overlay_megastar', wait=2)
 
         if name == '货币战争-遭遇节点':
-            self._snap('encounter')
             return self._dispatch_screen_op(
                 CwScreenEncounter(self.ctx), journal_name='遭遇节点',
                 frame_tag='overlay_encounter', wait=2)
@@ -968,7 +945,6 @@ class CwLoop(CwOperation):
                 frame_tag='overlay_deploy_not_full', wait=3)
 
         if name == '货币战争-投资策略':
-            self._snap('invest_strategy')
             # 横幅中间态(展开动画)帧身份天然 miss,不会进入本分支——该态
             # 不处理,由阶段二守卫等待(screen_flow_timing.md #30)。
             return self._dispatch_screen_op(
@@ -976,19 +952,16 @@ class CwLoop(CwOperation):
                 frame_tag='overlay_invest_strategy', wait=2)
 
         if name == '货币战争-补给':
-            self._snap('supply')
             return self._dispatch_screen_op(
                 CwScreenSupplyNode(self.ctx), journal_name='补给节点',
                 frame_tag='overlay_supply', wait=2)
 
         if name == '货币战争-武装箱弹窗':
-            self._snap('armory_box')
             return self._dispatch_screen_op(
                 CwScreenArmoryBox(self.ctx), journal_name='武装箱',
                 frame_tag='overlay_armory_box', wait=2)
 
         if name == '货币战争-备战-武装箱选择':
-            self._snap('box_pick')
             return self._dispatch_screen_op(
                 CwScreenBoxPick(self.ctx), journal_name='武装箱选择',
                 frame_tag='overlay_box_pick', wait=1.5)
