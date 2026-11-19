@@ -77,7 +77,7 @@ BackToNormalWorldPlus(sr_od/operations/back_to_normal_world_plus.py)
 
 ## 4. 交接节点(app 编排层的 loop→exit 交接)
 
-loop 的两个退出触发(正常完成/节点出错过多)都以 `round_success` 出口交接(出口总表见 loop.md §6;出口文本常量 = `cw_loop.py` 模块级 `STATUS_LOBBY_DONE`/`STATUS_HANDOFF_PREFIX`,单一源)。交接动作挂在 app 节点链末端(`currency_war_app.py::CurrencyWarApp._exit_cleanup`),不在 loop 内联调用 exit——所有权表达归编排层:app 是单局生命周期主人,loop/exit 都是被它调度的 op,两 op 保持互不引用,「loop 交 exit」的语义由节点链表达。
+loop 的两个退出触发(正常完成/节点出错过多)都以 `round_success` 出口交接(出口总表见 loop.md §6;出口文本常量 = `cw_loop.py` 模块级 `STATUS_LOBBY_DONE`/`STATUS_HANDOFF_PREFIX`,单一源)。交接动作挂在 app 节点链末端(`currency_war_app.py::CurrencyWarApp._exit_cleanup`),不在 loop 内联调用 exit——所有权表达归编排层:app 是单局生命周期主人,loop/exit 都是被它调度的 op。两 op 的引用方向保持单向:exit 可构造 loop(route⑤ 委托清理,见 §3);**loop 不 import exit**——「loop 交 exit」的语义由 app 节点链表达,loop 侧零退出依赖。
 
 - **三形态判定**,载体 = `self._previous_round_result.status`(框架在节点转移时写入;带动态后缀的结束文本不能走节点边文本全等,故读上一轮结果对象):大厅完成 → exit 大厅确认形态(幂等确认,无弹窗压制时近 no-op);异常交接(前缀命中,loop 防线耗尽的交接出口)→ exit 清场退局形态(exit 自按当前画面路由:备战态点门/战斗态退局范式/其余 route⑤ 委托清理,exit 不区分形态传参);其余(max_rounds 停备战 / 开局失败-中断〔假局守卫,已在大厅且对局状态已清〕)→ 跳过退出直接结束。loop fail(看门狗/框架超时/未捕获/未知兜底)不经本节点,走 app 失败收尾现状语义(残局下次启动预检兜底)。
 - **两段式**:弹窗守卫段(复用进局链注册表统一入口 `try_handle_entry_popups`,清掉局末自动弹、会压住 exit 识别的弹窗——不守卫则 exit 识别全落空)→ exit 调用段。

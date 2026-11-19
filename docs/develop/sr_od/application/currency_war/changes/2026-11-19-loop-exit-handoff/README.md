@@ -10,6 +10,6 @@
 
 - 迭代设计：**定稿**（第 3 轮轻量核销通过；编辑项已清）
 - 设计对抗：第 1 轮（三核）+ 第 2 轮（双核）+ 第 3 轮（轻量核销）完成 · 报告=[attack.md](attack.md)
-- 落地：未开始（明细见 landing.md）
-- 正本更新：未开始（清单在 landing.md §3）
+- 落地：**完成**（T-1..T-4 全部验收 pass，账本 4/4 done；明细见 landing.md）
+- 正本更新：**完成**（loop.md 出口表 / entry-exit.md / guards.md；随 T-4 合入）
 
