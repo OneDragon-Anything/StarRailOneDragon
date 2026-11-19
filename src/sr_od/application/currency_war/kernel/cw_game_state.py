@@ -3017,10 +3017,9 @@ class GameState:
     # backend._begin_node_window 分期金条目,发金与递减同拍),均 sim
     # 门控写,live 零写——live 分期发放由游戏自算自显,金整字段观察
     # 覆盖收尾(hp 字段同款结构;金有真读)。无观察写端(剩余
-    # 条数 = 卡文推算知识,游戏 UI 无「剩余期数」读面)。计数语义对表:
-    # 权威版本口径 = strategy-env-impacts.md 用户裁决段「counter 单调从 0
-    # 起,节点入口 +1,到 3 耗尽」(向上计数);本状态容器 = 向下递减,两态
-    # 等价(剩余 = count − 已进节点数),权威版本句维持单一源不双写。取值
+    # 条数 = 卡文推算知识,游戏 UI 无「剩余期数」读面)。计数语义:
+    # 「counter 单调从 0 起,节点入口 +1,到 3 耗尽」的向上计数口径与
+    # 本状态容器的向下递减两态等价(剩余 = count − 已进节点数)。取值
     # 时机 = sim 状态副本执行期现值,跨节点存续随快照。开局初始值 =
     # {}(A 类,同 strategy_char_grant_bindings 种子族先例)。
     strategy_gold_next_nodes_left: Field[dict[str, int]] = field(

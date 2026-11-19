@@ -2052,15 +2052,15 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 超发货币:官方「失去你现在所有的金币，并在5个节点后，获得该金币数+70
     # 的总金币。」(cw_invest_data.py:139,id 202501)。金面播值负债卡首例,
     # 两条效果条目分治:负债分支 = 拿卡拍持有金 G→0(X=G 快照);回流分支 = 拿卡后
-    # 第 6 次节点入口一次性回流 G+70,条目同拍移除,不重发不补发。
+    # 第 6 次节点入口一次性回流 G+70(用户裁定「5个节点后=第6个节点才获取」),
+    # 条目同拍移除,不重发不补发。
     # duration_nodes=6 = 触发入口序的载体表达——发放入口序 = 注册行
-    # gold_at_node_offset(5)+1,换算依据 = strategy-env-impacts.md 超发货币
-    # 条目用户裁定(2026-09-10)「5个节点后=第6个节点才获取」。负债额 X =
+    # gold_at_node_offset(5)+1。负债额 X =
     # 实例 counters[CounterKey.LOST] 伴生数值空间(effect-domain §4
     # 伴生数值空间先例),播值端 = 获得链登记条目
     #(kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数)。live 零写金
     #(游戏自扣自发,金整字段观察覆盖兜底——effect-domain「到期与尾款」
-    # 防双计裁定;impacts 条目「逻辑写」字样的实现位 = sim 写入状态副本的写端);
+    # 防双计裁定);
     # sim 两条写入实现 = 状态副本真值(清零实现挂选卡落地拍、回流实现挂节点窗推进时点
     # pre-read 两拍,evidence 前缀 strategy:hyperemit_drain:<卡名> /
     # strategy:hyperemit:<卡名>:p{plane}r{r})。duties 全空:余期推进 =
@@ -2074,8 +2074,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['超发货币'], duties=DutyFlags(),
         duration_nodes=6,
         notes='负债拍播值 counters[LOST] = 登记帧金读数(获得链只登记不写状态的实现分支);'
-              '回流 = 拿卡后第 6 次节点入口(入口序 = offset+1,impacts '
-              '用户裁定 2026-09-10);live 零写观察覆盖,sim 状态副本里的值两写点;'
+              '回流 = 拿卡后第 6 次节点入口(入口序 = offset+1,用户裁定'
+              '「5个节点后=第6个节点才获取」);live 零写观察覆盖,sim 状态副本里的值两写点;'
               '发放物为金不入 STRATEGY_DELAYED_GRANTS 物品词表族表'),
     # 人海战术:官方「我方小队的前/后台强度提高15%。战斗中，我方小队在场的
     # 角色与忆灵数量之和大于8时，我方小队的前/后台强度提高25%。」

@@ -750,8 +750,8 @@ def world_shop_refresh_cost(gs: GameState) -> int:
 
 
 def xp_click_cost(gs: GameState) -> int:
-    """一次「购买经验」单击花金(观察优先兜底逻辑,strategy-env-impacts §2
-    通用模式 1;折扣语义修复权威版本=行内申报)。
+    """一次「购买经验」单击花金(观察优先、逻辑兜底:显示价原样直通零减项,
+    兜底折扣族聚合的单一源在本函数;折扣语义修复权威版本=行内申报)。
 
     两支语义(来源凭 ``gs.level_up_cost`` 是否有值判别):
     - **显示价支**(OCR 实读):传入值为最近备战帧观察价,游戏侧已算好

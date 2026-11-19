@@ -404,8 +404,7 @@ def strategy_invest_node_gold_of(gs: GameState) -> int:
 #: 分期金「现在」效果条目实存性披露键(建模假设档,静态常量已登记,无运行时
 #: setdefault 动作;家族先例 = cw_effect_inventory.
 #: STRATEGY_ON_MERGE_LIVE_UNVERIFIED 同形)。登记一件实机未证事实:
-#: 用户裁决(strategy-env-impacts.md 用户裁决段,2026-09-10)把长期主义
-#: 系按「拿卡当场 +7 + 接下来 3 次进节点各 +7」4 次处理,并明示
+#: 用户裁决把长期主义系按「拿卡当场 +7 + 接下来 3 次进节点各 +7」4 次处理,并明示
 #: 「不确定是不是4次」——「现在」效果条目在拿卡拍是否真发、与「节点」效果条目是否
 #: 分离,持卡局档案金轨迹核对(当场段有无即判 4/3)。sim 现役只建模
 #: 「节点」效果条目(「现在」效果条目的状态副本写端 = T-112 族级待办维持不建);live 由游戏
@@ -3297,7 +3296,7 @@ class SimBackend:
         # 超发货币回流效果条目(金面播值负债卡回流支,前读两拍跨窗挂起形):
         # 拍① = 窗内现读条目——remaining_nodes == 1 即「下一入口 = 第 6 次
         # 入口」(remaining ≡ N − counter 等价式;第 6 次节点入口 = 注册行
-        # offset+1,impacts 用户裁定 2026-09-10),快照回流额 = counters[LOST]
+        # offset+1,用户裁定「5个节点后=第6个节点才获取」),快照回流额 = counters[LOST]
         # + payload.gold_at_node 挂起;拍② = 下一窗开窗先付挂起额一笔,
         # evidence 笔 strategy:hyperemit:<卡名>:p{plane}r{r}。跨窗挂起的
         # 机制根因:sim 动作流的节点效果递减发生在动作上报路径
