@@ -1534,8 +1534,8 @@ def _capture_unrecognized_node_icons(screen: MatLike, slots: list,
 def _write_prep_node_chain(session: object, slots: list | None,
                            sig: ChannelSig,
                            screen: MatLike | None = None) -> None:
-    """备战帧现行链写端 + 节点行观察消费位(链语义权威版本 =
-    game_state/chain-observation.md §3,quality=prep_row)。
+    """备战帧现行链写端 + 节点行观察消费位(现行链 evidence=prep_row,
+    轮位对齐门才写)。
 
     插入位置 = 备战入口 heavy 观察的节点行读(``observe_full`` 现役
     ``read_node_sequence`` 调用回传 slots——识别零新增;director 侧写状态容器,
@@ -1556,8 +1556,10 @@ def _write_prep_node_chain(session: object, slots: list | None,
     无 session)。
 
     变异窗语义:对齐 clean 读成功即关 env_grace_until(投资环境原短窗
-    重读职责由本读承接);diff 触发(窗内豁免清候选,窗关后
-    按两帧确认补比对)。纯观测写点:异常不阻塞观察链。
+    重读职责由本读承接);台账写受窗关守卫,**链写不设变异窗门**——窗内
+    错读由现行链整帧覆盖自愈 + diff 两帧门拦截误报;diff 触发(窗内
+    豁免清候选,窗关后按两帧确认补比对)。纯观测写点:异常不阻塞观察链
+    (链读失败对应字段保持未写,诚实缺失)。
     """
     if not slots:
         # 读器非 clean 备战帧空转守卫随迁(模板未加载 / 圆数不足 → 跳过等下轮)。

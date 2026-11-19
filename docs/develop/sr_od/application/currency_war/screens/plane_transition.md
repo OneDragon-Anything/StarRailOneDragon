@@ -31,7 +31,7 @@
 
 ## 6. 状态上报面
 
-链观察写(`report_screen_plane_transition_obs`,纯观测写点,调用方的 best-effort 抑制由观察侧保留):`gs.observe(node_path, chain, evidence='transition_snapshot')` 双写——`node_path_baseline` 开局幂等回填(已有值不覆写);防御逐位:chain 缺 = 行空/读缺不写(诚实缺位),非开局且节点镜像缺 = 行归属位面不可知禁猜跳写;离场快照链 diff 触发(`maybe_emit_chain_diff`,snapshot=True 豁免两帧门)随写点同迁。node_path 字段语义 = cw_game_state 字段注释;链权威版本 = [../game_state/chain-observation.md](../game_state/chain-observation.md)。
+链观察写(`report_screen_plane_transition_obs`,纯观测写点,调用方的 best-effort 抑制由观察侧保留):`gs.observe(node_path, chain, evidence='transition_snapshot')` 双写——`node_path_baseline` 开局幂等回填(已有值不覆写);防御逐位:chain 缺 = 行空/读缺不写(诚实缺位),非开局且节点镜像缺 = 行归属位面不可知禁猜跳写;离场快照链 diff 触发(`maybe_emit_chain_diff`,snapshot=True 豁免两帧门)随写点同迁。node_path 字段语义 = cw_game_state 字段注释;链权威版本 = kernel/cw_game_state.py node_path 字段注释与 maybe_emit_chain_diff。
 
 ## 7. 子态与 overlay
 

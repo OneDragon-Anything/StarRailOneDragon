@@ -477,7 +477,8 @@ CHANNEL_FAMILIES: tuple[str, ...] = ('obs', 'logic_action', 'logic_hook')
 OBS_MODES: tuple[str, ...] = ('read', 'carried', 'prior', 'synthesized')
 
 #: obs_event 事件词表封闭集(行型 2:arbitrate=拒读/仲裁拒绝留存证据 /
-#: miss=失读留存证据 / popup=弹窗类流程异常留存证据)。集外值 = 红(硬约束 2 同纪律:
+#: miss=失读留存证据 / popup=弹窗类流程异常留存证据 / chain_diff=链基线
+#: vs 现行差异证据行,零状态变更)。集外值 = 红(硬约束 2 同纪律:
 #: 事件面漂移要在登记点暴露,禁自由串)。
 OBS_EVENT_EVENTS: tuple[str, ...] = ('arbitrate', 'miss', 'popup', 'chain_diff')
 
@@ -2705,8 +2706,7 @@ class NodeBooks:
 
 @dataclass(frozen=True)
 class TokenCell:
-    """链观察单格读数(链权威版本 = game_state/chain-observation.md §2;逐格
-    元数据随读数落载体)。
+    """链观察单格读数(逐格元数据随读数落载体)。
 
     token = 类型 token(封闭集 battle/supply/encounter/reward/boss + 仅标签
     通道 elite/megastar/invest;None = 本帧未辨)。channel = 产出通道封闭集
@@ -2722,13 +2722,14 @@ class TokenCell:
 
 @dataclass(frozen=True)
 class NodeChain:
-    """链值载体(链权威版本 §2):本位面节点类型链,值自带位面防切换窗读陈旧链。
+    """链值载体:本位面节点类型链,值自带位面防位面切换窗读陈旧链。
 
     [索引定义] ``seq`` 下标 i(0-based)= 该位面第 i+1 轮的读数单元,与
     判读侧台账 ``PlaneNodeLedger.seq_by_plane`` 同下标语义;取值时机 =
     生成期帧快照(现行链 = 最新权威读数**整帧覆盖**,不按位合并;基线链 =
-    位面入口写定,本位面内不被链读覆盖);写入端 = 备战帧入口 heavy 链读
-    (prep_row)/ 过渡屏观察段(transition_row / transition_snapshot)。
+    开局写定一次,此后整局不被覆写);写入端 = 备战帧入口 heavy 链读
+    (prep_row)/ 过渡屏观察段(transition_row / transition_snapshot);
+    双源写入语义见 :attr:`GameState.node_path` 字段注释。
     """
 
     plane: int
@@ -2795,10 +2796,23 @@ class GameState:
     node: Field[NodeKey] = field(default_factory=Field)          # 当前节点
     # [索引定义] node_path.seq 下标 = 该位面第 i+1 轮(0-based,与
     # PlaneNodeLedger.seq_by_plane 同下标语义);取值时机 = 生成期帧快照
-    # (整帧覆盖,不按位合并);写入端 = 备战帧入口 heavy 链读(prep_row)/
-    # 过渡屏观察段(transition_snapshot),见 NodeChain 注(链权威版本 §2/§3)。
-    node_path: Field[NodeChain | None] = field(default_factory=Field)          # 现行链
-    node_path_baseline: Field[NodeChain | None] = field(default_factory=Field)  # 基线链(链权威版本 §2/§3:位面入口写定,本位面内不被链读覆盖)
+    # (整帧覆盖,不按位合并)。跨度 = 本位面(按位面建模是链观察与 diff
+    # 的最小自洽单元)。
+    # 现行链(node_path):最新权威读数整帧覆盖——投资策略/环境效果会中途
+    # 改写后续节点类型,链是动态的,最新观察才是真相;已通过段不由本帧
+    # 负责,由 journal 流水行补齐(行行自足,任一行可读「位面 p 第 i 轮
+    # 当时的链」)。写入端 = 备战帧链读(evidence=prep_row,轮位对齐门
+    # 才写,见 build_prep_node_chain)/ 位面过渡离场快照(evidence=
+    # transition_snapshot,跨位面形态 = 刚离开位面的链终值)。
+    # 基线链(node_path_baseline):开局写定一次、此后整局不覆写(两写端
+    # 幂等门「已有值不覆写」,以最先落档者为准)——开局过渡屏
+    # (transition_row)优先,过渡屏缺席/未读时备战首帧回填
+    # (prep_row_first)。
+    # 防双源边界:本字段组存帧事实,判读侧台账 PlaneNodeLedger
+    # (plane_node_sequences)存按位合并视图——语义分格,禁互相代读
+    # (链查询零回落不读台账,见 chain_node_type;台账合并不读链)。
+    node_path: Field[NodeChain | None] = field(default_factory=Field)          # 现行链(最新权威读数整帧覆盖)
+    node_path_baseline: Field[NodeChain | None] = field(default_factory=Field)  # 基线链(开局写定一次,整局不覆写)
 
     # —— 单位域(含星级与装备)——
     # [索引定义] deployed = 上阵统一槽位视图(合卷):front_slots[i] = 前排物理槽 i+1(定长 4)/ back_slots[j] = 后排
@@ -3700,7 +3714,7 @@ class GameState:
     node_hist_pos: tuple[int, int] | None = None
     # [索引定义] node_path_diff_pending = 链 diff 两帧确认门的待确认候选
     # (链观察落地批):上一 clean 备战帧相对基线的差异链快照,下一 clean
-    # 帧读数与其一致才落 chain_diff 行(单帧翻转不产行,链权威版本 §4);
+    # 帧读数与其一致才落 chain_diff 行(单帧翻转不产行);
     # None = 无待确认候选。写端 = :func:`maybe_emit_chain_diff`(备战帧
     # 链写端);离场快照与变异窗豁免路径会清候选。
     node_path_diff_pending: NodeChain | None = None
@@ -4330,7 +4344,7 @@ class GameState:
           落画面**原始读数**(观察层唯一落点);
         - 类型派生·商店分支:商店面板(非专属,「未定型」零直定)→ 查现行链
           (:func:`chain_node_type`)直定,链缺/位越界/未辨 = 零写(禁猜,
-          链权威版本 §6 零内建回落)。
+          零内建回落)。
 
         **适用范围**:本口已退出**推进域**(``node_pos``/
         ``node_hist_pos`` 写入与效果推进尾段随四推断分支停用)——节点推进唯一
@@ -4365,7 +4379,7 @@ class GameState:
             self.observe(self.top_bar_raw, top_raw, sig=sig)
         # —— 类型派生(商店查现行链;链观察落地批)——
         # 商店对任意节点类型都开(非专属)→ 类型查现行链——链在位 = 直定写,
-        # 链缺/位越界/未辨 = 零写(禁猜,链权威版本 §6 零内建回落)。目标节点 =
+        # 链缺/位越界/未辨 = 零写(禁猜,零内建回落)。目标节点 =
         # 生效序与观察镜像的最新者(店开帧可在推进分支未计数的新节点上,镜像
         # 已由读链写新序键——目标只取 hist 会把类型回写上一节点,
         # run_20260918_074040 第 11 例病理)。
@@ -5066,15 +5080,18 @@ class ChainQuery:
 
 
 def chain_node_type(gs: GameState, plane: int, round_num: int) -> ChainQuery:
-    """现行链节点类型查询(链权威版本 = game_state/chain-observation.md §6;
-    只读,零读屏零 OCR,查询面 = ``node_path`` 现行链帧事实字段)。
+    """现行链节点类型查询(只读,零读屏零 OCR,查询面 = ``node_path``
+    现行链帧事实字段)。
 
     - 载体 = :class:`NodeChain`(list[str] 旧形
       为 journal 只读历史档,读面不认)——链未写/位面不匹配/位越界/该格
       token None → None(诚实缺位;**零内建回落**禁把基线/台账当兜底);
     - 链在位时位寻址 = seq[i] 第 i+1 轮(round 基 1);位越界/链跨位面错配
-      = None。基线/改写位两接口(chain_baseline/chain_rewritten)仍归后续
-      批,本口不预纳;
+      = None。基线/改写位两接口(chain_baseline/chain_rewritten)未实现、
+      归后续批,本口不预纳;其设计意图:chain_baseline 基线仅作入口参照、
+      禁当真值兜底(基线可能已被改写),chain_rewritten 返回已证伪改写位
+      集(位 ∈ 该集 ⇒ 基线值禁用作类型兜底)——基线不入兜底序、两禁令
+      均由消费侧执行;
     - 消费方 = 节点域类型派生规则四②「商店查现行链」(商店面板块未定型
       时的类型来源;消费侧执行兜底序与改写位禁令)。
     """
@@ -5091,14 +5108,14 @@ def chain_node_type(gs: GameState, plane: int, round_num: int) -> ChainQuery:
     return ChainQuery(token=token)
 
 
-#: 仅标签通道 token 集(链权威版本 §4 通道受限差判定:基线通道 hu、现行通道
-#: label 且现行 token ∈ 本集 = 两写端识别能力集不同,非环境改写)。
+#: 仅标签通道 token 集(通道受限差判定:基线通道 hu、现行通道 label 且
+#: 现行 token ∈ 本集 = 两写端识别能力集不同,非环境改写)。
 _LABEL_ONLY_TOKENS: frozenset[str] = frozenset({'elite', 'megastar', 'invest'})
 
 
 @dataclass(frozen=True)
 class ChainDiff:
-    """基线链 vs 现行链的结构差异(链权威版本 §4;数学单一源,实机与 sim 共用)。
+    """基线链 vs 现行链的结构差异(数学单一源,实机与 sim 共用)。
 
     rewrites = 改写位集(双 token 非 None 且不等,且差非通道受限);
     channel_limited = 通道受限差位集(基线 hu、现行 label 且现行 token ∈
@@ -5116,7 +5133,7 @@ class ChainDiff:
 
 
 def chain_diff(baseline: NodeChain, current: NodeChain) -> ChainDiff:
-    """基线链 vs 现行链结构差异(纯函数,实机与 sim 共用;链权威版本 §4)。"""
+    """基线链 vs 现行链结构差异(纯函数,实机与 sim 共用)。"""
     rewrites: list[int] = []
     limited: list[int] = []
     coverage: list[int] = []
@@ -5153,14 +5170,19 @@ def _chain_cells_payload(chain: NodeChain) -> list[dict]:
 def maybe_emit_chain_diff(gs: GameState, *, snapshot: bool,
                           in_mutation_window: bool,
                           sig: ChannelSig) -> bool:
-    """链 diff 触发面(链权威版本 §4/§5):基线在场 ∧ 差异非空才评估。
+    """链 diff 触发面:基线在场 ∧ 差异非空才评估(基线/现行任一缺 =
+    diff 通道关闭,诚实缺失不伪造)。
 
     触发纪律:备战帧触发须连续两个 clean 帧读数一致才落行(待确认候选 =
-    ``node_path_diff_pending``,单帧翻转不产行);离场快照豁免两帧门;
-    变异窗内豁免并清候选(窗关后按两帧确认补比对)。发出 = note_obs_event
-    'chain_diff'(verdict 留空——改写身份归因 = 消费侧 join
-    active_env/active_strategies 同帧快照,链权威版本 §5,观察层不猜);
-    journal sink 缺省关 = 零副作用。返回是否落行。
+    ``node_path_diff_pending``,单帧翻转不产行);离场快照豁免两帧门
+    (单帧即终审);变异窗内豁免并清候选(窗关后按两帧确认补比对)。
+    行载荷(行型 2,零状态变更、占版本、内嵌当时 state)= baseline/
+    current 两链逐格序列(token/channel/hu_dist)+ rewrites/channel_limited/
+    length_changed/first_diff_pos/baseline_coverage + snapshot 标记
+    (离场快照 = True);verdict 留空——改写身份归因 = 消费侧 join
+    active_env/active_strategies 同帧快照,观察层不猜;改写源对账口径 =
+    本行与改写源登记(:data:`cw_node_schedule.ENV_NODE_REWRITE_RULES`)
+    对照。journal sink 缺省关 = 零副作用。返回是否落行。
     """
     baseline = gs.node_path_baseline.value
     current = gs.node_path.value

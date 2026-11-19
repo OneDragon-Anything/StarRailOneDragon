@@ -42,8 +42,13 @@ def report_screen_plane_transition_obs(gs: GameState,
 
     写点定位 = cw_screen_plane_transition.py::``CwScreenPlaneTransition.observe``
     (观察 node;行读数与 TokenCell 构造归观察侧,obs.chain 进即写)。
-    防御逐位平移:chain 缺 = 行空/读缺不写(诚实缺位);非开局且
-    节点镜像缺 = 行归属位面不可知禁猜跳写;基线幂等门(基线已有不覆写)。
+    防御逐位平移:chain 缺 = 行空/读缺不写(诚实缺位,离场快照随之缺位 =
+    该离场位面的链终笔与 diff 终审不产);非开局且节点镜像缺 = 行归属位面
+    不可知禁猜跳写。
+    基线写门 = 仅开局(位面 1 入口;开局过渡屏 = 基线唯一优先源,
+    evidence=transition_row,投资环境选择**前**的改型前真值)且基线已有
+    值不覆写(幂等门;过渡屏缺席/未读时由备战首帧 prep_row_first 回填);
+    非开局过渡屏只写现行链离场快照(transition_snapshot),不写基线。
     离场快照链 diff 触发(snapshot=True 豁免两帧门)随写点同迁。纯观测
     写点:调用方的 best-effort 抑制(contextlib.suppress)由观察侧保留,
     本函数不吞异常。
@@ -64,6 +69,6 @@ def report_screen_plane_transition_obs(gs: GameState,
     if opening and gs.node_path_baseline.value is None:
         gs.observe(gs.node_path_baseline, obs.chain,
                    evidence='transition_row', sig=sig)
-    # 链 diff 触发:离场快照豁免两帧门(单帧即终审,链权威版本 §4)
+    # 链 diff 触发:离场快照豁免两帧门(单帧即终审)
     maybe_emit_chain_diff(gs, snapshot=True, in_mutation_window=False,
                           sig=sig)

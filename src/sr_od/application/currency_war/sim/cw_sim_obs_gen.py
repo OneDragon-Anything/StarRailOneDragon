@@ -150,7 +150,12 @@ def gen_prep(backend: SimBackend) -> CwScreenPrepObs:
     - ``front_occupied``/``back_occupied`` = live 观察链的识别交叉核对轻
       字段(方法内即弃消费),sim 产物不挂(零识别面)。
     - ``node_path_chain`` = None 诚实缺位:节点行读 = 实机画面识别域,
-      sim 状态副本无此识别面(链 diff 治理消费面随联调批申报)。
+      sim 状态副本无此识别面。sim 合成口写链裁剪为不写——sim 决策的
+      node.kind 消费不经链,写与不写零行为差;由此 node_path/
+      node_path_baseline 在 sim 恒空、chain_diff 结构性恒空、sim 档案
+      零 chain_diff 行(如实申报的边界,非缺陷;引擎中途改写建模落地时
+      恢复合成写链,届时合成单元 TokenCell 填 channel='none'/
+      hu_dist=None,evidence 恒带 sim:synthesized)。
     """
     sub = backend._sub
     if sub == PREP_SUB_WAIT_ONE_ONE:

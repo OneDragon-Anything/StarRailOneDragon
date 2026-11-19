@@ -55,8 +55,10 @@ def report_screen_prep_obs(gs: GameState, obs: CwScreenPrepObs, *,
     写点定位 = cw_screen_prep.py 原写点逐位(sig/actor/evidence 原值):
 
     - ``node_path_chain`` → ``gs.observe`` 双写:node_path(evidence=
-      'prep_row')+ node_path_baseline 幂等回填(已有值不覆写,evidence=
-      'prep_row_first');``sig`` 形参缺省时按备战帧观察渠道原值构造
+      'prep_row',现行链最新权威读数)+ node_path_baseline 幂等回填
+      (已有值不覆写,evidence='prep_row_first'——基线回退末档:开局
+      过渡屏未落基线时才由备战首帧落定);``sig`` 形参缺省时按备战帧
+      观察渠道原值构造
       (family='obs', actor='CwScreenPrep', screen='货币战争-备战',
       mode='read', quality={'bench': 'real_read'})。
     - ``prep``/``event_overlay``/``screen``:无状态容器摄入域(字段写端在
