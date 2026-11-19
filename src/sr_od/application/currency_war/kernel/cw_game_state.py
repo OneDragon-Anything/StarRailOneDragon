@@ -1301,8 +1301,8 @@ def _current_run_id_safe() -> str:
 def current_run_id_safe() -> str:
     """run 归属现读公开口(本槽唯一定义的跨模块读面)。
 
-    消费方 = 同桶策略侧决策行动作发出面(kernel/cw_decision_trace):两文件
-    模型①②同 run 段归属,run_id 单一来源 = 本供给槽,禁第二读取实现。
+    消费方 = 状态流水装配链(kernel 侧 run 归属注入):run_id 单一来源 =
+    本供给槽,禁第二读取实现。
     """
     return _current_run_id_safe()
 

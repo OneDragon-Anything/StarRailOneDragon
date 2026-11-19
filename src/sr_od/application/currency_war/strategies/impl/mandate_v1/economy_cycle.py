@@ -222,8 +222,7 @@ def disclose_budget(state: Any, session: StrategySession,
     已申报于本包模块 docstring)。写端只有本函数与商店执行回执位
     (operations/cw_screen/cw_screen_shop.accrue_release_spent,
     只累计 spent);读端 = recorder sess_* 透传(telemetry/schema.py
-    sess_reserve_cap 族)+ cw_decision_trace 披露族封闭清单
-    (kernel/cw_decision_trace.py)。
+    sess_reserve_cap 族)。
 
     逐字段语义(合并验收基准):
     - ``state``:session 状态容器单例(帧轴 plane/round 与金读的单一来源;

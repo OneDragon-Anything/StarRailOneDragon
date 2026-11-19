@@ -197,8 +197,8 @@ class StrategyState:
     v3_last_intention_event: str = ''    # 意向事件去重(判读日志基准)
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
 
-    # ===== 策略行为观测分键(单一分键表;策略 state=决策行 strategy-state
-    # 载体,键归属已定案:全部键=策略行为键零效果域键,
+    # ===== 策略行为观测分键(单一分键表;载体 = 本策略状态对象,
+    # 键归属已定案:全部键=策略行为键零效果域键,
     # 键全集登记底稿 = 逐键审计 256 字面+16 闭族+9 开放族)=====
     # 局终级全键聚合 = 局终域行载荷 MatchFinal.cw4_counters(cw_loop 两
     # 收尾点现读快照);sim 轮差分账本/A/B 披露照旧读本表,不经流。
@@ -232,15 +232,15 @@ class StrategyState:
     # 回执位(cw_screen_shop.accrue_release_spent,首版只计刷新实花,
     # 「宁窄勿虚」口径申报,轮界清零承载=v3_disclosure_key
     # 键戳(economy_cycle.disclose_budget 写端);读端=recorder sess_*
-    # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费
+    # 透传。披露面字段,禁决策判据消费
     v3_release_spent: int = 0
 
     # ===== 消费侧惰性建(缺省值 = 原惰性初值)=====
     # A/B 注册表注入通道(cw_economy._registry_of 消费;None=缺省表)。
     v3_registry: object = None
     # 储备线披露(遥测键 sess_reserve_cap 透传源;写端=economy_cycle.
-    # disclose_budget 每备战决策帧幂等覆写;读端=recorder sess_* 透传
-    # + cw_decision_trace 披露族。披露面字段,禁决策判据消费
+    # disclose_budget 每备战决策帧幂等覆写;读端=recorder sess_* 透传。
+    # 披露面字段,禁决策判据消费
     v3_reserve_cap: int = 0
 
     # ===== 账外补充(实施时按 §6.1 并入的策略侧动态属性;产生者/消费
