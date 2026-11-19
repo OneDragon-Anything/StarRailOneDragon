@@ -281,8 +281,8 @@ class CurrencyWarApp(SrApplication):
         两段式:守卫段复用进局链弹窗守卫注册表 ENTRY_POPUP_GUARDS,清掉局末
         自动弹、会压住 exit 识别的弹窗(不守卫则 exit 识别全落空误入战斗链)
         → exit 调用段。两交接形态 exit 成功后置 ``ctx.cw_match = None``
-        (兜底清理点:分层清理口径的 app 层,幂等;同进程下一局 CwLoop 新局
-        判定 ``ctx.cw_match is None`` 的前提)。exit 调用失败或守卫预算耗尽
+        (兜底清理点:分层清理口径的 app 层,幂等;同进程下一局 CwLoop 兜底建
+        判据 ``ctx.cw_match is None`` 的前提)。exit 调用失败或守卫预算耗尽
         → 本节点 FAIL → 无出边 → app 失败收尾(与硬失败同型,残局可见)。
         """
         prev = self._previous_round_result
