@@ -46,7 +46,11 @@ def read_image(file_path: str) -> Optional[MatLike]:
 def save_image(img: MatLike, file_path: str) -> None:
     """
     保存图片(RGB)。用 ``cv2.imencode`` + ``ndarray.tofile``,兼容非 ASCII(如中文)路径——
-    ``cv2.imwrite`` 在 Windows 走 C stdlib,中文路径会写失败。webp 用无损质量(q=100)。
+    ``cv2.imwrite`` 在 Windows 走 C stdlib,中文路径会写失败。webp 一律无损编码(q=101:
+    OpenCV 约定 quality>100 走无损分支,1-100 为有损,cv2 4.x 无独立无损开关、101 为唯一
+    入口,见 docs.opencv.org imgcodecs flags 的 IMWRITE_WEBP_QUALITY 条目;编码耗时约为
+    有损的 5 倍,落点均为低频入库场景可接受;仅支持 RGB 3 通道——4 通道图 alpha=0 区
+    存在 RGB 被改写的已知库缺陷 opencv#28503)。
     写盘失败(目录缺失等)静默跳过,与原 ``cv2.imwrite`` 的 best-effort 行为一致。
 
     :param img: RGB 格式图片。
@@ -56,7 +60,7 @@ def save_image(img: MatLike, file_path: str) -> None:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     file_type = get_image_file_type(file_path)
     ext = '.' + file_type.lower()
-    params = [cv2.IMWRITE_WEBP_QUALITY, 100] if file_type.lower() == 'webp' else []
+    params = [cv2.IMWRITE_WEBP_QUALITY, 101] if file_type.lower() == 'webp' else []
     ok, buf = cv2.imencode(ext, img, params)
     if ok:
         try:
