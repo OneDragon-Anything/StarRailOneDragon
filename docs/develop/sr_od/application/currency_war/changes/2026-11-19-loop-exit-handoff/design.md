@@ -84,7 +84,7 @@ route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定�
 |---|---|
 | success ∧ status = `STATUS_LOBBY_DONE`（`'对局结束,回大厅'`） | 弹窗守卫 → 调 `CwEntryExit`（大厅确认形态）→ 完成后置 `ctx.cw_match=None`（兜底清理点） |
 | success ∧ status 以 `STATUS_HANDOFF_PREFIX`（`'异常退出交接:'`）开头 | 弹窗守卫 → 调 `CwEntryExit`（清场退局形态）→ 完成后置 `ctx.cw_match=None` |
-| success ∧ 其余（max_rounds 停备战 / 开局失败-中断〔假局守卫，已在大厅且对局状态已清〕） | 跳过 exit，app 直接结束（前者留局采样；后者无需退出动作） |
+| success ∧ 其余（max_rounds 停备战〔仅 `is_debug=True`，非 debug 停点已改走交接出口〕 / 开局失败-中断〔假局守卫，已在大厅且对局状态已清〕） | 跳过 exit，app 直接结束（前者留局采样；后者无需退出动作） |
 | fail（看门狗/框架超时/未捕获/未知兜底） | app 失败收尾（现状语义，不调 exit） |
 
 结束文本常量落 cw_loop 模块级（`STATUS_LOBBY_DONE` / `STATUS_HANDOFF_PREFIX`），loop 出口与 app 判定共用单一源，禁裸串散写。max_rounds 文本不设常量——三形态判定是互补结构，前两形态不中即落「其余」，文本漂移只会把错形态漏进行为安全的「其余」分支；正本留一句「可升级为结构化 data 载体（`round_success(status, data=…)` 框架既有支持）」备忘。
@@ -93,7 +93,7 @@ route⑤（对局中画面委托 `CwLoop(stop_at_prep=True)`）**保留**，定�
 
 ### 2.6 max_rounds 停点与启动预检（不解决面的边界申报）
 
-- max_rounds 停点（停备战屏采样）**不是退出触发**：验证模式要求留局采样（analyze board/star 钩子），交接节点跳过即保语义；正本 loop.md 结束出口表随批申报。
+- max_rounds 停点（停备战屏采样）**不是退出触发**：验证模式要求留局采样（analyze board/star 钩子），交接节点跳过即保语义；正本 loop.md 结束出口表随批申报。**语义修订（2026-11-19 恢复局机制重整批裁定 4，随批落码）**：停点分模式——`env_config.is_debug=True` 维持停备战留局采样（本条原语义）；False 停点出口直接以 `STATUS_HANDOFF_PREFIX` 前缀文本交出（后缀 `停点重开:max_rounds=N`），按 §2.5 表异常交接形态走 `CwEntryExit` 清场退局回大厅，重开由下一次 app 运行承载——非 debug 下 max_rounds 停点不再停备战而是交接退局，app 三形态判定零改动承接。
 - 启动预检恢复链（暂停面板 → `CwEntryExit` 退局链）保留原样：自有残留恢复，exit 的退局范式（点右上X → 战斗暂停撤退 → 弹窗放弃并结算 → 败局链 → 战报回大厅）正是异常交接面的战斗态处置同款——范式单一源不动。
 
 ### 2.7 sim 面（第 1 轮修订：全改「不可达」申报）

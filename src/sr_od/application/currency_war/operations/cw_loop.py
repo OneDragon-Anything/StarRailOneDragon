@@ -152,7 +152,8 @@ from sr_od.context.sr_context import SrContext
 STATUS_LOBBY_DONE: str = '对局结束,回大厅'
 #: 异常交接出口文本前缀(完整文本 = 前缀 + 触发计数键;带动态后缀不能走
 #: 节点边的文本全等匹配,判定方按 startswith 消费)。产出点 = CwLoop
-#: 防线段耗尽出口的 app 主路径(cleanup_delegate=False);消费方 =
+#: 防线段耗尽出口的 app 主路径(cleanup_delegate=False)与停点非 debug
+#: 出口(后缀 = ``停点重开:max_rounds=N``);消费方 =
 #: CurrencyWarApp 退出收尾节点、投资环境链链首透传判定(双条件之一)
 #: 及各自测试。
 STATUS_HANDOFF_PREFIX: str = '异常退出交接:'
@@ -394,7 +395,9 @@ class CwLoop(CwOperation):
         # ``after_operation_done`` 钩子补置(成功/失败/停止全路径必达,
         # 检查未收尾 → 补收尾)。收尾 = close_run(零落盘,置跨局 run_id 重铸位)。
         self._summary_written: bool = False
-        # 可控轮数(单/多轮验证 + 采样本):跑完 max_rounds 轮后,停在下一轮备战屏(analyze board/star)。
+        # 可控轮数(单/多轮验证 + 采样本):跑完 max_rounds 轮后停点,停点出口
+        # 按 ``env_config.is_debug`` 分模式(debug 停备战屏采样;非 debug 交接
+        # 弃局回大厅,重开由下一次 app 运行承载,见停点段注释)。
         # 轮次计数点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
         self._max_rounds: int | None = max_rounds
@@ -1449,12 +1452,22 @@ class CwLoop(CwOperation):
             # 过渡门说明:阶段一身份分发与阶段三特殊规则分支(上方)先于本分支检查同截图同三元组(id_mark
             # 位置判),OCR 按 id(image) 缓存 → 到达此处时 overlay 检查必全 False;
             # 稳定防线 = 上方子态稳定门(连续 3s,非同帧检查)。
-            # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
+            # 可控轮数:已跑完 max_rounds 轮 → 停点分模式(裁定:debug 停屏诊断、
+            # 非 debug 弃局回大厅,重开由下一次 app 运行承载;is_debug 读取点
+            # 单点 = 此处)。出口文本决定 app 交接节点三形态:debug 出口文本
+            # 落「其余」分支 → 跳过 exit(留局采样);非 debug 出口以
+            # STATUS_HANDOFF_PREFIX 前缀交出 → 异常交接形态 → exit 清场
+            # 退局回大厅。
             if self._max_rounds is not None and self._settle.rounds_done >= self._max_rounds:
-                log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 停备战屏(单/多轮验证)',
+                if self.ctx.env_config.is_debug:
+                    log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 停备战屏(单/多轮验证)',
+                             self._max_rounds, self._settle.rounds_done)
+                    return self.round_success(
+                        f'已跑 {self._settle.rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
+                log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 非调试停点,交接弃局回大厅',
                          self._max_rounds, self._settle.rounds_done)
                 return self.round_success(
-                    f'已跑 {self._settle.rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
+                    f'{STATUS_HANDOFF_PREFIX}停点重开:max_rounds={self._max_rounds}')
             #  V-2 并入→再迁移:备战分支派发前的书册卡清场识别+点击
             # 曾迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``),
             # 用户裁定 开卡时机归策略实现管后该段撤销——识别
