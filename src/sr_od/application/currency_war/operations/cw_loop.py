@@ -150,10 +150,11 @@ from sr_od.context.sr_context import SrContext
 # 退出收尾节点的交接形态判定。
 #: 大厅完成形态:终局结算回大厅、收尾簿记完成的出口文本。
 STATUS_LOBBY_DONE: str = '对局结束,回大厅'
-#: 异常交接出口文本前缀(完整文本 = 前缀 + 触发分发键;带动态后缀不能走
-#: 节点边的文本全等匹配,判定方按 startswith 消费)。loop 耗尽出口产出
-#: 该前缀文本的改写属 loop 出口语义调整,不在常量落位范围;当前消费方 =
-#: CurrencyWarApp 退出收尾节点及其打桩测试。
+#: 异常交接出口文本前缀(完整文本 = 前缀 + 触发计数键;带动态后缀不能走
+#: 节点边的文本全等匹配,判定方按 startswith 消费)。产出点 = CwLoop
+#: 防线段耗尽出口的 app 主路径(cleanup_delegate=False);消费方 =
+#: CurrencyWarApp 退出收尾节点、投资环境链链首透传判定(双条件之一)
+#: 及各自测试。
 STATUS_HANDOFF_PREFIX: str = '异常退出交接:'
 
 
@@ -208,8 +209,9 @@ def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
       (原位面过渡误分发专用计数器「仅本分支语义」的推广)。
 
     已知边界(如实申报):链形分支(一个分支体内多次 dispatch)必须传同一
-    ``chain_key`` 归组计数,并由链首调用方透传防线 FAIL 出口,未按契约
-    接线 = 绕过防线(链内交替 fail 异键归一失效的历史形态——链内两 op
+    ``chain_key`` 归组计数,并由链首调用方按双条件透传防线出口(FAIL
+    枚举或交接前缀 success,见 ``_dispatch_screen_op`` 防线出口契约),
+    未按契约接线 = 绕过防线(链内交替 fail 异键归一失效的历史形态——链内两 op
     各按 journal 名计数,交替 fail 两键各自恒 1 不达限);跨分支交替 fail
     (不同分发分支键互异)不属本网「同一粘滞对象」语义,各自从 1 起算
     = 既有语义边界,兜底 = 未知兜底(``UNKNOWN_FAIL_THRESHOLD``)+ 系统级
@@ -258,7 +260,8 @@ class CwLoop(CwOperation):
     #: 未知帧重试等待(秒),恒定(旧 2s 翻倍退避随停机钩子一并停用)。
     UNKNOWN_RETRY_WAIT_S: ClassVar[float] = 1.0
     #: 外环 op 连续 fail 重派上限:同一分发 op 连续 fail 达本值
-    #: → round_fail 显式停交上层,取代「fail → round_wait 零预算重派」
+    #: → 显式停机交上层(出口按 ``cleanup_delegate`` 分流,双出口契约见
+    #: ``_dispatch_screen_op`` docstring),取代「fail → round_wait 零预算重派」
     #: 的无界空转(已实测确认形态 = 选择伙伴 15 连败,由 NODE-DWELL 900s 系统
     #: 哨兵兜住才停的事故)。本网是全部分发分支(overlay/
     #: 事件族/on_fail_retry 族)的唯一连续 fail 预算——原位面过渡误分发守卫
@@ -384,7 +387,7 @@ class CwLoop(CwOperation):
             clear_screen_changes(_gs)
 
     def __init__(self, ctx: SrContext, max_rounds: int | None = None,
-                 stop_at_prep: bool = False):
+                 stop_at_prep: bool = False, cleanup_delegate: bool = False):
         CwOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
         # run 收尾:中止/卡死/停机局不走 3c 回大厅,收尾由
@@ -401,6 +404,15 @@ class CwLoop(CwOperation):
         # 不执行备战策略。退出侧「可交还备战态」判定引用同一常量——两侧
         # 判定同源是防「loop 停↔退出重派」互踢死循环的硬前提。
         self._stop_at_prep: bool = stop_at_prep
+        # 耗尽出口模式开关(loop→exit 交接迭代 design.md §2.3/§2.4):
+        # False = app 主路径(默认)——外环 fail-streak 耗尽出口为交接
+        # success(status 以 STATUS_HANDOFF_PREFIX 开头),由 CurrencyWarApp
+        # 退出收尾节点调 exit 清场退局(异常退出 = 预期内处置,非故障);
+        # True = route⑤ 委托清理模式(唯一传参点 = cw_entry_exit
+        # .delegate_loop)——委托实例失败计数从零重算,耗尽维持 round_fail
+        # 现状语义,由 exit 节点重试承接;若也出口交接 success,exit 会误判
+        # 清理完成 → 残局遗留且账面成功(静默失败)。
+        self._cleanup_delegate: bool = cleanup_delegate
         # (轮计数 _rounds_done 已随结算链并入 CwScreenBattleWait → SettlementState
         #  .rounds_done( 05-battle §1);本类经 self._settle.rounds_done 读。)
         # r119 停滞 watchdog 状态:画面指纹采样(OCR 关键词 frozenset 哈希)。
@@ -615,16 +627,26 @@ class CwLoop(CwOperation):
 
         环级 fail 重派防线:任一 op 的 ok → 连续 fail 计数窗归零
         (``op_fail_redispatch_tick``);fail 连续达 ``OP_FAIL_REDISPATCH_
-        LIMIT`` → round_fail 显式停交上层,取代「fail → round_wait 零
-        预算重派」的无界空转。计数/判定位于 hook 早退之后 → hook 仍可
-        以自身轮次结果短路(结构性先于本网);链形透传分支(3c)不经
-        本网(各有自身预算)。
+        LIMIT`` → 显式停机交上层(出口按 ``cleanup_delegate`` 分流,见
+        防线出口契约),取代「fail → round_wait 零预算重派」的无界空转。
+        计数/判定位于 hook 早退之后 → hook 仍可以自身轮次结果短路
+        (结构性先于本网);链形透传分支(3c)不经本网(各有自身预算)。
 
-        FAIL 出口契约:对画面 op(经 ``execute()`` 收敛为 ``OperationResult``)
-        本包装的返回中 FAIL 枚举只从防线段产生(op 自身失败被吸收映射
-        wait/retry)——链形分支的链首调用方可以 ``result == FAIL`` 判定
-        「防线已触发」并透传出口。``on_result`` 钩子覆盖返回 FAIL 时语义
-        相同(链首显式失败应停),透传判定同样接住。
+        防线出口契约(双出口;消费方 = 链形分支链首判定与 app 交接判定):
+        对画面 op(经 ``execute()`` 收敛为 ``OperationResult``)op 自身失败
+        被吸收映射 wait/retry,FAIL 枚举与交接前缀 success 都只从防线段
+        产生,按 ``cleanup_delegate`` 分流——
+        - False(app 主路径默认):``round_success`` 且 status 以
+          ``STATUS_HANDOFF_PREFIX`` 开头(交接出口,后缀 = 触发计数键;
+          异常退出 = 预期内处置,app 退出收尾节点按前缀判定后调 exit
+          清场退局);
+        - True(route⑤ 委托清理):``round_fail``(现状文案)——委托实例
+          失败计数从零重算,出口交接 success 会让 exit 误判清理完成。
+        链形分支的链首调用方按**双条件**判定「防线已触发」并透传早退:
+        ``result == FAIL``(接委托模式 fail 出口)**或** status 带交接
+        前缀(接主路径 success 出口)。``on_result`` 钩子覆盖返回 FAIL
+        时语义 = 链首显式失败应停,FAIL 条件同样接住;两种模式链尾都
+        不空跑。
 
         LIMIT 的链形预算语义:链形分支下 ``OP_FAIL_REDISPATCH_LIMIT`` 计的
         是「连续 fail **分发次数**」——粘滞形态每个分发轮链首+链尾各 fail
@@ -693,12 +715,24 @@ class CwLoop(CwOperation):
                     _cap_shot = self.save_screenshot(prefix='op_fail_cap')
                 except Exception:   # noqa: BLE001  留存证据失败不阻塞停机
                     _cap_shot = ''
+                if self._cleanup_delegate:
+                    # 委托清理模式:耗尽维持 fail(现状文案),exit 节点重试
+                    # 承接(交接 success 会让 exit 误判清理完成 → 残局遗留)。
+                    log.error('[cw!][loop] %s 连续 %d 次 fail(末次 status=%s)'
+                              '→ round_fail 交上层处置(外环无界重派防线,'
+                              'shot=%s)', journal_name, self._op_fail_streak_n,
+                              getattr(res, 'status', ''), _cap_shot)
+                    return self.round_fail(
+                        status=f'{journal_name} 连续 fail 超上限(交上层处置)')
+                # app 主路径:耗尽出口 = 交接 success(异常退出 = 预期内处置),
+                # 后缀 = 触发计数键,app 退出收尾节点按前缀判定后调 exit 清场。
+                _handoff_key = chain_key or journal_name
                 log.error('[cw!][loop] %s 连续 %d 次 fail(末次 status=%s)'
-                          '→ round_fail 交上层处置(外环无界重派防线,'
-                          'shot=%s)', journal_name, self._op_fail_streak_n,
+                          '→ 交接上层处置(exit 清场退局;外环无界重派防线,'
+                          'shot=%s)', _handoff_key, self._op_fail_streak_n,
                           getattr(res, 'status', ''), _cap_shot)
-                return self.round_fail(
-                    status=f'{journal_name} 连续 fail 超上限(交上层处置)')
+                return self.round_success(
+                    status=f'{STATUS_HANDOFF_PREFIX}{_handoff_key}')
         if on_fail_retry and not ok:
             return self.round_retry(wait=wait)
         return self.round_wait(wait=wait)
@@ -1092,15 +1126,18 @@ class CwLoop(CwOperation):
 
             # 链序保留(用户裁定特殊等待):环境 op → 等 1-1 备战识别标志 op;
             # 两 op 两对 journal 行(投资环境补行)。链形分支契约接线:两 dispatch
-            # 传同一 chain_key 归组计数(链内交替 fail 不再异键归一),链首
-            # FAIL 枚举 = 防线已触发(FAIL 出口契约见包装 docstring)即透传早退,
-            # 不空跑链尾(达限后继续等 1-1 超时无意义)。
+            # 传同一 chain_key 归组计数(链内交替 fail 不再异键归一);链首出口
+            # 按**双条件**判定防线已触发并透传早退,不空跑链尾(达限后继续等
+            # 1-1 超时无意义):FAIL 枚举 = 委托清理模式防线 fail 或钩子覆盖
+            # 显式失败,status 带交接前缀 = app 主路径防线交接 success
+            # (双出口契约见包装 docstring)。
             _first = self._dispatch_screen_op(
                 CwScreenInvestEnv(self.ctx), journal_name='投资环境',
                 frame_tag='flow_invest_env', wait=0,
                 on_result=_on_invest_env, chain_key='投资环境链')
-            if _first.result == OperationRoundResultEnum.FAIL:
-                return _first   # 防线触发出口透传(达限显式停交上层)
+            if (_first.result == OperationRoundResultEnum.FAIL
+                    or (_first.status or '').startswith(STATUS_HANDOFF_PREFIX)):
+                return _first   # 防线触发出口透传(委托模式停交上层 / 主路径交接)
             return self._dispatch_screen_op(
                 CwScreenWaitOneOne(self.ctx), journal_name='等待1-1',
                 frame_tag='flow_wait_one_one', wait=1.0,

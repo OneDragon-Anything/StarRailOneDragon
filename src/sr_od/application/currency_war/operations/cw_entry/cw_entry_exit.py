@@ -159,7 +159,11 @@ class CwEntryExit(CwOperation):
         # CwLoop 复用其既有身份分发与停滞看门狗(单一出口,退出链不维护
         # 第二张「屏名→op」映射表);stop_at_prep 停机位与路由③共用 A 类
         # 名单常量 → 两侧对「是否已到可交还态」结论恒一致,无互踢往返。
-        res = CwLoop(self.ctx, stop_at_prep=True).execute()
+        # cleanup_delegate=True = 委托清理模式(loop 耗尽出口维持 fail 由
+        # 本节点重试承接):委托实例失败计数从零重算,若用默认参,粘滞
+        # 耗尽会以交接 success 返回 → 本节点误判清理完成,残局遗留。
+        res = CwLoop(self.ctx, stop_at_prep=True,
+                     cleanup_delegate=True).execute()
         log.info('[cw-exit] 委托对局循环返回 success=%s status=%s',
                  res.success, res.status)
         if res.success:
