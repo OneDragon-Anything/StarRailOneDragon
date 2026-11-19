@@ -27,6 +27,9 @@
 """
 from typing import ClassVar
 
+import numpy as np
+from cv2.typing import MatLike
+
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -52,16 +55,36 @@ ST_SETTLEMENT: str = '胜利结算'
 ST_FAIL_STEP: str = '战败结算'
 ST_DELEGATE: str = '委托对局循环'
 ST_ENEMY_INFO: str = '敌人信息浮层'
+ST_MODE_ONGOING: str = '模式选择进行中'
+ST_GIVEUP_CONFIRM: str = '结束结算确认弹窗'
 
 #: 连续未识别多少轮后判「大概率战斗中」进入右上 X 兜底(单次 miss 可能
 #: 只是过渡帧,连续多轮全不识别才进;防过渡帧误点 X)
 BATTLE_STREAK_ENTER: int = 4
 
+#: 右上 X 兜底的静态页哨:连续多少轮节点重入截图逐像素不变即提前失败。
+#: 对无 X 控件的页面(未建档报告页/建档锚漂移),area 定位是静态 rect 直点,
+#: 画面永不变化 → until 永不命中,原路径唯一硬边界是节点 180s 超时(框架
+#: 对 WAIT 不计 retry 且清零计数,retry 网在此路径从不生效)。取 3:计数自
+#: 基线帧之后的重入轮起算,共 4 次节点重入 ≈ 12s(每轮 until 等待 ~3s),
+#: 足够排除「点击已落地但画面渲染慢」的转场帧(转场在 route ⑥ 已耗 4 拍)。
+BATTLE_X_DEAD_CLICK_LIMIT: int = 3
+
+#: 挂起对局入口两屏(白名单屏,不在对局中名单内):判定走 route ④b 显式
+#: 点名,不进 ROUTE_BY_SCREEN(该表只收 get_in_match_screen_name 可见的
+#: 对局中屏);处置链下半段(挑战失败→详情→战报→大厅)与既有节点完全同构。
+#: 模块级常量:消费方(返回大世界 op/入口链/测试委托假类)不经类身份引用。
+MODE_ONGOING_SCREEN: str = '货币战争-模式选择-进行中'
+GIVEUP_CONFIRM_SCREEN: str = '货币战争-模式选择-结束结算确认'
+
 
 class CwEntryExit(CwOperation):
     """放弃当前货币战争对局,返回大厅(退局调度器)。
-    起点:货币战争对局内任意画面;终点:货币战争大厅(对局已放弃)。
-    副作用:放弃当前对局进度,不可恢复。"""
+    起点:货币战争对局内任意画面 + 有挂起对局的入口画面
+    (模式选择-进行中/结束结算确认弹窗);终点:货币战争大厅(对局已放弃)。
+    副作用:放弃当前对局进度,不可恢复。挂起对局(服务端保留的未完成局)
+    同样被放弃并结算——自动化语义一律弃局,绝不「继续进度」续跑;
+    人工玩家手动挂起的对局亦然。"""
 
     STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
 
@@ -85,6 +108,10 @@ class CwEntryExit(CwOperation):
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='退出货币战争对局')
         self._miss_streak: int = 0
+        # 「战斗中点右上X」静态页哨状态(仅 battle_x 节点读写;节点函数每轮
+        # 重入不销毁 self,跨轮承载):上一轮进入节点时的帧与连续无变化计数。
+        self._battle_x_prev_frame: MatLike | None = None
+        self._battle_x_static_rounds: int = 0
 
     # ---- 节点1:画面路由(循环;唯一识别中枢) ----
     # 出边骨架(星形):流程节点的 SUCCESS 均经兜底边回本节点重识别;
@@ -93,6 +120,8 @@ class CwEntryExit(CwOperation):
 
     @node_from('备战退局发起')
     @node_from('弹窗放弃并结算')
+    @node_from('模式选择放弃挂起局')
+    @node_from('结束结算确认放弃')
     @node_from('胜利结算继续挑战')
     @node_from('战败结算推进')
     @node_from('挑战失败下一步')
@@ -131,6 +160,18 @@ class CwEntryExit(CwOperation):
                                  screen_name_list=[self.LOBBY_SCREEN]) \
                 == self.LOBBY_SCREEN:
             return self.round_success(ST_LOBBY)
+
+        # ④b 挂起对局入口两屏(白名单屏,同④显式点名;不进 ROUTE_BY_SCREEN——
+        # 该表只收 get_in_match_screen_name 可见的对局中屏,两屏经白名单排除)。
+        # 判定 = 屏级全 id_mark AND(双锚:「进行中」∧「结束并结算」),同族
+        # 模拟宇宙-世界详情页有结束并结算但无「进行中」分类,凑不齐组合。
+        pending_name = get_match_screen_name(
+            self.ctx, screen,
+            screen_name_list=[MODE_ONGOING_SCREEN, GIVEUP_CONFIRM_SCREEN])
+        if pending_name == MODE_ONGOING_SCREEN:
+            return self.round_success(ST_MODE_ONGOING)
+        if pending_name == GIVEUP_CONFIRM_SCREEN:
+            return self.round_success(ST_GIVEUP_CONFIRM)
 
         # ⑤ 默认委托:非退出流程的对局中画面(穷举清单外零维护——新建档
         # 画面识别即收)。唯一特判:敌人信息浮层(loop 无该分支)内联关闭。
@@ -208,6 +249,31 @@ class CwEntryExit(CwOperation):
     def dialog_giveup(self) -> OperationRoundResult:
         return self.round_by_find_and_click_area(
             self.last_screenshot, '货币战争-中断挑战弹窗', '按钮-放弃并结算',
+            until_find_all=[('货币战争-挑战失败', '标识-挑战失败')],
+            success_wait=2)
+
+    # ---- 节点:模式选择-进行中 → 结束并结算(挂起对局处置入口) ----
+    # ⚠️ 「放弃并结算」语义红线同「弹窗放弃并结算」节点:此处是本 op 的
+    # 退局语义本体(挂起局一律弃局,见类 docstring);弹窗的「关闭」钮
+    # (取消语义 = 留在挂起态)无生产消费方,不建退出分支,area 在档备用。
+
+    @node_from('画面路由', status=ST_MODE_ONGOING)
+    @operation_node(name='模式选择放弃挂起局', node_max_retry_times=10,
+                    timeout_seconds=120)
+    def mode_ongoing_giveup(self) -> OperationRoundResult:
+        return self.round_by_find_and_click_area(
+            self.last_screenshot, MODE_ONGOING_SCREEN, '按钮-结束并结算',
+            until_find_all=[(GIVEUP_CONFIRM_SCREEN, '标识-确认文案')],
+            success_wait=2)
+
+    # ---- 节点:结束结算确认弹窗 → 放弃并结算 ----
+
+    @node_from('画面路由', status=ST_GIVEUP_CONFIRM)
+    @operation_node(name='结束结算确认放弃', node_max_retry_times=10,
+                    timeout_seconds=120)
+    def giveup_confirm(self) -> OperationRoundResult:
+        return self.round_by_find_and_click_area(
+            self.last_screenshot, GIVEUP_CONFIRM_SCREEN, '按钮-放弃并结算',
             until_find_all=[('货币战争-挑战失败', '标识-挑战失败')],
             success_wait=2)
 
@@ -291,6 +357,28 @@ class CwEntryExit(CwOperation):
     @operation_node(name='战斗中点右上X', node_max_retry_times=15,
                     timeout_seconds=180)
     def battle_x(self) -> OperationRoundResult:
+        # 静态页哨(顶部,每轮重入先跑):「按钮-右上X」是纯定位区,对无 X
+        # 控件的页面恒点击恒成功、画面永不变化 → until 永不命中,原路径
+        # 唯一硬边界是本节点 180s 超时(WAIT 不计 retry 且清零计数,retry
+        # 网在此路径从不生效)。连续 BATTLE_X_DEAD_CLICK_LIMIT 轮与上一轮
+        # 帧逐像素不变 → 立即失败,把此类失效从 3 分钟压到 ~12s。判据 =
+        # np.array_equal 全等(静态页逐帧同图,事故连拍字节全等实证);
+        # 上一帧为 None / shape 不符 / 比较异常一律按「帧变化」清零——
+        # 截屏损坏帧真实存在(事故连拍含不可解码帧),不中断节点。
+        cur = self.last_screenshot
+        prev = self._battle_x_prev_frame
+        changed = True
+        if prev is not None and prev.shape == cur.shape:
+            try:
+                changed = not np.array_equal(prev, cur)
+            except Exception:  # noqa: BLE001  损坏帧按帧变化处理
+                changed = True
+        self._battle_x_prev_frame = cur
+        self._battle_x_static_rounds = 0 if changed \
+            else self._battle_x_static_rounds + 1
+        if self._battle_x_static_rounds >= BATTLE_X_DEAD_CLICK_LIMIT:
+            return self.round_fail(
+                f'右上X点击无效(连续{self._battle_x_static_rounds}轮画面无变化,疑无X页面)')
         return self.round_by_find_and_click_area(
             self.last_screenshot, '货币战争-战斗', '按钮-右上X',
             until_find_all=[('货币战争-战斗暂停', '标识-战斗暂停')],

@@ -5,11 +5,14 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.screen.screen_utils import get_match_screen_name
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_screen_state
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_exit import (
+    GIVEUP_CONFIRM_SCREEN,
+    MODE_ONGOING_SCREEN,
     CwEntryExit,
 )
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
@@ -220,6 +223,20 @@ class BackToNormalWorldPlus(SrOperation):
             if close_area is not None:
                 self.ctx.controller.click(close_area.center, pc_alt=True)
             return self.round_retry('货币战争-大厅', wait=2)
+
+        # 货币战争挂起对局入口两屏(模式选择-进行中/结束结算确认弹窗):上一
+        # app 中途死在挂起入口画面时,本 op 起手在此处置而不是烧兜底预算。
+        # 两屏在 cw_screen_state 大厅态白名单内(非对局中画面),对局中委托
+        # 分支的 get_in_match_screen_name 对它们不可见,须屏级显式点名
+        # (get_match_screen_name = 全 id_mark AND,与退出链路由④b、CW 入口
+        # 链挂起分支同一防线);命中即委托退出 op(挂起局一律放弃结算)。
+        pending_screen = get_match_screen_name(
+            self.ctx, screen,
+            screen_name_list=[MODE_ONGOING_SCREEN, GIVEUP_CONFIRM_SCREEN])
+        if pending_screen is not None:
+            log.info('[返回普通大世界] 命中货币战争挂起对局入口 %s → 委托退出对局 op',
+                     pending_screen)
+            return self.cw_exit()
 
         # 货币战争-对局中画面(2026-09-01 孤儿对局事故根修):孤儿对局 = 上一
         # CW app 被 stop 后残留的对局画面(如备战),一条龙各应用开场的本 op

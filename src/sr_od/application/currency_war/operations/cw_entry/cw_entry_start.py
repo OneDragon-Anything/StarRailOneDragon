@@ -8,6 +8,7 @@ from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.screen.screen_utils import get_match_screen_name
 
 # 迁移审计遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
@@ -212,10 +213,12 @@ class CwEntryStart(CwOperation):
     """从货币战争大厅开始/恢复一局,推进到「备战阶段」。
     起点:货币战争大厅;终点:货币战争-备战画面(对局已开始/恢复)。
 
-    统一用「点前进按钮直到备战」循环,兼容两条路径的所有中间画面:
+    统一用「点前进按钮直到备战」循环,兼容三条路径的所有中间画面:
     - 有保存局:开始 → 继续进度 → (位面教程叠层)→ 备战。
     - 无保存局:开始 → 进入标准博弈 → 开始对局(职级难度确认)→ 简报(下一步)
       → 投资环境(3 选 1 + 确认)→ 备战。
+    - 有挂起局:开始 → 模式选择-进行中 → (委托退出 op 结算挂起局回大厅)
+      → 重开 → 正常新局链。挂起局一律放弃不续跑(语义见 CwEntryExit docstring)。
     - 残留大厅:上局结束「回大厅」的死按钮态 → 点「按钮-关闭」退出到朝露公馆
       大世界入口 → F 交互重进新鲜大厅 → 正常开始。
 
@@ -234,6 +237,10 @@ class CwEntryStart(CwOperation):
     MODE_SELECT_SCREEN: ClassVar[str] = '货币战争-模式选择'
     BRIEFING_SCREEN: ClassVar[str] = '货币战争-简报'
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
+    # 挂起对局入口两屏(白名单屏):点开始后落在此处 = 服务端有未完成局,
+    # 委托退出 op 处置(屏级全 id_mark AND 点名判定,与退出链路由同防线)
+    MODE_ONGOING_SCREEN: ClassVar[str] = '货币战争-模式选择-进行中'
+    GIVEUP_CONFIRM_SCREEN: ClassVar[str] = '货币战争-模式选择-结束结算确认'
     # 弹窗守卫族的画面名已收拢进模块级 ENTRY_POPUP_GUARDS 注册表(单一数据源,
     # 本类不再重复持名)。
 
@@ -254,6 +261,10 @@ class CwEntryStart(CwOperation):
         # 残留大厅逃逸进度:已点「按钮-关闭」露出大世界 / 已按 F 重进新鲜大厅
         self._residual_closed: bool = False
         self._residual_reentered: bool = False
+        # 挂起局处置回大厅的重入旗标(一次性):区分「处置成功回的新鲜大厅」
+        # (开始按钮可点)与「点开始无转移的死按钮残留大厅」——后者走关X+F
+        # 重进的逃逸弯路,前者直接点开始重开;不做旗标会误走逃逸弯路。
+        self._disposed_pending_match: bool = False
 
     def _discard_stale_once(self, reason: str) -> None:
         """新局确凿信号处弃置上一局残留 match 状态容器(GameState)。
@@ -333,6 +344,19 @@ class CwEntryStart(CwOperation):
             self._lobby_anchor_rounds += 1
             if self._lobby_anchor_rounds < CwEntryStart.LOBBY_RESIDUAL_CONFIRM_ROUNDS:
                 return self.round_retry(wait=1)
+            # 挂起局处置回大厅的重入旗标(短路,优先于残留逃逸):刚委托退出
+            # op 结算完挂起局回的大厅是「新鲜大厅」(开始按钮可点),直接点开始
+            # 重开新局链;不走旗标会把它当死按钮残留态误走去关X+F重进的
+            # 逃逸弯路。动作与既有残留逃逸尾步同款,前提不同。旗标一次性:
+            # 点开始未落地(按钮渲染延迟)时下一轮旗标已清,退化进既有残留
+            # 逻辑(2 轮计数后关X+F重进),终点仍是新鲜大厅重开,有界收敛。
+            if self._disposed_pending_match:
+                self._disposed_pending_match = False
+                _log.info('[cw-entry] 挂起局处置回大厅 → 重新点「按钮-开始货币战争」')
+                self.round_by_find_and_click_area(
+                    screen, CwEntryStart.LOBBY_SCREEN, '按钮-开始货币战争',
+                    success_wait=2, crop_first=False)
+                return self.round_wait(wait=2)
             if not self._residual_closed:
                 _log.info('[cw-entry] 大厅残留态(点开始无转移)→ 点「按钮-关闭」退出到世界入口')
                 self._residual_closed = True
@@ -368,6 +392,28 @@ class CwEntryStart(CwOperation):
         self._advance_steps += 1
         if self._advance_steps > CwEntryStart.MAX_ADVANCE_STEPS:
             return self.round_fail(status='推进到备战阶段超时')
+
+        # 挂起对局入口两屏(白名单屏,不在对局中名单内)屏级点名:点开始后
+        # 落在「模式选择-进行中/结束结算确认」= 服务端有未完成局,委托退出
+        # op 结算(放弃不续跑)回大厅,由上方旗标短路重开。判定 = get_match_
+        # screen_name 单屏点名(全 id_mark AND:双锚「进行中」∧「结束并结算」,
+        # 同族模拟宇宙-世界详情页凑不齐组合)。委托中途失败残留的弹窗由下一
+        # 轮重新委托收敛(含确认弹窗的防御面)。节点内惰性 import:退出 op
+        # 依赖对局循环一族,模块级 import 有环向风险。
+        pending_screen = get_match_screen_name(
+            self.ctx, screen,
+            screen_name_list=[CwEntryStart.MODE_ONGOING_SCREEN,
+                              CwEntryStart.GIVEUP_CONFIRM_SCREEN])
+        if pending_screen is not None:
+            from sr_od.application.currency_war.operations.cw_entry.cw_entry_exit import (
+                CwEntryExit,
+            )
+            _log.info('[cw-entry] 挂起对局入口 %s → 委托退出 op 结算挂起局', pending_screen)
+            exit_result = CwEntryExit(self.ctx).execute()
+            if exit_result.success:
+                self._disposed_pending_match = True
+                return self.round_wait(wait=2)
+            return self.round_retry('挂起局退出未完成,重试委托', wait=1)
 
         # 0) 详情弹窗(点卡触发的"可合成列表")→ 点面板外空白关(与外循环角色详情弹窗分支同款,
         #    CwScreenRoleDetailOverlay 同弹窗同修;旧按 ESC:浮窗已自关时 ESC 落

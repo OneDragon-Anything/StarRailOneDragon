@@ -14,8 +14,8 @@ CwEntryEnter.wait_lobby(node_max_retry_times,值见代码):弹窗守卫 → 大�
   前往参与 → 点空白关弹窗 → 公告轮播 → F 交互进大厅
 CwEntryStart.click_start(node_max_retry_times 缺省)
   → advance_to_prep(node_max_retry_times,值见代码):备战 id_mark 确认 → 弹窗守卫 →
-  大厅残留逃逸 → 前进按钮分支序(难度确认/模式选择/简报/继续进度/投资环境/
-  投资策略/教程叠层)→ 兜底 retry
+  大厅残留逃逸 → 挂起局入口两屏点名委托(见 §3 处置路径) → 前进按钮分支序(难度确认/
+  模式选择/简报/继续进度/投资环境/投资策略/教程叠层)→ 兜底 retry
 ```
 
 ## 2. 弹窗守卫族(注册表 `ENTRY_POPUP_GUARDS` + 统一入口 `try_handle_entry_popups`,`cw_entry_start.py`)
@@ -67,8 +67,11 @@ BackToNormalWorldPlus(sr_od/operations/back_to_normal_world_plus.py)
 | ② | 屏名 ∈ `ROUTE_BY_SCREEN`(退出过程画面:中断挑战弹窗/结算/结算-失败/挑战失败/结算-对局详情/结算-战报) | 跳对应退出链节点 |
 | ③ | 屏名 ∈ `PREP_DIRECT_EXIT_SCREENS`(={备战, 备战-免战}) | 备战退局发起(点门形图标;免战复用备战档纯定位区) |
 | ④ | 认「货币战争-大厅」白名单 | 大厅确认(op 成功终点) |
-| ⑤ | 屏名非 None 且未命中②③④ = **默认委托** | 委托对局循环(现存内联特判「敌人信息浮层直接点关闭」保留至浮层画面 op 落地——**非终态申报**,清偿义务挂跨迭代挂账板「敌人信息浮层建画面 op」条;终态 = 该浮层走无策略器画面 op,本分支零特判) |
-| ⑥ | 屏名 None(未建档/过渡帧) | 数拍重试 → 连续计数判战斗中 → 右上 X 兜底 |
+| ④b | 认挂起对局入口两屏白名单(模式选择-进行中/结束结算确认;屏级显式点名,模块常量 `MODE_ONGOING_SCREEN`/`GIVEUP_CONFIRM_SCREEN`) | 处置路径:模式选择放弃挂起局 / 结束结算确认放弃(放弃不续跑,语义见 CwEntryExit docstring);下半段(挑战失败→详情→战报→大厅)复用既有节点零复制 |
+| ⑤ | 屏名非 None 且未命中②③④④b = **默认委托** | 委托对局循环(现存内联特判「敌人信息浮层直接点关闭」保留至浮层画面 op 落地——**非终态申报**,清偿义务挂跨迭代挂账板「敌人信息浮层建画面 op」条;终态 = 该浮层走无策略器画面 op,本分支零特判) |
+| ⑥ | 屏名 None(未建档/过渡帧) | 数拍重试 → 连续计数判战斗中 → 右上 X 兜底(节点顶部静态页哨:连续同帧逐像素不变提前失败,常量 `BATTLE_X_DEAD_CLICK_LIMIT`) |
+
+- ④b 与④同构:两屏在 `LOBBY_STATE_SCREENS` 白名单内(入口链可达非对局屏),对 `get_in_match_screen_name` 不可见,须屏级显式点名(`get_match_screen_name` = 全 id_mark AND 双锚);不进 `ROUTE_BY_SCREEN`(该表只收对局中屏)。三个消费点同防线:route ④b / `CwEntryStart.advance_to_prep` 挂起分支 / `BackToNormalWorldPlus.check_screen` 挂起分支——后两者命中即委托 CwEntryExit,处置回大厅由 CwEntryStart 的重入旗标短路(点开始重开,不走残留逃逸弯路)。
 
 - ③⑤的判据基础是「识别屏名」,不依赖任何 id_mark 子集判定:id_mark 子集会穿透浮层误判(引导态下底层 id_mark 可见 ≠ 可退出,引导态游戏禁用退出图标 → 点击无响应死循环)。
 - `ROUTE_BY_SCREEN` 本义 = 可走退出流程后续节点的画面分发表;表外画面默认委托(⑤),缺项无害化——新画面建档即被⑤覆盖,表不膨胀。
