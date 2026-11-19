@@ -3439,9 +3439,7 @@ class GameState:
     # 读口 = prep_anchored_of(session),缺省 False。
     prep_anchored: bool = False
 
-    # —— 商店随机态重开信号(非 Field 簿记;工程结构组单列申报;
-    # 正本 = game_state/logic-updates/level-up.md;来源代次戳正本 =
-    # game_state/logic-updates/start-battle.md)——
+    # —— 商店随机态重开信号(非 Field 簿记;工程结构组单列申报)——
     # None = 无信号(缺省);非 None = 商店有未处理的随机态新牌面(商业间谍
     # 升级连锁刷新商店并偷取最贵 3 张后,剩余牌面 = 下次开店应呈现的牌面
     # ——重开读真牌面而非重新发牌),值 = 来源代次戳(置位时点的生效节点
@@ -3462,14 +3460,13 @@ class GameState:
     # 消费后(:func:`clear_shop_randomized_pending`,戳随信号一并归
     # None)+ 节点边界清扫(session_scope.handle_node_boundary,只清过期
     # 代次)。宿主选型 = kernel 可写、策略可读(策略层状态键依赖方向不可
-    # 达,正本 = game_state/logic-updates/level-up.md);非 Field 理由 = 纯过程信号(回调直写、决策读,无
+    # 达);非 Field 理由 = 纯过程信号(回调直写、决策读,无
     # 以实际观察为准仲裁、无 journal 面语义),同 frame_class/prep_anchored
     # 先例;状态容器每局新建 = 天然清零。禁用商店状态容器 unknown 形态承载随机态
     # (unknown = 识别失败必携缺陷记录且触发停机闸,语义与守卫均不兼容)。
     shop_randomized_pending: NodePos | None = None
 
-    # —— 升级连锁状态副本声明簿记队列(非 Field 簿记;工程结构组单列申报,
-    # 正本 = game_state/logic-updates/level-up.md)——
+    # —— 升级连锁状态副本声明簿记队列(非 Field 簿记;工程结构组单列申报)——
     # 值 = 商业间谍 spy_shop_refresh 状态副本写入分支声明(WorldDecl)的待消费
     # 队列,由升级值变更回调的 spy 分支写入。写端唯一 = 调度器 spy 分支
     # (cw_levelup_callbacks.on_level_up_change,经

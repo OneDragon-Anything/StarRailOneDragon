@@ -38,7 +38,7 @@
 | 3 | 观察面 | 本屏读什么:消费哪些 obs 解析器、什么进 GameState(字段组/写端)、heavy/light;观察上报即对账边界 |
 | 4 | 动作面 | **开头放「动作 op 与交回对照表」**(本篇唯一动作清单,逐行 = 动作 op(动作类型清单参数类)/发出方式(二选一:①经动作注册表派发的动作 op;②画面 op 内部代码直接执行的固定动作,下称"内置动作")/上报函数/是否触发返回外循环(终结语义一句话);无动作 op 的画面表内一行「无——单步推进由内置动作完成」)。表后逐动作给执行要点(点击 id_mark、交互时序、动画等待、已知交互陷阱) |
 | 5 | 终结与交回 | 逐出口列「条件/级别/交回落点」表,行与 §4 对照表的「触发返回外循环」列一一对应;结束后外循环重判的预期落点 |
-| 6 | 状态上报面 | 动作 → 哪个上报函数(`kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`),指向 [../game_state/logic-updates/](../game_state/logic-updates/README.md) 对应篇 |
+| 6 | 状态上报面 | 动作 → 哪个上报函数(`kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`),逐动作规则 = 各上报函数 docstring |
 | 7 | 子态与 overlay | 本屏的子态(如备战-开商店、暗色锁定)与本屏会被哪些 overlay 覆盖、命中时结束本次访问还是自处理 |
 | 8 | 守卫与防线 | 本屏的停机钩子/失配告警/预算(细则指针 = [../flow/guards.md](../flow/guards.md)) |
 | 9 | 遥测与测试面 | journal op 名、branch 分键、缺陷键、测试文件指针、game 侧知识指针 |

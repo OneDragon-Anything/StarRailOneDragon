@@ -23,7 +23,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开秘密典籍上报:bench 槽位 kind → empty(开件即腾位,占席事实
-    进状态容器)。slot 必填(None 语义已随参数面迁移批废除——本函数
+    进状态容器)。OpenTome 非终结:同一次访问的后续帧晶矿谓词消费
+    bench 席空数存在真实窗口,腾位直写消除「开件后席空数少计一帧」的
+    保守偏置。slot 必填(None 语义已随参数面迁移批废除——本函数
     零现算直取 ``int(param.slot) - 1``,「tome kind → 槽号」现算全仓
     收敛发出点 ``entry._consumable_open_action`` 单点);槽不存在/类型
     不符 = applied=False 零写零声明(tome_slot_missing 拒单)。"""

@@ -59,7 +59,7 @@ idx = _decide_card_index(决策动作 node):
 
 ## 6. 状态上报面
 
-本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖)。候选观察:`report_screen_box_pick_obs` 同门双写状态容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写)。字段语义 = cw_game_state box_card_names(_xy) 字段注释(选择坐标观察上报 = op-layer.md §1.1);效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(显式不建模清单:OpenBox 箱体消耗在选卡确认;原「装备三选一与武装箱同屏性待采证」待裁决项随选择装备屏误判停用一并销项,2026-09-22)。
+本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖;OpenBox 箱体消耗在选卡确认,显式不建模清单 = 各上报函数 docstring)。候选观察:`report_screen_box_pick_obs` 同门双写状态容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写)。字段语义 = cw_game_state box_card_names(_xy) 字段注释(选择坐标观察上报 = op-layer.md §1.1)。
 
 ## 7. 子态与 overlay
 

@@ -77,7 +77,7 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
     (访问动作日志行结束本次访问前 log;回执 detail = 执行账汇总串)
 ```
 
-逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)(buy-card / refresh-shop / close-shop / level-up 各篇)。
+逐动作规格 = 各动作上报函数 docstring(kernel/cw_action_report/ 的 buy_card/refresh_shop/close_shop/level_up)。
 
 ## 5. 终结与交回
 
@@ -95,7 +95,7 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
 
 ## 6. 状态上报面
 
-- 动作 → 上报函数:op 自上报 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param` 单点(买牌 = `report_action_buy_card_param`,快照与合成升星分支内聚,升星判据单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`;购买计数回调 `gs.effects.on_buy` = 买牌上报函数内获取计算完时点单点,live/sim 同源);逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
+- 动作 → 上报函数:op 自上报 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param` 单点(买牌 = `report_action_buy_card_param`,快照与合成升星分支内聚,升星判据单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`;购买计数回调 `gs.effects.on_buy` = 买牌上报函数内获取计算完时点单点,live/sim 同源);逐动作规格 = 各上报函数 docstring。
 - 免费刷新剩余次数位于状态容器字段 `gs.free_refresh_left`(Field,剩余语义):观察登记(§3)/刷新上报扣减/发放登记三写端同格;付费/全量刷新计数留效果账本累计。
 
 ## 7. 子态与 overlay

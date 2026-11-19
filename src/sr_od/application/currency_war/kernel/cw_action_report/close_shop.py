@@ -27,6 +27,9 @@ from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 def report_action_close_shop_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """关店上报(结构离屏):shop payload 离屏(离屏写渠道 = obs 族,
     内部按 sig.actor 转造 obs 签名);离屏态 = 结构性离屏,零内容写。
+    关店本身不改牌面事实:节点内关店→重开不刷新(牌面持久),跨节点
+    才自动刷新全店(research/economy.md §2.1)——牌面去留由节点推进
+    事件锚定,不由本动作推算。
     applied 出口构造后果声明(纯转移,next_screen = 备战档——商店模态
     的返回位恒备战底层(2026-10-29 呈现改造后开店 `_present_modal` 的
     `_return_screen` 恒备战),旧推导 ``node_screen_now`` 的位面首例外

@@ -989,7 +989,7 @@ class CwActionLuckyTokenUseParam:
     ⚠️ 动作发出点待办(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
     永不进准入(``cw_equip_env.evaluate_tool_actions`` rc_missing 拒因
     已登记)——类随族立档 + 注册行,动作发出点禁无判据发出;判据面建模批
-    补档(知识缺口登记 = ``flow/action-logic-state.md`` §7 好运令牌行)。
+    补档(知识缺口登记 = 跨迭代挂账板「动作逻辑态知识缺口」条⑥)。
     上报侧 = 零写留存证据(tool_token_not_admitted 注记,写端随 R9 判据批;
     零写面反查不适用)。
 

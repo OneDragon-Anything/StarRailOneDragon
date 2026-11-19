@@ -103,7 +103,8 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
       同点随机态写,evidence 'ore_reward_detach#ore{k}')→ 未抽中域
       标记(值不变,现值非 None 才标)→ 奖励应用(金 +N/装备 +件/
       角色落位 + 3合1 连锁——每级合并后受影响域各落一行,board 派生
-      随行写自动继承随机态);缺项路径该点全部写行 evidence 前缀
+      随行写自动继承随机态;抽中域现值 None = 跳该采样写留观察,
+      诚实缺失);缺项路径该点全部写行 evidence 前缀
       'ore_reward_attach_missing#';
     - **动作级出参**:全部开成 = applied=True;混合批 =
       'ore_partial_open_skipped';全部席满跳过 = applied=False

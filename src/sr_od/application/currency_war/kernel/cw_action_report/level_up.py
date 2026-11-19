@@ -28,6 +28,9 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """购买经验上报(单击/多击):xp/level 跨门槛推进(推进算子单一源 =
     ``xp_apply_clicks``,跨级连跳+溢出结转)+ gold −cost×clicks 直写。
+    跳写对 (level, xp) 同进退——任一未读整体跳写(等级滞留会让下一击
+    按旧级重算,花金零等级推进);deploy_cap 不写(容量真值归观察防抖读,
+    ``max_units_of`` 的 cap<level 兜底承接升级增量)。
     达帽 = applied=False + reason='level_cap' 零写(帽单一源 =
     ``cw_economy.level_cap_of``:无卡 = MAX_PLAYER_LEVEL,持等级帽卡 =
     注册表覆写经聚合归一);executed None = 击数自算 1(理想执行,sim 路径)。

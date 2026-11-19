@@ -88,7 +88,7 @@ act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 inves
 
 - **持卡登记**(获得链 `gain_invest_strategy`,动作 op 即时上报):GameState `active_strategies` 按名字去重追加(裁定:持卡列表恒无重复名)+ 效果账本登记分支 best-effort(`STRATEGY_EFFECTS` 命中 → `effects.register_strategy`(acquired_key = 节点序位快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`;失败 log + 缺陷保留证据 `gain_chain_strategy_register_failed`,不阻塞)+ `on_strategy_gained` 效果分派(骇客专家:银狼 = 狼单位授予分支经 `gain_character` 入席 + 商店池申报行 + 改件 `gain_equipment` 采样链)。画面 op 无选择写点(三桥已自画面 op 迁链)。
 - **刷新剩余次数**:`strategy_refresh_left` 观察写端(观察 report 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖;值 = 剩余,≤0 = 尽);画面 op 零计数写点,闸 1 = obs 携带余量、闸 2 = 状态容器对照。
-- 字段语义 = cw_game_state invest_strategy_opts/strategy_refresh_left 字段注释;效果账插入位置 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8(事件线选择非逻辑态通道)。
+- 字段语义 = cw_game_state invest_strategy_opts/strategy_refresh_left 字段注释;效果账 = 事件线选择非逻辑态通道(选择族零逻辑写,chosen_* 落地;有到账登记的经 kernel apply_confirm_effect)。
 
 ## 7. 子态与 overlay
 

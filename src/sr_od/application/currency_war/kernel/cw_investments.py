@@ -3047,8 +3047,7 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
 
 
 def spy_on_level_up_active(session) -> int:
-    """商业间谍升级偷牌张数现读(0 = 未持有;升级回调已登记判定单一源,
-    正本 = game_state/logic-updates/level-up.md)。
+    """商业间谍升级偷牌张数现读(0 = 未持有;升级回调已登记判定单一源)。
 
     已登记判定 = EffectSpec 300201(STRATEGY_EFFECTS['商业间谍'],
     trigger=LEVEL_UP,payload.steal_on_level_up=3 官方「升级时刷新商店,

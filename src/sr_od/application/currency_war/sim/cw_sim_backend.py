@@ -1442,7 +1442,8 @@ CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION: str = 'cw_skip_scope_battle_only_assumptio
 #: 免战跳过结算语义暂定披露键(免战牌;纯声明,不进任何判定分支):
 #: 跳过结算语义族(hp/streak/收入不动 + 被跳节点经验照常入账 + 直进
 #: 下一节点窗)= live 暂定表述(「跳过=无结算帧、无结算载荷」结构性
-#: 事实 + action-logic-state.md §5/§7 比对计划行)的建模化,实机局
+#: 事实;比对缺口登记 = 跨迭代挂账板「动作逻辑态知识缺口」条⑧)的
+#: 建模化,实机局
 #: 跳过前后字段比对批为消费方;证伪即改 :meth:`SimBackend._skip_battle`
 #: 对应支。发射点 = 跳过消费拍。
 CW_SKIP_SETTLEMENT_SEMANTICS_PENDING: str = 'cw_skip_settlement_semantics_pending'

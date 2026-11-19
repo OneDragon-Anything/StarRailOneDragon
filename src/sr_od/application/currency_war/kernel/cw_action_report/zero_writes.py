@@ -53,8 +53,8 @@ def _decl_bottom(gs: GameState, trigger: str) -> WorldDecl:
     推导单一源 = ``node_screen_now``)。"""
     return WorldDecl(next_screen=node_screen_now(gs), trigger=trigger)
 
-# —— 零写动作族(视觉域/转场/选择族:状态容器零写,消费真值归观察——
-#    action-logic-state.md 权威版本申报;函数在场 = 命名规约完备测试对象,
+# —— 零写动作族(视觉域/转场/选择族:状态容器零写,消费真值归观察;
+#    函数在场 = 命名规约完备测试对象,
 #    调用方统一入口不必分型)——
 
 

@@ -72,7 +72,7 @@ pick = decide_expert_invite()(零参;候选读状态容器 expert_invite 槽;
 - 弹窗载体观察:`report_screen_expert_invite_obs` 载体写状态容器 `expert_invite` 槽(`ExpertInvitePayload` card_bonds/board/card_points/cash_point 四字段同门一并写)。
 - `chosen_expert` write_logic(落地复查点写;仅卡分支,值 = 该卡羁绊原文名——chosen_expert 语义 = 受邀专家羁绊;「现金为王」= 无专家受邀,不写)。
 - 到账登记 `ConfirmExpertCash`(`kernel/cw_exec_state.py::apply_confirm_effect` dict 分支,gold +4 固定回金;仅现金分支)。⚠️ 与投资策略卡「现金为王」撞名两实体、效果域不同,按画面域限定匹配禁跨屏按名。
-- 字段语义 = cw_game_state 对应字段注释(chosen_*/opts 域组);到账登记 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(ConfirmExpertCash 行)。
+- 字段语义 = cw_game_state 对应字段注释(chosen_*/opts 域组);到账登记 = kernel `apply_confirm_effect`(ConfirmExpertCash,弃卡回金 +4)。
 
 ## 7. 子态与 overlay
 

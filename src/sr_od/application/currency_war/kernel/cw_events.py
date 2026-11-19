@@ -297,8 +297,8 @@ def normalize_equip_name(text: str) -> str:
     return hits[0] if len(hits) == 1 else ''
 
 
-# ===== 补给装备名注册表级分层归一(正本 = game_state/logic-updates/pick-supply.md §1;
-# ===== 与上方银狼基准集归一两入口分立,互不复用)=====
+# ===== 补给装备名注册表级分层归一
+# ===== (与上方银狼基准集归一两入口分立,互不复用)=====
 
 #: 装备注册表全键集 longest-first 定序(分层归一第 2 层 containment 与
 #: 第 3 层相似的遍历序;构建期定序,「分身墨镜Max」先于「分身墨镜」受检)。
@@ -307,7 +307,7 @@ _REGISTRY_EQUIP_NAMES: tuple[str, ...] = tuple(
 
 
 def normalize_registry_equip_name(text: str) -> str:
-    """补给侧装备名归一(注册表 158 键全键集分层归一;正本 = logic-updates/pick-supply.md §1)。
+    """补给侧装备名归一(注册表 158 键全键集分层归一)。
 
     与 :func:`normalize_equip_name`(银狼基准集 10 件集)分立:补给基础件不在
     银狼基准集名单,恒未解析——故另立本入口,键集 = 装备注册表全键集。

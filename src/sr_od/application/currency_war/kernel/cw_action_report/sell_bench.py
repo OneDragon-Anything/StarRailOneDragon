@@ -32,6 +32,9 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
     类别,判据 = ``cw_investments.BENCH_ITEM_NAMES`` 词表守卫 +
     ``BENCH_ITEM_KINDS`` 映射单一源;
     3.2 单账化后状态容器 bench 即唯一账,原 tracked 对称吸收分支停用)。
+    入位对象身份缺读(overflow_card 空)= 跳过入位(槽留空等观察),
+    卖出语义本体不受阻;有溢出时席必满、自由槽恒唯一,腾出槽落位
+    无歧义。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
     覆盖);expect 非空且名不符 = stale_proposal 拒绝(live 提案恒 ''

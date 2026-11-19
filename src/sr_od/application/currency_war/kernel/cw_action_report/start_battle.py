@@ -96,6 +96,7 @@ def report_action_start_battle_param(gs: GameState, param: Any, sig: ChannelSig,
     """出战上报:hp/gold/streak 由结算屏观察覆盖接管,唯一逻辑推进 =
     免战牌跳过递减(上报时递减,非「验证落地后」;标记由出战 op 上报,
     递减 best-effort,未登记 → consume_use 返 None 零动作)。
+    跳过子态无结算帧——三字段维持现值,由下一备战帧观察覆盖。
     applied 出口构造后果声明喂入 ``cw_sim_ports.declare_world`` / sim
     后端 advance:常规出口 = (结算屏, battle_resolve);免战跳过出口 =
     (下一节点窗稳态屏, battle_skip)——跳过事实走声明通道(裁决点 1

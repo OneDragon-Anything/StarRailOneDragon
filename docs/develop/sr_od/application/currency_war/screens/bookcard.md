@@ -57,7 +57,7 @@ cards = 观察轮实例载体(标准化注册名)→ 零参决策 decide_star_to
 - 候选观察:`report_screen_bookcard_obs` 候选与候选点一并写 `star_tome_opts` / `star_tome_opts_xy`(同门同写,op-layer.md §1.1「选择坐标观察上报」;空候选不写,双域一体)。
 - `chosen_tome` write_logic(落地复查点写;值 = 选中卡阵营名,标准化注册名)。
 - 到账登记 `ConfirmTome`(`kernel/cw_exec_state.py::apply_confirm_effect` dict 分支,owned += 「X星徽」;OCR 卡名已去后缀作阵营名,登记时回拼全名,已是全名则原样)。
-- 字段语义 = cw_game_state 对应字段注释(chosen_*/opts 域组);到账登记 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(ConfirmTome 行)。
+- 字段语义 = cw_game_state 对应字段注释(chosen_*/opts 域组);到账登记 = kernel `apply_confirm_effect`(ConfirmTome,owned +1)。
 
 ## 7. 子态与 overlay
 

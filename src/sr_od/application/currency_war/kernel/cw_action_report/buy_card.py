@@ -41,6 +41,8 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)+ 合并
     升星触发发放收尾(级联采集的升星事实交触发检查,升星分支写毕后
     best-effort 发火,触发分支异常 log 不阻塞上报主链)。
+    买牌不产经验(xp-rules.md §2 零购买子集反证)——xp/level/
+    equips/hp 域零写。
 
     满栏且合成不可达 = 游戏拒买(applied=False + reason='bench_full',
     零写)。k 来源:executed 给定 = 回执 k(live);None =
