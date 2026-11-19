@@ -1,27 +1,20 @@
-"""恢复局(locked-resume)检测纯函数。
+"""恢复局(locked-resume)探针裁决纯函数。
 
 对局中进入过战斗后 exe 异常退出,重进继续该局回备战画面 = 游戏侧锁定
-「只能出战」——商店按钮点击零响应(已实测确认,currency_war_prep.md:16)。bot 接手
-(启动时 session 全新但画面在非 1-1 备战态)会走备战分支 → CwScreenPrep →
-策略发开商店 → 点击落空 → 重试链耗尽 → run 失败(根因=流程层缺状态判定)。
+「只能出战」——商店按钮点击零响应(已实测确认,currency_war_prep.md:16)。
+锁定唯一可观测特征 = 商店可开性 → 探针(识别性点击)是唯一裁决手段。
 
-本模块把 cw_loop 备战分支的**判定/探针裁决/锁定解除**抽成纯函数(单帧
-可测),运行时只做薄接入(见 operations/cw_loop.py 备战分支稳定门后)。
+判据变化申报(2026-11-19-resume-rebuild design §2.3):恢复局候选判定
+(旧 ``resume_candidate``:新 match ∧ 轮次/位面门)已退役——探针触发门 =
+``opened_via == 'takeover' ∧ not probed``(接管局必经,含 1-1 接管照探
+= 有意变更:无锁则探针必「可开」走常规,结果正确),候选判定不再以
+纯函数形态存在。相位轮次读数保留于 ``Match.locked_round`` 遥测链
+(读法 = cw_observation.read_phase_round,与判定解耦,锁定确认时同帧
+写入)。本模块现役 = 探针裁决(probe_resolve)与锁定解除
+(locked_after_start_battle)两个纯函数(单帧可测),运行时薄接入 =
+operations/cw_screen/cw_screen_prep.py 段1 b 查 / 段3b。
 """
 from __future__ import annotations
-
-
-def resume_candidate(is_new_match: bool, plane: int, round_num: int) -> bool:
-    """恢复局候选判据:新 match(无本局记录)+ 首个备战相位 round>1。
-
-    - ``is_new_match=True``(session 全新,不可能有本局任一轮真实决策/结算记录)
-      且 ``round_num>1`` 或 ``plane>1`` → True(恢复局候选,需探针确认);
-    - ``is_new_match=True`` 且 ``round_num==1``/``plane==1`` → False(正常新局 r1);
-    - ``is_new_match=False``(cw_match 已在,续跑/局中)→ 恒 False(不进入检测)。
-    """
-    if not is_new_match:
-        return False
-    return round_num > 1 or plane > 1
 
 
 def probe_resolve(shop_opened_after_click: bool) -> str:

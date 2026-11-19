@@ -743,15 +743,19 @@ class CwScreenPrep(CwOperation):
         return getattr(self.ctx, 'cw_match', None)
 
     def _invalidate_tracked_on_takeover(self) -> None:
-        """接管候选过判确认点 → 状态容器(GameState)观察态失效
+        """接管确认点(探针分支进入) → 状态容器(GameState)观察态失效
         (tracked_account_observed=False;段2 子态流程事实写)。
 
         与主循环战斗帧恢复检测确认点(cw_loop._invalidate_tracked_on_takeover,
         actor=CwLoop)构成两确认点分流(写入端登记 =
         kernel/cw_game_state.py tracked_account_observed 字段注);本写点 =
         备战帧,actor=CwScreenPrep,write_logic 调用形态与主循环写体同款。
-        时点 = 候选过判即写、先于探针点击(非锁定候选帧同样写,非锁定
-        接管帧的失效保护不收窄——迭代 2026-11-18-prep-special-flow §2.2)。
+        挂点 = 探针分支进入即写、先于探针点击(触发门 =
+        opened_via=='takeover' ∧ not probed;判据 =
+        2026-11-19-resume-rebuild design §2.3)。触达面扩大申报(有意变更):
+        从「候选过判(轮次>1)」扩为「接管必经(含 1-1 接管局)」——方向
+        保守(失效保护只扩不缩),heavy 观察同 visit 重锚补偿
+        (reconcile_tracking 锚定写 True),净行为差近似零。
         best-effort 不阻塞探针链;session 缺(局外/桩)静默跳过。
         """
         try:
@@ -825,15 +829,15 @@ class CwScreenPrep(CwOperation):
                 and not match.probed:
             # b 查:接管局必经探针(触发门 = opened_via=='takeover' ∧ 未探,
             # 去重标志探后一次写;判据 = 2026-11-19-resume-rebuild design
-            # §2.3——旧轮次门(resume_candidate round>1)随跨 run 延用语义
-            # 退役,1-1 接管照探:无锁则探针必「可开」走常规,结果正确)。
+            # §2.3。轮次/位面不参与判定,1-1 接管照探:无锁则探针必「可开」
+            # 走常规,结果正确;轮次读数仅供 locked_round 遥测)。
             _caps_gs = game_state_of(match.session)
             _pr = read_phase_round(
                 self.ctx, screen,
                 round_caps=(_caps_gs.node_seq_by_plane.value
                             if _caps_gs is not None else None))
-            # 接管失效写(进入 b 查即写,时序保持先于探针点击;触达面由
-            # 「候选过判(轮次>1)」扩为「接管必经」= 有意变更申报)。
+            # 接管失效写:探针分支进入即写,先于探针点击(挂点与触达面
+            # 申报见 _invalidate_tracked_on_takeover docstring)。
             self._invalidate_tracked_on_takeover()
             # 探针 = 锁定子态的识别手段(商店可开性探测,识别性点击):
             # 点「按钮-商店」试探 → 验「按钮-收起」出现与否。
