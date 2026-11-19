@@ -20,7 +20,7 @@
 - `references/version-update.md`:版本更新 CW 域适配方法(场景判型扩充/换赛季重做、按域依赖顺序的 checklist 与验收判据、换赛季特有面、已知坑;总流程挂 sr-od-dev-version-update-adaptation 路由表)。
 - `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
 - `references/strategy-work.md`:策略工作统一说明(策略是什么与骨架、改前、开关落地、验证、单帧测试)。
-- `references/autonomous-loop.md`:CW 实机探索期编排细则(实机探索 agent 协议/窗口所有权串行/问题处置循环/传话纪律;开启停止仪式与通用编排原则单一源=od-dev-agent-autonomous-mode)。
+- `references/autonomous-loop.md`:CW 实机探索期编排细则+领域叠加件(实机探索 agent 协议/窗口所有权串行/问题处置循环/传话纪律/核心面清单与共享资产枚举的 CW 映射;通用骨架单一源=od-dev-agent-autonomous-mode 的需求线流水线)。
 - `design/`:本文件;ADR(why)仅经用户命令创建(默认无)。
 
 ## 与其它约定层的分工

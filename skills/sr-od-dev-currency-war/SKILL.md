@@ -164,7 +164,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 数据采集 / 版本重采 / 新字段建模 | §3单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 改用户配置字段(增/删/语义) | 改前必读 [references/config.md](references/config.md)(归属判据红线:用户会因个人目的想改它吗;转向轴四类×三档语义表) | config |
 | 改状态容器(写入入口 / 上报函数 / 字段增删) | 改前必读 [references/game-state.md](references/game-state.md)(三种来源与对账 / 上报函数族形态 / 字段设计纪律) | game-state |
-| 自主推进(实机探索期:派实机探索 agent / 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill);CW 实机探索期运转细则 → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
+| 自主推进(实机探索期:派实机探索 agent / 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill,需求线流水线);CW 实机探索期运转细则+领域叠加件(核心面清单/共享资产枚举/串行模式映射) → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
 | ADR / as-built 维护 | §4文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查 §3 单一源地图,仍定位不了 → 给分诊表补行 | — |
 
@@ -181,7 +181,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
 | **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,报告按画面章组织——每画面 op 一章,章内 0 观察+动作节×N+策略评价,报告由渲染器 skills/sr-od-dev-currency-war/scripts/replay_to_md.py 生成,复盘者填判定与文末复盘者附加;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选;实机探索 agent 局终后由编排者按需派单执行,产出的缺陷候选交编排者按问题处置循环分诊=autonomous-loop §3) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 改动集中到局间一次重启,局中不改**;重启/早停/残局清理/监控栈与哨兵;效率剖析与巡检阈值回填=「一局时间花在哪」的拆分方法与巡检阈值回填去向) | [references/runtime-ops.md](references/runtime-ops.md) |
-| **自主推进模式运转框架**(开启/停止仪式/通用编排原则) | `od-dev-agent-autonomous-mode`(公共 skill);CW 实机探索期运转细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度账本规范见 od-dev-progress-tracking |
+| **自主推进模式运转框架**(开启/停止仪式/需求线流水线/资源闸门) | `od-dev-agent-autonomous-mode`(公共 skill);CW 实机探索期运转细则+领域叠加件 = [references/autonomous-loop.md](references/autonomous-loop.md);进度账本规范见 od-dev-progress-tracking |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/sr_od/application/currency_war/strategy-docs/README.md`(分篇入口;判据权威 = strategy-docs 各编号篇 + math_proofs;决策 why 收敛于设计文档动机段与代码注释,decisions/ ADR 档案停用) |
 | 单套阵容打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
