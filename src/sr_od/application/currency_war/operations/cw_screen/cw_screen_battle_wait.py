@@ -45,12 +45,14 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar
 
-from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    CW_BLANK_CLICK_RECT,
+    area_center,
+)
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L1_ALERT,
@@ -260,8 +262,8 @@ class CwScreenBattleWait(CwOperation):
     #: 画面分支超时兜底)。战斗特效长帧期宽限已由
     #: BATTLE_WATCH_GRACE_S 挡在计数外,本值只覆盖「结算后卡死」形态。
     UNKNOWN_BAIL_N: ClassVar[int] = 10
-    # 点空白区(加速战斗/关叠层;避开中央内容)
-    BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
+    # 点空白区(加速战斗/关叠层;避开中央内容) = kernel 共享常量
+    # CW_BLANK_CLICK_RECT(跨屏消费,不建档理由见该常量注释)
     # (点击/长按兜底/推进上报宿主 = CwOpSettleConfirm;本类仅保留
     #  结算链记(读点/_record_round_outcome/rounds_done 计数)与
     #  ③段白名单出口判定。)
@@ -968,7 +970,7 @@ class CwScreenBattleWait(CwOperation):
                                                 pre_delay=0)
                     self.park_cursor(after_wait=0.1)
                     return self.round_wait(wait=1)
-            self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
+            self.ctx.controller.click(CW_BLANK_CLICK_RECT.center)
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=1)
 
@@ -1018,7 +1020,7 @@ class CwScreenBattleWait(CwOperation):
                 if _now - self._st.settle_p1_ts < CwScreenBattleWait.SETTLE_PANEL_WAIT_S:
                     return self.round_wait(wait=0.5)
             self._st.settle_p1_ts = None
-            self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
+            self.ctx.controller.click(CW_BLANK_CLICK_RECT.center)
             return self.round_wait(wait=0.8)
 
         # ②段:前往结算链(轮败/位面结束/团灭多页 → 逐页点进;
@@ -1058,7 +1060,7 @@ class CwScreenBattleWait(CwOperation):
         if (self.round_by_ocr(screen, '总伤害', lcs_percent=0.8).is_success
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self._unknown_streak = 0
-            self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
+            self.ctx.controller.click(CW_BLANK_CLICK_RECT.center)
             return self.round_wait(wait=1.0)
 
         # ①段:等待结算画面出现。战斗进行中 = 合法静止(宽限)。

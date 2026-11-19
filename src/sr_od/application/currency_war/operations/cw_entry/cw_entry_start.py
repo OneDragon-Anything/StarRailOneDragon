@@ -5,7 +5,6 @@ from typing import ClassVar
 
 from cv2.typing import MatLike
 
-from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -19,7 +18,10 @@ from sr_od.application.currency_war.kernel.cw_entry_policy import (
     DifficultyEntryIntent,
     difficulty_entry_intent,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    CW_BLANK_CLICK_RECT,
+    area_center,
+)
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing import (
     CwScreenBriefing,
@@ -191,8 +193,8 @@ class CwEntryStart(CwOperation):
     cw_equip 154 模板 SIFT 识别装备区 owned icon)。deploy 需拖拽角色图标(装备拖拽机制 D-18,待 live 验证)。
     """
 
-    # 点空白关闭「点击空白处继续」教程叠层(避开中央内容)
-    BLANK_CLICK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
+    # 点空白关闭「点击空白处继续」教程叠层:区域 = kernel 共享常量 CW_BLANK_CLICK_RECT
+    #(跨屏消费,不建档理由见该常量注释)
     # 入口链路 screen_info 画面名;按钮经 round_by_find_and_click_area / area_center 读(替代全屏 ocr)
     DIFFICULTY_SCREEN: ClassVar[str] = '货币战争-难度确认'
     LOBBY_SCREEN: ClassVar[str] = '货币战争-大厅'
@@ -454,7 +456,7 @@ class CwEntryStart(CwOperation):
         # (5/7≈0.71 过默认,同 wait_lobby 分支对称面),容忍 1 字误读(6/7≈0.86)
         if self.round_by_ocr(screen, '点击空白处继续',
                              lcs_percent=0.8).is_success:
-            self.ctx.controller.click(CwEntryStart.BLANK_CLICK.center)
+            self.ctx.controller.click(CW_BLANK_CLICK_RECT.center)
             return self.round_wait(wait=1)
         # 3b) 积分奖励页( M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
         #     到备战不认识此屏 → 干等超时 196s)。处理:一键领取(有达标奖励)→ 等结算动画 →

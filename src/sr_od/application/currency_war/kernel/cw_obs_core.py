@@ -12,6 +12,9 @@
 **区域单一真相源 = screen_info**(用户 2026-08-03):备战 ``currency_war_battle_prep.yml``
 (screen「货币战争-备战」)、简报 ``currency_war_briefing.yml``。改区域改 yml 即可,不动代码。
 本模块经 ``ctx.screen_loader`` 读 area 的 pc_rect。
+例外申报:本文件存有唯一一个坐标常量 ``CW_BLANK_CLICK_RECT``(跨屏空白惰性
+点击区),入住理由与不建档依据见该常量注释——其余区域坐标一律以
+screen_info 为真相源。
 """
 from __future__ import annotations
 
@@ -43,6 +46,14 @@ A_SHOP_CARD_PREFIX: str = '商店牌-'        # 商店牌-1..5(点击中心;商�
 GOLD_MIN, GOLD_MAX = 0, 400
 HP_MIN, HP_MAX = 0, 200
 LEVEL_MIN, LEVEL_MAX = 1, 10
+
+# 跨屏空白惰性点击区(右下角,避开中央内容):入口链弹窗(「点击空白处关闭/
+# 继续」类)与战斗窗点空白加速共用。不建档的唯一主理由 = **消费端跨屏**——
+# 弹窗可盖入口流程任意帧、空白点击横跨战斗/结算多屏,screen_info 的
+# (screen, area) 键控与该消费形态失配(跨屏正交元素消费端禁锁死单一屏查);
+# 空白区建档本身可行(currency_war_battle_prep.yml::区域-空白关闭 等裸 rect
+# area 在档先例),只是对本消费集不适用。
+CW_BLANK_CLICK_RECT: Rect = Rect(1450, 920, 1560, 980)
 
 # 简报屏(对局开始,词缀/首领读取;非备战)
 BRIEFING_SCREEN: str = '货币战争-简报'

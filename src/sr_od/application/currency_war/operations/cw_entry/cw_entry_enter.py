@@ -1,10 +1,10 @@
 from typing import ClassVar
 
-from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_obs_core import CW_BLANK_CLICK_RECT
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
     try_handle_entry_popups,
 )
@@ -25,8 +25,8 @@ class CwEntryEnter(CwOperation):
     其余用 OCR 点击(非 GuideTransport)。
     """
 
-    # 点空白关闭「点击空白处关闭」类弹窗的区域(避开中央内容)
-    BLANK_CLICK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
+    # 点空白关闭「点击空白处关闭」类弹窗:区域 = kernel 共享常量 CW_BLANK_CLICK_RECT
+    #(跨屏消费,不建档理由见该常量注释)
     # 大厅 screen_info 画面名;到达判定经 round_by_find_area(替代全屏 ocr)
     LOBBY_SCREEN: ClassVar[str] = '货币战争-大厅'
 
@@ -141,7 +141,7 @@ class CwEntryEnter(CwOperation):
         # 「点击空白处继续」互串(5/7≈0.71 过默认),容忍 1 字误读(6/7≈0.86)
         if self.round_by_ocr(screen, '点击空白处关闭',
                              lcs_percent=0.8).is_success:
-            self.ctx.controller.click(CwEntryEnter.BLANK_CLICK.center)
+            self.ctx.controller.click(CW_BLANK_CLICK_RECT.center)
             return self.round_retry(wait=1)
 
         # 版本公告轮播(「贪饕」侵蚀版本):游戏级公告弹窗可盖在
