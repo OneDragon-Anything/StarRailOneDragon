@@ -19,10 +19,10 @@ area_list:
 - area_name: 标识-投资环境
   id_mark: true
   pc_rect:
-  - 770
-  - 704
-  - 872
-  - 744
+  - 1120
+  - 705
+  - 1310
+  - 740
   text: 投资环境
   lcs_percent: 0.8
   template_sub_dir: ''
