@@ -2816,8 +2816,10 @@ class GameState:
     # heavy 观察(observe_full → reconcile_tracking)屏幕真值对账成功 =
     # 已锚定)。取值时机 = 事件驱动(非逐帧)。写入端:False = 接管检测
     # 两确认点分流(战斗帧 = cw_loop._invalidate_tracked_on_takeover;
-    # 备战帧 = CwScreenPrep 接管候选过判确认点,actor=CwScreenPrep 同款
-    # write_logic 调用;重置/账失效类事件同口写);
+    # 备战帧 = CwScreenPrep 探针分支进入即写——接管局必经,含 1-1 接管
+    # (挂点与触达面申报 = cw_screen_prep._invalidate_tracked_on_takeover
+    # docstring),actor=CwScreenPrep 同款 write_logic 调用;重置/账失效
+    # 类事件同口写);
     # True = kernel reconcile_tracking 的 bench 侧对账成功点
     #(唯一锚定写端;bench 读失败/双空读守卫均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →

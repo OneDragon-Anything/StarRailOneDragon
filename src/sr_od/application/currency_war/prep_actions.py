@@ -585,10 +585,13 @@ def locked_resume_sync_and_battle(op, ctx):
     reconcile 对账暴露(与既有 token 门「发出即写」同款裁定)。锁定
     确认分支复位证据位。
 
-    隐藏前提声明:同步步的「不误卖」依赖恢复局 session 必新鲜——
-    恢复检测链(cw_resume_lock.is_new_match)恒走新状态容器(GameState),节点未观察
+    隐藏前提声明:同步步的「不误卖」依赖接管局 session 必新鲜——
+    接管路径(探针门/同步步仅经锁定面可达,锁定局必为接管局)的 Match
+    容器均为本次运行新建(establish_new_match 每次新建 StrategySession
+    与 GameState;跨 run 残留由 loop handle_init 重建判据弃旧重建,
+    判据 = 2026-11-19-resume-rebuild design §2.4),新容器未观察
     ⇒ deploy-swap 卖出通道整体跳过(board 未观察不可判),同步步实际
-    只做确定性部署;若未来恢复检测放开 mid-run 复用 session,stale board
+    只做确定性部署;若未来放开 mid-run 复用旧 session,stale board
     会让同步步按旧目标线卖新局板面——届时须先加卖出输入守卫。
 
     **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认

@@ -96,7 +96,9 @@ class CurrencyWarConfig(YamlConfig):
                 "合法值=skeleton_only/full(仅 mandate_v1 消费)")
         self.ev_arm: str = ev_arm
         self.strategy_seed: int | None = self.get('strategy_seed', None)
-        # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮停备战屏。None=跑到对局结束。
+        # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮触发停点,行为按
+        # env_config.is_debug 分模式——debug=停备战屏留局采样;非 debug=
+        # 交接弃局回大厅(重开由下一次 app 运行承载)。None=跑到对局结束。
         # app._run_loop 透传给 CwLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None

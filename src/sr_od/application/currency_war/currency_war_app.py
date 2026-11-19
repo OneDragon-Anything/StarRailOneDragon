@@ -63,8 +63,8 @@ class CurrencyWarApp(SrApplication):
 
     大世界 → 货币战争大厅(`CwEntryEnter`)→ 开始对局到备战(`CwEntryStart`)
     → 对局循环到结束(`CwLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)
-    → 退出收尾(交接节点:弹窗守卫 + `CwEntryExit` 退局/大厅确认;max_rounds
-    停备战与假局守卫形态跳过退出)。
+    → 退出收尾(交接节点:弹窗守卫 + `CwEntryExit` 退局/大厅确认;debug 停点
+    留局与假局守卫形态跳过退出,非 debug 停点走交接退局回大厅)。
 
     **中间态接手**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
     已在 CW(大厅/对局中)就跳过 enter/start、直接进 loop。故 bot crash/重启/手动接管后,
@@ -269,11 +269,12 @@ class CurrencyWarApp(SrApplication):
         的结束文本不能走节点边文本全等,故读上一轮结果对象):
         - 大厅完成(STATUS_LOBBY_DONE):游戏已回大厅 → exit 大厅确认形态
           (幂等确认,无弹窗压制时近 no-op);
-        - 异常交接(STATUS_HANDOFF_PREFIX 前缀,loop 外环 fail-streak 耗尽的
-          交接出口):残局留在对局内 → exit 按当前画面路由清场退局(备战点门/
-          战斗退局范式/其余画面委托 loop 清理),exit 不区分形态传参;
-        - 其余(max_rounds 停备战留局采样 / 假局守卫开局失败-中断〔已在大厅
-          且对局状态已清〕)→ 跳过退出直接结束。
+        - 异常交接(STATUS_HANDOFF_PREFIX 前缀;来源 = loop 外环 fail-streak
+          耗尽的交接出口,或非 debug 停点的交接弃局出口):残局留在对局内 →
+          exit 按当前画面路由清场退局(备战点门/战斗退局范式/其余画面委托
+          loop 清理),exit 不区分形态传参;
+        - 其余(max_rounds 停备战留局采样,仅 is_debug=True / 假局守卫开局
+          失败-中断〔已在大厅且对局状态已清〕)→ 跳过退出直接结束。
         loop fail(看门狗/框架超时/未捕获/未知兜底)不经本节点:success 边才
         入,fail 无匹配出边 = app 失败收尾(残局下次启动预检兜底)。
 
