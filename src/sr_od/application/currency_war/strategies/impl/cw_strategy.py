@@ -191,8 +191,8 @@ class CwStrategy(ABC, Generic[_TState]):
       + 重观察 CwActionObsParam(scope='in_place' 环内 / 'outer_loop' 结束本次访问,
       后者承载原 HoldFrame 空动作发出语义),无 None)。
 
-    - **流程态字段禁读**(结构性不持有):``CurrencyWarMatch`` 五个流程态
-      字段(``is_new_match``/``resume_probe_pending``/``locked_resume``/
+    - **流程态字段禁读**(结构性不持有):``CurrencyWarMatch`` 六个流程态
+      字段(``opened_via``/``created_run_id``/``probed``/``locked_resume``/
       ``locked_round``/``locked_sync_done``)是主循环备战交互链的流程
       状态,非决策事实——策略器构造签名无 Match 引用(结构性不可读),
       决策输入一律 ``self.gs`` 自取;禁把流程事实镜像进 GameState /
@@ -386,23 +386,34 @@ class CurrencyWarMatch:
                                   # None=迁移期测试/防御路径旧构造容忍;
                                   # 3.5 终态切换收紧必填,生产漏斗已填充)
     performance: object | None = None
-    # ===== 流程态字段(备战交互链迁移宿主,additive):写入节奏 = per-run——
-    # 主循环 handle_init 每次 execute 重判/重置,宿主容量整局(续跑/手动多轮
-    # 语义随写入节奏不变)。消费边界 = operations/ 树与 prep_actions 发出核
-    # 读写;策略器禁读(结构性不持有,契约登记 = CwStrategy docstring 禁读
-    # 字段清单);不镜像进 GameState / kernel StrategySession(流程事实不入
-    # 真值域,防脏「观察态/逻辑态」边界)。
+    # ===== 流程态字段(备战交互链迁移宿主):开局方式三字段(opened_via/
+    # created_run_id/probed)= 容器建立时点一次写入的事实/判据载体,运行内
+    # 不再翻转(每次运行重建判据 = loop handle_init 换容器,不翻旧容器
+    # 字段);锁定三字段(locked_resume/locked_round/locked_sync_done)=
+    # 锁定裁决配对链,写入节奏见各自字段注。消费边界 = operations/ 树与
+    # prep_actions 发出核读写;策略器禁读(结构性不持有,契约登记 =
+    # CwStrategy docstring 禁读字段清单);不镜像进 GameState / kernel
+    # StrategySession(流程事实不入真值域,防脏「观察态/逻辑态」边界)。
 
-    # 新局标记。取值时机:handle_init 逐 execute 重判写入(求值 = 当时
-    # ctx.cw_match is None;兜底建局分支先建 Match 再写)——非创建时点定值。
-    # 写入端:主循环 handle_init。消费:run 级读点(SettlementState 新局标记
-    # 注入 / 战斗帧恢复检测门 / 恢复候选判定输入)。
-    is_new_match: bool = False
-    # 恢复候选(新 match 无本局记录,待首个备战相位 round>1 时探针裁决;
-    # 续跑恒 False)。取值时机:handle_init 写 = is_new_match;撤回点两处 =
-    # 候选判定否 / 探针裁决后。写入端:handle_init + CwScreenPrep 段1 b 查
-    # 撤回两处。消费:CwScreenPrep 探针门(b 查)。
-    resume_probe_pending: bool = False
+    # 开局方式事实('new_game'=新局链专属画面见过 / 'takeover'=接管:
+    # 兜底建/每次运行重建/防御兜底)。取值时机:容器建立时一次写入,运行内
+    # 不变;写入端:establish_new_match 的 opened_via 参数(生产显式传参
+    # 恰三处:入口链=new_game / loop handle_init 兜底=takeover / 商店防御
+    # 兜底=takeover),字段缺省 'new_game' = 漏传时新局不探是保守方向
+    # (sim 直构等外部装配零改动)。消费:CwScreenPrep 探针门(b 查)/
+    # SettlementState 新局标记注入 / 战斗帧恢复检测门(loop iter1)。
+    opened_via: str = 'new_game'
+    # 建立本容器时的遥测 run_id(每次运行重建判据载体)。坐标系:establish
+    # 漏斗内 ensure_run_started 返回后记录(经漏斗建立的容器恒非 None);
+    # None = 外部装配直构(sim/测试裸构造,不经漏斗)= handle_init 保留。
+    # 取值时机:建立时一次写入;写入端:establish_new_match(ensure 返回值)。
+    # 消费:loop handle_init 重建判据(非 None 且 != 当前 run → 弃旧重建)。
+    created_run_id: str | None = None
+    # 探针去重标志(锁定裁决的识别性点击每容器恰一次)。取值时机:takeover
+    # 容器首探前 False、探后置 True 一次写(容器重建天然归零;new_game
+    # 容器恒 False)。写入端:CwScreenPrep 段1 b 查。消费:CwScreenPrep
+    # 探针门(b 查,与 opened_via=='takeover' 联合触发)。
+    probed: bool = False
     # 锁定确认(探针零响应 → 跳过备战交互直接出战)。取值时机:handle_init
     # 重置 False;锁定确认置 True / 出战成功置 False(锁解除)。写入端:
     # handle_init + CwScreenPrep 锁定确认点(段1 b 查)与锁解除点(段3b)。

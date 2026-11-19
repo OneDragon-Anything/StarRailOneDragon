@@ -405,7 +405,9 @@ class CwScreenShop(CwOperation):
             # (局状态容器建立点注入 journal 装配)。「局外不复用」语义保持:
             # 先弃置残留状态容器再建(每次独立 run_operation 新建;与入口链
             # CwEntryStart 的 discard+establish 同款衔接),漏斗幂等分支经
-            # 前一步清场必走新建。
+            # 前一步清场必走新建。opened_via='takeover':局外兜底 = 缺口
+            # 接管语义(对局面无知,探针门覆盖;判据 = 2026-11-19-resume-
+            # rebuild design §2.2 写入端第三处)。
             from sr_od.application.currency_war.strategies.impl.cw_strategy import (
                 discard_stale_match_container,
             )
@@ -413,7 +415,7 @@ class CwScreenShop(CwOperation):
                 establish_new_match,
             )
             discard_stale_match_container(self.ctx, 'buy_cards_defensive_rebuild')
-            establish_new_match(self.ctx, config)
+            establish_new_match(self.ctx, config, 'takeover')
             match = self.ctx.cw_match
         self._config = config
         # 牌位/升级/刷新中心从 screen_info 直取;area 缺失 = 建档漂移,显式

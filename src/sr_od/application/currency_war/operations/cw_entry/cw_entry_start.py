@@ -287,13 +287,16 @@ class CwEntryStart(CwOperation):
         session 建立时机从 run 首帧 handle_init 前移到进对局——简报观察
         (P3 起 CwScreenBriefing 直写 session)先于 run loop 出现,session 不存在
         = 观察无写目标。已有状态容器(继续进度恢复)幂等直过。
+        opened_via='new_game':新局确凿信号(三屏)只在无保存局的新局路径
+        出现 = 开局方式事实(判据 = 2026-11-19-resume-rebuild design §2.2)。
         """
         from sr_od.application.currency_war.strategies.impl.cw_strategy_manager import (
             establish_new_match,
         )
         establish_new_match(
             self.ctx,
-            CurrencyWarConfig(self.ctx.current_instance_idx))
+            CurrencyWarConfig(self.ctx.current_instance_idx),
+            'new_game')
 
     def _at_prep(self, screen: MatLike) -> bool:
         """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
@@ -442,11 +445,10 @@ class CwEntryStart(CwOperation):
         # → loop __init__ copy session → 策略层填 state(3.5.1 接入调用)。
         # 难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 状态容器。
-        if self.round_by_find_area(
-                screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
-                crop_first=False).is_success:
-            self._discard_stale_once('到达难度确认屏=新局开始')
-            self._establish_match_once()
+        # 难度读取段挪到 establish 之前(同节点相邻段,重整配套 = design
+        # §2.4):establish 内 ensure 的 difficulty 实参取「难度确认屏读存的
+        # 值」,旧铸段时点语义保持;难度读数参与下方入口意图判定,挪序后
+        # 本帧内先读后意图,判定输入不变。
         if self.ctx.cw_selected_difficulty is None and self.round_by_find_area(
                 screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
@@ -457,6 +459,11 @@ class CwEntryStart(CwOperation):
             if _diff:
                 self.ctx.cw_selected_difficulty = _diff
                 _log.info('[cw-entry] 本局职级: %s', _diff)
+        if self.round_by_find_area(
+                screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
+                crop_first=False).is_success:
+            self._discard_stale_once('到达难度确认屏=新局开始')
+            self._establish_match_once()
         _go_highest_seen = self.round_by_find_area(
             screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-返回最高职级',
             crop_first=False).is_success

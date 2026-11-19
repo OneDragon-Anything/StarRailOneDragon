@@ -89,7 +89,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
 from sr_od.application.currency_war.obs.cw_resume_lock import (
     locked_after_start_battle,
     probe_resolve,
-    resume_candidate,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
@@ -793,15 +792,16 @@ class CwScreenPrep(CwOperation):
         终结动作,返回语义与原入口代发一致)。
 
         段1 子态识别四查(最顶部,先于 match 缺席门/清场/收店探针/heavy/
-        补采/审计;优先序 0 > a > b > c):非常规子态帧(返回按钮/恢复候选
-        探针/锁定确认/补给未确认)在交互链迁入本 op 前从不被任何前置段
+        补采/审计;优先序 0 > a > b > c):非常规子态帧(返回按钮/接管探针/
+        锁定确认/补给未确认)在交互链迁入本 op 前从不被任何前置段
         接触(主循环派发前已处置;迁移保真见迭代设计 §2.2——heavy 观察在
         锁定帧上执行会把板面真值写入状态容器,恢复局同步步的部署计划从
         「空计划零部署」漂移为「真部署」),子态命中即跳过全部既有前置段,
         处置动作归决策动作 node 段3。子态裁决的流程事实写(Match 字段配对
         写/接管失效写)= 段2 语义;探针与收店点击 = 识别手段(识别性点击
         读屏例外,迭代 2026-11-18-prep-special-flow §2.7-1)。查全否 →
-        既有路径一步不动。"""
+        既有路径一步不动。b 查触发门 = opened_via=='takeover' ∧ 未探
+        (去重标志一次写;判据 = 2026-11-19-resume-rebuild design §2.3)。"""
         match = self._match()
         # ===== 段1 子态识别四查(特殊流程;处置在决策动作 node 段3)=====
         # Match 缺席(局外/桩):四查全部按否处理,落到下方 match
@@ -821,51 +821,48 @@ class CwScreenPrep(CwOperation):
             # OCR 1.0 不受影响。
             self._prep_substate = 'back_to_strategy'
             return self.round_success('返回按钮子态,直达处置段(段3a)', wait=0)
-        if match is not None and match.resume_probe_pending:
-            # b 查:恢复候选探针子态(判据/探针裁决/撤回语义与主循环原
-            # 三段链逐位同源,纯函数单一源 = cw_resume_lock;旧宿主 =
-            # cw_loop 备战分支,迭代 2026-11-18-prep-special-flow 迁入)。
+        if match is not None and match.opened_via == 'takeover' \
+                and not match.probed:
+            # b 查:接管局必经探针(触发门 = opened_via=='takeover' ∧ 未探,
+            # 去重标志探后一次写;判据 = 2026-11-19-resume-rebuild design
+            # §2.3——旧轮次门(resume_candidate round>1)随跨 run 延用语义
+            # 退役,1-1 接管照探:无锁则探针必「可开」走常规,结果正确)。
             _caps_gs = game_state_of(match.session)
             _pr = read_phase_round(
                 self.ctx, screen,
                 round_caps=(_caps_gs.node_seq_by_plane.value
                             if _caps_gs is not None else None))
-            if not resume_candidate(match.is_new_match, _pr[0], _pr[1]):
-                # 候选判定否(1-1 正常新局):撤回候选,落常规路径
-                #(既有前置段全量照旧)。
-                match.resume_probe_pending = False
-            else:
-                # 候选过判:接管失效写先于探针点击(时点保持「候选过判即写」,
-                # 非锁定候选帧同样写——见 _invalidate_tracked_on_takeover)。
-                self._invalidate_tracked_on_takeover()
-                # 探针 = 锁定子态的识别手段(商店可开性探测,识别性点击):
-                # 点「按钮-商店」试探 → 验「按钮-收起」出现与否。
+            # 接管失效写(进入 b 查即写,时序保持先于探针点击;触达面由
+            # 「候选过判(轮次>1)」扩为「接管必经」= 有意变更申报)。
+            self._invalidate_tracked_on_takeover()
+            # 探针 = 锁定子态的识别手段(商店可开性探测,识别性点击):
+            # 点「按钮-商店」试探 → 验「按钮-收起」出现与否。
+            self.round_by_find_and_click_area(
+                screen, '货币战争-备战', '按钮-商店', success_wait=1.2)
+            _opened = self.round_by_find_area(
+                self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
+                crop_first=False).is_success
+            # 去重标志一次写(探后置 True,防同容器重探针;容器重建天然归零)。
+            match.probed = True
+            if probe_resolve(_opened) == 'normal':
+                # 非锁定(缺口接管):收起关店 → 按序跑齐全部既有前置段
+                #(= 收店后同帧落常规派发的 fresh visit 全序列;收店
+                # success_wait=1.0 沿现状值)。
                 self.round_by_find_and_click_area(
-                    screen, '货币战争-备战', '按钮-商店', success_wait=1.2)
-                _opened = self.round_by_find_area(
                     self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
-                    crop_first=False).is_success
-                # 候选撤回(无条件,防同 run 重探针;撤回语义随迁)。
-                match.resume_probe_pending = False
-                if probe_resolve(_opened) == 'normal':
-                    # 非锁定(误判防线):收起关店 → 按序跑齐全部既有前置段
-                    #(= 收店后同帧落常规派发的 fresh visit 全序列;收店
-                    # success_wait=1.0 沿现状值)。
-                    self.round_by_find_and_click_area(
-                        self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
-                        success_wait=1.0)
-                    log.info('[cw-prep] 恢复候选但商店可开 → 非锁定,走常规')
-                else:
-                    # 锁定确认:三字段同帧配对写(locked_sync_done=False 与
-                    # 发出核置 True 同帧配对的配对不变量见
-                    # Match.locked_sync_done 字段注)→ 直达段3b。
-                    match.locked_resume = True
-                    match.locked_round = _pr[1]
-                    match.locked_sync_done = False   # 新锁定局:首战前同步步待执行
-                    log.warning('[cw!][prep] 恢复局锁定确认(P%s-r%s,商店探针'
-                                '零响应)→ 直接出战', _pr[0], _pr[1])
-                    return self.round_success('恢复局锁定确认,直达出战段(段3b)',
-                                              wait=0)
+                    success_wait=1.0)
+                log.info('[cw-prep] 接管局商店可开 → 非锁定,走常规')
+            else:
+                # 锁定确认:三字段同帧配对写(locked_sync_done=False 与
+                # 发出核置 True 同帧配对的配对不变量见
+                # Match.locked_sync_done 字段注)→ 直达段3b。
+                match.locked_resume = True
+                match.locked_round = _pr[1]
+                match.locked_sync_done = False   # 新锁定局:首战前同步步待执行
+                log.warning('[cw!][prep] 接管局锁定确认(P%s-r%s,商店探针'
+                            '零响应)→ 直接出战', _pr[0], _pr[1])
+                return self.round_success('恢复局锁定确认,直达出战段(段3b)',
+                                          wait=0)
         # c 查:补给分流子态(nodeseq 当前节点=supply ∧ chosen_supply 未确认;
         # 用 nodeseq 节点类型判、非「返回补给阶段」按钮的理由随迁:该按钮
         # battle 节点 revisit 备战也在,不可靠——实跑 1-6 battle 出战成功 +

@@ -30,7 +30,9 @@ log = log_utils.log
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id。run_id 铸造
-# 单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,loop 侧认领)。
+# 单点 = ensure_run_started,生产调用点 = establish_new_match 三段式段3
+# (入口链/loop 兜底/商店防御三漏斗内,先于任何开局遥测行);入口链
+# 简报/投资环境/投资策略三分支 ensure 与 loop __init__ ensure 均 = 纯认领。
 # run_id 的现役消费方 = journal 行归属(kernel
 # run_id provider 注入面)与缺陷台账行归属。
 # 默认 enabled=True(用户要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
@@ -130,11 +132,15 @@ def ensure_run_started(match: object, difficulty: str) -> str:
       ``_discard_stale_once`` + establish),新状态容器 ≠ 铸造时状态容器 → 强制
       重铸,防新局开局行盖进上次失败会话的悬空 run。
 
-    「继续进度」恢复路径:入口不走铸造分支 → loop 侧 ensure 见 _RUN_CLOSED
-    铸新段 = 续段语义,与 时代的担忧由本门控显式覆盖。
+    「继续进度」恢复路径:入口不经 establish 漏斗 → loop __init__ ensure
+    见 _RUN_CLOSED 铸新段,handle_init 兜底 establish 漏斗内 ensure 再铸
+    正段 = 续段语义(空段零 journal 行,双段代价申报 = 2026-11-19-resume-
+    rebuild design §2.4)。
 
-    生产铸造唯一调用点 = 本函数(cw_entry_start 简报/投资环境/投资策略三分
-    支 + cw_loop __init__ 认领)。返回 open run_id。
+    生产铸造唯一调用点 = 本函数,生产调用位置 = establish_new_match 三段式
+    段3(入口链/loop 兜底/商店防御三漏斗内);cw_entry_start 简报/投资环境/
+    投资策略三分支与 cw_loop __init__ 的 ensure 调用 = 纯认领(同容器 open
+    run 已在,幂等直过不重铸)。返回 open run_id。
 
     职责边界(用户裁定):本函数只覆盖 run 领取(铸造/认领);
     遥测数据的保存 = game state 职责,state 流水装配入口 =

@@ -204,8 +204,11 @@ class SettlementState:
     - auto_off_first_ts = 自动战斗未开检测首见时刻(连续 ~5s 待操作两个识别标志命中
       才判未开并点击开关;防技能演出相似视觉单帧误判);
     - first_settlement_seen / run_start_ts / is_new_match = relaunch 残留
-      结算屏判据三件(run_start_ts/is_new_match 由 RunLoop
-      handle_init 注入);
+      结算屏判据三件(run_start_ts 由 RunLoop handle_init 注入;is_new_match
+      由 handle_init 按 ``Match.opened_via == 'takeover'`` 注入——值注入
+      语义,字段名不随 Match 侧字段收敛改名,等价映射 = 旧 is_new_match
+      True [兜底新建] ≙ takeover,判据 = 2026-11-19-resume-rebuild
+      design §2.6);
     - battle_ts = 出战时刻(RunLoop 战斗窗口开窗点注入;op 据此
       判「战斗进行中合法静止」宽限);
     - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限);

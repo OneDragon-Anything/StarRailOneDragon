@@ -424,31 +424,28 @@ class CwLoop(CwOperation):
         # B4:跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 本局遥测 run_id(现役消费 = journal 行归属)。
-        # 铸造单点已前移到入口链(简报识别标志/投资屏分支,先于任何开局
-        # 遥测行)——此处改「认领」:新局路径同状态容器的 open run 已在,不重铸
-        # (一段一 id);中断恢复的对局/run_operation/恢复路径上 run 已收尾(_RUN_CLOSED)
-        # → 按 gate 重铸,等价旧「每次 loop 执行新 run_id」语义。
-        # difficulty:ctx.cw_selected_difficulty(CwEntryStart 难度确认屏读存;此时**尚未**被
-        # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 期「difficulty 恒空」(调用只接通一半)的修复)。
+        # 铸造单点 = establish_new_match 三段式段3(入口链/兜底/商店防御
+        # 漏斗内,先于任何开局遥测行)——此处与入口链三分支 ensure 均为
+        # 「认领」:同状态容器的 open run 已在,不重铸(一段一 id);
+        # 中断恢复的对局/run_operation/恢复路径上 run 已收尾(_RUN_CLOSED)
+        # → 按 gate 重铸,等价旧「每次 loop 执行新 run_id」语义。重整后
+        # 入口链容器经 establish 漏斗自带 created_run_id,本处认领恒等。
+        # difficulty:认领路径不消费该实参,铸造已在 establish 漏斗内携带
+        # 难度(吸收段取 ctx 前捕获);此处传值仅为签名兼容。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         state.ensure_run_started(match=self.ctx.cw_match,
                                  difficulty=_diff_for_telemetry)
-        # recovered 三字段(_run_start_ts/_first_settlement_seen/
-        # 新局标记)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
+        # match 建立/重建块 + 每局缓存清空 + 流程态字段,在 handle_init——
         # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,
-        # __init__ 不随 execute 重入重跑(原写在 __init__ → 重入不重置:
-        # 「漏标不误标」保守退化,此处根治)。
-        # 新局标记与 match 建立块必须**同块迁移**:新局标记的求值
-        # (ctx.cw_match is None)在「match 尚未建立」时点才有意义——只迁
-        # 其余字段会让首次 execute 重判时 cw_match 恒已存在(新局标记恒
-        # False,新局标记/残留屏判定双双失活)。整块迁移后:首次 execute
-        # 时序与原 __init__ 等价(本方法在首个节点运行前执行);execute
-        # 重入时重判——cw_match 若已建立则不再当新局(保守方向:漏标不误标)。
+        # __init__ 不随 execute 重入重跑。handle_init 含「每次运行重建」
+        # 判据(容器记 created_run_id 比对当前 run,判据 = 2026-11-19-
+        # resume-rebuild design §2.4),本处 ensure 先铸/认领的段即其
+        # 「当前 run」基准。
 
     def handle_init(self) -> None:
         """run 级状态初始化(框架钩子:每次 execute() 开头由
         ``_init_before_execute`` 调用;见类注 R4-1 迁移说明)。"""
-        # run 启动时刻/新局标记在下方 was_new 求值后注入;首见结算屏标记
+        # run 启动时刻/接管局标记在下方注入;首见结算屏标记
         # (relaunch 残留结算判据)现役宿主 = CwScreenBattleWait(SettlementState,
         # 05-battle §1)。
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
@@ -456,29 +453,48 @@ class CwLoop(CwOperation):
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
         # 新局初值经 create_session 唯一的每局全新创建入口承载(见 _iter==1 分支)。跨步状态进 strategy_state_of(session).target_comp
         # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
-        # 续跑支持(手动逐轮验证):cw_match 已存在(上轮 RunLoop 留下)→ 延用,不 new;否则 new(整局开始)。
-        # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
-        # 停 app / 手停 / 重启 server 后 cw_match 清(None)→ 下次 run 重新 new(新局)。
+        # 每次运行重建(判据 = 2026-11-19-resume-rebuild design §2.4):容器
+        # 是 run 级生命周期——上一运行未收尾残留的容器(假局提前 return/
+        # 入口链 fail/停点重跑/直撞重跑)在本 run 首个 execute 判「旧 run」
+        # 即弃旧重建(接管语义);手动逐轮(max_rounds=1 反复 run_operation)
+        # 因此每轮重建容器 → 策略 target 每轮重选 + 探针每轮一次(已接受的
+        # 工作流变更,裁定③);停 app / 手停 / 重启 server 后 cw_match 清
+        # (None)→ 兜底建(takeover)。
         was_new: bool = self.ctx.cw_match is None
         # 战斗窗口驻留标志:出战成功置位 → 后续帧委托 CwScreenBattleWait 直到其
         # 完成(白名单/终局/bail);帧识别标志激活(中断恢复的对局/残留屏)为第二入口。
         self._battle_wait_active: bool = False
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
+        # 惰性 import 在分支前统一落位(兜底建与重建两分支共用;函数内第二处
+        # import 会把名字绑定为局部,未走首分支时 UnboundLocalError)。
+        from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+            discard_stale_match_container,
+        )
+        from sr_od.application.currency_war.strategies.impl.cw_strategy_manager import (
+            establish_new_match,
+        )
         if was_new:
             # match 建立(兜底分支):正常路径已由 CwEntryStart 在
             # 进对局时经 establish_new_match 前移建立(CwScreenBriefing
             # 直写 session 的时序前提);此处覆盖「绕过入口链直跑 loop」
-            # 的场景(如 run_operation 单跑),同一 helper 无逻辑分叉。
-            from sr_od.application.currency_war.strategies.impl.cw_strategy_manager import (
-                establish_new_match,
-            )
-            establish_new_match(self.ctx, self._cw_config)
-        # 恢复局(locked-resume)检测状态:宿主 = CurrencyWarMatch 流程态字段
-        # (字段定义注释见其声明处)。写入节奏 = per-run(每次 execute 重判/
-        # 重置,只换宿主行为零变化);兜底建局先建 Match 再写(上方分支)。
+            # 的场景(如 run_operation 单跑/继续进度直达备战,未经新局链
+            # 专属画面),同一 helper 无逻辑分叉。兜底建 = 接管开局方式。
+            establish_new_match(self.ctx, self._cw_config, 'takeover')
+        # 每次运行重建判据(自足式):容器存在 ∧ created_run_id 非 None ∧
+        # != 当前 run → 上次运行残留 → 先 discard(establish 幂等直过不弃旧,
+        # 显式前置)再 establish(takeover)。created_run_id None = 外部装配
+        # 直构(sim/测试裸构造)→ 短路保留;本 run 内已建立/入口链新建
+        # (created_run_id == 当前 run)→ 保留。
         match = self.ctx.cw_match
-        match.is_new_match = was_new
-        match.resume_probe_pending = was_new   # 候选 = 新 match(无本局记录),首个备战相位 round>1 时探针裁决;续跑恒 False
+        if (match is not None and match.created_run_id is not None
+                and match.created_run_id != state.current_run_id()):
+            discard_stale_match_container(self.ctx, '跨 run 残留容器(每次运行重建)')
+            establish_new_match(self.ctx, self._cw_config, 'takeover')
+            match = self.ctx.cw_match
+        # 恢复局(locked-resume)检测状态:宿主 = CurrencyWarMatch 流程态字段
+        # (字段定义注释见其声明处)。opened_via/created_run_id/probed 为
+        # 建立时定值(重建即换新容器),不在此重置;per-run 重置面仅剩
+        # 锁定两字段。
         match.locked_resume = False            # 锁定确认(探针零响应)→ 直接出战;per-run 重置
         match.locked_round = 0                 # 锁定确认时的轮次(遥测/日志对照用);per-run 重置
         # locked_sync_done 不在此重置(配对不变量):置 False 与锁定确认同帧
@@ -487,17 +503,21 @@ class CwLoop(CwOperation):
         # 战斗/结算链状态机 + CwScreenBattleWait 实例(05-battle §1 并入):
         # 结算读点/点继续/败局链/终局分叉的状态随 op 迁移,本 loop 只持引用
         # (3c 收尾/summary 读真值)。op 实例跨场复用(状态机生命周期 = 局级;
-        # 每 execute 重handle_init → run 启动时刻/新局标记随之刷新,与原
+        # 每 execute 重handle_init → run 启动时刻/接管局标记随之刷新,与原
         # _run_start_ts/_first_settlement_seen 的 run 级语义一致)。
+        # is_new_match 注入 = 开局方式判定(等价映射:旧 is_new_match=True
+        # [兜底新建] ≙ opened_via=='takeover';方向判据 = design §2.6)。
         self._settle = SettlementState(
-            run_start_ts=time.monotonic(), is_new_match=match.is_new_match)
+            run_start_ts=time.monotonic(),
+            is_new_match=match.opened_via == 'takeover')
         self._battle_wait = CwScreenBattleWait(self.ctx, self._settle, self._cw_config)
         # 入口链 ctx 中转吸收(P3b 收缩:仅剩职级难度——难度确认屏读存
-        # ctx.cw_selected_difficulty,非简报信箱域)。简报词缀/boss/敌人难度
+        # ctx.cw_selected_difficulty,非简报信箱域)。establish 漏斗已就地
+        # 吸收并取走清空,本段仅覆盖不经漏斗的残留形态(幂等空转)。
+        # 简报词缀/boss/敌人难度
         # 的 ctx 信箱已停用(「消灭 ctx 信箱」P3 批口径):唯一写点 =
         # CwScreenBriefing 直写 session,本段不再吸收。
         self._absorb_selected_difficulty(self.ctx.cw_match.session)
-        # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
     def _absorb_selected_difficulty(self, session: StrategySession) -> None:
         """入口链职级难度 ctx 中转 → 状态容器(GameState)(终态契约:直写 gs.selected_difficulty)。
@@ -1305,20 +1325,23 @@ class CwLoop(CwOperation):
                     _gw.active()
 
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖归观察终饰/策略器内化刷新。
-        if self._iter == 1 and self.ctx.cw_match.is_new_match:
+        # 恢复检测门 = 开局方式判定(等价映射:旧 is_new_match=True [兜底新建]
+        # ≙ opened_via=='takeover',方向判据 = design §2.6;重建扩容申报:
+        # 重建容器对本局面无知,门开走接管失效写 → 关店 → heavy 重锚,方向正确)。
+        if self._iter == 1 and self.ctx.cw_match.opened_via == 'takeover':
             # 消费面只有 plane/round(恢复对局检测)。
             # on_match_start 的每局全新创建与
             # live 初值(v3_phase='FORM')由 create_session 唯一的每局全新创建入口承载
             #(establish_new_match 进对局前移点/防御路径/回放三处同源)。
             # → battle/过渡帧最小读(仅位面轮次,其余字段该帧无备战可读)。
             _st0 = read_game_state(self.ctx, screen, phase='battle_or_transit')
-            # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
+            # r25 恢复对局标记(telemetry):bot 侧接管容器但游戏已在中局(首读 round>1
             # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
             # (迁移:回执携带本帧 phase_round 原始读数,与旧帧字段
             # 同源同值——经状态容器读口会吃 kind 继承写,不用。)
             if _st0.round_num > 1 or _st0.plane > 1:
                 # A18:数据归属标记,只标不改行为 → [cw] 非 [cw!]
-                log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
+                log.warning('[cw][loop] 恢复对局检测:接管容器但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 self._invalidate_tracked_on_takeover()   # D2:接管置观察态失效
                 # (恢复局形态现役证据 = journal 派生行段界;状态容器旗标已停用。)
