@@ -42,4 +42,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_pick_partner_action.py::CwActionPickPartnerOp` docstring(脉冲链/状态宿主归属/单屏单选澄清);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。
+`operations/cw_op/cw_pick_partner_action.py::CwActionPickPartnerOp` docstring(脉冲链/状态宿主归属/单屏单选澄清);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);partner_opts/chosen_partner 字段注释(cw_game_state)。

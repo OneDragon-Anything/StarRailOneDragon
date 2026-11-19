@@ -1,7 +1,6 @@
 """货币战争 商店开态刷新钮标价/按钮态的现场 OCR 读取。
 
-字段级规格权威版本 =
-``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
+字段级规格:刷新费 shop_refresh_cost 的值必须来自商店
 开态刷新钮标价的**现场读数**(识别失败=None,禁兜底改值;免费帧不写,None≠标价 0)。
 历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(旁证 reader 在
 ``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已停用。本模块与徽标旁证 reader 的名字区分:**price=标价(本模块,写端权威)**,

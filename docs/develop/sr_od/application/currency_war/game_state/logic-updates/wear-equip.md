@@ -21,7 +21,7 @@
 1. **机械执行**:目标拖点 = `PrepActionExecutor._equip_slot_drag_point(row, slot)`(前排 = 「前排-N」rect 中心 x、y1+21(D-36 校准);后排 = 布局选档 `obs/cw_back_layout.py::select_back_layout` 同式派生;缺失 = None 禁兜底坐标)→ 源件 = owned 网格按名定位 `_owned_grid_locate(item_name)`(名字定位是唯一稳识别标志,网格 reflow 使快照坐标失真)→ 固定等待 `PREP_DRAG_SETTLE_WAIT_S`(等备战面板/上件 reflow 动画收尾,非判效)→ mouse_move + drag_to + park_cursor;
 2. **tracked 双侧**(上报函数 `report_action_wear_equip_param`):owned 侧 = `gs.equips` 现读-摘件-回写;目标角色 equips 追加(槽位表下标 = 排内槽号内联换算,槽位空 = 跳过);角色装备上限 = `kernel/cw_comps.py::EQUIP_CAPACITY`(计划面容量扣减消费);
 3. **零比对出生**:动作 op 内零 CV-diff 验穿——穿没穿归观察写入边对账;原 avatar-slot CV-diff 验穿面已删除(机械执行零判效纪律——发出后不读屏验证是否生效),考古归 git;
-4. **穿着即合成**(已登记建模裁定):两件可合成组件穿到同一角色 = 自动合成;**不记合成预期值**([fields.md](../fields.md) §4.1 豁免)——该豁免是建模裁定,不是知识缺口;后果走观察覆盖 + 缺陷记录表。
+4. **穿着即合成**(已登记建模裁定):两件可合成组件穿到同一角色 = 自动合成;**不记合成预期值**(不记预期值豁免:合成链/穿着即合成/事件类选择)——该豁免是建模裁定,不是知识缺口;后果走观察覆盖 + 缺陷记录表。
 
 ## 4. 随机面
 
@@ -48,4 +48,4 @@ WearEquip = 字段写操作语义动作(非零写族成员):状态容器 `equips
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md)(视觉域动作状态容器零写契约);`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param` docstring(发出即记账形态与 session 跳过申报);`kernel/cw_equip_wear_plan.py` 模块头(计划构造迁居/构造点唯一);[fields.md](../fields.md) §4.1(穿着即合成豁免)/ §4.2 RunEquip 行(基础行为面);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。
+[../action-logic-state.md](../action-logic-state.md)(视觉域动作状态容器零写契约);`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param` docstring(发出即记账形态与 session 跳过申报);`kernel/cw_equip_wear_plan.py` 模块头(计划构造迁居/构造点唯一);穿着即合成豁免 = 建模裁定(不记预期值,后果走观察覆盖);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。

@@ -10,7 +10,7 @@
 
 **动作发出形态(原子通路)**:决策核逐帧发出原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,返回主循环重新观察);组合壳(RunDeploy/RunEquip/RunTools)已停用。动作发出点的计划构造单一源 = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(部署;选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
 
-**执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_class_for` 分派,`op_success` = round 结果成功态,False 只用于执行前输入契约拒绝);②席位主域直写(上报函数直写 bench/deployed,置 empty 不移位,摘除分支照常执行只把差异暴露出来不拒写);③效果随 op 自上报(动作 op 内直调自己的上报函数,`kernel/cw_action_report/` 函数族 = 效果内聚单点)+ 回执域(`note_action_receipt`,受阻事实 = `reason` 码,见 fields.md 回执契约节)与 journal 行。执行点金差已退役(executor-gold-delta-retire 批)——状态容器金账唯一写入位置 = 上报函数 `report_action_sell_bench_param`/`report_action_sell_deployed_param`,执行侧直推分支已停用防双记。
+**执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_class_for` 分派,`op_success` = round 结果成功态,False 只用于执行前输入契约拒绝);②席位主域直写(上报函数直写 bench/deployed,置 empty 不移位,摘除分支照常执行只把差异暴露出来不拒写);③效果随 op 自上报(动作 op 内直调自己的上报函数,`kernel/cw_action_report/` 函数族 = 效果内聚单点)+ 回执域(`note_action_receipt`,受阻事实 = `reason` 码,见 note_action_receipt docstring 回执契约)与 journal 行。执行点金差已退役(executor-gold-delta-retire 批)——状态容器金账唯一写入位置 = 上报函数 `report_action_sell_bench_param`/`report_action_sell_deployed_param`,执行侧直推分支已停用防双记。
 
 ## 2. 卖出族共通执行面(SellBench / SellDeployed)
 
@@ -26,4 +26,4 @@
 
 ## 5. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.5(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_action_report/` 包 `__init__` docstring(上报函数族规约与两个数据域写入统一申报);`kernel/cw_exec_state.py` /槽位语义注;[fields.md](../fields.md) §4.2(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.5(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_action_report/` 包 `__init__` docstring(上报函数族规约与两个数据域写入统一申报);`kernel/cw_exec_state.py` /槽位语义注;`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。

@@ -49,8 +49,8 @@ class CwScreenExpertInviteObs:
     card_bonds: list[str | None] = field(default_factory=list)
     board: dict[str, int] = field(default_factory=dict)
     # [索引定义] 坐标域(见类 docstring):写入端 = 专家邀请函观察上报
-    # (与 card_bonds 同门一并写;op-layer.md §1.1 选择坐标观察上报,
-    # fields.md §3.4.5a);sim 无画面识别不建模恒 None。
+    # (与 card_bonds 同门一并写;op-layer.md §1.1 选择坐标观察上报);
+    # sim 无画面识别不建模恒 None。
     card_points: list[tuple[int, int]] | None = None
     cash_point: tuple[int, int] | None = None
     #: 稳定帧引用(实机识别域载体,与现役观察类一致)。
@@ -72,7 +72,7 @@ def report_screen_expert_invite_obs(gs: GameState,
         sig = ChannelSig(family='logic_action',
                          actor='CwScreenExpertInvite', mode='compute')
     _validate_sig(sig, ('logic_action',))
-    # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
+    # 同序等长写端构造守卫(选择坐标观察上报):坐标域与名字域同一写门
     # 一并落状态容器,不等长 = 观察 bug,响亮暴露禁错位双写(四卡区定长 4,
     # 卡 i ↔ card_points[i] 同序;读端不做长度调和)。
     if obs.card_points is not None \

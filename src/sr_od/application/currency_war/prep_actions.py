@@ -92,8 +92,8 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 
 # ============================================================ 回执受阻码(统一口 round_fail status 闭集映射)
 
-#: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,权威版本家 =
-#: game_state/fields.md 回执契约节)。表项 = (status 前缀, 受阻码):
+#: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,回执契约
+#: 权威版本 = cw_game_state.note_action_receipt docstring)。表项 = (status 前缀, 受阻码):
 #: 受阻码自带族前缀——``未执行:`` = 点击前失败(定位缺失/无对象/
 #: 输入契约拒绝,动作没发出)。映射键 = 各动作 op round_fail status 的
 #: 首段字面前缀(status 由 op 固定字面量产出);**新 round_fail status
@@ -471,8 +471,8 @@ class PrepActionExecutor:
         - reason = 动作事实码:op_success(round 结果成功态,局部派生事实)
           为真 = ``''``(已正常发出);为假 = round_fail status 经
           :func:`_prep_receipt_block_code` 闭集映射取受阻码
-          (收缩后词表 = ``未执行:*`` 现读落空族,词表见映射表注释与
-          fields.md 回执契约节;异常终止的分派在本口之前抛出 = 不产行)。
+          (收缩后词表 = ``未执行:*`` 现读落空族,词表见映射表注释;
+          异常终止的分派在本口之前抛出 = 不产行)。
           op_success 的在役消费两管道 = ①锁定恢复局守卫
           (``last_launch_ok``)②本口受阻码供给;
         - 回执行以分派为单位:每分派恰一条 logic_action 行(受阻

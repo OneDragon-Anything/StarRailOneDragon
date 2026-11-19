@@ -2648,9 +2648,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
 
     # ===== 状态容器直写(原 _feed_board_state 喂入口与本函数合并,
-    # 写语义逐位同;GameState 观察流接入调用,字段级规格权威版本 =
-    # docs/develop/sr_od/application/currency_war/game_state/fields.md §2.1/
-    # §8.7)。best-effort:任何异常不阻塞返回(记录层故障不毒化决策链;
+    # 写语义逐位同;GameState 观察流接入调用,
+    # 来源标记与失读口径 = skills/sr-od-dev-currency-war/references/game-state.md)。
+    # best-effort:任何异常不阻塞返回(记录层故障不毒化决策链;
     # 诊断走 [cw!][gs-feed] 日志)。
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (

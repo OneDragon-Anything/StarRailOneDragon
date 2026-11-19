@@ -263,8 +263,8 @@ class CwScreenPartner(CwOperation):
                      [o.char_id for o in options], pick.idx, pick.reason)
             # 伙伴选择落状态容器 chosen_partner(gs 单一源,session 域无此写端;守卫
             # ①③已保证 options 非空且 idx 在界;点选前写 = 选择点,单次逻辑写入
-            # 豁免面,与巨星 chosen_megastar 派发前写同款;fields.md §3.4 导语
-            # 判定点已登记)。
+            # 豁免面,与巨星 chosen_megastar 派发前写同款;判定点登记 =
+            # screens/op-layer.md §2.2 动作事实边界)。
             if getattr(match, 'gs', None) is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,

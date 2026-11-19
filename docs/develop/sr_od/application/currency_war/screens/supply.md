@@ -31,7 +31,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickSupplyOp`(`CwActionPickSupplyParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:卡身定位点(实机 = 执行载体 `_card_points[pick.idx]`;sim = None,机械执行分支端口检查跳过)/归一件名/附加件归一名组/角色名/选中下标——内容载荷自 obs 载体 `options[pick.idx]` 构造) | **即时单相自上报** `report_action_pick_supply_param`(确认点击后一口写角色单位部分 `grant_bench_unit_cascade` + 装备部分 0..n 件 owned 规范名 + 获得后果链 `apply_equip_acquire_consequence`,主件 → 附加件画面 y 序;内容全未知 = 查来源保留证据禁猜,零装备名读数列 = 装备域零写保留证据不发缺陷,名未解析件逐件查来源保留证据)+ 选卡确认零推进(补给节点推进归出战动作 `report_node_advance(supply_finish)`,2026-10-29 流程模型对齐,判定语义正本 = [../game_state/node-derivation.md](../game_state/node-derivation.md))+ **动作回执 `_note_receipt` 两出口全簿记**(确认点击已发 = reason=''/实机确认定位缺失 = `定位缺失(按钮-确认)`/sim 受理恒 reason='',detail = idx + 内容摘要;receipts 域第 5 处产回执执行链,契约单一源 = [../game_state/fields.md](../game_state/fields.md) 回执契约节) | **是(发出即终结)**:点击发出后即结束本次访问,round_success 终结返回主循环;确认未生效由外循环重识别重派 |
+| `CwActionPickSupplyOp`(`CwActionPickSupplyParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:卡身定位点(实机 = 执行载体 `_card_points[pick.idx]`;sim = None,机械执行分支端口检查跳过)/归一件名/附加件归一名组/角色名/选中下标——内容载荷自 obs 载体 `options[pick.idx]` 构造) | **即时单相自上报** `report_action_pick_supply_param`(确认点击后一口写角色单位部分 `grant_bench_unit_cascade` + 装备部分 0..n 件 owned 规范名 + 获得后果链 `apply_equip_acquire_consequence`,主件 → 附加件画面 y 序;内容全未知 = 查来源保留证据禁猜,零装备名读数列 = 装备域零写保留证据不发缺陷,名未解析件逐件查来源保留证据)+ 选卡确认零推进(补给节点推进归出战动作 `report_node_advance(supply_finish)`,2026-10-29 流程模型对齐,判定语义正本 = [../game_state/node-derivation.md](../game_state/node-derivation.md))+ **动作回执 `_note_receipt` 两出口全簿记**(确认点击已发 = reason=''/实机确认定位缺失 = `定位缺失(按钮-确认)`/sim 受理恒 reason='',detail = idx + 内容摘要;receipts 域第 5 处产回执执行链,契约单一源 = cw_game_state.note_action_receipt docstring) | **是(发出即终结)**:点击发出后即结束本次访问,round_success 终结返回主循环;确认未生效由外循环重识别重派 |
 | 刷新重掷(无注册表动作 op;`CwActionRefreshSupplyParam` 仅策略建议载体) | 画面 op 内置动作(内置动作 = 画面 op 内部代码直接执行的固定动作,不经动作注册表派发;对照闸全式 = 状态容器 `supply_refresh_left` 读数 ≥1 ∧ 识别标志分量(实机 = 刷新文本识别标志 `_refresh_point` 在位,识别标志缺并入拒绝面防机械点击 None;sim = 无识别标志分量恒过)。两态执行:实机 = 文本识别标志位 + `mouse_move`+`click`(`_REFRESH_BTN_DX` 固定偏移) + 2s 固定等待;sim = 「文本-剩余次数」area 端口点击(基类 sim 改道 `click_answer` → 后端 `_supply_refresh`:剩余闸内嵌再验 + left−1 + 选项重掷落状态容器)) | 无自上报(刷新 = 结束本次访问,新装备面由外循环重进后的入口观察现读承载;不接动作回执——刷新 = 画面 op 执行的终结动作,非动作 op) | **是(终结)**:点钮 + 2s 动画窗后 round_success 结束本次访问(sim area 点击后同为终结交回);判据侧次数闸内嵌 decide(仅剩余 ≥1 才可能返刷新建议);建议刷但对照闸拒绝 → 重调一次(纯函数同输入同输出仍建议刷)→ 两态防线:实机 `round_fail` 交回(计入外循环重派上限)/ sim 零点击终结交回 |
 
 决策动作 node 单动作体 `_do_action`(零参:决策输入与门槛 = obs 载体 `self._obs.options`):
@@ -73,12 +73,12 @@ pick = match.strategy.decide_supply()(零参;候选读状态容器 supply 槽)
 ## 6. 状态上报面
 
 - `chosen_supply` write_logic(**确认即写**,选卡分支单点直写、点击链发出前,数据源 = obs 载体 `options[pick.idx]` 与执行载体同帧同源、两态一致;值 = (角色, 装备名列表) 2 元组,OCR 原文 y 序,不带钻字段——有没有钻石由消费侧按 `DIAMOND_EQUIP_NAMES` 名单自列表派生;空候选轮/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目停用,直写是载体消亡后的唯一形态;确认未落地窗内状态容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
-- 动作回执:`note_action_receipt`(receipts 域,`CwActionPickSupplyOp` 两出口全簿记——每执行恰一条回执行:确认点击已发 = reason=''/实机确认定位缺失 = `定位缺失(按钮-确认)`/sim 点击经端口受理恒按已发出簿记 reason='';detail = idx + 内容摘要;screen = `货币战争-补给`)。**第 5 处产回执执行链**(前四处 = prep 统一口/close_shop/open_shop/shop 落地门),契约单一源 = [../game_state/fields.md](../game_state/fields.md) 回执契约节。
+- 动作回执:`note_action_receipt`(receipts 域,`CwActionPickSupplyOp` 两出口全簿记——每执行恰一条回执行:确认点击已发 = reason=''/实机确认定位缺失 = `定位缺失(按钮-确认)`/sim 点击经端口受理恒按已发出簿记 reason='';detail = idx + 内容摘要;screen = `货币战争-补给`)。**第 5 处产回执执行链**(前四处 = prep 统一口/close_shop/open_shop/shop 落地门),契约单一源 = cw_game_state.note_action_receipt docstring 回执契约。
 - 候选观察:`report_screen_supply_node_obs` 摄入候选写状态容器 `supply` 域(空 = 读缺不写)+ `supply_refresh_left` 摄入(读缺跳写)。
 - **效果逻辑态单相上报**(`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,即时单相):装备部分 = owned += 0..n 件归一规范名(集合 = 首件 + `extra_norm_items`,主件 → 附加件画面 y 序;无装备名读数列时 = 装备域零写 + 保留证据(日志行 + reason `no_equip_column` 载体)、不发缺陷)+ 角色单位部分(角色入席 + 合成级联)+ 获得后果链(命中后果表送角色 → bench + 级联);内容全未知 = 受影响域值不变查来源 + 缺陷保留证据(禁猜);名未解析件 = 逐件值不变查来源 + 缺陷保留证据(fail-closed,错名不入账由观察覆盖自愈,已解析件照常入账)。
 - 节点推进:本屏选卡确认不推进;补给节点由出战动作上报 `report_node_advance(trigger='supply_finish')` 推进(2026-10-29 流程模型对齐;kernel 观察态门 = 唯一推进落账门)。
 - 刷新剩余:状态容器 `supply_refresh_left`(观察写端 + sim 写端:补给节点入口先写初始 left=1、刷新 left−1 ≥0 截断);旧 `supply_refresh_used` 已用计数已停用(剩余语义化)。
-- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.2 / §4「事件选择」;到账登记 ConfirmSupply 行已停用(即时单相上报取代)。
+- 字段语义 = cw_game_state supply/chosen_supply 字段注释;到账登记 ConfirmSupply 行已停用(即时单相上报取代)。
 
 ## 7. 子态与 overlay
 
@@ -101,4 +101,4 @@ pick = match.strategy.decide_supply()(零参;候选读状态容器 supply 槽)
 ## 开放设计注
 
 - 刷新 = 终结动作(全域规范 = [op-layer.md](op-layer.md) §1.4):建议刷新 ∧ 闸放行 → 点钮一次 → round_success 返回主循环重进 = 入口重建,新装备面由重进后的入口观察现读承载。
-- 补给刷新次数的源口径(优势布局授予 vs 官方节点表「原生可刷 1 次」)收窄待证,登记 = fields.md §3.4.2;剩余语义读数直接消费游戏屏显真值,不依赖该先验;结论出来前禁把「无此刷新」当回归断言。
+- 补给刷新次数的源口径(优势布局授予 vs 官方节点表「原生可刷 1 次」)收窄待证,登记 = cw_game_state supply_refresh_left 字段注释;剩余语义读数直接消费游戏屏显真值,不依赖该先验;结论出来前禁把「无此刷新」当回归断言。

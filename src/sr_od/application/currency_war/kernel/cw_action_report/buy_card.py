@@ -300,7 +300,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     except Exception as e:  # noqa: BLE001  置一次性标志位分支失败不阻塞(留 log)
         _log.warning(f'[cw-buy] 购买翻星置一次性标志位分支失败(不阻塞): {e}')
 
-    # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
+    # —— 金币花费事件置位(存款回报条件输入):applied=True
     #    主路径尾段(与 on_buy 回调同区),拒买 bench_full 早退不可达本段;
     #    非免费帧才置位(同函数刷新通道「付费刷新非免费帧」同判——免费
     #    购买零金变动,误置位会让存款回报的条件输入失真);同节点多笔判

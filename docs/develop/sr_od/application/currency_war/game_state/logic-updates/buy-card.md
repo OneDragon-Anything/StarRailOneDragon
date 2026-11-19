@@ -62,4 +62,4 @@
 
 ## 9. 依据
 
-`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3;`research/economy.md` §2.1(槽位留空/整店全换);`research/xp-rules.md` §2(买牌不产经验);`kernel/cw_action_report/buy_card.py` docstring(快照/合成升星写内聚与 k 来源申报);[fields.md](../fields.md) §3.3.1(商店牌行)/§4.2 BuyCard 行。
+`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3;`research/economy.md` §2.1(槽位留空/整店全换);`research/xp-rules.md` §2(买牌不产经验);`kernel/cw_action_report/buy_card.py` docstring(快照/合成升星写内聚与 k 来源申报);商店牌行字段注释(cw_game_state)。

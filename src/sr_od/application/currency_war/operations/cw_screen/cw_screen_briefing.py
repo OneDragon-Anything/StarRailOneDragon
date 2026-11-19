@@ -5,8 +5,8 @@
 
 下游链路(不变):状态容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table
 吃怕表,统一阵容评分迭代起);
-``plane_bosses``(位面序真值,字段权威版本 =
-``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.1.3)→ 线分 boss 分量。
+``plane_bosses``(位面序真值,字段语义 = cw_game_state 对应字段注释)
+→ 线分 boss 分量。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 画面身份门(id_mark「标识-本场对局首领」,miss = round_fail

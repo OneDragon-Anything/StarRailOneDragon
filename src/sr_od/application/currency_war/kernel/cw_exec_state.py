@@ -180,7 +180,7 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
         _free_tag = f',免费{_free}' if _free else ''
         _eff('gold', f"-{cost * _paid}(买牌×{res.buy_k}{_free_tag})",
              'gold')
-        # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):付费帧
+        # 金币花费事件置位(存款回报条件输入):付费帧
         # 才置位(免费帧零金变动不属花费事件,与买牌上报单点同豁免)。
         # dict 形买牌同属花费事件(回放/离线状态副本真值一致性;现役生产零
         # 调用)。sig 自构(actor='PrepActionExecutor' + mode='compute',
@@ -200,7 +200,7 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 # ============================================================
 
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变;激活期随容量
-# 时限效果——节省工位窗内 kernel 容量域照 3(fields.md §3.2.5),本常量 = 策略侧
+# 时限效果「节省工位」窗内 kernel 容量域照 3,本常量 = 策略侧
 # 定长 9 基线消费面口径,分叉面 = 既有缺口不入容量建模批改动面)
 # deployed 动作坐标系:定长 10 槽表——下标 0-3 = 前排槽 1-4、
 # 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout

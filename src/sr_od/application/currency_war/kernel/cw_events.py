@@ -108,7 +108,8 @@ class MegastarOption:
     xy:该候选的点击坐标 ``tuple[int, int]``(x, y,1080p 游戏空间;
     观察期快照 = 进访问入口观察帧识别产物,动作执行期恒稳;None = 未观察)。
     坐标单一真相源 = 观察上报(规范 = screens/op-layer.md §1.1「选择坐标
-    观察上报」+ game_state/fields.md §3.4.5a B 类):动作 op 按 ``idx``
+    观察上报」;typed 选项内嵌坐标字段 = 值形状的一部分,域版本随形状登记):
+    动作 op 按 ``idx``
     自状态容器 ``megastar_opts[idx].xy`` 取点执行,动作/上报层零坐标现算。
     """
     idx: int

@@ -127,7 +127,7 @@ INTEREST_THRESHOLD_KEY: str = 'interest_threshold'
 
 #: done 域条件键:随机星徽授予分支(键值携带发放装备名,格式
 #: 'star_grant#<装备名>'——分支2 绑定解析的唯一源;# 后载荷是条件键的
-#: 本卡新立扩展形态(fields.md §3.5.5 已登记仅纯具名值,随本卡登记)),
+#: 键值载荷扩展形态,取值清单登记面 = cw_game_state.env_grants_done 字段注释),
 #: 写端 = cw_gain_chain.on_env_gained 随机装备绑定分支(两模块分工见
 #: cw_game_state.env_grants_done 字段注释)。
 STAR_GRANT_KEY_PREFIX: str = 'star_grant#'
@@ -178,7 +178,8 @@ BATTLE_CO_PRESENCE_KEY: str = 'battle_co_presence'
 #: cw_gain_chain.on_env_gained 赠卡锁分支(perfect_win_accel 开时,发放刻
 #: 与锁记录同窗);消费端 = check_env_deploy_lock_perfect 完胜改写——
 #: 只回退本键集内的 uid 锁记录,T-30 流萤等异环境锁记录不受同卡完胜
-#: 加速(卡面「将其」= 本卡赠卡)。键形态登记单一源 = fields.md §3.5.5。
+#: 加速(卡面「将其」= 本卡赠卡)。键形态登记面 = cw_game_state.
+#: env_grants_done 字段注释的条件键取值清单。
 DEPLOY_LOCK_UID_KEY_PREFIX: str = 'deploy_lock_uid#'
 
 #: done 域条件键:状态副本发放域(环境 ∪ 策略)倒计时件完胜加速(首例 =
@@ -830,7 +831,8 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
     ``settlement_perfect_rescue`` True = 损血局亦判完胜,域规格 =
-    fields.md §3.5.3b,写点 = check_strategy_perfect_rescue)。字段语义:killed 单一语义 = 「挑战成功」胜利标志
+    cw_game_state 字段注释 settlement_perfect_rescue 条,
+    写点 = check_strategy_perfect_rescue)。字段语义:killed 单一语义 = 「挑战成功」胜利标志
     (cw_settlement_obs.py 注释权威版本,killed=True 才是胜局);hp 基准 =
     相邻两结算帧差分——hp 只在结算与卡面效果处变化,相邻两结算帧间
     hp 差 = 本场损血(环写端在宿主结算读点位、先于结算确认 op 派发,
@@ -923,7 +925,8 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
     ``settlement_perfect_rescue`` True = 损血局亦判完胜,与 deploy_lock
-    行同形,域规格 = fields.md §3.5.3b)**(机械口径单一源 = check_env_deploy_lock_perfect 同判据
+    行同形,域规格 = cw_game_state 字段注释 settlement_perfect_rescue 条)**
+    (机械口径单一源 = check_env_deploy_lock_perfect 同判据
     已登记;killed 语义/hp 差分基准的推导权威版本见彼处 docstring,宁缺勿造:
     环不足两行或任一侧 hp_after None 不判定)。判据判定行内联同式非共享
     谓词:check_env_deploy_lock_perfect 本体属零混改面,本函数与完胜提前分支零代码耦合(域不同:
@@ -1037,7 +1040,8 @@ def check_strategy_perfect_rescue(gs: GameState, sig: ChannelSig
     全条件成立 → 三笔:①配额一次性标志位追加(strategy_conditional_done 共域计数形
     键 ``perfect_rescue#<卡名>#<已耗序>``,前缀计数 < 配额放行);②瞬时位
     ``settlement_perfect_rescue`` 写 True(消费端 = 两完胜判据行的 hp
-    持平判定旁路——「视为完美通关」改写落地,fields.md §3.5.3b);③出售
+    持平判定旁路——「视为完美通关」改写落地,域规格 = cw_game_state
+    字段注释 settlement_perfect_rescue 条);③出售
     写状态分支(sim 门内 ``sim_backend_installed()``):deployed 序首个携带者
     (前排子表优先、排内物理槽号序,裁决点默认案 A 确定序)槽置 None +
     定长视图重建写(动态子表直读,不经定长 10 截断桥——扩格帧后排扩展格

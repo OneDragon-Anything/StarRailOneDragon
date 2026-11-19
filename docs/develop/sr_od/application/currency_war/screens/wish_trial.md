@@ -59,7 +59,7 @@ pick = decide_wish_trial()(零参;候选读状态容器 wish_trial_opts 槽)
 
 - 候选观察:`report_screen_wish_trial_obs` 候选与槽位坐标一并写 `wish_trial_opts` / `wish_trial_opts_xy`(同门同写,op-layer.md §1.1「选择坐标观察上报」条款;空桶照写)。
 - `chosen_wish` write_logic(落地复查点写;值 = 选中卡 objective 原文名;objective 未读到/选中槽文本空不写,None 保持「无记录」)。
-- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;quest 生命周期域 = fields.md §3.4.6(圣杯任务;本 op 只适用于选卡,任务条件/完成态零供给)。
+- 字段语义 = cw_game_state 对应字段注释(chosen_*/opts 域组);quest 生命周期域 = 圣杯任务链(无状态容器承载字段;本 op 只适用于选卡,任务条件/完成态零供给)。
 
 ## 7. 子态与 overlay
 

@@ -100,7 +100,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 状态容器标准名
   见 §4 选卡分支申报)。
 - 候选观察:`report_screen_invest_env_obs` 候选写状态容器 `invest_env_opts` 槽 +
   刷新剩余写 `env_refresh_left`(观察写端,读缺跳写)。
-- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.3 / §4「投资选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8;效果激活账本 = fields.md §5.1。
+- 字段语义 = cw_game_state invest_env_opts/env_refresh_left 字段注释;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8;效果激活账本 = [../game_state/effect-domain.md](../game_state/effect-domain.md)。
 
 ## 7. 子态与 overlay
 

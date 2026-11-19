@@ -10,7 +10,7 @@
 
 写边(动作侧发出动作时立即写入,依据 = [../../screens/op-layer.md](../../screens/op-layer.md) §2.2 动作事实边界例外②):
 
-- **`chosen_encounter` = 动作侧发出动作时立即写入**:负责写入的代码 = `kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`(确认点击后立即写),值组装 = 状态容器(GameState)(GameState,游戏状态对象,下同)`encounter` payload 槽 `options[param.idx]`;payload 离屏/越界 = `_emit_defect` 保留证据不写(fail-closed——读不到数据/条件不满足时默认走保守分支不动作;`LogicOutcome(applied=False, reason='chosen_unresolved')`);兑现后清 = `kernel/cw_encounter_selection.py::claim_encounter_reward` 达标兑现写 `encounter_reward_claimed` 并清 chosen(单次消费)。字段规格单一源 = [../fields.md](../fields.md) §3.4.1。
+- **`chosen_encounter` = 动作侧发出动作时立即写入**:负责写入的代码 = `kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`(确认点击后立即写),值组装 = 状态容器(GameState)(GameState,游戏状态对象,下同)`encounter` payload 槽 `options[param.idx]`;payload 离屏/越界 = `_emit_defect` 保留证据不写(fail-closed——读不到数据/条件不满足时默认走保守分支不动作;`LogicOutcome(applied=False, reason='chosen_unresolved')`);兑现后清 = `kernel/cw_encounter_selection.py::claim_encounter_reward` 达标兑现写 `encounter_reward_claimed` 并清 chosen(单次消费)。字段规格单一源 = cw_game_state encounter/chosen_encounter 字段注释。
 - 画面 op 零字段写操作:状态容器唯一触点 = 观察侧 `report_screen_encounter_obs` 调用(`CwScreenEncounter.observe`)。
 - 刷新不经本动作:刷新 = 终结动作返回主循环(op-layer.md §1.4),重进 = 入口重建,新选项由入口观察现读;原「同访问重决策、发出前覆盖写槽」形态已停用。
 
@@ -29,7 +29,7 @@
 
 ## 5. 拒绝语义
 
-零验证确认链(确认后不读屏验证是否生效):确认未落地(overlay 残留)不重试不判效——点击发出后即结束本次访问(结束本次访问),overlay 残留由外循环按当前画面重识别重派(op-layer.md §1.1,修法 = 点击链可靠性);卡位 area 缺失 = 显式 round_fail 零点击(禁兜底坐标,坐标单一真相源 = 建档)。发出动作时立即写入 = 意图记录,暂态假值窗由重派覆盖自愈 + 兑现后清单次消费双防线(fields.md §3.4.1);report 层拒绝面 = payload 离屏/越界保留证据不写(`pick_encounter.py::report_action_pick_encounter_param` docstring)。
+零验证确认链(确认后不读屏验证是否生效):确认未落地(overlay 残留)不重试不判效——点击发出后即结束本次访问(结束本次访问),overlay 残留由外循环按当前画面重识别重派(op-layer.md §1.1,修法 = 点击链可靠性);卡位 area 缺失 = 显式 round_fail 零点击(禁兜底坐标,坐标单一真相源 = 建档)。发出动作时立即写入 = 意图记录,暂态假值窗由重派覆盖自愈 + 兑现后清单次消费双防线;report 层拒绝面 = payload 离屏/越界保留证据不写(`pick_encounter.py::report_action_pick_encounter_param` docstring)。
 
 ## 6. kernel 符号名引用
 
@@ -45,4 +45,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_pick_encounter_action.py` 模块头与 `CwActionPickEncounterOp` docstring;`kernel/cw_action_report/pick_encounter.py` 模块头(发出动作时立即写入契约);`cw_overlay_pick_env.py`(域 env 契约);[flow/action_ops.md](../../flow/action_ops.md) §4.5 PickEncounter 行;[../fields.md](../fields.md) §3.4.1(chosen 发出动作时立即写入);[../../screens/op-layer.md](../../screens/op-layer.md) §1.4(刷新终结)、§2.2 动作事实边界例外②。
+`operations/cw_op/cw_pick_encounter_action.py` 模块头与 `CwActionPickEncounterOp` docstring;`kernel/cw_action_report/pick_encounter.py` 模块头(发出动作时立即写入契约);`cw_overlay_pick_env.py`(域 env 契约);[flow/action_ops.md](../../flow/action_ops.md) §4.5 PickEncounter 行;cw_game_state chosen_encounter 字段注释(发出即写);[../../screens/op-layer.md](../../screens/op-layer.md) §1.4(刷新终结)、§2.2 动作事实边界例外②。

@@ -1351,8 +1351,8 @@ def check_strategy_star_merge_gold(
     星级)`` 元组序列,与 :func:`check_env_merge_grants` 入参同形)。发放
     由 STRATEGY_EFFECTS ON_MERGE ∧ ECONOMY 条目驱动:同触发装备域经济卡
     (武力刷新)经穿戴上报名单集另路,本条目 payload 字段
-    ``gold_per_3star_merge`` 判别双向鸭子缺省 0,两域零串扰(fields.md
-    §5.3 生产点分离禁混账)。
+    ``gold_per_3star_merge`` 判别双向鸭子缺省 0,两域零串扰(生产点
+    分离禁混账)。
 
     条件矩阵(顺序即短路序,逐序返回 = 零动作):
 
@@ -3602,7 +3602,7 @@ def gain_invest_strategy(gs: GameState, session: object,
                 _frame = _node_frame(gs)
                 _entry = gs.effects.register_strategy(_spec, _key)
                 # 金面播值负债卡首例(超发货币):登记帧金读数快照入条目
-                # counters[LOST](fields.md §5.3 处方载体,effect-domain §4
+                # counters[LOST](effect-domain §4
                 # 伴生数值空间;live 读数 = 观察值,sim 读数 = 状态副本真值)。
                 # 本播值 = 状态容器簿记非金写,live 行为零变化;金读数 None =
                 # 计数缺省 + 缺陷留存证据(禁猜测写)。
@@ -4808,11 +4808,12 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
         effects.append(f'item_open_scheduled:{_delayed.item}'
                        f'@{unlock[0]}-{unlock[1]}')
     # economy 交换条目(不等价交换,卡面「交换你的小队生命值和金币。」,
-    # 棱彩):归属 = 逻辑写(fields.md 效果改写源归属节本卡裁定行),
+    # 棱彩):归属 = 逻辑写(效果族归属判据 = 可准确计算的确定性效果走
+    # 逻辑写,单一源 = game_state/effect-domain.md §6.3),
     # kernel 获得链首个 hp 逻辑写端——与即时生命通道「链内写 hp 会在
     # live 侧引入 hp 逻辑写端」立场(apply_strategy_pick_hp docstring)
     # 并置不冲突:彼立场系该通道「选卡当场即时型」条目自身的实现选择,
-    # fields.md 归属节按卡分行各卡各归各行,非 hp 写入闸全局禁令;本写 =
+    # 效果族归属按卡分行、各卡各归各行,非 hp 写入闸全局禁令;本写 =
     # 确定性推算的账面真值基准(live 游戏自算自发,交换双值 bot 均已知
     # 零猜测面,失配经既有金/血 mismatch 对账通道显形,下一备战帧真读
     # 重新确认)。触发 = 卡直读 get_strategy(canon).economy.hp_gold_swap

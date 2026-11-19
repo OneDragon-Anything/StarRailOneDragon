@@ -7,7 +7,7 @@
 > (路径根 = `src/sr_od/application/currency_war/`)。
 >
 > 节内引用的代码引用 = 符号名(模块/类/函数/常量),行号不书;本文不引 changes/ 任何
-> 内容,自足可读。状态容器(GameState)字段语义权威版本 = [fields.md](fields.md),本篇只写「获得」这一
+> 内容,自足可读。状态容器(GameState)字段语义权威版本 = 代码字段定义注释(kernel/cw_game_state.py),本篇只写「获得」这一
 > 动作过程的链式语义。
 
 ## 1. 本篇管什么
@@ -165,7 +165,7 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 - **零吞错与次序**:落位异常上抛(§6),队列回写收尾——先逐项落位、后回写发放后
   的保留队列,异常时队列不丢账。
 - **实机局不接本原语**:队列登记后保持原样,备战真值由观察覆盖
-  (fields.md §3.2.24)。
+  (cw_game_state 字段注释)。
 
 ### 2.8 获得占席道具 gain_bench_item
 
@@ -191,7 +191,7 @@ KeyError 响亮;2026-10-24 批起)→ 席满溢出落位(§4,
 
 `discharge_due_item_opens(gs, *, rand: bool, sig: ChannelSig) -> tuple[str, ...]`
 ——环境延迟开盒通道(§3 on_env_gained 延迟道具支线)的到点开盒原语,与 §2.7
-同区并列:读 `pending_item_opens` 现值(fields.md §3.2.25),生效序位 ≥ 解锁位
+同区并列:读 `pending_item_opens` 现值(cw_game_state 字段注释),生效序位 ≥ 解锁位
 (元组字典序,到了及以后都算)的条目为命中并弹除,其余保留;命中非空才一次
 write 回写保留队列。返回效果串 = 每命中项 `item_opened:<名>`。
 
@@ -207,7 +207,7 @@ write 回写保留队列。返回效果串 = 每命中项 `item_opened:<名>`。
 - **rand 语义**:开盒 = 确定事件(非采样),调用方传 `rand=False`(§5);写
   通道走通道选择的唯一入口函数;生效序位缺读(effective_node_pos None)→ 零写,
   命中集空 → 零写。
-- **实机局不接本原语**(不对称申报,fields.md §3.2.25):实机开盒由游戏自己
+- **实机局不接本原语**(不对称申报,cw_game_state 字段注释):实机开盒由游戏自己
   执行,队列条目到点后滞留不弹(纯知识域,现役无消费者);完胜回退分支实机(live)和模拟器(sim)两边跑
   不受此限——回退是模型知识修正非游戏动作(`check_env_item_open_perfect`,
   settle_confirm 分支插入位置)。
@@ -448,7 +448,7 @@ id 200901,登记表 = `cw_investments.STRATEGY_BOND_BATTLE_GRANTS` 白名单:
    直读〕可承载,双源 max 融合下实机两源互补);
 3. 逐持卡:激活数 ≥ 表载阈值 → `write_logic` 置武装标记
    `strategy_bond_battle_armed = True`(evidence
-   `strategy_bond_battle#arm:<卡名>`,三态场字段 = fields.md §3.2.26d)。
+   `strategy_bond_battle#arm:<卡名>`,三态场字段 = cw_game_state 字段注释)。
 
 发放拍(discharge):武装标记非 True → 0;逐持卡:池 =
 `equips_by_category(表载类别)` 池空 log 防御零写(泛化随机装备族
@@ -509,8 +509,8 @@ producer=_BOND_TIER_PRODUCER) -> tuple[str, ...]`——策略卡「<门槛羁绊
    双源 max(判激活侧容错,L2 星徽装备贡献经 board 状态容器〔左面板真值
    口径〕天然计入,双源双缺 → 0 fail-closed);
 4. 逐档首达一次性标志位 + 发放(零 rng):`spec.tiers` 升序逐档,激活数 ≥ 档位
-   ∧ `'<卡名>#<档位>'` ∉ 一次性标志位域(`strategy_bond_tier_fired`,fields.md
-   §3.2.26f)→ `gain_equipment(rand=False)` 具名确定发放(evidence
+   ∧ `'<卡名>#<档位>'` ∉ 一次性标志位域(`strategy_bond_tier_fired`,
+   cw_game_state 字段注释)→ `gain_equipment(rand=False)` 具名确定发放(evidence
    `strategy_bond_tier:<卡名>@<档位>`,原语 `#equip` 后缀)→ 发放
    落位(placed)才置一次性标志位(拒落域不置一次性标志位,重试自愈沿 §2.10 同款);同拍
    多档按 tiers 升序逐档各发一件语序固定,一次性标志位命中后永不再发(降档再
@@ -544,7 +544,7 @@ producer=_BOND_TIER_PRODUCER) -> tuple[str, ...]`——策略卡「<门槛羁绊
 placed 才置一次性标志位(拒落自愈沿 §2.10 同款):
 
 1. **分支1(羁绊人数条件,任意节点入窗评估)**:`'<卡名>#faction_count'`
-   ∈ 一次性标志位域(`strategy_grants_done`,fields.md §3.2.26g)→ 跳过;
+   ∈ 一次性标志位域(`strategy_grants_done`,cw_game_state 字段注释)→ 跳过;
    deployed/equips 未观察整个分支零写、不置一次性标志位(宁缺勿造——徽与角色同拍原子,
    拆拍引双发面);计数 = `deployed_bond_counts`(注册表单一源:参与 =
    上阵,bench 不算)< 判据人数 → 跳过不置一次性标志位下窗重查;达标 →
@@ -631,7 +631,7 @@ producer=_BOSS_COMPLETION_GRANT_PRODUCER) -> None`——策略卡「下个首领
 - **一次性 = strategy_conditional_done 共域纯卡名一次性标志位**:卡面「下个」=
   恰一次,一次性标志位后后续位面首领不再发——与 §2.15「首领战后」每战发的无一次性标志位
   形对形分化(卡面限定词差异,非形状分歧);一次性标志位域语义 = §2.10 同域
-  (fields.md §3.2.26a)。
+  (cw_game_state 字段注释)。
 
 ### 2.21 策略卡首领通关价值金检查分支 check_strategy_boss_clear_gold(结算位)
 
@@ -757,7 +757,7 @@ frozen 槽位置 None + 装备收集,write_logic_rand 形态);③装备全件走
 `cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS` 白名单:键 = 策略规范名,
 值 = (救援徽名, 配额))的单一检查本体。三件套结构(死亡救援同形):
 白名单表 + 本检查函数 + 瞬时位 `settlement_perfect_rescue`(域规格 =
-fields.md §3.5.3b)。调用点序(统一节点推进入口 settle_confirm 分支):
+cw_game_state 字段注释)。调用点序(统一节点推进入口 settle_confirm 分支):
 `check_env_battle_grants` → **本函数(改写)** → `check_env_deploy_lock_
 perfect` → `check_env_item_open_perfect`(消费)——改写先于消费,两完胜
 判据行的 hp 持平判定旁路 consult 瞬时位(True = 损血局亦判完胜,与游戏
@@ -872,7 +872,7 @@ ChannelSig) -> str | None`——策略卡「进入(指定位面的指定类型)�
 = 增发货币〔id 103〕每位面开局 6/8/12 金晶矿)。声明矿的发放形态 = 位面开局
 声明入队 → 矿进入状态副本时附着 → 点击兑现,全程经 `kernel/cw_ore_channel.py`
 (电平检查 `check_ore_declared_level` + 挂接入口 `report_spheres_observed`)
-而非获得链原语;域定义与队列语义 = fields.md §3.2.8a/§3.2.8b;④
+而非获得链原语;域定义与队列语义 = cw_game_state 字段注释/§3.2.8b;④
 `ENV_STREAK_GRANTS`(**条件达成通道**:结算连胜触发器——发放时点不在「获得」
 动作,在战斗结算连胜真值落账后,触发检查单一源 =
 `kernel/cw_env_grants.check_env_streak_grants`,在用 = 深井角斗场〔id 104〕
@@ -880,7 +880,7 @@ ChannelSig) -> str | None`——策略卡「进入(指定位面的指定类型)�
 选卡当场落席、`items_scheduled` = 登记定时队列到点落席(§2.7)、
 `ENV_ORE_GRANTS` = 位面开局声明矿——本表 = **结算时点 × 连胜条件 × 本局
 首次一次性**(一次性由 `env_grants_done` 标记承担,域规格 =
-fields.md §3.5.5)。发放不经获得链原语与本节枚举回调:装备发放 = equips 尾部
+cw_game_state 字段注释)。发放不经获得链原语与本节枚举回调:装备发放 = equips 尾部
 追加 `write_logic_rand` + done 追加两笔相邻直写(宝钻落位不可观察的随机态
 写,无落位/升星/回调链诉求);宝钻的状态副本数值联动(diamond_count/deploy_cap/
 back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
@@ -891,7 +891,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
 点击兑现入账),两表同出卡面原文,金额一致性归评审与 ore 域测试把关
 (双源同值校验已随治理移除)。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:获得刻
 纯队列登记零席位写 → sim 进节点收尾到点开盒(§2.9)→ settle_confirm 完胜
-回退三个登记入口全链零采样;域规格 = fields.md §3.2.25)。
+回退三个登记入口全链零采样;域规格 = cw_game_state 字段注释)。
 
 - **on_env_gained(gs, session, env_name, *, rand, sig, rng=None)**:查 `cw_investments.py::
   ENV_GIFTS`(投资环境 → 具名发放数据表,即时/随机/定时三通道)。命中后**先按
@@ -950,7 +950,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     获得节点计入锁定段〔设计定读〕;获得时点未落定窗防御基准 (1,1);步进遇 None
     停留最后合法值)→ `perfect_win_accel` 开时追加完胜作用域键
     `deploy_lock_uid#<uid>` 落 `env_grants_done`(键形态登记 =
-    fields.md §3.5.5;消费 = `check_env_deploy_lock_perfect` 完胜改写,
+    cw_game_state 字段注释;消费 = `check_env_deploy_lock_perfect` 完胜改写,
     settle_confirm 分支插入位置)。效果串两行 `env_gift_random:<名>@<星>star`
     (与随机支同前缀同形,审计归组)+ `env_deploy_lock:<名>#uid<n>@<位>-<轮>`
     (锁登记串)。落位成败与锁记录/done 解耦(placed=False 零写留证,锁
@@ -964,7 +964,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     集合互斥构建期防呆):获得当刻**纯队列登记零席位写**——件 = 棋盘右上
     战利品区浮动件非占席(实机板件实证 = 与晶矿球同区;禁 `_place_bench_item`
     调用、禁 bench/overflow 任何字段、BENCH_ITEM_NAMES 词表零扩),队列 =
-    `pending_item_opens`(fields.md §3.2.25)追加 `(件名, 解锁序位)`(解锁
+    `pending_item_opens`(cw_game_state 字段注释)追加 `(件名, 解锁序位)`(解锁
     序位 = 获得刻生效序位沿节点日程表步进 `open_delay_nodes` 步,计数起点 =
     获得节点计入〔设计裁决点 3〕;获得时点未落定窗防御基准 (1,1);步进遇 None 停留
     最后合法值);`perfect_win_accel` 开时追加 done 条件键 `delayed_open_accel`
@@ -992,8 +992,8 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     先例,命中判据前置、无命中不取槽);删除写触发词缀域写尾 HP 先验
     回调(`cw_opening_hp.on_enemy_affixes_logic_write`,插入位置 =
     `_write_logic_frame` enemy_affixes 分支,logic/logic_rand 两通道
-    同经、observe 覆盖零回调,经 `write_prior` 重算先验——fields.md
-    §3.1.6);状态容器空 → 跳过删除,零写 + 申报行(`kind =
+    同经、observe 覆盖零回调,经 `write_prior` 重算先验——
+    hp 先验语义见 cw_opening_hp 模块注释);状态容器空 → 跳过删除,零写 + 申报行(`kind =
     ENV_AFFIX_DISABLE_EMPTY_DECL`,实机已失效而模型未删,偏差全程持续,
     设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。蓝海追加
     链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除分支
@@ -1046,7 +1046,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     `env_grants_done` 条件键 `star_grant#<名>`(placed 守卫下写——equips
     未观察时 `gain_equipment` 零写跳档 → 绑定同样不落,禁「绑定在而装备
     未发」残缺态),消费 = `check_env_boss_grants` 分支2 绑定解析(条件键
-    形态登记 = fields.md §3.5.5);非成员(概念股族及后继,首例 = 追击
+    形态登记 = cw_game_state 字段注释);非成员(概念股族及后继,首例 = 追击
     概念股 id 1001「初始简易装备」类别池复用本通道)零 done 键、效果串
     前缀 `env_equip_random:<名>`(与具名支 `equip_gift:`/随机角色支
     `env_gift_random:` 分域,审计归组键)。`rng` 回退/条件解析与随机角色
@@ -1057,7 +1057,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     evidence 同 sig;**纯登记件非门控**——显式判 node,节点未进窗〔开局
     三选一获取形态〕不写,防 `'dot_anchor#-'` 畸形键;缺识别标志不影响猜测写/
     计数/证实,消费门 = `check_env_dot_grants` 的 active_env 门)。键形态
-    登记单一源 = fields.md §3.5.5;条件分支「猜测写+证实」建模口径 =
+    登记单一源 = cw_game_state 字段注释;条件分支「猜测写+证实」建模口径 =
     invest_effects.md「条件分支族面口径」节。
   - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
     可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
@@ -1074,7 +1074,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     (数量 = 元素重复次数)恒登记,开箱链由外循环画面分发承接(武装箱选择画面
     独立建档)。首条 = 火药味(id 101,开局 2 个简易武装箱)。**定时支**
     (`items_scheduled`):登记不落席——(节点键, 道具名)逐项解析入状态容器队列
-    `pending_item_grants`(fields.md §3.2.24;一次 write 回写整表),效果串
+    `pending_item_grants`(cw_game_state 字段注释;一次 write 回写整表),效果串
     `item_scheduled:<名>@<节点键>`(如 `item_scheduled:特权武装箱@2-1`,
     数量 = 元素重复次数,发放事实登记与即时通道同阶),到点发放 =
     `discharge_due_item_grants`(§2.7)。首例 = 特权阶级(id 102,第二位面
@@ -1127,7 +1127,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。
   **具名装备授予支**(具名装备授予族,全员晋升首例):效果体消费
   `gain_equipment(rand=False)` 具名确定入栏(卡文无随机词,rand 两通道
-  分野 = fields.md §3.2.15),效果串 `named_equip_grant:<装备名>
+  分野 = cw_game_state 字段注释),效果串 `named_equip_grant:<装备名>
   (placed=<是否落位>)` 逐件一条(前缀与 box_grant/equip_grant/
   strategy_random_equip 分列可过滤审计;equips 未观察 = 拒落零写
   placed=False);登记单一源 = cw_gain_effects `PICK_INVEST_EFFECTS`
@@ -1151,7 +1151,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   逐条追加 `(卡名, 倒计时)` 到 `pending_strategy_offers` 一次 write
   回写(登记序 = 分支序,同卡双条目形态白银投资首例),效果串
   `strategy_offer_scheduled:<品质>@<节拍>` 每条一枚;到点呈现归 sim
-  专用分支(不对称申报,live 队列恒悬置,域规格 = fields.md §3.2.26)。
+  专用分支(不对称申报,live 队列恒悬置,域规格 = cw_game_state 字段注释)。
   未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
   **延时发放只登记不写状态的实现分支**(策略卡延时状态副本发放通道,人才激励 id 101601 首例,
@@ -1169,7 +1169,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   `strategy_grant_scheduled:<发放物>@<节拍>`;到点发放归 sim 专用分支
   `discharge_due_strategy_grants`(到期即弹除,repeat 行例外 = 到点发放后
   同参重排队至局终〔周期型首例 = 好运令牌·彩,见下〕,发放物按注册表行归属
-  分道,不对称申报,live 队列恒悬置,域规格 = fields.md §3.2.26b)。
+  分道,不对称申报,live 队列恒悬置,域规格 = cw_game_state 字段注释)。
   卡文句式分流:带即时短句的卡(人才激励系)走上述两分支效果体;纯延时
   单句卡(许诺特权/先亏后盈)显式单行登记延时-only 载体(直用两分支工厂
   = 拿卡错发即时分支),效果体仅入队分支。入队条目数 = 注册表 `count`
@@ -1213,7 +1213,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   mid-run 锚定窗也落随机态(策略卡可中途获得,位面详情补观察闭环同链
   转正);删除写触发词缀域写尾 HP 先验回调(`cw_opening_hp.
   on_enemy_affixes_logic_write`,**mid-run 跳写守卫住回调**:节点窗在动
-  时当期 hp 禁被开局先验覆写,fields.md §3.1.6 第④写端);效果串
+  时当期 hp 禁被开局先验覆写,cw_game_state 字段注释 第④写端);效果串
   `strategy_affix_disable:<词缀名>`(与 `env_affix_disable:<名>` 族同形
   分前缀,审计归组)。选择规则 = **确定性取尾**(姊妹卡机制取尾换装),
   零掷骰即零流键消费——不与敌后破坏 `env_affix_disable` 采样流共槽。
@@ -1227,7 +1227,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   具名送卡通道、礼盒分支位于本队列,两表发放通道互斥非双发放):获得当刻
   **纯队列登记零席位写**——件 = 棋盘右上战利品区浮动件非占席(禁
   `_place_bench_item` 调用、禁 bench/overflow 任何字段),队列 =
-  `pending_item_opens`(fields.md §3.2.25)追加 `(件名, 解锁序位)`
+  `pending_item_opens`(cw_game_state 字段注释)追加 `(件名, 解锁序位)`
   (解锁序位 = 获得刻生效序位沿节点日程表步进 `open_delay_nodes` 步,
   计数起点 = 获得节点计入(设计定读);获得时点未落定窗防御基准
   (1,1);步进遇 None 停留最后合法值);`perfect_win_accel` 开时追加
@@ -1251,8 +1251,8 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
 - **双写入方声明**:两字段由「观察写入方单一源」扩为**双写入方**——观察完整观察(全量识别)写入方
   (备战溢出观察)+ 获得链逻辑写入方(席满溢出落位直写);第二逻辑写入方先例 = 卖牌
   溢出分支(`kernel/cw_action_report/sell_bench.py`)。与状态容器字段注释、
-  `kernel/cw_projection_audit.py` 对账 basis 行一致,字段语义权威版本 = fields.md
-  §3.2.21。
+  `kernel/cw_projection_audit.py` 对账 basis 行一致,字段语义 = cw_game_state
+  字段注释。
 - **身份两分判 kind(带名)**:溢出位身份串的消费方(合成池构建 `_build_pool` /
   卖牌溢出分支入位)按 `cw_investments.BENCH_ITEM_NAMES` 判是否占席道具——
   命中 = 查映射编译 kind 落**带名惰性槽件**
@@ -1266,7 +1266,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   通道不入词表(豁免)。
 - **星级链记**:星级不入状态容器字段(overflow_card 只存身份串);链内工作池自记本次
   授予的星级(升星判断用链记真值)——写入即知真值,不依赖观察兜底口径。观察来源
-  的溢出卡星级缺读按 1 兜底(现行口径,fields.md §3.2.21)。
+  的溢出卡星级缺读按 1 兜底(现行口径,cw_game_state 字段注释)。
 - **溢出位被占**(链内连环授予第二次溢出):游戏行为未实证 → 零写 + 缺陷记录表保留证据
   (`kind = DEFECT_OVERFLOW_TAKEN`),禁猜。
 - 溢出件被合成消费/腾槽归位 → 溢出位腾空,两字段成对清写(False + '')。
@@ -1299,24 +1299,25 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   与上行的分野 = 转换目标具名确定无猜测写面,无「首观察纠偏」语义可
   申报。
 - 语义:任一写入位置的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
-  只翻转它自己的子链。写通道 = 通道选择入口 `anchor_aware_write`(fields.md §2.6):
+  只翻转它自己的子链。写通道 = 通道选择入口 `anchor_aware_write`(skills/sr-od-dev-currency-war/references/game-state.md §4):
   未确认(锚定标志位 `prep_anchored` 未置)一律 `write_logic_rand`——开局预填初值/链落账是
   未验证推算,首观察静默覆盖;确认后按 rand 形参(失配网生效)。通道语义权威版本 =
-  fields.md §2.1/§2.5。
+  skills/sr-od-dev-currency-war/references/game-state.md。
 
 ## 6. 失败安全四则
 
 1. **链原语零吞错**:字段写操作分支/回调效果分支异常上抛(真异常该响);调用方(动作上报
    函数)不包整链、零额外吞错。
-2. **获得时点未落定期写走随机态,未观察拒落档保留**:状态容器经开局预填初值播种(fields.md
-   §2.6),生产链路阵容/装备域不再有 None——原「未观察 = bug 面」缺陷 kind
+2. **获得时点未落定期写走随机态,未观察拒落档保留**:状态容器经开局预填初值播种
+   (skills/sr-od-dev-currency-war/references/game-state.md §4),
+   生产链路阵容/装备域不再有 None——原「未观察 = bug 面」缺陷 kind
    (`gain_chain_bench_unobserved`/`gain_chain_equips_unobserved`)已停用;直构状态容器
    (sim/测试)的 None 拒落零写与 detail 档保留,零缺陷发射。条件形态在场
    判定插入位置(§3 advisor 分道)的 bench 未观察 fail-closed 同属本未观察族:
    不判零写 + 缺陷保留证据(`kind = gain_chain_cond_bench_unobserved`),
    开局初始值下生产两边不可达(开局种子恒种 bench),实为直构/测试形态防御。
    链写通道随锚定标志位择道(走通道选择入口)
-   (§5,fields.md §2.6)。
+   (§5,skills/sr-od-dev-currency-war/references/game-state.md §4)。
 3. **查无效果安静不写**(§3):真值归观察覆盖。
 4. **席满且溢出位被占 = 零写保留证据**(§4;游戏行为未实证,禁猜)。
 

@@ -47,4 +47,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp` docstring(点卡几何/裁决词全词/面板防御拆除/即时单相上报);`kernel/cw_action_report/pick_planner.py` 模块头(单相写序:条件单位 rider 先行/equip/upgrade 三态/unknown 保留证据/unrouted 兜底);[flow/action_ops.md](../../flow/action_ops.md) §4.5(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组;lv999_cost_tier 字段节)。
+`operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp` docstring(点卡几何/裁决词全词/面板防御拆除/即时单相上报);`kernel/cw_action_report/pick_planner.py` 模块头(单相写序:条件单位 rider 先行/equip/upgrade 三态/unknown 保留证据/unrouted 兜底);[flow/action_ops.md](../../flow/action_ops.md) §4.5(pick 族行);事件选择域组与 lv999_cost_tier 字段注释(cw_game_state)。

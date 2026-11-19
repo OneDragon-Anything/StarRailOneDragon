@@ -14,7 +14,7 @@
 | shop | **随机态写入(`write_logic_rand`)** | 刷新上报在计数后经 kernel 发牌采样器 `kernel/cw_shop_deal.py::sample_shop_deal`(与 sim `deal_shop` 同一发牌代码)采 5 槽 payload,经 `write_logic_rand` 随机态专用通道写——实机上采样是猜测,观察覆盖差异 = 预期内(落 `logic_rand_outcome` 记录行,不触发失配告警),真值 = 下一入口观察(以实际观察为准);level 缺读该分支跳写(概率表按级索引,宁缺勿造) |
 | free_refresh_left | 免费帧写(逻辑态) | 免费判定 = Field 值 > 0(入口观察确认的剩余次数;None = 未观察 → 保守按付费,不扣 Field——次数是记账面非决策闸);免费帧 `write_logic` 扣减(max(0, left−1),下限 0) |
 | refresh_total / refresh_paid(效果账本) | 写(计数分支) | 写入方 = 刷新上报函数经 `gs.effects.record_refresh` 单一入口(`kernel/cw_effect_inventory.py`);refresh_total 恒 +1,免费帧不动 refresh_paid(付费累计,长线利好阈值型,免费帧混入即污染) |
-| shop_refresh_cost | **跳写** | 本动作对本域零写(费用读现值)。写入方 = live 现场 OCR(观察通道)+ sim 开店呈现写回(kernel 渲染状态副本里的值经观察通道写,fields.md §3.3.4);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
+| shop_refresh_cost | **跳写** | 本动作对本域零写(费用读现值)。写入方 = live 现场 OCR(观察通道)+ sim 开店呈现写回(kernel 渲染状态副本里的值经观察通道写,cw_game_state shop_refresh_cost 字段注释);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
 
 ## 3. 确定面转移规则(逐条)
 
@@ -25,7 +25,7 @@
 
 ## 4. 随机面
 
-**刷后的新牌面 = 整店 5 槽全换**(非逐槽补空,实机实证 `research/economy.md` §2.1)→ 上报函数以随机态采样预写期望态(`write_logic_rand` 通道;观察覆盖 = 预期内),真值归下一入口观察。免费刷新的概率事件(免费次数获得)= 两效果桥发放(`apply_effect_burst_grant`/`grant_effect_node_refresh_balance`,状态容器 Field 同格登记,见 [../fields.md](../fields.md) 商店免费刷新节)。
+**刷后的新牌面 = 整店 5 槽全换**(非逐槽补空,实机实证 `research/economy.md` §2.1)→ 上报函数以随机态采样预写期望态(`write_logic_rand` 通道;观察覆盖 = 预期内),真值归下一入口观察。免费刷新的概率事件(免费次数获得)= 两效果桥发放(`apply_effect_burst_grant`/`grant_effect_node_refresh_balance`,状态容器 Field 同格登记,见 cw_game_state free_refresh_left 字段注释)。
 
 **UI 陷阱已登记**:面板右下「刷新金币数」区域实际印的是利息徽标(min(gold//10,5)),不是刷价(三路来源交叉核对后已定案,`REFRESH_COST_BASE` 注)。
 
@@ -47,4 +47,4 @@
 
 ## 9. 依据
 
-`research/economy.md` §2(刷价 2 金恒定与 UI 陷阱)/§2.1(整店全换/节点切换自动刷新);[fields.md](../fields.md)(商店免费刷新 `free_refresh_left` Field 三个写入来源);[shop.md](../../screens/shop.md)(访问终结语义)。
+`research/economy.md` §2(刷价 2 金恒定与 UI 陷阱)/§2.1(整店全换/节点切换自动刷新);cw_game_state free_refresh_left 字段注释(三个写入来源);[shop.md](../../screens/shop.md)(访问终结语义)。

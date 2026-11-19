@@ -462,7 +462,8 @@ class CwScreenPrep(CwOperation):
                 # 写一律过挂接入口(单一写径,禁第二写径):容差配对轨迹
                 # 继承/声明出队生成/消失清洗都在入口对「写前旧坐标 × 写后
                 # 新坐标」逐帧判定,散写即身份键漂移(声明金被「消失清洗 +
-                # 新现重掷」链路静默蒸发,正本 = game_state/fields.md §3.2.8a)。
+                # 新现重掷」链路静默蒸发,正本 = flow/projection_contract.md §2
+                # 晶矿附着节)。
                 _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
                                  for color, p, r in _sph_list)
                 report_spheres_observed(
@@ -957,7 +958,7 @@ class CwScreenPrep(CwOperation):
         (用户裁定:不收敛 = 策略实现 bug)。
 
         段3 特殊流程三处置(位于段序号置位之前;子态识别在观察 node 段1,
-        三处置共享本顶部分流位,迭代 2026-11-18-prep-special-flow §2.7-3):
+        三处置共享本 node 顶部,迭代 2026-11-18-prep-special-flow §2.7-3):
         a 返回按钮 → 点返回交回(下轮身份分发进投资策略屏);b 锁定 →
         locked_resume_sync_and_battle 同步步+出战(成功 = 锁解除+交回,
         战斗窗置位不在此——``_on_prep_round`` 回调对一切 success 交回统一

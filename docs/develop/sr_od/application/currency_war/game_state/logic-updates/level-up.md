@@ -51,4 +51,4 @@
 
 ## 9. 依据
 
-`research/xp-rules.md` §2(购买经验单价/门槛表/折扣只降价不减经验);`kernel/cw_economy.py::xp_click_cost` docstring(两支语义与出域声明);[fields.md](../fields.md) §3.2.10/§3.2.11(level/xp/level_up_cost)/§4.2 LevelUp 行。
+`research/xp-rules.md` §2(购买经验单价/门槛表/折扣只降价不减经验);`kernel/cw_economy.py::xp_click_cost` docstring(两支语义与出域声明);level/xp/level_up_cost 字段注释(cw_game_state)。

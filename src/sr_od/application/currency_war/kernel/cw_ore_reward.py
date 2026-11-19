@@ -7,14 +7,16 @@
 vs 实读真值逐局积累)。
 
 已登记冲突调和:screen_flow_timing #16 三形态佐证本口径;
-fields.md §4.2 的「箱」与 final_wandi_burn 的「稀有物」为 v0 有意不建模
+「箱」与 final_wandi_burn 的「稀有物」两形态为 v0 有意不建模
 ——采样错形态时观察收尾兜底(安全的不准确),代价由席满让路门 + 观察
 回补既有裁定承担。
 
-采样语义(正本 = game_state/fields.md §2.5):实机上采样是猜测(标随机态,观察校准);sim 里
+采样语义(随机态采样链口径,规范 =
+skills/sr-od-dev-currency-war/references/game-state.md §4):实机上采样是猜测(标随机态,观察校准);sim 里
 采样即状态副本真值——同一采样函数两副面孔。
 
-矿批附着生成(正本 = game_state/fields.md §3.2.8a)::func:`generate_ore_rewards` = 矿进入
+矿批附着生成(正本 = flow/projection_contract.md §2 晶矿附着节):
+:func:`generate_ore_rewards` = 矿进入
 状态副本时的附着奖励单一生成入口(声明金先占席、归属 rng 掷、其余逐矿采样),
 live/sim 共用,禁第二实现。
 """

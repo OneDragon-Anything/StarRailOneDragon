@@ -91,8 +91,9 @@ DEFECT_TOKEN_NOT_ADMITTED: str = 'tool_token_not_admitted'
 DEFECT_MUTATE_CONSEQUENCE_CANDIDATE: str = 'furnace_mutate_consequence_candidate'
 DEFECT_MUTATE_OUT_OF_SCOPE_KEPT: str = 'furnace_mutate_out_of_scope_kept'
 
-#: 拒单码(记账路径总契约「新码先登记再使用」;登记面 = 本常量节 +
-#: fields.md 回执契约节;拒单 = applied=False 零写 + 留存证据,处置 =
+#: 拒单码(记账路径总契约「新码先登记再使用」;登记面 = 本常量节,回执
+#: 契约 = cw_game_state.note_action_receipt docstring;
+#: 拒单 = applied=False 零写 + 留存证据,处置 =
 #: 交还框架决策循环刷新对照表重派,禁补拖)。⚠️ tool_xy_unresolved 同时
 #: 是精密扳手 consume=False 豁免行的 evidence 注记形态(非拒单)——
 #: 判读按 applied/reason 列区分两类行,勿按码单值断言拒单。

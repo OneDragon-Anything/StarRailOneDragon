@@ -50,7 +50,7 @@ def _note_receipt(op: SrOperation, reason: str, detail: str = '') -> None:
     kernel 口。回执 op 名/actor 硬编码 ``'CwActionPickSupplyOp'``
     (journal 词表稳定,渲染器词表与类删除解耦);回执 screen = 动作
     发出画面(补给屏,全回执域统一语义,契约单一源 =
-    game_state/fields.md 回执契约节)。detail = 机械摘要(idx +
+    cw_game_state.note_action_receipt docstring 回执契约)。detail = 机械摘要(idx +
     内容摘要)。
     """
     try:

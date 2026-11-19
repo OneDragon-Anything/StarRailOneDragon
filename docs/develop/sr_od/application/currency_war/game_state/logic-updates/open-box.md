@@ -41,4 +41,4 @@ OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为测试 = 
 
 ## 9. 依据
 
-[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenBox 行(终结化/识别/点击链);`kernel/cw_action_report/zero_writes.py::report_action_open_box_param` docstring(零写申报);`operations/cw_screen/cw_screen_box_pick.py` docstring(`box_card_names` 写槽与选卡即终结);[fields.md](../fields.md) §3.2.5(占席道具)/§4.2 事件选择行。
+[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenBox 行(终结化/识别/点击链);`kernel/cw_action_report/zero_writes.py::report_action_open_box_param` docstring(零写申报);`operations/cw_screen/cw_screen_box_pick.py` docstring(`box_card_names` 写槽与选卡即终结);占席道具字段注释(cw_game_state;bench BenchSlot)。

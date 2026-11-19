@@ -429,7 +429,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               'check_env_dot_grants/check_env_ore_open_grants/'
               'check_env_battle_grants'
               '(发放刻/证实刻追加,dot 三键与 battle_co_presence 见'
-              ' fields.md §3.5.5)'
+              ' cw_game_state env_grants_done 字段注释的条件键清单)'
               '/grant_env_bond_tier(羁绊档位发放刻追加,判定住 '
               'cw_faction_callbacks.check_env_bond_tier_grants,deployed '
               '写尾门外必查)'
@@ -540,19 +540,19 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='选择族读面,零逻辑写端'),
     'star_tome_opts_xy': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+        basis='选项坐标伴随域(选择坐标观察上报):与同名名字域同一次观察'
               '同帧同源写,零逻辑写端'),
     'wish_trial_opts_xy': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+        basis='选项坐标伴随域(选择坐标观察上报):与同名名字域同一次观察'
               '同帧同源写,零逻辑写端'),
     'box_card_names_xy': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+        basis='选项坐标伴随域(选择坐标观察上报):与同名名字域同一次观察'
               '同帧同源写,零逻辑写端'),
     'fortune_opts_xy': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+        basis='选项坐标伴随域(选择坐标观察上报):与同名名字域同一次观察'
               '同帧同源写,零逻辑写端'),
     'fortune_opts': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
@@ -591,7 +591,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='祈愿试炼选择结果(handler 写,无 chosen 观察读端)'),
     'chosen_fortune': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='命运卜者选择结果(chosen 写端未接入调用 = fields.md §4 先补档,'
+        basis='命运卜者选择结果(chosen 写端未接入调用 = 先补档,'
               '无 chosen 观察读端;建档已登记 cw_fortune_picker.yml)'),
     'chosen_hack': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
@@ -639,8 +639,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '= 结算环与部署观察面);唯一逻辑写端 = cw_env_grants.'
               'check_strategy_perfect_rescue(挂 settle_confirm 分支'
               '改写先于消费,实机和模拟器两边写;sim 结构性休眠恒 False 零接入调用申报;'
-              '消费端 = 两完胜判据行 hp 持平判定旁路,域规格 = fields.md '
-              '§3.5.3b)'),
+              '消费端 = 两完胜判据行 hp 持平判定旁路,域规格 = cw_game_state '
+              '字段注释 settlement_perfect_rescue 条)'),
     # —— 派生域与画面上下文 ——
     'prev_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

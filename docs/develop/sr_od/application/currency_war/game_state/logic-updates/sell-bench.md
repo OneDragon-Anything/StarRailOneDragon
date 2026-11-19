@@ -54,4 +54,4 @@
 
 ## 9. 依据
 
-`research/economy.md` §3(卖出退金与手续费;3★ 已定案);`research/equipment_mechanics.md` §1(卖出 = 装备全量回区,缺口 G5 = 帧级证据未采按守恒建模);`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param` docstring(溢出卡分支/session 吸收申报);[fields.md](../fields.md) §3.2.21(备战席溢出)/§4.2 SellBench 行。
+`research/economy.md` §3(卖出退金与手续费;3★ 已定案);`research/equipment_mechanics.md` §1(卖出 = 装备全量回区,缺口 G5 = 帧级证据未采按守恒建模);`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param` docstring(溢出卡分支/session 吸收申报);备战席溢出字段注释(cw_game_state)。

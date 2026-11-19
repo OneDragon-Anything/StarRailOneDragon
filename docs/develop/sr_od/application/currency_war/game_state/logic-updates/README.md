@@ -1,12 +1,11 @@
 # 逻辑态更新(logic-updates)
-> 术语:本篇所用货币战争域术语的统一定义见 [../../terminology.md](../../terminology.md)。
 
 > 定位:**每个注册表动作 op 一篇**专篇,说明该动作的**逻辑态**应如何计算——逻辑态 = 动作发生后按游戏规则推算出来的游戏状态(例:买一张牌后金币 −40、备战席 +1;若下一帧实际观察与推算不符,以实际观察为准)。每篇覆盖:涉及的数据域、转移规则、确定面/随机面、拒绝语义、kernel 符号名引用(实现所在的代码符号)。总述两篇只承载机制:执行器机制 = [prep-executor-actions.md](prep-executor-actions.md),效果账机制 = [op-effects.md](op-effects.md);总则与原则在 [../action-logic-state.md](../action-logic-state.md)(本目录的纪律母篇)。
 
 ## 总则(必读)
 
 1. **写入入口归属(硬规则)**:动作 op 只负责执行画面动作 + 机械执行后**直调自己的上报函数**(动作语义单一源 = `kernel/cw_action_report/` 上报函数族,每动作一文件一函数 `report_action_<snake>_param`;不对游戏状态做任何写入的动作集中在 `zero_writes.py`)。**逻辑态的更新写入由上报函数族独占**(函数内 `gs.write_logic`,kernel → 状态容器(GameState)(GameState,游戏状态对象,下同)单向依赖);dict 确认族的到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。op 层/策略层禁自带逻辑态记账函数或并行登记路径,禁新增按类型聚合的转移函数(现无任何聚合分派点;上报函数调用方 = 动作 op 直调与商店序列驱动器直调)。
-2. **两态制(+逻辑随机态扩展)**:状态容器每字段只有两种值来源——观察态(`observe()` 写,来自画面识别)与逻辑态(动作后推算,`write_logic()` 写);同一帧两者冲突时**以实际观察为准**(本目录「帧」= 一帧截图,即某一时刻的画面快照)。效果本身随机的推算口径走**逻辑随机态**(`write_logic_rand()` 写,来源 `logic_rand`;随机效果按采样结果推算直写,无法采样的留给观察;观察覆盖差异属预期,策略器消费前必须重新观察),见 [../action-logic-state.md](../action-logic-state.md) §1.2 与 [../fields.md](../fields.md) §2.1/§2.5。席位主域的「未观察」态由锚定标志 `tracked_account_observed` 承载(未经观察确认,值不可消费;与「已观察下的空」类型可分)。**对账**(观察读数与推算值的比对,不一致以实际观察为准)唯一发生点 = 画面 op 上报观察数据进 game state 的观察边界,由 game state 执行(../../screens/op-layer.md §1.3)。
+2. **两态制(+逻辑随机态扩展)**:状态容器每字段只有两种值来源——观察态(`observe()` 写,来自画面识别)与逻辑态(动作后推算,`write_logic()` 写);同一帧两者冲突时**以实际观察为准**(本目录「帧」= 一帧截图,即某一时刻的画面快照)。效果本身随机的推算口径走**逻辑随机态**(`write_logic_rand()` 写,来源 `logic_rand`;随机效果按采样结果推算直写,无法采样的留给观察;观察覆盖差异属预期,策略器消费前必须重新观察),见 [../action-logic-state.md](../action-logic-state.md) §1.2 与 skills/sr-od-dev-currency-war/references/game-state.md。席位主域的「未观察」态由锚定标志 `tracked_account_observed` 承载(未经观察确认,值不可消费;与「已观察下的空」类型可分)。**对账**(观察读数与推算值的比对,不一致以实际观察为准)唯一发生点 = 画面 op 上报观察数据进 game state 的观察边界,由 game state 执行(../../screens/op-layer.md §1.3)。
 3. **确定面/随机面**:逻辑态只写确定面(结果可准确计算的部分);随机面两档落法——推算不出可靠值的域**跳写**(留空不写、等下一帧观察覆盖),有确定口径/期望口径的按逻辑随机态直写(`write_logic_rand`),见 [../action-logic-state.md](../action-logic-state.md) §1.2。
 4. **拒绝语义**:游戏拒买/拒上/期望失配 → 上报函数返回 `LogicOutcome(applied=False, reason)`,零字段写操作(不改动游戏状态)。
 5. **先例**:商店期默认策略动作面 = 买牌/刷新/关店;卖备战与买经验收缩至备战期(先例见 [screens/README](../../screens/README.md) §5 与 strategy-docs/23_shop_screen.md)。**席满/腾位形态(2026-09-15 用户裁定修正)**:不是「关店→备战卖→重开」一条自动链——关店时**返回主循环(重新识别画面)**,由备战 op 在自己的决策周期自行判断与卖出;商店期为何关店、备战要做什么、何时重开,由**策略实现自行记录状态**(框架侧提供跨段状态载体与路由保证:节点内关店/重开牌面持久;策略侧多画面联动的重设计归后续迭代)。

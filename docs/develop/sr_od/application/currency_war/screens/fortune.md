@@ -52,7 +52,7 @@ texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读状态容器 f
 
 ## 6. 状态上报面
 
-本屏无 chosen_fortune 写端、无到账登记(选择后果走下一帧观察覆盖;GameState 字段位 `chosen_fortune` 先申报无写端,fields.md §3.4.5)。候选观察:`report_screen_fortune_obs` 候选写状态容器 `fortune_opts` 槽(空表照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」。
+本屏无 chosen_fortune 写端、无到账登记(选择后果走下一帧观察覆盖;GameState 字段位 `chosen_fortune` 先申报无写端,cw_game_state 字段注释)。候选观察:`report_screen_fortune_obs` 候选写状态容器 `fortune_opts` 槽(空表照写)。字段语义 = cw_game_state fortune_opts/chosen_fortune 字段注释。
 
 ## 7. 子态与 overlay
 
@@ -71,4 +71,4 @@ texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读状态容器 f
 
 - journal op 名 =「命运卜者」;画面 op 日志 tag = `[cw][fortune]`(选卡行:卡文与选卡序号);选卡确认链(`cw_pick_fortune_action.py::CwActionPickFortuneOp`)日志 tag = `cw-pick-fortune`(点卡 `safe_click`;确认 = 「按钮-确认选择」`round_by_find_and_click_area` 建档查找点击,全族统一)。
 - 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报状态容器/入口门 miss fail/状态容器零参决策 + round_wait)。
-- game 侧知识:无独立 game 画面档(建档与字段面 = `assets/game_data/screen_info/cw_fortune_picker.yml` + [../game_state/fields.md](../game_state/fields.md) §3.4.5)。
+- game 侧知识:无独立 game 画面档(建档 = `assets/game_data/screen_info/cw_fortune_picker.yml`,字段语义 = cw_game_state 字段注释)。

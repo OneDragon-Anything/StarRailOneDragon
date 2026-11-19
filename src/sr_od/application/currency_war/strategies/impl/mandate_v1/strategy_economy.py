@@ -282,7 +282,7 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 大裁员:卖全场退款效果条目 = 无字段载体(退款额依赖场上构成,非估值常量;
     # 出售面状态副本侧通道已建 = STRATEGY_EFFECTS 条目登记效果条目双桥);×2 卖价修饰
     # 挂 sell_price_mult(待建模字段分类塌 0),施于净额/基础价口径待实采
-    # (缺口单一源 = fields.md §4 SellBench 修饰行),闭合前状态副本侧退款按
+    # (缺口单一源 = STRATEGY_ECONOMY「大裁员」注册行注释),闭合前状态副本侧退款按
     # 基础公式记(sim 低估申报制)。
     '大裁员': '卖全场退款分支无字段载体(依赖场上构成,非估值常量);'
               '×2 卖价修饰(sell_price_mult)施径口径待实采,'

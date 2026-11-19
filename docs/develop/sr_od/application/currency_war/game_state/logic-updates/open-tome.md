@@ -43,4 +43,4 @@
 
 ## 9. 依据
 
-[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenTome 行(单击开启/非终结);`kernel/cw_action_report/open_tome.py::report_action_open_tome_param` docstring(腾位守卫与零写面);`operations/cw_screen/cw_screen_bookcard.py` 模块头(`chosen_tome` 写入位置与 ConfirmTome 推进);[fields.md](../fields.md) §3.2.5(占席道具)/§4.2 事件选择行。
+[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenTome 行(单击开启/非终结);`kernel/cw_action_report/open_tome.py::report_action_open_tome_param` docstring(腾位守卫与零写面);`operations/cw_screen/cw_screen_bookcard.py` 模块头(`chosen_tome` 写入位置与 ConfirmTome 推进);占席道具字段注释(cw_game_state;bench BenchSlot)。

@@ -86,12 +86,12 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - 进度/节点:`read_phase_round`(区域-阶段「X-Y」)、`read_node_type`(顶部节点标签 首领→boss / 战斗→battle 等;**仅 battle/boss 稳**,见备注)。
 - 经济:`read_gold`(文本-金币数;备战/商店帧均可读——玩家确认 2026-09-09;中断恢复对局的备战帧待实机一帧定案〔:113 孤例〕,复核前按可读尝试+失读容忍)、`read_level`(文本-等级「LV.N」)、`read_xp_progress`(文本-升级所需经验「X/Y」)。
 - 棋盘:`read_board` + `read_board_next_tier`(区域-羁绊面板「X/Y」→ 阵营 count + 下个 tier 阈值)、`read_deployed_count`(区域-部署数「X/Y」,如 5/5)。
-- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)——**read_bench_full 已退役不做识别**(警告太短暂无法可靠采样,玩家裁定 2026-09-09;满栏判定=bench 槽位派生,见 `game_state/fields.md` §3.2.5)。**⚠️ 2026-09-15 修订(用户指令,复活动画)**:launch_dead 现场实证横幅在溢出未处理时**常驻**(三帧跨 50 分钟同态),旧「太短暂」前提不成立;告警 area 已建档(`告警-备战席已满`),识别复活语义 = **溢出角色在场的处理门**(先卖出腾出备战席空位再出战),game_state 标记 + 观察写端接入调用登记为待办(前置批2a)——非退回旧 read_bench_full 形态,待办落地时按卡面定新形态。
+- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)——**read_bench_full 已退役不做识别**(警告太短暂无法可靠采样,玩家裁定 2026-09-09;满栏判定=bench 槽位派生,语义 = cw_game_state bench 字段注释)。**⚠️ 2026-09-15 修订(用户指令,复活动画)**:launch_dead 现场实证横幅在溢出未处理时**常驻**(三帧跨 50 分钟同态),旧「太短暂」前提不成立;告警 area 已建档(`告警-备战席已满`),识别复活语义 = **溢出角色在场的处理门**(先卖出腾出备战席空位再出战),game_state 标记 + 观察写端接入调用登记为待办(前置批2a)——非退回旧 read_bench_full 形态,待办落地时按卡面定新形态。
 - 生命:`read_hp`(文本-剩余血量,**仅 shop 关闭态可读**;shop 开启态该区空 → 返 100)。
 
 **需放大管线(原生分辨率 det 漏检)**:
 - `read_level_up_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」),原生直读基本检不到(小字 det 漏检,与等级/XP 小字同根)。**两级管线可读**:3x 放大 → 仍空再 OTSU 二值化重试;58 张备战帧仓离线交叉核对 3x=55/58、加二值化=57/58(唯一残留帧数字在场但两级均未检出,走 None → plan 用 `LEVEL_UP_COST_TABLE` 兜底)。实帧锁见测试 `test_read_level_up_cost_real_fixture`。
-- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。**(2026-09-09)**:刷新费字段写端权威改=商店开态刷新钮旁标价现场识别(reader `cw_shop_refresh_obs.read_shop_refresh_price`,区域「文本-刷新价格」已建档);本条通道转旁证退役,主条目=`game_state/fields.md` §3.3.4。
+- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。**(2026-09-09)**:刷新费字段写端权威改=商店开态刷新钮旁标价现场识别(reader `cw_shop_refresh_obs.read_shop_refresh_price`,区域「文本-刷新价格」已建档);本条通道转旁证退役,主条目 = cw_game_state shop_refresh_cost 字段注释(现场 OCR 唯一写端)。
 
 **弱**:
 - `read_enemy_difficulty`(文本-难度 左上角):stylized 数字,OCR 常空。

@@ -6,7 +6,7 @@
 简报词缀点采链)。
 下游:状态容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table 吃怕表+泛化层)
 ;``plane_bosses`` → 线分 boss 分量(``cw_affinity_table.BOSS_AFFINITY``;统一
-阵容评分迭代批 2 起;字段权威版本 = ``game_state/fields.md`` §3.1.3)。
+阵容评分迭代批 2 起;字段语义 = cw_game_state 对应字段注释)。
 
 共享 helper(``_area_rect``/``_ocr``/``BRIEFING_SCREEN``)在 ``cw_obs_core``。
 """
@@ -136,8 +136,7 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
     (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序真值**(「排列≠位面序」
-    系单条日志孤证误判,勿据此改排列语义;裁定语义权威版本 = ``game_state/fields.md``
-    §3.1.3;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写状态容器
+    系单条日志孤证误判,勿据此改排列语义;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写状态容器
     ``plane_bosses``,消费链 = 线分 boss 分量 ``cw_affinity_table.BOSS_AFFINITY``,
     统一阵容评分批 2 起)。``CwScreenPlaneIntel`` 位面详情实采保留为
     **中断恢复场景重采**通道(对局中内存丢失时补采)+ 对账真值源。

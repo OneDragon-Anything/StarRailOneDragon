@@ -59,7 +59,7 @@ def report_screen_bookcard_obs(gs: GameState, obs: CwScreenBookcardObs, *,
     _validate_sig(sig, ('logic_action',))
     if not obs.options:
         return
-    # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
+    # 同序等长写端构造守卫(选择坐标观察上报):坐标域与名字域同一写门
     # 一并落状态容器,不等长 = 观察 bug,响亮暴露禁错位双写。
     if len(obs.option_points) != len(obs.options):
         raise AssertionError(

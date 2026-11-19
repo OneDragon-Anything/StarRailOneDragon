@@ -26,7 +26,7 @@ None 域边界:值 None(未观察)的域跳写(留空不写、等观察覆盖)�
 ## 2.1 动作分支总览(非随机态域两条分支,整批写毕后收尾)
 
 - **计数分支**:批内开成点数 `opened` 经 `gs.effects.record_ore_open` 唯一入口入账(计数载体 = `kernel/cw_effect_inventory.py` 的 `ore_open_total`,不进快照 = 接管局从 0 起,接受面 = 刷新两计数同款)。「点开才计数」:席满/缺项∧level 缺读跳点不入账,`opened == 0` 早退路径零计数零触发。消费方 = 战技点契约触发器。
-- **环境条件发放分支**(登记表 `cw_investments.ENV_ORE_OPEN_GRANTS` 已登记环境:战技点契约 id 128):计数入账后尾部触发 `kernel/cw_env_grants.check_env_ore_open_grants`——阈值序列(首阈值 20 + 步长 10,无限重复)逐阈值发放:火花 + 随机战技点羁绊角色各 1 个 1★(两条分支 `gain_character` 随机态写入——触发前提 = 晶矿开启计数为未验证推演,发放按随机态定级走台账纠偏 + bench 首观察覆盖,用户裁定 2026-10-17;随机分支采样经注入槽具名键 `env_ore_open_grant`,sim = 状态副本里的值 / live 回退自掷),done 键 `ore_open#<阈值>` 逐阈值封账(`write_logic` 簿记;fields.md §3.5.5 词表行)。
+- **环境条件发放分支**(登记表 `cw_investments.ENV_ORE_OPEN_GRANTS` 已登记环境:战技点契约 id 128):计数入账后尾部触发 `kernel/cw_env_grants.check_env_ore_open_grants`——阈值序列(首阈值 20 + 步长 10,无限重复)逐阈值发放:火花 + 随机战技点羁绊角色各 1 个 1★(两条分支 `gain_character` 随机态写入——触发前提 = 晶矿开启计数为未验证推演,发放按随机态定级走台账纠偏 + bench 首观察覆盖,用户裁定 2026-10-17;随机分支采样经注入槽具名键 `env_ore_open_grant`,sim = 状态副本里的值 / live 回退自掷),done 键 `ore_open#<阈值>` 逐阈值封账(`write_logic` 簿记;条件键清单 = cw_game_state env_grants_done 字段注释)。
 - **窗序确定**:晶矿自身奖励写(含合并升星触发分支)→ 计数入账 → 战技点契约触发分支(计数先入账后检查,检查时计数现值含本批);触发发放与晶矿奖励同动作窗同组。
 
 ## 3. 转移规则(逐点顺序推演)
@@ -59,4 +59,4 @@ None 域边界:值 None(未观察)的域跳写(留空不写、等观察覆盖)�
 
 ## 9. 依据
 
-`kernel/cw_action_report/collect_ore.py` docstring(逐点推演+随机态全表);`kernel/cw_ore_reward.py`(临时口径 v0 常量面+假设档披露);`kernel/cw_merge_simulate.py::_merge_bench` docstring(步回调契约);[flow/action_ops.md](../../flow/action_ops.md) §4.2 CollectOre 行;[fields.md](../fields.md) §3.2.8(晶矿)/§4.2 CollectOre。
+`kernel/cw_action_report/collect_ore.py` docstring(逐点推演+随机态全表);`kernel/cw_ore_reward.py`(临时口径 v0 常量面+假设档披露);`kernel/cw_merge_simulate.py::_merge_bench` docstring(步回调契约);[flow/action_ops.md](../../flow/action_ops.md) §4.2 CollectOre 行;晶矿域字段注释(cw_game_state)。

@@ -42,4 +42,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` docstring(候选留在裁定/单发语义);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4.5(盛会之星域)。
+`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` docstring(候选留在裁定/单发语义);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);megastar_opts 字段注释(cw_game_state)。

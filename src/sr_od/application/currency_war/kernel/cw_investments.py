@@ -180,7 +180,8 @@ class EconomyEffect:
     gold_at_node_offset: int = 0          # 何时(t+5)
     interest_flat_per_node: int = 0       # 狸财经狸:每节点固定息(与 interest_cap 无关)
     # 不等价交换:获得拍 hp⇄gold 互换(kernel 获得链交换写入实现,
-    # fields.md 效果改写源归属节本卡裁定行「归属 = 逻辑写」;hp 侧
+    # 归属 = 逻辑写——确定性推算可准确计算,判据单一源 =
+    # game_state/effect-domain.md §6.3;hp 侧
     # min(gold, SQUAD_HP_CAP) 保守 clip,evidence strategy:hp_gold_swap;
     # 血本位族判据消费 = is_blood_economy)
     hp_gold_swap: bool = False
@@ -201,7 +202,7 @@ class EconomyEffect:
                                           # 先亏后盈 −20):选卡当场 hp 直加,
                                           # 不 clip(上下界同此——sim 扣血绝对值制
                                           # 无上限消费,hp_max 字段缺位,缺口申报
-                                          # = fields.md HP 面行),clip 属无消费端
+                                          # 归 hp_max 缺位待办族),clip 属无消费端
                                           # 语义;负值的写入端与损血档位触发的
                                           # 扩展插入位置
                                           # 见 apply_strategy_pick_hp;0 = 未启用该效果条目
@@ -711,13 +712,13 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '长期主义': EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3),
     '大裁员': EconomyEffect(free_refresh_burst=9, sell_price_mult=2.0),
     # ↑ 免费刷 + 卖价×2。free_refresh_burst=9 = 官方卡文直读(base 层
-    #   plaza:202101,cw_invest_data.py:134),反转裁定 = 以官方卡文为准
-    #   (fields.md §3.3.5 burst 来源族 + §4 SellBench 修饰行已登记);注册值
+    #   plaza:202101,cw_invest_data.py:134),反转裁定 = 以官方卡文为准;
+    #   注册值
     #   原为 5 = 已裁漂移且无运行时消费点(当时无 STRATEGY_EFFECTS 条目,
     #   两桥不触发),非任何一端的现行行为——「9 次免费刷新」真正写进代码的
     #   载体 = STRATEGY_EFFECTS['大裁员'] 条目(burst 桥同条目双载),本注册行
-    #   = 估值面与条目载荷的对账源。卖价 ×2 施于净额/基础价 = 缺口 G4 待
-    #   实采(fields.md §4 SellBench 修饰行单一源),闭合前退款按基础公式。
+    #   = 估值面与条目载荷的对账源。卖价 ×2 施于净额/基础价 = 待实机实证的
+    #   登记缺口,闭合前退款按基础公式。
     # 嘴硬:败局修饰两条效果条目 = 卡面「受到的小队生命值伤害提高5点/维持原来的连胜数」
     #   直读;消费 = strategy_loss_battle_modifier 聚合 + sim 结算 HP 写入与
     #   streak 转移形参(读法边界见字段注)。金条目「获得6金币」选卡当场已登记。
@@ -804,7 +805,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   同一实例,登记时代旧口径 = 条目内联 EconomyEffect)。
     '健康充值': EconomyEffect(hp_instant=30),   # 即时 HP 条目(卡面数值直读);+30 上限半句
                                                 # hp_max 字段缺位零建模,缺口申报单一源 =
-                                                # fields.md HP 面行
+                                                # SQUAD_HP_CAP 常量注释的 hp_max 缺位缺口族
     '先亏后盈': EconomyEffect(hp_instant=-10),
     # ↑ 损血即时条目 = 卡面「损失20点小队生命值」数值直读取负(desc 明写
     #   20,非设计数);延时条目(4 节点 2 箱)另走 STRATEGY_DELAYED_GRANTS,
@@ -853,8 +854,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   _DISPLAY_PHASE_UNVERIFIED 三披露键随局/判读申报
     '市场干预': EconomyEffect(free_refresh_burst=5, refresh_shop_rewrite_every_3cost=4),
     # ↑ 「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」——池构成族突变旗标
-    #   (v_c/a_c 池面改写;消费规范单一源 = fields.md「市场干预」节,
-    #   docs/develop/sr_od/application/currency_war/game_state/fields.md;
+    #   (v_c/a_c 池面改写;消费规范 = 下一次+每 4 次商店刷新全 3 费面改写,
+    #   读牌预知+观察覆盖兜底;
     #   burst 5 刷发放面 = STRATEGY_EFFECTS 本卡条目登记分支)
 }
 
@@ -909,8 +910,10 @@ def dakuozhao_deduction_plan(gold: int) -> tuple[int, int]:
 # 只允许 sim→kernel(kernel 模块级禁 import sim),sim/测试侧值域消费
 # 经本单一源复用禁双源。值系建模边界值非实证游戏上限(证据引用 =
 # hp_trail 值域锁参数化界与策略侧生存数学 hp_cap 默认档);直加不 clip
-# 族(即时生命/回血两族)不消费本常量——直加无消费端语义,hp_max 字段
-# 缺位缺口申报单一源 = fields.md hp 主条目。
+# 族(即时生命/回血两族)不消费本常量——直加无消费端语义。
+# **hp_max 缺位缺口族登记面** = 本注释:生命上限改写类效果(恢复生机/
+# 健康充值/创伤小组/成本控制/二极管/永久创伤)无承载字段,均按缺口
+# 申报、观察覆盖兜底,建模归 hp_max 字段落地批。
 SQUAD_HP_CAP: int = 100
 
 
@@ -1032,7 +1035,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 你接下来6次购买角色是免费的。」(cw_invest_data.py:136)。卖全场族
     # 素出售第二张注册卡(姊妹大裁员同构出售条目;人力重组走 _DEAL 值非素);
     # 卖价 ×2 修饰 = sell_price_mult(STRATEGY_ECONOMY 已登记),退款施径 =
-    # 缺口 G4(fields.md §4 SellBench 修饰行单一源),闭合前退款按基础公式。
+    # 待实机实证缺口(×2 施于净额/基础价未定),闭合前退款按基础公式。
     # 免费购买条目 = 次数类余量载体(duration_uses=6 → remaining_uses,免战牌
     # 首例机制):uses 维度与 duration 类别独立播种(_seed_progress),
     # duration=ONCE 只注记出售条目一次性语义;递减插入位置 = 买牌上报单点
@@ -1512,7 +1515,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['武力刷新'], duties=DutyFlags(),
         notes='每次装备合成 +2 免费刷新,经穿戴上报合成事件分支发放;'
-              '官方限定装备合成(角色升星另域,fields.md §5.3 分开计数禁混账)'),
+              '官方限定装备合成(角色升星另域,两域分开计数禁混账)'),
     # 星星相印:官方「每次合成3星角色时，获得5金币。立刻获得1个【员工投影
     # 仪】。」(cw_invest_data.py:83,id 104001)。策略侧 ON_MERGE 后继条目
     # (首条 = 武力刷新):触发面归一口径 = 角色 3 星合成共用 ON_MERGE 载体,
@@ -1520,7 +1523,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 认角色合成生产点(buy/gain 两域 check_strategy_star_merge_gold),装备
     # 合成域经 apply_on_merge_refresh_grant 名单集另路,本 payload 无
     # refresh_per_compose 字段、反向同构,双向鸭子缺省 0 天然隔离
-    # (fields.md §5.3 分开计数禁混账)。状态副本发放条目 = 合成事件条件金(仅 sim
+    # (两域分开计数禁混账)。状态副本发放条目 = 合成事件条件金(仅 sim
     # 装配态经观察通道发金,live 零写观察覆盖兜底);装备条目 = PICK_INVEST_
     # EFFECTS 登记行(员工投影仪 ×1,具名装备授予工厂),两条效果条目异族。duties
     # 全空(事件直结 = 计数门槛 N=1 退化形,无跨帧计数器/无预知/无姿态
@@ -1530,7 +1533,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['星星相印'], duties=DutyFlags(),
         notes='每次合成3星角色 +5金经合成事件发放分支(角色合成生产点;装备'
-              '合成域不经本条目,两域分开计数 fields.md §5.3);装备效果条目 = '
+              '合成域不经本条目,两域分开计数禁混账);装备效果条目 = '
               '具名装备登记行另路(员工投影仪×1)'),
     # 节省工位:官方「在接下来3个节点只有3个备战席位置。随后，获得3件简易
     # 装备。」(cw_invest_data.PLAZA_AUGMENTS 同 id 行,id 101901)。容量时限族
@@ -2053,8 +2056,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # duration_nodes=6 = 触发入口序的载体表达——发放入口序 = 注册行
     # gold_at_node_offset(5)+1,换算依据 = strategy-env-impacts.md 超发货币
     # 条目用户裁定(2026-09-10)「5个节点后=第6个节点才获取」。负债额 X =
-    # 实例 counters[CounterKey.LOST] 伴生数值空间(fields.md §5.3 处方载体,
-    # effect-domain §4 伴生数值空间先例),播值端 = 获得链登记条目
+    # 实例 counters[CounterKey.LOST] 伴生数值空间(effect-domain §4
+    # 伴生数值空间先例),播值端 = 获得链登记条目
     #(kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数)。live 零写金
     #(游戏自扣自发,金整字段观察覆盖兜底——effect-domain「到期与尾款」
     # 防双计裁定;impacts 条目「逻辑写」字样的实现位 = sim 写入状态副本的写端);
@@ -3414,8 +3417,9 @@ ENV_GIFTS: dict[str, GiftGrant] = {
         ),
         replaces_opening_supply=True,
     ),
-    # ===== 概念股族(id 1001-1016,模式卡 T-48;族展开登记模板见
-    # docs/develop/sr_od/application/currency_war/game_state/fields.md §5.2)=====
+    # ===== 概念股族(id 1001-1016,模式卡 T-48;族展开登记模板 =
+    #     GiftGrant(chars_random_immediate=(RandomCharSpec(faction='X', star=1),),
+    #               equips_random_immediate=('简易',)),X = desc【X】直读)=====
     # ⚠️ **v4.7 换赛季退役声明**:消失档羁绊轴的 10 条概念股(燃血/列车同行/
     # 银河学者/贝洛伯格/仙舟/狼狩/昼之半神/夜之半神/减益/战技点,id 1002/1004/
     # 1005/1006/1008/1009/1010/1011/1014/1016)随羁绊消费点迁移批退役——
@@ -4053,7 +4057,8 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER 申报观察纠偏。注记:
     # 策略侧具名效果条目发放 = PICK 效果体工厂 rand=False(cw_gain_effects,卡文
     # 无随机词);equips_immediate 字段 docstring「随机态 rand=True」辖
-    # env 消费支(2026-10-17 用户裁定),两通道分野 = fields.md §3.2.15,
+    # env 消费支(2026-10-17 用户裁定),两通道分野 = cw_gain_effects
+    # 模块头「rand 两通道分野」注记,
     # 防按字段 docstring 误判本行矛盾。转换效果条目另登记
     # STRATEGY_EQUIP_GAIN_CONVERSIONS 专表(名单集源形首例),本行只辖
     # 获取面。
@@ -4662,7 +4667,8 @@ STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS: tuple[str, ...] = (
 # 消费;出售写状态分支 sim 门内执行,live 零写观察覆盖:出售由游戏自执行,
 # 部署视图刷新/金读数观察承接)。完胜判定机器权威版本 =
 # docs/game/currency_war/research/combat.md §3「完胜 = 胜利 ∧ 本节点未损失
-# 小队生命值」+ fields.md §3.5.3b 瞬时位域规格。
+# 小队生命值」+ cw_game_state 字段注释 settlement_perfect_rescue 条
+# (瞬时位域规格)。
 STRATEGY_PERFECT_RESCUE_GRANTS: dict[str, tuple[str, int]] = {
 }
 
@@ -4846,8 +4852,9 @@ _validate_env_merge_grants()
 # STRATEGY_GRANTS 共存 = 合法形态(两表同键各表各域——STRATEGY_GRANTS
 # 的 chars_conditional 辖估值域档位机器,本表辖状态副本发放);与
 # STRATEGY_ECONOMY 的 gold_per_2star2cost_merge(折金近似估值条目)无写
-# 冲突(彼条目按金折算下界估值,本表按角色具名状态副本真值,语义权威版本 =
-# fields.md §5.3 砂里淘金小节)。消费面 =
+# 冲突(彼条目按金折算下界估值,本表按角色具名状态副本真值——官方文本
+# 发 1 张角色非发金,发放与判据细则单一源 =
+# check_strategy_merge_grants docstring 与表区块注释)。消费面 =
 # kernel/cw_gain_chain.check_strategy_merge_grants(触发检查单一源,
 # 事件携带事实无 done 标记;四发火点 = 买牌上报/晶矿角色入账分支/
 # 补给级联/获得链顶层,与 check_env_merge_grants 同点独立 try 并排)。
@@ -6537,7 +6544,8 @@ STRATEGY_RANDOM_GRANT_ASSUMPTION_UNIFORM_V0: str = (
     'strategy_random_grant_pool_uniform_pending')
 
 #: 条目③实机呈现形状披露键(单候选屏 vs 无屏直授未采证,sim 建模 = 单候选
-#: 屏——fields.md「另有远见改写=0」刷新计数席位佐证;实机首遇校)。两源
+#: 屏——「远见改写策略屏逐卡刷新次数为 0(机制性无刷新钮)」的席位登记
+#: 佐证;实机首遇校)。两源
 #: 并提:T-46 策略大师直发无屏形先例辖「额外加节点」语义,本卡条目③系
 #: 「改写既有节点」语义,卡文位次不同,形状由首遇证据裁决,任一先例
 #: 均不构成已定案。

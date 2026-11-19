@@ -746,13 +746,14 @@ def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
 
     为什么:sim 状态副本无观察、hp 只有自持账(开局查表种 + 战斗结算写),
     选卡当场即时型不在 kernel 获得链发放——链内写 hp 会在 live 侧引入
-    hp 逻辑写端,违 fields.md hp 写入闸「无逻辑写入方」结构(live 同拍
+    hp 逻辑写端,违即时型通道「live 无逻辑写入方」结构(live 同拍
     零写,游戏自算 + 血量条观察覆盖收尾),sim 不发即持卡局血线系统性
     失真,败局余量/保底触发概率/局终时点全链读现值。数额 = 逐卡直读
     :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**(聚合字段集
     不含 hp_instant,误走 = 静默零发放);hp 无结转语义(xp_apply_amount
     系 XP 特有),+N 直加。**不 clip(上下界同此)**:sim 扣血绝对值制
-    零上限消费(hp_max 字段缺位,缺口申报单一源 = fields.md HP 面行),
+    零上限消费(hp_max 字段缺位,缺口申报单一源 =
+    cw_investments SQUAD_HP_CAP 常量注释的 hp_max 缺位缺口族),
     clip 属无消费端语义,>100 可达 = 既有边界申报;负值支(先亏后盈
     −20 首例)同判——hp 可写 ≤0(选卡写经 observe 直落,floor/dead
     只存在于战斗结算域 apply_hp_outcome,后续败局按其现值分支判定),
@@ -1441,7 +1442,7 @@ CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION: str = 'cw_skip_scope_battle_only_assumptio
 
 #: 免战跳过结算语义暂定披露键(免战牌;纯声明,不进任何判定分支):
 #: 跳过结算语义族(hp/streak/收入不动 + 被跳节点经验照常入账 + 直进
-#: 下一节点窗)= live 暂定表述(fields.md §4.2「跳过=无结算帧」结构性
+#: 下一节点窗)= live 暂定表述(「跳过=无结算帧、无结算载荷」结构性
 #: 事实 + action-logic-state.md §5/§7 比对计划行)的建模化,实机局
 #: 跳过前后字段比对批为消费方;证伪即改 :meth:`SimBackend._skip_battle`
 #: 对应支。发射点 = 跳过消费拍。
@@ -2791,7 +2792,7 @@ class SimBackend:
         # 真值,实机对齐)。带符号绝对置位语义与禁聚合依据见
         # :func:`apply_strategy_pick_streak`;live 同拍零写(置位到结算
         # 之间 gs.streak 持旧值,真值经下一结算屏带符号读数观察覆盖
-        # 收尾,fields.md streak 写入方两分不动)。拿卡名推导与呈现一次性标志位
+        # 收尾,streak 两写入方结构不动)。拿卡名推导与呈现一次性标志位
         # 防重放 = xp 效果条目同款:标志位消费先于判定(交集空亦消费——每呈现窗
         # 至多一次落地消费,无效载荷的重放同样不得再触发)。
         if not opening and self._strategy_pick_streak_latch:
@@ -2906,7 +2907,7 @@ class SimBackend:
         # 选卡落地拍即时生命效果条目(hp 通道模式卡「健康充值」首落;通用通道,
         # 辖域 = 注册表 hp_instant≠0 全体,正加负损双向——负值支先亏后盈
         # −20 随批扩面):sim 状态副本自持账补全——live 同拍零写(游戏自算,
-        # 血量条观察覆盖收尾,fields.md hp 写入闸无逻辑写入方)。拿卡名
+        # 血量条观察覆盖收尾,即时型通道 live 无 hp 逻辑写入方)。拿卡名
         # 推导与呈现一次性标志位防重放 = 前置三条效果条目同款(标志位消费先于判定,交集空亦
         # 消费);不 clip/禁聚合依据见 :func:`apply_strategy_pick_hp`。
         # 负值支写后同拍扩挂损血档位触发器(持保险局选卡损血入累计器,
@@ -4072,7 +4073,8 @@ class SimBackend:
                     self._strategy_pick_hp_loss_gold_latch = True
                     self._strategy_pick_swap_latch = True
                     # 刷新授权簿记:「无法刷新」卡面直读——固定日程槽由
-                    # 本分支压 False(fields.md「另有远见改写=0」已写进代码),
+                    # 本分支压 False(「远见改写策略屏逐卡刷新次数为 0」
+                    # 已写进代码),
                     # 联席槽本就 False;槽向量簿记同步清零(刷新重掷效果条目已被
                     # _offer_refreshable 闸死,向量无消费位)。
                     self._offer_refreshable = False
@@ -4648,8 +4650,8 @@ class SimBackend:
     def _update_difficulty_flag(self) -> None:
         """备战画面敌方难度读数观察写点(2026-10-14 用户裁定:sim 对选择后的
         难度做记录更新——观察面 = 备战画面敌方难度读数;live 生产主源 =
-        备战画面敌方难度读数两级管线,fields.md §3.2.14 语义 = 节点相关观察真值、
-        非单调,难度修改器/简单模式/伟大征服/品质通胀都动它)。
+        备战画面敌方难度读数两级管线,enemy_difficulty 语义 = 节点相关
+        观察真值、非单调,难度修改器/简单模式/伟大征服/品质通胀都动它)。
 
         值 = 局级输入档(``RunConfig.enemy_difficulty``,简报开局基线)
         + 已定案修正项(品质通胀/策略静态 Δ/伟大征服连胜项,M19

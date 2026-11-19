@@ -52,7 +52,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 ## 6. 状态上报面
 
-本屏无 chosen_hack 写端(该字段位申报不变,fields.md §3.4.5)。**动作侧即时上报**:动作 op 确认点击后经 `report_action_pick_planner_param`(即时单相一口写,宿主 = `kernel/cw_action_report/pick_planner.py`)按效果分支写——条件效果分支 rider 先行;装备效果分支 `equips` 入栏+获得后果链 / 升费效果分支 `bench`/行域变换 + `lv999_cost_tier` 档行(fields.md §3.2.23)/ unknown 零记账+保留证据(弱化词卡文落此)/ unrouted 兜底零写。候选观察:`report_screen_planner_obs` 候选写状态容器 `planner_opts` 槽(恒写,空桶照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.2.23 / §3.4.5 / §4「事件选择」。
+本屏无 chosen_hack 写端(该字段位申报不变,cw_game_state 字段注释)。**动作侧即时上报**:动作 op 确认点击后经 `report_action_pick_planner_param`(即时单相一口写,宿主 = `kernel/cw_action_report/pick_planner.py`)按效果分支写——条件效果分支 rider 先行;装备效果分支 `equips` 入栏+获得后果链 / 升费效果分支 `bench`/行域变换 + `lv999_cost_tier` 档行(cw_game_state 字段注释)/ unknown 零记账+保留证据(弱化词卡文落此)/ unrouted 兜底零写。候选观察:`report_screen_planner_obs` 候选写状态容器 `planner_opts` 槽(恒写,空桶照写)。字段语义 = cw_game_state planner_opts/lv999_cost_tier 字段注释。
 
 ## 7. 子态与 overlay
 
@@ -69,16 +69,16 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 - journal op 名 =「策划事件」;op 内日志 tag = `[cw-planner]`(决策 reason/左右卡)。
 - 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报状态容器/入口门 miss fail/状态容器零参决策 + round_wait)。代码注引的 planner 策略接入调用测试/基建测试(test_cw_planner_strategy_wiring / test_cw_infra_locks)已不已登记(开放设计注)。
-- game 侧知识:事件机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md) 银狼策划事件节;建档与字段面 = `assets/game_data/screen_info/cw_yinlang_star_up.yml` + [../game_state/fields.md](../game_state/fields.md) §3.4.5。
+- game 侧知识:事件机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md) 银狼策划事件节;建档 = `assets/game_data/screen_info/cw_yinlang_star_up.yml`,字段语义 = cw_game_state 字段注释。
 
 ## 开放设计注
 
-- chosen_hack 字段位仍无写端(单相上报写的是效果分支域,非选择存证;fields.md §3.4.5 申报不变)。
+- chosen_hack 字段位仍无写端(单相上报写的是效果分支域,非选择存证;cw_game_state 字段注释申报不变)。
 - 选中点击高度比例(71%)为单次交互实证的经验值,半区归属的充分统计待补。
 - 观察捕获集变化(旧 y 带 → 卡全域 rect)的实机交叉核对待实机窗口。
 - 选择坐标观察上报待修问题(用户裁定 2026-09-22,op-layer.md §1.1「选择坐标
   观察上报」条款;全域/族级登记 = action_ops.md §4.5「坐标源待修问题」段,
-  字段面 = fields.md §3.4.5a):
+  字段面 = cw_game_state planner_opts/坐标伴随域):
   planner_opts 观察载荷在用形态零坐标(observe 组装 PlannerOption(idx, text)),
   选中点几何位于决策半(_card_point 避开详情钮的点位推导)经 env.target 传入
   动作 op——收敛终态 = 坐标与归一化同次观察入状态容器(坐标单一真相源 = 观察

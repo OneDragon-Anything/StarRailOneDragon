@@ -15,7 +15,7 @@
 
 观察 node = 入口门(「标识-选择伙伴」)+ 候选一次读(每访问恰一次,决策轮复用实例载体);候选与选中态读取:
 
-- 候选 `_read_candidates`:OCR 候选阵营标签(label 行 y 带 = `CwScreenPartner.LABEL_CY_LO/HI`、x 带 = `LABEL_CX_LO/HI`(数值单一源在代码;识别几何在用形态走代码内矩形先例 = fields.md §3.4.5,标签行 / 立绘裁剪框 area 化补档待后续实施)——**必须滤 x**:左侧备战面板阵营 label 同 y 会混入;2-4 字 + 排除表),按 center-x 左→右排序;
+- 候选 `_read_candidates`:OCR 候选阵营标签(label 行 y 带 = `CwScreenPartner.LABEL_CY_LO/HI`、x 带 = `LABEL_CX_LO/HI`(数值单一源在代码;识别几何在用形态走代码内矩形先例,标签行 / 立绘裁剪框 area 化补档待后续实施)——**必须滤 x**:左侧备战面板阵营 label 同 y 会混入;2-4 字 + 排除表),按 center-x 左→右排序;
 - 立绘真身 `_identify_portraits`:SIFT 立绘识别(label 上方立绘区 vs `character_avatar` 模板库,`obs/currency_war_char_id.py::identify_character`;裁剪框 = `_identify_portraits` 类内几何,数值单一源在代码,同先例申报)→ 每候选 char_id(识别失败回落 label 流派名)——真身识别让 `decide_partner` 的 core_chars 匹配真正生效;
 - 转换成功性边界(op-layer.md §1.1「观察标准化门」条款的屏契约登记义务):`char_id` = SIFT 真身识别产物,**识别失败回落 label 流派名/空 = 已登记的待修偏差形态**(该条款要求任一候选转换失败 = 观察失败 round_fail 早退、零写零上报;现回落为既有语义,无新增未标准化直报面),收敛方向 = 观察失败 round_fail 零写零上报;多候选命中同一注册名(选项互斥屏)= 同判转换失败;
 - 未选中态正判定 `_unselected_hint_present`:建档「提示-请选择强化角色」区域命中(确认钮置灰态伴随文案,区域约束 OCR 无全屏 LCS 误匹配面)。选中态呈现零实拍,**选中与否不作读数判定**(推进语义由脉冲 + 完成门承载)。
@@ -68,8 +68,8 @@
 ## 6. 状态上报面
 
 - 候选观察:`report_screen_partner_obs` 候选写状态容器 `partner_opts` 槽(空候选不写)。
-- `chosen_partner` write_logic(**选择点**直写、确认前 = 判定点二元之选择点(fields.md §3.4 导语已登记);写点 → 点选→确认窗口内无流程读者,确认未落地 = 落地复查不写成功 + CONFIRM_REJECT_MAX 显式失败出口 + 外循环重派重写,无幻影成功消费面;gs 单一源,session 域无此写端;单次逻辑写入豁免;值 = 选中候选 `char_id`,值语义随 §3 观察面 char_id——识别失败回落流派名/空 = §3 已登记的待修偏差形态)。
-- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」。
+- `chosen_partner` write_logic(**选择点**直写、确认前 = 判定点二元之选择点(op-layer.md §2.2 已登记);写点 → 点选→确认窗口内无流程读者,确认未落地 = 落地复查不写成功 + CONFIRM_REJECT_MAX 显式失败出口 + 外循环重派重写,无幻影成功消费面;gs 单一源,session 域无此写端;单次逻辑写入豁免;值 = 选中候选 `char_id`,值语义随 §3 观察面 char_id——识别失败回落流派名/空 = §3 已登记的待修偏差形态)。
+- 字段语义 = cw_game_state partner_opts/chosen_partner 字段注释。
 
 ## 7. 子态与 overlay
 

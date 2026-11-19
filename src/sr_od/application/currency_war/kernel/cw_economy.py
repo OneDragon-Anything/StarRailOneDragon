@@ -138,8 +138,8 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 # 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
 # 消费点语义:状态容器 ``shop_refresh_cost`` 缺读帧 ``or`` 回退本常量(刷新上报
 # 扣费/op 花销账/渲染 helper world_shop_refresh_cost 三读口同式);非缺读帧
-# 读状态容器现值——长线利好改价后为 1(live 改价观察/sim 开店呈现写回,
-# fields.md §3.3.4),兜底分支在缺读帧照常触发。
+# 读状态容器现值——长线利好改价后为 1(live 改价观察/sim 开店呈现写回),
+# 兜底分支在缺读帧照常触发。
 REFRESH_COST_BASE: int = 2
 
 
@@ -324,7 +324,7 @@ def level_cap_of(gs: GameState) -> int:
 
 def strategy_interest_floor(gs: GameState) -> int:
     """开源节流条件息顶满额(条件金条目「进入新节点时,如果上个节点你没有
-    花费金币,则可获得最大利息的金币数」;fields.md §3.3.9 条件输入族
+    花费金币,则可获得最大利息的金币数」;存款回报条件输入族
     第二消费卡):持卡(按 active_strategies 名单)∧ 上节点未花费
     (prev_node_spent is False)→ resolved 利息帽(聚合链取宽,含本卡
     自身 9/并持利息上调 10);未持卡/已花费(True)/条件不可评估(None)

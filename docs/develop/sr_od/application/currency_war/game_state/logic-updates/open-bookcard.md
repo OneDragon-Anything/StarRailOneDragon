@@ -43,4 +43,4 @@
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3.7(OpenBookcard 节);[screens/README](../../screens/README.md) §5.5(开书册卡行);`strategies/impl/mandate_v1/entry.py` emit ① 卡片分支注释(用户裁定与分支顺序);`prep_actions.py::PrepActionExecutor._open_bookcard` docstring(识别语义与 `_OVERLAY_ANIM_WAIT_S` 统一);[fields.md](../fields.md) §4.2 事件选择行(选择落地不记预期值)。
+[../action-logic-state.md](../action-logic-state.md) §3.7(OpenBookcard 节);[screens/README](../../screens/README.md) §5.5(开书册卡行);`strategies/impl/mandate_v1/entry.py` emit ① 卡片分支注释(用户裁定与分支顺序);`prep_actions.py::PrepActionExecutor._open_bookcard` docstring(识别语义与 `_OVERLAY_ANIM_WAIT_S` 统一);选择落地不记预期值口径 = action-logic-state.md §6(事件单选族)。

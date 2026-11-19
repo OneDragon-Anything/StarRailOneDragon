@@ -66,7 +66,7 @@ class TriggerKind(StrEnum):
     NODE_ENTER = 'node_enter'      # 进入节点时(特战资金/Gemi狸免费刷)
     LEVEL_UP = 'level_up'          # 升级时(节节高升;商业间谍战场段)
     ON_REFRESH = 'on_refresh'      # 每次刷新时(淘金客/概率事件/采购专员计数)
-    ON_MERGE = 'on_merge'          # 合成时(角色3星合成共用本触发面〔星星相印〕:两域生产点分离+payload字段判别零交叉,fields.md §5.3;武力刷新=装备合成域)
+    ON_MERGE = 'on_merge'          # 合成时(角色3星合成共用本触发面〔星星相印〕:两域生产点分离+payload字段判别零交叉,两域分开计数禁混账;武力刷新=装备合成域)
     CONDITIONAL = 'conditional'    # 条件窗口(躺平冻结/经验就是财富改道/成长基金到级)
     SUPPLY_PHASE = 'supply_phase'  # 进入补给阶段时(打捞人才库族「每次进入补给阶段后」;
                                    # 发放源 = 上一阶段选定时刻未选列快照,见
@@ -2328,7 +2328,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
 # 三拒绝分支 applied=False 早退恒不达 = 零发放天然成立)。装备栏内主动
 # 合成 bot 零执行零辖域(未来接入调用须接同款发放检查并申报);角色升星域
 # 显式排除——ON_MERGE 词表语义 = 合成时,装备合成与角色升星两事件域按
-# 插入位置分开计数,本条目只认装备合成(fields.md §5.3 禁混账)。
+# 插入位置分开计数,本条目只认装备合成(两域禁混账)。
 
 #: 发放条目持卡判定名单集(账本条目名精确匹配;先例 =
 #: :data:`_SALVAGE_STRATEGY_NAMES` 同形):现役成员 = 武力刷新

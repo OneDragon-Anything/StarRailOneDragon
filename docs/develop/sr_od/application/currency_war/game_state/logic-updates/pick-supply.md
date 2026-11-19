@@ -45,4 +45,4 @@
 
 ## 9. 依据
 
-`kernel/cw_action_report/pick_supply.py` 模块头(写序/分支类型/保留证据分型);`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新分支留在/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行);[../fields.md](../fields.md) §3.2.15/§3.2.5(效果写入)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给分支;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。
+`kernel/cw_action_report/pick_supply.py` 模块头(写序/分支类型/保留证据分型);`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新分支留在/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行);equips/bench/chosen_supply 字段注释(cw_game_state;效果写入与 chosen 确认即写);[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。

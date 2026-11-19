@@ -67,4 +67,4 @@
 
 ## 9. 依据
 
-`kernel/cw_affix_effects.py` `_validate_equip_write_sides`(防漂移测试)与 `EQUIP_WRITE_SIDES`(效果写入桥申报);`kernel/cw_action_report/tool_use.py` 模块头(上报写入方权威版本:合并单笔/获得走链/变异面不走链/零写保留证据);`kernel/cw_effect_inventory.py` 写入桥段(窗口独占性分形判据);`operations/cw_tool_use_action.py` 模块头(一类覆盖七行);[fields.md](../fields.md) §4.2 RunTools 行/ §5.3(效果族归属四选一);[op-effects.md](op-effects.md) §4(写入桥机理);`research/equipment_mechanics.md` §5(工具 7 件全量)。
+`kernel/cw_affix_effects.py` `_validate_equip_write_sides`(防漂移测试)与 `EQUIP_WRITE_SIDES`(效果写入桥申报);`kernel/cw_action_report/tool_use.py` 模块头(上报写入方权威版本:合并单笔/获得走链/变异面不走链/零写保留证据);`kernel/cw_effect_inventory.py` 写入桥段(窗口独占性分形判据);`operations/cw_tool_use_action.py` 模块头(一类覆盖七行);效果族归属判据 = effect-domain.md §6.3;[op-effects.md](op-effects.md) §4(写入桥机理);`research/equipment_mechanics.md` §5(工具 7 件全量)。

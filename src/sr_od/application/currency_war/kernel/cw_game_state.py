@@ -1,8 +1,9 @@
 """货币战争 GameState 局内记录(迁移批次一骨架)。
 
 **权威版本入口** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``(总纲);
-**字段级规格权威版本** = ``docs/develop/sr_od/application/currency_war/game_state/fields.md``
-(本文注释所引节号体系 §1-§8 的解析归宿)。
+**字段级规格** = 本模块各字段定义处注释(语义/取值时机/写入端/边界逐字段就地声明);
+**状态容器行为规范**(值怎么进来、怎么算对错、字段怎么设计)=
+``skills/sr-od-dev-currency-war/references/game-state.md``。
 GameState(正名前暂名 BoardState,后果节+ 待裁决7)= 当前仍为真的局内已知事实快照:单例,每局新建,
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
 不经本结构。
@@ -12,8 +13,7 @@ GameState(正名前暂名 BoardState,后果节+ 待裁决7)= 当前仍为真的�
 同吃状态容器。旧推演内核帧与帧→状态容器合成口已停用(benchchar-retirement P5)——生产写入 = **写入口直写**(sim 状态副本写入分支
 obs 写点与动作分支 logic_action 上报函数族,统一经渠道签名写入口落字,
 渠道族封闭集见下文遥测段);
-测试种子 = 测试仓 builder 直写状态容器域(与观察链同写入口)。逐字段映射
-对账权威版本(game_state/fields.md §9)随帧通道停用失去载体(P8 承接)。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board
+测试种子 = 测试仓 builder 直写状态容器域(与观察链同写入口)。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board
 下档阈值)是计算函数不存储;识别质量位是写入闸门不存储(失读统一口径 =
 §2.2 carried/机制性 None)。
 
@@ -118,7 +118,8 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 from one_dragon.utils.log_utils import log
 
 # 决策帧关联标记读口(kernel→kernel 单向依赖,对方零 import 不成环):回执
-# 写行时 take 读后清并入 dtag,键语义权威版本 = game_state/fields.md 回执契约节。
+# 写行时 take 读后清并入 dtag,键语义 = note_action_receipt docstring 的
+# dtag 条(回执契约权威版本 = 该 docstring)。
 from sr_od.application.currency_war.kernel.cw_decision_ctx import (
     take_decision_tag,
 )
@@ -221,21 +222,21 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'invest_opts': 1,          # 投资双画面候选槽(§3.4 选择族八新槽;str 原文名)
     'megastar_opts': 2,        # 盛会之星候选槽(list[MegastarOption],typed)
                                # 域版本 2 = MegastarOption 扩 xy 点击坐标
-                               # 字段(选择坐标观察上报,fields.md §3.4.5a
-                               # B 类 typed 域版本 bump 契约)
+                               # 字段(选择坐标观察上报,op-layer.md §1.1;
+                               # typed 选项扩坐标字段 = 值形状变更,域版本 bump)
     'partner_opts': 1,         # 列车同行候选槽(list[PartnerOption],typed)
     'planner_opts': 1,         # 骇入策划候选槽(list[PlannerOption],typed)
     'star_tome_opts': 1,       # 星徽秘典候选槽(str)
-    'star_tome_opts_xy': 1,    # 星徽秘典选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
+    'star_tome_opts_xy': 1,    # 星徽秘典选项坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
     'wish_trial_opts': 1,      # 祈愿试炼候选槽(str)
-    'wish_trial_opts_xy': 1,   # 祈愿试炼选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
+    'wish_trial_opts_xy': 1,   # 祈愿试炼选项坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
     'box_card_names': 1,       # 武装箱候选槽(str)
-    'box_card_names_xy': 1,    # 武装箱选项坐标伴随域(键名随名字域 box_card_names;选择坐标观察上报,fields.md §3.4.5a)
+    'box_card_names_xy': 1,    # 武装箱选项坐标伴随域(键名随名字域 box_card_names;选择坐标观察上报,op-layer.md §1.1)
     'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
-    'fortune_opts_xy': 1,      # 命运卜者强化选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
+    'fortune_opts_xy': 1,      # 命运卜者强化选项坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
     'expert_invite': 2,        # 专家邀请函选卡载体(ExpertInvitePayload;域版本 2 =
                                # payload 扩选项坐标字段 card_points/cash_point
-                               # (选择坐标观察上报,fields.md §3.4.5a);版本 1 =
+                               # (选择坐标观察上报,op-layer.md §1.1);版本 1 =
                                # 契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌权威版本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 晶矿(§3.2.8,不占席)
@@ -369,13 +370,13 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 2,              # 商店开态 payload(§3.3;域版本 2 = ShopPayload 扩
                             # 牌行点击坐标字段 card_points(选择坐标观察上报,
-                            # fields.md §3.3.1/§3.4.5a))
+                            # op-layer.md §1.1))
     'encounter': 2,         # 遭遇屏 payload(§3.4.1;域版本 2 = options 形状
                             # 升级 typed EncounterOption)
     'supply': 3,            # 补给屏 payload(§3.4.2;域版本 3 = SupplyOption
                             # 扩 extra_equips 附加装备元组(列 = 角色+装备组,
                             #  过剩经费;typed 选项结构扩字段 = 值形状变更,
-                            # fields.md §3.4.5a bump 契约);域版本 2 = options
+                            # 域版本 bump 契约);域版本 2 = options
                             # 形状升级 typed SupplyOption)
     'event_choices': 1,     # 十事件屏 chosen_*(§3.4/§4 事件选择)
     'settlement': 1,        # 结算真值组 + hp 保底事件位(§3.5)
@@ -404,7 +405,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
 #: 建档屏名;route_clearable=False = 插入位置跳过,清点源独占)。`shop` 保留
 #: 映射内 False(leave_screen 域守卫依赖,清点由既有两处显式口独占);
 #: `prep_obs` 不入映射(语义豁免)。选项坐标伴随域(`*_opts_xy` 族 /
-#: payload 坐标字段,选择坐标观察上报 = fields.md §3.4.5a)与名字域同属屏、
+#: payload 坐标字段,选择坐标观察上报 = op-layer.md §1.1)与名字域同属屏、
 #: 同 route_clearable 已登记——离屏清场坐标域与名字域同格,防跨屏携陈值。
 _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'shop': ('货币战争-备战-开商店', False),
@@ -893,8 +894,8 @@ class ShopPayload:
     # [索引定义] card_points = 牌行点击坐标,坐标系 = 数组下标 + 1 = 物理槽
     # (1-5,与 ShopSlot 既有槽位坐标系同格;BuyCard 词表 slot(1 基)直接作
     # 键零换算);取值时机 = 进店观察期快照,动作执行期恒稳。写入端 = 入口
-    # 观察上报(与 cards 同门一并写;op-layer.md §1.1 选择坐标观察上报,
-    # fields.md §3.3.1/§3.4.5a);上报接入调用未落地前 = 未观察 None;上报后
+    # 观察上报(与 cards 同门一并写;op-layer.md §1.1 选择坐标观察上报);
+    # 上报接入调用未落地前 = 未观察 None;上报后
     # 定长 5(与 cards 定长不变量对齐)。sim 无画面识别不建模,恒 None。
     card_points: tuple[tuple[int, int], ...] | None = None
 
@@ -949,7 +950,7 @@ class ExpertInvitePayload:
     # (0 基下标 = card_bonds 同一卡下标坐标系,与选卡词表 param.idx 同序
     # 零换算);取值时机 = 弹窗帧观察期快照(观察期 area 中心解析,动作执行
     # 期恒稳)。写入端 = 专家邀请函观察上报(与 card_bonds 同门一并写;
-    # op-layer.md §1.1 选择坐标观察上报,fields.md §3.4.5a);cash_point =
+    # op-layer.md §1.1 选择坐标观察上报);cash_point =
     # 词表特形 idx=-1(现金为王)的独立坐标,不进列表防 -1 负下标歧义。
     # 二者 sim 无画面识别不建模恒 None;观察写端接入调用未落地前亦恒 None。
     card_points: list[tuple[int, int]] | None = None
@@ -1356,8 +1357,7 @@ def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
 
 
 # ============================================================ 双 ShopCard 映射单一源(类型去重)
-# 方案语义权威版本 = docs/develop/sr_od/application/currency_war/game_state/fields.md §3.3.1
-# (双 ShopCard 映射):唯一状态容器类型 =
+# 唯一状态容器类型 =
 # :class:`ShopCard`(本模块);帧版(cw_vocab 侧同名类,带点击坐标 x)是
 # 观测/执行域卡(OCR 产物带点击坐标,黑板帧链自持 x)
 # ——两类型并存为长期形态,
@@ -1452,8 +1452,7 @@ def note_action_receipt(gs: GameState, *, op: str,
     - 回执记录 = ``{op, reason, detail?, screen?, **extra, dtag?}`` 普通字典:
       op = 动作 op 名(类型名,exec_events 动作族承接);reason =
       **动作事实码**('' = 动作已正常发出;非空 = 未发出/受阻码)。
-      码词表(**暂住本 docstring**,权威版本家 = game_state/fields.md 回执
-      契约节):
+      码词表(权威版本 = 本 docstring):
       * ``定位缺失(按钮-商店)``——open_shop 直调体实机定位缺失
         (sim 点击受理不产此码);
       * ``定位缺失(按钮-收起)``——close_shop 定位缺失(零观察 op 报
@@ -1480,8 +1479,7 @@ def note_action_receipt(gs: GameState, *, op: str,
       一帧 dtag 至多进一条回执(重试链逐帧盖新各带各值,受阻行同带;
       适用域 = 全仓仅 5 处产回执执行链——prep 统一口 / open_shop 直调
       体 / close_shop 动作 op / shop visit 落地门 / pick_supply 确认链
-      ——,其余 11 个选择族入口不产回执不经此读口)。键语义权威版本 =
-      game_state/fields.md 回执契约节;
+      ——,其余 11 个选择族入口不产回执不经此读口);
     - **invariant「每动作 op 恰一条回执行」**(五调用点全域一致:
       prep 统一口 / open_shop 直调体 / close_shop 动作 op / shop visit
       落地门 / pick_supply 确认链):受阻动作也产行(reason 非空受阻码),exec_events「正在
@@ -1607,8 +1605,8 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
       三字段齐备(>0)才激活,半配对保守 no-op。金未读(None)= 条件不可
       评估 → 该条目本拍零授予(禁猜;下一节点金可读时恢复评估,授予量
       随当拍现值,不补发历史拍);
-    - **条件判定·花费位**(存款回报,free_refresh_cond_prev_node_unspent,
-      fields.md §3.3.9):上节点未花费(gs.prev_node_spent is False)才授予
+    - **条件判定·花费位**(存款回报,free_refresh_cond_prev_node_unspent):
+      上节点未花费(gs.prev_node_spent is False)才授予
       该值次数——True 不授予,未写(None,直构状态容器不跑种子)= 保守零授予
       (禁猜,金 None 同款口径);条件输入置位 = 四花费通道
       mark_gold_spent,滚位 = 本桥评估后 roll_prev_node_spent(调用侧
@@ -1677,7 +1675,7 @@ def apply_effect_plane_start_grant(gs: GameState, *, plane: int,
     位面 1 号节点;推进原语去重叠加效果账本 advance_node 去重,每
     (plane,1) 恰一次,不另设 done 一次性标志位——per-node 桥同形)。记账 = 状态容器
     字段 ``gs.free_refresh_left`` write_logic(「观察写入 + 动作扣减 +
-    发放登记」三写入方同格,fields.md §3.3.5;per-node 桥同形)。额度
+    发放登记」三写入方同格;per-node 桥同形)。额度
     0 或 payload 无此字段(BattlefieldEffect 族)= no-op(零 Field 行)。
     中途拿卡时所在位面(已开始)的补发不归本桥(登记拍单次,补发桥
     :func:`apply_effect_plane_refire_grant`;用户裁定 2026-11-01 人为定为)。
@@ -1703,7 +1701,7 @@ def apply_effect_plane_start_grant(gs: GameState, *, plane: int,
 
 def mark_gold_spent(gs: GameState, *, produced_by: str,
                     sig: ChannelSig) -> None:
-    """金币花费事件置位(fields.md §3.3.9 存款回报条件输入):现值已 True
+    """金币花费事件置位(存款回报条件输入):现值已 True
     判等跳写(write_logic 无同值去重,库内省行惯例 = 调用方早退),否则
     write_logic 置 True——同节点多笔花费只落一行,判等后账面行数 = 花费
     状态变化数。逻辑写,无观察写端(审计行 AUDIT_PROCESS_ONLY 现值不变);
@@ -1722,7 +1720,7 @@ def mark_gold_spent(gs: GameState, *, produced_by: str,
 
 
 def roll_prev_node_spent(gs: GameState, *, frame: str = '') -> None:
-    """节点边界滚位(fields.md §3.3.9):把「上节点是否花费」滚动为 False
+    """节点边界滚位:把「上节点是否花费」滚动为 False
     (新节点起算)。滚位语义无条件(不依持卡——字段语义 = 节点滚动事实,
     持卡与否只影响发放桥是否授予,不影响滚位本身);现值已 False 判等跳写
     (write_logic 无同值去重,未花费节点边界零行,判等论证同
@@ -2134,8 +2132,8 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: - **域集封闭**(gold / bench / shop payload / xp 四域;CwActionCloseShopParam 的
 #:   leave_screen 为同域通道形态);
 #: - **支持动作集** = CwActionBuyCardParam / CwActionSellBenchParam / CwActionLevelUpParam /
-#:   CwActionRefreshShopParam / CwActionCloseShopParam(商店单动作循环在产动作面;fields.md §4.2
-#:   逐 op 行;CwActionSellDeployedParam/CwActionDeployMoveParam 不写逻辑态——等观察
+#:   CwActionRefreshShopParam / CwActionCloseShopParam(商店单动作循环在产动作面;
+#:   CwActionSellDeployedParam/CwActionDeployMoveParam 不写逻辑态——等观察
 #:   覆盖,申报 = 商店 visit 在产动作集外);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
 #:   xp+level(升级推进对,同进退——任一未读则推进对整体跳写);
@@ -3019,7 +3017,7 @@ class GameState:
     # 直接赋值即重置语义,防御性默认)与节点窗收入段递减(cw_sim_
     # backend._begin_node_window 分期金条目,发金与递减同拍),均 sim
     # 门控写,live 零写——live 分期发放由游戏自算自显,金整字段观察
-    # 覆盖收尾(fields.md HP 同款结构,金有真读)。无观察写端(剩余
+    # 覆盖收尾(hp 字段同款结构;金有真读)。无观察写端(剩余
     # 条数 = 卡文推算知识,游戏 UI 无「剩余期数」读面)。计数语义对表:
     # 权威版本口径 = strategy-env-impacts.md 用户裁决段「counter 单调从 0
     # 起,节点入口 +1,到 3 耗尽」(向上计数);本状态容器 = 向下递减,两态
@@ -3165,7 +3163,7 @@ class GameState:
     # uses「次数类余量(免战牌×2 等)」,同型躺平/节省工位;批次一骨架的
     # skip_battle_active/remaining 两 Field 已按权威版本归一移除,消费走
     # gs.effects 查询)。
-    equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15;开局初始值=[] 开局真值;观察写端 = 备战入口 heavy 装配点 + MCP 直调刷新原语 CwEquipInventoryRefresh〔同通道 obs,直调会话专用〕,权威版本 = fields.md §3.2.15)
+    equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(开局初始值=[] 开局真值;观察写端 = 备战入口 heavy 装配点 + MCP 直调刷新原语 CwEquipInventoryRefresh〔同通道 obs,直调会话专用〕;获得链/动作上报写端清单 = cw_gain_effects/cw_action_report 各效果条目就地申报)
     # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,纯观察
     # 记录面——决策面零消费)。键坐标系 =
     # 'front:1'/'back:2' 形态字符串(row ∈ front|back,slot = 画面物理槽位
@@ -3179,7 +3177,7 @@ class GameState:
     # 同基,自旋结构性消灭),本域保留为观察审计载体(observation_only)。
     occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)  # 开局初始值={} 开局真值(无穿戴),观察覆盖
     owned_equip_xy: Field[dict[str, list[tuple[int, int]]]] = field(default_factory=Field)
-    # [字段定义] owned_equip_xy = 装备库存坐标伴随域(fields.md §3.2.15c):
+    # [字段定义] owned_equip_xy = 装备库存坐标伴随域:
     # 名 → 格心坐标列表(1080p;同名多条 = 列表多元素)。观察域字段:观察
     # 写入方三处(整表覆盖,实读坐标)= ①备战入口 heavy 观察装配点 +
     # ②sim 后端占位同步(环境快照通道,机械段不消费;先例 = sim 侧对
@@ -3200,17 +3198,16 @@ class GameState:
     # 反查不到拒单);{} = 真读到空。不承诺与 gs.equips 名单同序/同长
     # (对齐键 = 名 + 出现序游标消费,同名件可互换配对无语义差)。
     # ⚠️ consumables = 死字段:现役零读端零写端(工具件实住 equips,
-    # 工具上报记账载体 = equips 合并写,不入本字段),fields.md §3.2.16
-    # 申报与现实不符——字段级修复(停用/修正)归 fields 权威版本,本模块仅
-    # 不消费(tool-gain-report 迭代裁定)。
+    # 工具上报记账载体 = equips 合并写,不入本字段)——字段级修复
+    # (停用/修正)待裁,本模块仅不消费。
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
 
     # —— 晶矿(§3.2.8,不占席)——
     # 域名 spheres = 晶矿域既定名(本义即晶矿球,非旧名残留;2026-09-20
-    # ore 改名收束裁定不覆盖状态容器域名,fields.md §3.2.8 声明)。
+    # ore 改名收束裁定不覆盖状态容器域名——改名即 schema/遥测断档,零收益)。
     spheres: Field[OreSight] = field(default_factory=Field)      # 开局初始值=空读面(晶矿补给在 1-1 进入时点送达,观察覆盖)
     # —— 晶矿附着奖励与声明通道(正本 =
-    #    flow/projection_contract.md §2 + game_state/fields.md §3.2.8a。附着值不进 OreSight.points——
+    #    flow/projection_contract.md §2。附着值不进 OreSight.points——
     #    spheres 本体是画面真值留观察通道,附着值是随机态猜测,混进同域
     #    会让消费门(logic_rand_fields)对它失灵,故独立成域)——
     # [索引定义] ore_rewards 键 'x,y' = 矿身份**最新一次观察**的
@@ -3239,8 +3236,8 @@ class GameState:
     ore_declared_done: Field[tuple[tuple[str, int], ...]] = field(
         default_factory=Field)
 
-    # [索引定义] env_grants_done = 环境条件发放已发标记(逻辑态;正本 =
-    # game_state/fields.md §3.5.5):元素 = (env 投资环境规范名,条件键)。条件键取值清单 =
+    # [索引定义] env_grants_done = 环境条件发放已发标记(逻辑态):
+    # 元素 = (env 投资环境规范名,条件键)。条件键取值清单 =
     # 'first_streak'(本局首次连胜达成)/'refresh_threshold'(刷新次数
     # 阈值触发器)/'interest_threshold'(利息累计阈值触发器,T-27 公司
     # 契约)/'dot_confirm'(持续伤害契约条件分支证实,T-28)/
@@ -3254,7 +3251,7 @@ class GameState:
     # 证实计数单一源)/ 'ore_open#<阈值>'(战技点契约晶矿开启阈值触发器,
     # T-29:重复型通道每阈值一键,阈值嵌键)/ 'bond_tier_<档位>'(击破
     # 档位触发器,特邀专家:加拉赫 id 142;每档一键,一次性封账降档再回
-    # 不重发)——键形态登记单一源 = fields.md §3.5.5。
+    # 不重发)——本清单即键形态登记面,新增键形在此登记。
     # 取值时机 = 发放刻追加(check_env_streak_grants /
     # check_env_refresh_grants / check_env_interest_grants /
     # check_env_boss_grants / check_env_dot_grants /
@@ -3389,7 +3386,7 @@ class GameState:
         default_factory=Field)
 
     # —— 交互状态 ——
-    prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,零现役写入方——锁定承载已迁 Match,见 fields.md §3.2.17)
+    prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(恢复锁定=会话推断档,零现役写入方——锁定承载在对局流程态 Match.locked_resume)
     event_overlay: Field[str | None] = field(default_factory=Field)  # 'none'=确认无浮层;None=没读到(§3.6.1 双义禁令)
 
     # —— 备战席溢出(§3.2.20;2026-09-15 实机建档 prep.md 告警/溢出节)——
@@ -3522,8 +3519,8 @@ class GameState:
     star_tome_opts: Field[list[str] | None] = field(default_factory=Field)
     wish_trial_opts: Field[list[str] | None] = field(default_factory=Field)
     box_card_names: Field[list[str] | None] = field(default_factory=Field)
-    # —— 选项坐标伴随域四槽(op-layer.md §1.1 选择坐标观察上报;fields.md
-    #    §3.4.5a;骨架先行落定义,写端接入调用随各屏坐标收敛逐批落地)——
+    # —— 选项坐标伴随域四槽(op-layer.md §1.1 选择坐标观察上报;
+    #    骨架先行落定义,写端接入调用随各屏坐标收敛逐批落地)——
     # [索引定义] 四域同构,各伴随同名去 _xy 的名字域(star_tome_opts /
     # wish_trial_opts / box_card_names / fortune_opts):
     # 键 = 名字域列表下标 idx(0 起,左→右画面物理序,与策略器输出下标、
@@ -3583,7 +3580,7 @@ class GameState:
     chosen_megastar: Field[str | None] = field(default_factory=Field)   # 盛会之星(§3.4.5)
     chosen_partner: Field[str | None] = field(default_factory=Field)    # 伙伴(候选阵营)
     chosen_wish: Field[str | None] = field(default_factory=Field)       # 祈愿试炼目标文本(档=货币战争-祈愿试炼,写端=cw_screen_wish_trial)
-    chosen_fortune: Field[str | None] = field(default_factory=Field)    # 命运卜者(建档已登记 cw_fortune_picker.yml,缺三卡文本读区 = fields.md §3.4.5;写端未接入调用 = 先补档,fields.md §4)
+    chosen_fortune: Field[str | None] = field(default_factory=Field)    # 命运卜者(建档已登记 cw_fortune_picker.yml,缺三卡文本读区;写端未接入调用 = 先补档)
     chosen_hack: Field[str | None] = field(default_factory=Field)       # 骇入策划(暂无画面建档)
     chosen_expert: Field[str | None] = field(default_factory=Field)     # 专家邀请函
     chosen_tome: Field[str | None] = field(default_factory=Field)       # 星徽秘典弹窗卡名
@@ -3616,8 +3613,9 @@ class GameState:
     # take_strategy_death_save;None = 未判定(开局不种,gs-opening-seed
     # B 类判据同 hp_floor_triggered 先例:种子 False 会把「未判定」伪装成
     # 「已判定未触发」);消费读端 = take_strategy_death_save 门,None/False
-    # 两值均放行、True 拒绝;live 恒 None(一次性标志位 live 零写零消费,实机和模拟器两边不对称
-    # 申报见 fields.md §3.5.3a))
+    # 两值均放行、True 拒绝;live 恒 None(一次性标志位 live 零写零消费,
+    # 实机和模拟器两边不对称申报:sim 标志位真值/live 标志位盲,live 无
+    # 消费读端 = 零行为风险)
     strategy_death_save_used: Field[bool] = field(default_factory=Field)
     # [索引定义] settlement_perfect_rescue = 完胜判定改写瞬时位(策略卡
     # 「视为完美通关」改写面首例,都是这家伙的错!;载荷单一源 =
@@ -4606,7 +4604,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
             # = 位面开始桥,XP 支 = sim 窗写入实现双插入位置分工)
             apply_effect_plane_start_grant(gs, plane=effective[0],
                                            frame=frame)
-        # 开源节流条件息顶满捕获(fields.md §3.3.9 条件输入族第二消费卡):
+        # 开源节流条件息顶满捕获(存款回报条件输入族第二消费卡):
         # 调用位必须在滚位行之前——捕获读「上节点是否花费」的滚位前真值,
         # 置载体交 sim 节点窗消费;放滚位后会读恒 False 使顶满恒发。
         # kernel 反向模块级零 import 契约 → 函数内惰性取
@@ -5365,7 +5363,7 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
             (str(e[0]), int(e[1]), int(e[2])) for e in d),
         'ore_declared_done': lambda d: tuple(
             (str(e[0]), int(e[1])) for e in d),
-        # 环境条件发放已发标记(正本 = game_state/fields.md §3.5.5):
+        # 环境条件发放已发标记:
         # tuple 化重建(_json_safe 落快照为 list-of-lists),done 随快照
         # 存续 = 恢复局不重发(触发函数守卫天然闭合)。
         'env_grants_done': lambda d: tuple(

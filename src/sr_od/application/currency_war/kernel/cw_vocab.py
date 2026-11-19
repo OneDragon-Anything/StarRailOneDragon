@@ -19,8 +19,8 @@ gs.owned_equip_xy 为单一坐标源,字段注释逐类声明)。
 **局面表示单一载体 = 状态容器 GameState**(kernel/cw_game_state,实机真值
 记录模型):sim 后端/实机操作链/策略决策同吃状态容器,域写入 = 观察链漏斗
 或逻辑态直写(上报函数族)。旧推演内核帧及其帧→状态容器合成口已停用
-(benchchar-retirement P5)——帧↔状态容器映射契约权威版本(game_state/fields.md
-§9)随帧失去载体;测试种子 = 测试仓 builder 直写状态容器域(与观察链同写入口)。
+(benchchar-retirement P5),不存在「状态容器 ↔ 中间帧」映射层;测试种子 =
+测试仓 builder 直写状态容器域(与观察链同写入口)。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
@@ -438,7 +438,7 @@ class CwActionSellDeployedParam:
 
     [索引/坐标定义]
     - deployed_idx: 坐标系 = deployed 视图统一槽位表下标(前排 0-3 /
-      后排 4+ 排内 1 基,固定双射内联算术——prep-contract.md §1);
+      后排 4+ 排内 1 基,固定双射内联算术——DeployedView 类 docstring);
       取值时机 = 生成期=执行期恒稳(槽位表恒稳,卖出置 None 不移位);
       yield plan 卖步骤 = 跨帧队列消化形态,陈旧由发出点按名现读重推导
       + ``step.issued`` 执行失败出口承接(fail-closed)。

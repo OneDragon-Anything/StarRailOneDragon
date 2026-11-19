@@ -12,6 +12,13 @@
 采样池成员、效果语义逐位保留;效果体由「grant_bench_unit_cascade + 内联
 后果表查」改走链原语 ``gain_character``/``gain_equipment``(回调先、升星
 后;改件后果经 ``on_equipment_gained`` 回调自动消费)。
+
+**rand 两通道分野(终态口径,新增同形分支按通道归属取值,禁跨通道「对齐」)**:
+同为「选卡时点获得具名装备」,env 侧即时装备支 = rand=True 恒随机态
+(2026-10-17 用户裁定:卡面文本是唯一证据,猜测写 + 首观察静默覆盖纠偏);
+策略卡侧具名分支 = rand=False 确定发放(卡文无随机词,精确增量满足归属
+判据的确定性分支)。两侧语义各有已登记裁定,任一侧翻转均撞既有裁定,
+零行为翻转空间,分野即终态。
 """
 from __future__ import annotations
 
@@ -321,8 +328,8 @@ def _make_box_grant_effect(items: tuple[str, ...]) -> Callable[
 #: - uniform: 费用档注册池内均匀 v0(游戏真分布未知,是否受牌库剩余约束
 #:   未证;校准源 = logic_rand_outcome 行按效果串前缀 ``strategy_gift_
 #:   random:`` 归组;「随机」字样缺席的卡(扩充团队:desc 明写各档数量、
-#:   构成零随机仅进席身份随机)同键覆盖——先验依据 = fields.md 效果发牌
-#:   族随机组权威版本定性 + RandomCharSpec docstring 先验语义);
+#:   构成零随机仅进席身份随机)同键覆盖——先验依据 = 随机发牌按
+#:   随机组归属建模的族级定性 + RandomCharSpec docstring 先验语义);
 #: - star_prior: desc 未标星 → star=1 先验非结构值(实机直出高星时 bench
 #:   观察星级覆盖模型值,随机态不响灯);
 #: - with_replacement: 4 抽放回假设申报(实机放回性证据缺,归档帧/实采
@@ -773,7 +780,7 @@ def _make_named_equip_grant_effect(
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——具名发放确定
     (rand=False,gain-chain.md §5:卡文无随机词;与环境侧即时装备支
     rand=True 随机态〔2026-10-17 用户裁定,猜测写 + 观察覆盖纠偏〕系
-    两通道分野,权威版本注记 = fields.md §3.2.15 获得链写入方段)。逐件
+    两通道分野,终态口径 = 本模块头「rand 两通道分野」注记)。逐件
     ``gain_equipment`` 入栏,装备获得后果经 on_equipment_gained 回调
     自动消费;equips 未观察 = 原语现役拒落零写。效果串逐件一条
     ``named_equip_grant:<名>(placed=<bool>)``(沿箱条目 placed 形态,
@@ -1219,7 +1226,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 
     # 欢愉星徽 = 具名装备×具名角色两条效果条目组合登记行(卡文「获得1个【欢愉星徽】，
     # 和1个【绯英】。」):条目1 星徽 = 具名确定发放(rand=False——策略卡侧
-    # 具名条目通道归属,fields.md §3.2.15 族级分野注记禁跨通道对齐);条目2
+    # 具名条目通道归属,族级分野注记禁跨通道对齐,见模块头);条目2
     # 绯英 = 具名角色发放(char_grant: 前缀,星级 1 占位非先验);两条效果条目 ∉
     # 精密金面判据映射(gate 恒 None)走纯发放循环;条目序 = 卡文语序。
     '欢愉星徽': _compose_grant_legs(_make_named_equip_grant_effect('欢愉星徽', 1),
@@ -1482,7 +1489,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_box_grant_effect(('简易武装箱', '简易武装箱'))),
     # 列车同行星徽套组 = 三条效果条目组合登记行(套组族首张;卡文「获得1个【列车
     # 同行星徽】，和1个【丹恒·饮月】，以及1个【高周波电锯】」语序直读:
-    # 徽→人→锯;rand=False 确定发放[fields.md 分野即终态已登记口径,超越
+    # 徽→人→锯;rand=False 确定发放[分野即终态口径,见模块头;超越
     # 稿默认 rand=True];具名装备×2 经 _make_named_equip_grant_effect,
     # 角色条目经 _make_char_grant_effect;星级 1★ = T-209 同 char 在码先例;
     # 不入单族镜像表,沿组合行家族纪律)。
@@ -1492,7 +1499,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('高周波电锯', 1)),
     # 银河学者星徽套组 = 三条效果条目组合登记行(套组族第 2 张;卡文「获得1个【银
     # 河学者星徽】，和1个【艾丝妲】，以及1个【胜利之旗】」语序直读:
-    # 徽→人→旗;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→旗;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢条目,沿
     # 组合行家族纪律)。
     '银河学者星徽套组': _compose_grant_legs(
@@ -1501,7 +1508,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('胜利之旗', 1)),
     # 贝洛伯格星徽套组 = 三条效果条目组合登记行(套组族第 3 张;卡文「获得1个【贝
     # 洛伯格星徽】，和1个【希儿】，以及1个【武器大师】」语序直读:
-    # 徽→人→武器;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→武器;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢条目,沿
     # 组合行家族纪律)。
     '贝洛伯格星徽套组': _compose_grant_legs(
@@ -1510,7 +1517,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('武器大师', 1)),
     # 星间旅人星徽套组 = 三条效果条目组合登记行(套组族第 4 张;卡文「获得1个【星
     # 间旅人星徽】，和1个【银枝】，以及1个【永动机】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→装备;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢条目,沿
     # 组合行家族纪律)。
     '星间旅人星徽套组': _compose_grant_legs(
@@ -1519,7 +1526,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('永动机', 1)),
     # 仙舟星徽套组 = 三条效果条目组合登记行(套组族第 5 张;卡文「获得1个【仙舟
     # 星徽】，和1个【藿藿】，以及1个【生命之环】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→装备;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢条目,沿
     # 组合行家族纪律)。
     '仙舟星徽套组': _compose_grant_legs(
@@ -1528,7 +1535,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('生命之环', 1)),
     # 狼狩星徽套组 = 三条效果条目组合登记行(套组族第 6 张;卡文「获得1个【狼狩
     # 星徽】，和1个【椒丘】，以及1个【生命之环】」语序直读:
-    # 徽→人→环;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→环;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢条目,沿
     # 组合行家族纪律)。
     '狼狩星徽套组': _compose_grant_legs(
@@ -1537,7 +1544,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('生命之环', 1)),
     # 盛会之星星徽套组 = 三条效果条目组合登记行(套组族第 7 张;卡文「获得1个【盛
     # 会之星星徽】，和1个【花火】，以及1个【信心注入器】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→装备;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢条目,沿
     # 组合行家族纪律)。
     '盛会之星星徽套组': _compose_grant_legs(
@@ -1546,7 +1553,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('信心注入器', 1)),
     # 昼之半神星徽套组 = 三条效果条目组合登记行(套组族第 8 张;卡文「获得1个【昼
     # 之半神星徽】，和1个【风堇】，以及1个【生命之环】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→装备;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = T-209 同 char 在码先例[昼神节 need_star 正向旁证];不入单族镜
     # 像表防同名键覆盖丢条目,沿组合行家族纪律)。
     '昼之半神星徽套组': _compose_grant_legs(
@@ -1555,7 +1562,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('生命之环', 1)),
     # 夜之半神星徽套组 = 三条效果条目组合登记行(套组族第 9 张;卡文「获得1个【夜
     # 之半神星徽】，和1个【万敌】，以及1个【杀红眼】」语序直读:
-    # 徽→人→眼;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→眼;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码 22 处家族先例(含万敌自身);不入单族镜像表防同名键覆盖
     # 丢条目,沿组合行家族纪律)。
     '夜之半神星徽套组': _compose_grant_legs(
@@ -1564,7 +1571,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('杀红眼', 1)),
     # 追击星徽套组 = 三条效果条目组合登记行(套组族第 10 张;卡文「获得1个【追击
     # 星徽】，和1个【飞霄】，以及1个【永动机】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→装备;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢条目,沿组合行家族
     # 纪律)。
     '追击星徽套组': _compose_grant_legs(
@@ -1573,7 +1580,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('永动机', 1)),
     # 击破星徽套组 = 三条效果条目组合登记行(套组族第 11 张;卡文「获得1个【击破
     # 星徽】，和1个【阮·梅】，以及1个【流星飞翼】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→装备;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢条目,沿组合行家族
     # 纪律)。
     '击破星徽套组': _compose_grant_legs(
@@ -1582,7 +1589,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('流星飞翼', 1)),
     # 群攻星徽套组 = 三条效果条目组合登记行(套组族第 12 张;卡文「获得1个【群攻
     # 星徽】，和1个【翡翠】，以及1个【反卫星狙击枪】」语序直读:
-    # 徽→人→枪;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→枪;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢条目,沿组合行家族
     # 纪律)。
     '群攻星徽套组': _compose_grant_legs(
@@ -1591,7 +1598,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('反卫星狙击枪', 1)),
     # 能量星徽套组 = 三条效果条目组合登记行(套组族第 13 张;卡文「获得1个【能量
     # 星徽】，和1个【星期日】，以及1个【胜利之旗】」语序直读:
-    # 徽→人→旗;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→旗;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢条目,沿组合行家族
     # 纪律)。
@@ -1601,7 +1608,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('胜利之旗', 1)),
     # 治疗星徽套组 = 三条效果条目组合登记行(套组族第 14 张;卡文「获得1个【治疗
     # 星徽】，和1个【风堇】，以及1个【生命之环】」语序直读:
-    # 徽→人→环;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→环;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1611,7 +1618,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('生命之环', 1)),
     # 燃血星徽套组 = 三条效果条目组合登记行(套组族第 15 张;卡文「获得1个【燃血
     # 星徽】，和1个【万敌】，以及1个【杀红眼】」语序直读:
-    # 徽→人→眼;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→眼;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1621,7 +1628,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('杀红眼', 1)),
     # 减益星徽套组 = 三条效果条目组合登记行(套组族第 16 张;卡文「获得1个【减益
     # 星徽】，和1个【黄泉】，以及1个【高周波电锯】」语序直读:
-    # 徽→人→锯;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→锯;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1631,7 +1638,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('高周波电锯', 1)),
     # 持续伤害星徽套组 = 三条效果条目组合登记行(套组族第 17 张;卡文「获得1个【
     # 持续伤害星徽】，和1个【卡芙卡】，以及1个【反重力皮靴】」语序直读:
-    # 徽→人→靴;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→靴;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1641,7 +1648,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('反重力皮靴', 1)),
     # 量子同频星徽套组 = 三条效果条目组合登记行(套组族第 18 张;卡文「获得1个【
     # 量子同频星徽】，和1个【希儿】，以及1个【反重力皮靴】」语序直读:
-    # 徽→人→靴;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→靴;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1651,7 +1658,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('反重力皮靴', 1)),
     # 护盾星徽套组 = 三条效果条目组合登记行(套组族第 19 张;卡文「获得一个【护盾
     # 星徽】，和1个【砂金】，以及1个【自适应外骨骼】」语序直读:
-    # 徽→人→甲;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→甲;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1661,7 +1668,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('自适应外骨骼', 1)),
     # 战技点星徽套组 = 三条效果条目组合登记行(套组族第 20 张;卡文「获得1个【战
     # 技点星徽】，和1个【丹恒·饮月】，以及1个【高周波电锯】」语序直读:
-    # 徽→人→锯;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 徽→人→锯;rand=False 确定发放[分野即终态口径,见模块头];星级
     # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 效果条目归本行承载,条目
     # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢效果条目,沿组合行家族
     # 纪律)。
@@ -1670,8 +1677,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_char_grant_effect('丹恒·饮月'),
         _make_named_equip_grant_effect('高周波电锯', 1)),
     # 优势火力论 = 两条效果条目组合登记行(卡文「获得1个【特权赋予卡】和1个【简
-    # 易武装箱】」语序直读:卡→箱;rand=False 确定发放[fields.md 分野即
-    # 终态已登记口径];箱工厂 tuple 形[T-315 泛化已实现现签名];特权赋予卡使
+    # 易武装箱】」语序直读:卡→箱;rand=False 确定发放[分野即终态口径,
+    # 见模块头];箱工厂 tuple 形[T-315 泛化已实现现签名];特权赋予卡使
     # 用面七处定义件读口已登记零改动;不入单族镜像表沿组合行家族纪律)。
     '优势火力论': _compose_grant_legs(
         _make_named_equip_grant_effect('特权赋予卡', 1),
@@ -1710,8 +1717,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '多元化团队': _make_named_equip_grant_effect('财富宝钻', 2),
     # 装备方案A = 三条效果条目组合登记行(T-246 精密拆装·金先例直承;卡文「获得
     # 【光速螺旋桨】、【反重力皮靴】和【折叠小刀】」语序直读:桨→靴→刀,
-    # 每件 1 个[T-367 零数量词先例];rand=False 确定发放[fields.md 分野
-    # 即终态已登记口径];不入单族镜像表沿组合行家族纪律)。
+    # 每件 1 个[T-367 零数量词先例];rand=False 确定发放[分野即终态口径,
+    # 见模块头];不入单族镜像表沿组合行家族纪律)。
     '装备方案A': _compose_grant_legs(
         _make_named_equip_grant_effect('光速螺旋桨', 1),
         _make_named_equip_grant_effect('反重力皮靴', 1),
@@ -1719,7 +1726,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 装备方案B = 三条效果条目组合登记行(T-369 装备方案A 同形姊妹,模式卡直承;
     # 卡文「获得【冷笑话引擎】、【永动机】和【和平手枪】」语序直读:
     # 引擎→永动机→枪,每件 1 个[T-367 零数量词先例];rand=False 确定
-    # 发放[fields.md 分野即终态已登记口径];不入单族镜像表沿组合行家族
+    # 发放[分野即终态口径,见模块头];不入单族镜像表沿组合行家族
     # 纪律)。
     '装备方案B': _compose_grant_legs(
         _make_named_equip_grant_effect('冷笑话引擎', 1),
@@ -1729,7 +1736,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 【精密拆装扳手】和1个【随便骰子·特权】」语序直读:扳手→骰子;
     # 「随便骰子·特权」独立注册条目已定案[EQUIPMENTS 双键并存/wear 两键/
     # affix 两键三重坐实],全键名发放与卡面一致;rand=False 确定发放
-    # [fields.md 分野即终态已登记口径];佩戴面零建模[T-140 授予≠穿戴赌神
+    # [分野即终态口径,见模块头];佩戴面零建模[T-140 授予≠穿戴赌神
     # ·银先例+归属面 observation 已登记+desc 未写明不实机查硬裁定];不入
     # 单族镜像表沿组合行家族纪律)。
     '精密拆装·彩': _compose_grant_legs(
@@ -1820,7 +1827,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 精密金面判据映射内(gate 恒 None)走纯发放循环,精密在场不受污染。
     # 条件金条目(战斗结束时无角色陷入无法战斗 → +1金)实机和模拟器两边真值皆盲零建模
     # (权威版本 = invest_effects.md §8 型③成员;估值失真口径由 STRATEGY_
-    # ECONOMY 注册行 instant_gold=1 已登记承载,fields.md §4.1/§5.2),
+    # ECONOMY 注册行 instant_gold=1 已登记承载,时点型条件金不经该字段族
+    # 消费、走观察覆盖兜底),
     # 金面禁直写不进效果体,本行只辖装备句。
     '无伤通关': _make_named_equip_grant_effect('生命之花', 1),
     # 幸运星祝福 = 具名装备单条效果条目直书登记行(卡文「获得1个【幸运星】」;
@@ -2043,7 +2051,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '完美进化': _make_delayed_grant_effect('完美进化'),
     # 都是这家伙的错！ = 获得时点两条效果条目组合登记行(卡文「获得【命运圣杯星徽】
     # 和10金币」语序直读:徽→金):条目1 徽 = 具名确定发放(rand=False 策略卡
-    # 侧具名条目通道归属,fields.md 分野即终态已登记口径;命运圣杯星徽 ∉ 精密
+    # 侧具名条目通道归属,分野即终态口径见模块头;命运圣杯星徽 ∉ 精密
     # 金面判据映射 gate 恒 None 走纯发放循环);金条目 = STRATEGY_ECONOMY
     # instant_gold=10 已登记承载,金面禁直写不进效果体;救援效果条目(「视为完美
     # 通关」条件改写)系结算时点条件触发非获得时点,另域分治 =

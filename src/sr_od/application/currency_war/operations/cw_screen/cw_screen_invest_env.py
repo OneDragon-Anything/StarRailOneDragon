@@ -25,8 +25,8 @@ node = 零参决策(候选自状态容器槽;空候选/无有效输出 = round_f
 选择事实(active_env)经动作落地链写:动作 op 确认后立即自上报 →
 ``gain_invest_env`` 整链(active_env 注册 + portal 登记 + on_env_gained
 效果枚举,权威版本 = game_state/gain-chain.md);画面 op 零选择写点。计数 =
-屏上剩余次数观察真值(屏上数字即真值,权威版本 = game_state/fields.md
-§3.4.3),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
+屏上剩余次数观察真值(屏上数字即真值,剩余语义写端规范 =
+screens/op-layer.md §1.4),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
 不支持局外单独调用——op-layer.md §1.1;用户裁决 全族删门)。
 本屏 sim 分支 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
 改道生成器产物;整组刷新状态副本侧分支 = 刷新自上报声明喂入,2026-10-19 用户

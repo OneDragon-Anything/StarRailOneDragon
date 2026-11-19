@@ -80,7 +80,7 @@ quality 源标已定案:现行链写入方 quality 固化 = `prep_row`(链观察
   改写效果的身份归因 = 消费侧对 active_env/active_strategies 同帧快照的 join 结论,
   观察层不猜。event 词 = 登记清单项(登记与接入调用均见
   [retirement.md](retirement.md) §5)。
-- 对账口径:链 diff 行 vs 改写源登记([fields.md](fields.md) §3.2.2 改写源清单:人身意外险/战争
+- 对账口径:链 diff 行 vs 改写源登记(cw_game_state node_path 字段注释(改写源清单:人身意外险/战争
   边疆/决议:娱乐星球)的对照;指标面与统一观察对账的「识别识别标志 vs 帧」口径同型。
 
 ## 6. 查询接口(与节点域唯一交汇)
