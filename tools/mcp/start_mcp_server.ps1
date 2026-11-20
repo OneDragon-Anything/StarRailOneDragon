@@ -107,10 +107,8 @@ if ($oldProcs) {
 Write-Host ""
 
 # ── 2. 分离启动:server 挂独立进程树,本脚本启动后即退出 ──
-# 项目 pyproject 设 [tool.uv] package=false,uv 不装包 → 模块检索靠 PYTHONPATH=src
-# (仅本启动进程环境生效,不动系统环境)。经 cmd /c 重定向:stdout/stderr 合并写字节流
+# 经 cmd /c 重定向:stdout/stderr 合并写字节流
 # (对齐 daemon subprocess.Popen(stdout=file, stderr=STDOUT);规避 PS 原生重定向编码问题)
-$env:PYTHONPATH = "src"
 $EnvArg = if (Test-Path ".env" -PathType Leaf) { "--env-file .env" } else { "" }
 $CmdLine = "uv run $EnvArg python -m sr_od.backend.entry.server --host $HostName --port $Port --mode $Mode > `"$LogPath`" 2>&1"
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c $CmdLine" `

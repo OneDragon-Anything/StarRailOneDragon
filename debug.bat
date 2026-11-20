@@ -52,15 +52,12 @@ set "ENV_DIR=%~dp0.install"
 rem 调用环境配置脚本
 call "%~dp0env.bat"
 setx "PYTHON" "%~dp0.venv\scripts\python.exe"
-setx "PYTHONPATH" "%~dp0src"
 
 set "PYTHON=%~dp0.venv\scripts\python.exe"
-set "PYTHONPATH=%~dp0src"
-set "APPPATH=%PYTHONPATH%\%MAINPATH%"
+set "APPATH=%~dp0src\%MAINPATH%"
 
 if not exist "%PYTHON%" echo [WARN] 未配置Python.exe & pause & exit /b 1
-if not exist "%PYTHONPATH%" echo [WARN] PYTHONPATH 未设置 & pause & exit /b 1
-if not exist "%APPPATH%" echo [WARN] PYTHONPATH 设置错误 无法找到 %APPPATH% & pause & exit /b 1
+if not exist "%APPPATH%" echo [WARN] APPPATH 设置错误 无法找到 %APPPATH% & pause & exit /b 1
 
 goto :END
 
@@ -111,13 +108,9 @@ echo -------------------------------
 call "%~dp0env.bat"
 
 set "PYTHON=%~dp0.venv\scripts\python.exe"
-set "PYTHONPATH=%~dp0src"
-set "APPPATH=%PYTHONPATH%\%MAINPATH%"
 set "UV=%~dp0.install\uv\uv.exe"
 
 if not exist "%PYTHON%" echo [WARN] 未配置Python.exe & pause & exit /b 1
-if not exist "%PYTHONPATH%" echo [WARN] PYTHONPATH 未设置 & pause & exit /b 1
-if not exist "%APPPATH%" echo [WARN] PYTHONPATH 设置错误 无法找到 %APPPATH% & pause & exit /b 1
 if not exist "%UV%" echo [ERROR] 未找到uv工具 & pause & exit /b 1
 
 %UV% pip uninstall pyautogui -y
@@ -209,12 +202,10 @@ set "ENV_DIR=%~dp0.install"
 rem 调用环境配置脚本
 call "%~dp0env.bat"
 set "PYTHON=%~dp0.venv\scripts\python.exe"
-set "PYTHONPATH=%~dp0src"
-set "APPPATH=%PYTHONPATH%\%MAINPATH%"
+set "APPATH=%~dp0src\%MAINPATH%"
 
 rem 打印信息
 echo [PASS] PYTHON：%PYTHON%
-echo [PASS] PYTHONPATH：%PYTHONPATH%
 echo [PASS] APPPATH：%APPPATH%
 
 rem 检查 Python 可执行文件路径
@@ -224,16 +215,9 @@ if not exist "%PYTHON%" (
     exit /b 1
 )
 
-rem 检查 PythonPath 目录
-if not exist "%PYTHONPATH%" (
-    echo [WARN] PYTHONPATH 未设置
-    pause
-    exit /b 1
-)
-
 rem 检查应用程序脚本路径
 if not exist "%APPPATH%" (
-    echo [WARN] PYTHONPATH 设置错误 无法找到 %APPPATH%
+    echo [WARN] APPPATH 设置错误 无法找到 %APPPATH%
     pause
     exit /b 1
 )
