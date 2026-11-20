@@ -231,6 +231,14 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'box_card_names_xy': 1,    # 武装箱选项坐标伴随域(键名随名字域 box_card_names;选择坐标观察上报,op-layer.md §1.1)
     'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
     'fortune_opts_xy': 1,      # 命运卜者强化选项坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
+    'tea_break_opts': 1,       # 幕后茶歇交互选项槽(str;随局随机无标准注册表,不适用观察标准化门)
+    'tea_break_opts_xy': 1,    # 幕后茶歇选项坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
+    'adventure_partner_name': 1,  # 奇遇对话伙伴名(str;观察数据唯一去处 = game state,白话禁令裁定)
+    'adventure_card_opts': 1,  # 奇遇选择卡选项槽(str;随局随机无标准注册表,同 tea_break_opts 口径)
+    'adventure_card_opts_xy': 1,  # 奇遇选择卡选项坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
+    'aura_select_opts': 1,     # 主角光环卡名固定二槽(str;左=idx 0;观察标准化门适用,cw_spot_lights 注册表)
+    'aura_select_opts_xy': 1,  # 主角光环卡中心坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
+    'aura_select_preview_xy': 1,  # 主角光环预览卡拖拽源点伴随域(行主序;选择坐标观察上报,op-layer.md §1.1)
     'expert_invite': 2,        # 专家邀请函选卡载体(ExpertInvitePayload;域版本 2 =
                                # payload 扩选项坐标字段 card_points/cash_point
                                # (选择坐标观察上报,op-layer.md §1.1);版本 1 =
@@ -421,6 +429,14 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'fortune_opts': ('货币战争-命运卜者强化', True),
     'fortune_opts_xy': ('货币战争-命运卜者强化', True),
     'expert_invite': ('货币战争-备战-专家邀请函', True),
+    'tea_break_opts': ('货币战争-幕后茶歇', True),
+    'tea_break_opts_xy': ('货币战争-幕后茶歇', True),
+    'adventure_partner_name': ('货币战争-奇遇对话', True),
+    'adventure_card_opts': ('货币战争-奇遇对话', True),
+    'adventure_card_opts_xy': ('货币战争-奇遇对话', True),
+    'aura_select_opts': ('货币战争-主角光环选择', True),
+    'aura_select_opts_xy': ('货币战争-主角光环选择', True),
+    'aura_select_preview_xy': ('货币战争-主角光环选择', True),
 }
 
 
@@ -3552,6 +3568,42 @@ class GameState:
     #    equip_pick_opts 槽已停用删除——选择装备屏不存在,勿复活)——
     fortune_opts: Field[list[str] | None] = field(default_factory=Field)
     expert_invite: Field[ExpertInvitePayload | None] = field(default_factory=Field)
+
+    # —— 三新画面观察域(幕后茶歇/奇遇对话/主角光环选择;选择族
+    #    *_opts/*_opts_xy 伴随域家族先例,设计 =
+    #    迭代 2026-11-20-cw-p0-chain design §2.8)——
+    # [索引定义] 各 xy/preview 域与同名去 _xy 的名字域同构同序:
+    # 键 = 名字域列表下标 idx(0 基,左→右/行主序 = 画面物理序,零换算;
+    #   aura_select_preview_xy 无名字域伴随,下标 = 预览卡行主序槽位——
+    #   前排 y≈640 带从左到右,随后后排 y≈745 带,idx 0 = 前排第一,
+    #   v1 决策选择位);
+    # 取值时机 = 观察期快照(进访问入口观察帧识别产物,名字域与坐标域
+    #   同门同帧同序等长——写端构造守卫保证,读端不做长度调和;动作
+    #   执行期恒稳,禁执行期现读现算);
+    # 值 = tuple[int, int](x, y,1080p 游戏空间;平铺元组 = 遥测 JSON
+    #   序列化安全形);
+    # 写入端 = 观察 report 同门(report_screen_*_obs 同一次调用一并写,
+    #   坐标单一真相源 = 观察上报;op 内零副本,白话禁令裁定);
+    # 读端 = 各画面 op 按 idx 零参读(缺席/越界/缺坐标 = 守卫断言
+    #   AssertionError 显式报错,禁控制流分支禁回退;aura_select_opts/
+    #   adventure_partner_name 现役无消费位 = 策略升级批潜在读端);
+    # 三态 = None(未观察,开局初值;sim 无画面识别恒 None)/ 读缺跳写
+    #   (report 读到空集或读失败不写,保持 None——「读到空」与「未读到」
+    #   同判,不设空列表态)/ 已观察(整表覆盖写,同 visit 重入 = 入口
+    #   重建重写);离屏清场经 _PAYLOAD_DOMAINS 登记(route_clearable=True,
+    #   三屏均一次性访问瞬态画面)。
+    # 幕后茶歇/奇遇选择卡选项文本随局随机无标准注册表 = 不适用观察
+    # 标准化门(沿 star_tome_opts str 先例);aura_select_opts 适用观察
+    # 标准化门(光环域注册表 = data/cw_spot_lights.py,转换失败 =
+    # 观察失败交外环,标准化门语义住 op4 设计稿)。
+    tea_break_opts: Field[list[str] | None] = field(default_factory=Field)
+    tea_break_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+    adventure_partner_name: Field[str | None] = field(default_factory=Field)
+    adventure_card_opts: Field[list[str] | None] = field(default_factory=Field)
+    adventure_card_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+    aura_select_opts: Field[list[str] | None] = field(default_factory=Field)
+    aura_select_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+    aura_select_preview_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(事件选择:chosen_* 由选择 handler 单次逻辑写入)——
     # (遭遇例外,遭遇扩围批:chosen_encounter 写端 = 动作侧即时上报

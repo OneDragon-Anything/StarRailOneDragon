@@ -5,12 +5,14 @@
 消费,留在观察 node);动作上报的对账归一走 op 自上报(上报函数族)+
 观察边界 cw_reconcile 兜底。
 
-形态(两 node 直继承 SrOperation):观察 node = 子态识别四查(特殊流程段,
+形态(三 node 直继承 SrOperation):观察 node = 子态识别五查(特殊流程段,
 备战交互链迁入,命中即跳前置段直达处置)+ 环装配前置(执行器构建
 /缓存复位)+ 环入口清场 + 开商店收起 + heavy 观察 → CwScreenPrepObs
 (可选域经 report_screen_prep_obs 落状态容器)+ 事件 overlay 早退返回主循环 +
-接管补采委派 + 纯观察审计族;决策动作 node = 特殊流程三处置(先于段序号
-置位)+ 单动作决策循环(无防御上限,用户裁定:不收敛 = 策略实现 bug)。
+接管补采委派 + 纯观察审计族;选择主角处置 node = 备战变体态跨画面处置
+(点选择主角钮切主角光环屏,经状态词条件边接入,独立于段3);决策动作
+node = 特殊流程三处置(先于段序号置位)+ 单动作决策循环(无防御上限,
+用户裁定:不收敛 = 策略实现 bug)。
 书册卡的开卡时机归策略实现管(用户裁定 2026-09-19):观察链产
 kind='bookcard' 槽位,策略器 entry ① 卡片分支发出终结动作,本画面 op
 不再代发。
@@ -156,6 +158,18 @@ _ORE_HOOK_SIG: ChannelSig = ChannelSig(
 _DOT_HOOK_SIG: ChannelSig = ChannelSig(
     family='logic_hook', actor='CwScreenPrep', group_id='prep:env-dot')
 
+#: 段1 第五查(选择主角变体态)命中状态词 = 观察 → 选择主角处置 node 的
+#: 状态词条件边匹配键。两处消费(observe 的 round_success / 处置 node 的
+#: node_from status)必须逐字相等——失配 = 精确边永不命中,变体帧被兜底边
+#: 接走进决策动作 node 跑错分支(边匹配语义 = operation.py::_get_next_node
+#: 精确优先、无精确命中才落兜底),常量化防两处裸串漂移。
+SELECT_HERO_SUBSTATE_STATUS: str = '选择主角子态,直达选择主角处置'
+
+#: 选择主角处置连等封顶(含首发点击;每轮重入 +1,超限 round_fail 交外环
+#: ——外环连续 fail 重派上限兜底,重派后观察 node 重判变体钮仍在场即再
+#: 处置,整体有界)。取值沿 partner 脉冲先例 ≤3。
+SELECT_HERO_CLICK_MAX: int = 3
+
 
 def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
                                   suspects: list[str],
@@ -183,21 +197,30 @@ class CwScreenPrep(CwOperation):
     回执;终结 op 发出即返回主循环)→ 逻辑态直写(动作 op 自上报))。
     决策循环无防御上限(用户裁定:不收敛 = 策略实现 bug)。
 
-    特殊流程段(备战交互链迁入,迭代 2026-11-18-prep-special-flow):
-    观察 node 段1 子态识别四查(最顶部)+ 段2 子态流程事实写;决策动作
-    node 段3 特殊流程三处置(先于段序号置位)。常规帧四查全否 → 既有
-    全量路径零变化。
+    特殊流程段(备战交互链迁入,迭代 2026-11-18-prep-special-flow;选择主角
+    变体态处置迭代 2026-11-20-cw-p0-chain):
+    观察 node 段1 子态识别五查(最顶部)+ 段2 子态流程事实写;选择主角
+    处置 node(段1 第五查命中经状态词条件边直达,跨画面切屏 + until 判效,
+    独立于段3);决策动作 node 段3 特殊流程三处置(先于段序号置位)。
+    常规帧五查全否 → 既有全量路径零变化。
     """
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
         self._executor: PrepActionExecutor | None = None
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
-        # 访问内子态载体(观察 node 段1 → 决策动作 node 段3 传递;取值 =
-        # 'back_to_strategy'/'supply_divert',None = 常规帧)。锁定子态不经
-        # 此载体(经 Match.locked_resume)。本 op 每次派发新建实例 → 载体
-        # 结构性不跨访问存活(迭代 2026-11-18-prep-special-flow §2.1)。
+        # 访问内子态载体(观察 node 段1 → 处置/决策动作 node 传递;取值 =
+        # 'back_to_strategy'/'supply_divert'/'select_hero',None = 常规帧)。
+        # 锁定子态不经此载体(经 Match.locked_resume);select_hero 处置经
+        # 状态词条件边直达独立 node,载体仅留作剧本断言面。本 op 每次派发
+        # 新建实例 → 载体结构性不跨访问存活(迭代 2026-11-18-prep-special-
+        # flow §2.1)。
         self._prep_substate: str | None = None
+        # 选择主角处置连等封顶计数(round_wait 无界红线:点击恒成功锚恒
+        # 不出现 = 连等无界,框架 round_by_find_and_click_area docstring
+        # 要求节点自设封顶;重入重跑整个 node 函数 → 计数挂实例,每 visit
+        # 新实例天然复位)。
+        self._select_hero_retries: int = 0
         # on_outcome 落地登记注册表随画面 op 基类停用:本 op 级登记件原两件
         # = 经验期望账本推进(CwActionLevelUpParam/CwActionOpenShopParam 两通道),随
         # 期望账拆除停用——「未落地不计数」防线
@@ -785,7 +808,7 @@ class CwScreenPrep(CwOperation):
     def observe(self) -> OperationRoundResult:
         """环装配前置 + 数据观察 + 对账(纯观察审计族留在本 node)。
 
-        序列:段1 子态识别四查(特殊流程,见下)→ 执行器构建 + 缓存复位 →
+        序列:段1 子态识别五查(特殊流程,见下)→ 执行器构建 + 缓存复位 →
         环入口清场(ENTRY_OVERLAY_CLOSE = 过渡相位表「可一键关闭」子集)→
         开商店收起探针 → heavy 观察 → CwScreenPrepObs 装配(可选域经
         :func:`report_screen_prep_obs` 在原写点位落状态容器:链域在 heavy
@@ -795,27 +818,47 @@ class CwScreenPrep(CwOperation):
         裁决(用户裁定 2026-09-19,发出的 CwActionOpenBookcardParam 为
         终结动作,返回语义与原入口代发一致)。
 
-        段1 子态识别四查(最顶部,先于 match 缺席门/清场/收店探针/heavy/
-        补采/审计;优先序 0 > a > b > c):非常规子态帧(返回按钮/接管探针/
-        锁定确认/补给未确认)在交互链迁入本 op 前从不被任何前置段
-        接触(主循环派发前已处置;迁移保真见迭代设计 §2.2——heavy 观察在
-        锁定帧上执行会把板面真值写入状态容器,恢复局同步步的部署计划从
-        「空计划零部署」漂移为「真部署」),子态命中即跳过全部既有前置段,
-        处置动作归决策动作 node 段3。子态裁决的流程事实写(Match 字段配对
+        段1 子态识别五查(最顶部,先于 match 缺席门/清场/收店探针/heavy/
+        补采/审计;优先序 0 > 选择主角 > a > b > c):非常规子态帧(返回按钮/
+        接管探针/锁定确认/补给未确认/选择主角变体)在交互链迁入本 op 前从不
+        被任何前置段接触(主循环派发前已处置;迁移保真见迭代设计 §2.2——
+        heavy 观察在锁定帧上执行会把板面真值写入状态容器,恢复局同步步的
+        部署计划从「空计划零部署」漂移为「真部署」),子态命中即跳过全部
+        既有前置段,处置动作归选择主角处置 node(变体态,独立 node)与决策
+        动作 node 段3(a/b/c)。子态裁决的流程事实写(Match 字段配对
         写/接管失效写)= 段2 语义;探针与收店点击 = 识别手段(识别性点击
         读屏例外,迭代 2026-11-18-prep-special-flow §2.7-1)。查全否 →
         既有路径一步不动。b 查触发门 = opened_via=='takeover' ∧ 未探
         (去重标志一次写;判据 = 2026-11-19-resume-rebuild design §2.3)。"""
         match = self._match()
-        # ===== 段1 子态识别四查(特殊流程;处置在决策动作 node 段3)=====
-        # Match 缺席(局外/桩):四查全部按否处理,落到下方 match
-        # 缺席门(迭代设计 §2.3 缺席防御申报)。
+        # ===== 段1 子态识别五查(特殊流程;变体态处置 = 独立 node,a/b/c
+        # 处置在决策动作 node 段3)=====
+        # Match 缺席(局外/桩):0/a/b/c 四查按否处理,落到下方 match
+        # 缺席门(迭代设计 §2.3 缺席防御申报);选择主角查纯视觉零 Match
+        # 依赖(处置同为纯视觉),缺席语境照判无害。
         if match is not None and match.locked_resume:
             # 第 0 查:锁定确认态(含段3b retry 耗尽 → 主循环重派发的
             # 重入帧)→ 直达段3b。锁定态经 Match.locked_resume 传给决策
             # 动作 node,访问内零额外载体。
             return self.round_success('锁定确认态直达出战段(段3b)', wait=0)
         screen = self.last_screenshot
+        if self.round_by_find_area(screen, '货币战争-备战-选择主角',
+                                   '按钮-选择主角',
+                                   crop_first=False).is_success:
+            # 选择主角查(五查族第五员,插第 0 查后 a 查前——与四查互斥无
+            # 顺序语义,优先序申报 0 > 选择主角 > a > b > c):备战变体态
+            # (位面末 BOSS 战前强制「选择主角」环节,钮与出战/跳过同位同
+            # 形)。判定走独立档 id_mark,不用裸 OCR——「选择主角」是光环屏
+            # 标题「选择一个角色获得主角光环」子串,裸 OCR 有形近面。命中
+            # 经状态词条件边(SELECT_HERO_SUBSTATE_STATUS)直达独立处置
+            # node,不落段3——处置性质(跨画面切屏 + until 判效)与段3 内联
+            # a/c(本屏点击零验证交回)不同类,结构仲裁 = screen-op.md §1
+            # 独立处置 node(迭代 2026-11-20-cw-p0-chain design §2.3-D);
+            # 判定单一源 = prep_anchors_hit 同款第三形态(kernel/cw_obs_core,
+            # 禁散写)。未命中 = 同 node 内 fallthrough 到 a 查(现役段1
+            # 同款)。
+            self._prep_substate = 'select_hero'
+            return self.round_success(SELECT_HERO_SUBSTATE_STATUS, wait=0)
         if match is not None and self.round_by_ocr(
                 screen, '返回投资策略选择', lcs_percent=0.9).is_success:
             # a 查:返回按钮子态(上游投资策略屏处理失败的 symptom,用户
@@ -891,7 +934,7 @@ class CwScreenPrep(CwOperation):
                 return self.round_success('补给未确认子态,直达处置段(段3c)',
                                           wait=0)
             log.info('[cw-prep] 补给节点已确认(chosen_supply 在场)→ 走常规备战')
-        # —— match 缺席门(既有;四查全否后到达)——
+        # —— match 缺席门(既有;五查全否后到达)——
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
         session = match.session
@@ -938,6 +981,39 @@ class CwScreenPrep(CwOperation):
         #      运营态,按席满主动腾席会打穿策略持仓);hp 消费统一经
         #      decision_hp 门前真值+施门。
         return self.round_success(wait=0)
+
+    @node_from(from_name='观察', status=SELECT_HERO_SUBSTATE_STATUS)
+    @operation_node(name='选择主角处置')
+    def handle_select_hero(self) -> OperationRoundResult:
+        """选择主角变体态处置(独立 node,经状态词条件边接入,独立于段3):
+        点「按钮-选择主角」切主角光环屏,until 光环屏标题出现才算成功——
+        跨画面转移验证,点了≠成了(AGENTS §3;until 择向理由 = 与段3 内联
+        a/c 本屏点击零验证交回形态不同性质,设计 §2.3-D)。
+
+        连等封顶 = SELECT_HERO_CLICK_MAX(含首发点击):until 等待在框架里
+        是 round_wait 无界(点击恒成功锚恒不出现时框架不设限,docstring
+        要求节点自设封顶),本计数每轮重入 +1,超限 round_fail 交外环——
+        外环连续 fail 重派上限兜底,重派后观察 node 重判变体钮仍在场即再
+        处置,整体有界。等待中点击目标消失(画面过渡)走框架 retry 预算,
+        与本封顶双界并存取小。成功 = round_success 专属状态词,本 node 无
+        出边(框架收尾语义 = 当前结果即访问终态),访问结束交回主循环,
+        下帧身份分发命中主角光环屏派 CwScreenAuraSelect——链路闭合。
+        """
+        from one_dragon.base.operation.operation_round_result import (
+            OperationRoundResultEnum,
+        )
+        self._select_hero_retries += 1
+        if self._select_hero_retries > SELECT_HERO_CLICK_MAX:
+            return self.round_fail(
+                status=f'选择主角连等超限(>{SELECT_HERO_CLICK_MAX}轮)')
+        _rr = self.round_by_find_and_click_area(
+            self.last_screenshot, '货币战争-备战-选择主角', '按钮-选择主角',
+            until_find_all=[('货币战争-主角光环选择', '标识-主角光环标题')],
+            pre_delay=0.3, success_wait=1.2, retry_wait=1.0)
+        if _rr.result == OperationRoundResultEnum.SUCCESS:
+            return self.round_success('已点选择主角进入主角光环屏'
+                                      '(交回主循环分发)', wait=0.5)
+        return _rr
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作')

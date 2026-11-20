@@ -140,15 +140,26 @@ def shop_card_click_points(ctx: SrContext) -> list[Point]:
 def prep_anchors_hit(op, screen) -> bool:
     """备战两识别标志同帧命中判定(小helper,复用身份分发识别标志表同款两标志;禁判据外散写)。
 
-    第二识别标志免战子态双形态(currency_war_prep.md「跳过(N/N)」按钮替换节):
-    「免战牌」激活的战斗节点,出战按钮被替换为「跳过」(同位置)——识别标志只认
-    「出战」会把免战备战帧判非备战(免战帧无出战语义,判非备战防误发;
-    出战前屏态复验防线已退役 2026-11-19,误发兜底 = 阶段一身份分发 +
-    调用方 retry 网)。
-    实机 = 「按钮-跳过」OCR 识别标志同位可命中;sim = 后端 visible 按钮对真值。
+    第二识别标志三形态(「按钮-出战」∨「按钮-跳过」∨「按钮-选择主角」):
+
+    - 「按钮-跳过」= 免战子态(currency_war_prep.md「跳过(N/N)」按钮替换
+      节):「免战牌」激活的战斗节点,出战按钮被替换为「跳过」(同位置)——
+      识别标志只认「出战」会把免战备战帧判非备战(免战帧无出战语义,判非
+      备战防误发;出战前屏态复验防线已退役 2026-11-19,误发兜底 = 阶段一
+      身份分发 + 调用方 retry 网)。
+    - 「按钮-选择主角」= 备战变体态(area 在现役档
+      ``currency_war_battle_prep_select_hero.yml``,与出战/跳过钮同位同形):
+      位面末 BOSS 战前强制「选择主角」环节的备战帧——只认前两形态会把
+      变体帧判非备战落未知兜底,连续未识别停机整局报废;变体态处置 =
+      CwScreenPrep 段1 第五查 + 选择主角处置 node(判定单一源仍在本函数,
+      扩形态只改此一处)。
+
+    实机 = 三形态 OCR 识别标志同位可命中;sim = 后端 visible 按钮对真值
+    (sim 不建模选择主角变体屏,第三形态恒 miss,行为同其缺席)。
 
     单一消费源(禁散写):loop 备战分支认领判定(消费方 = CwLoop)——
-    出战发出链屏态复验消费点已随防线退役删除(挂账板 §二.7⑤)。
+    出战发出链屏态复验消费点已随防线退役删除(退役裁定 = prep_actions.py:8-15
+    模块头)。
 
     Args:
         op: 调用方 op(经参数传入 = 本模块收 op 参数首例,边界申报见模块头;
@@ -161,6 +172,9 @@ def prep_anchors_hit(op, screen) -> bool:
     return (op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
                                   crop_first=False).is_success
             or op.round_by_find_area(screen, '货币战争-备战', '按钮-跳过',
+                                     crop_first=False).is_success
+            or op.round_by_find_area(screen, '货币战争-备战-选择主角',
+                                     '按钮-选择主角',
                                      crop_first=False).is_success)
 
 
