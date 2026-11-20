@@ -17,7 +17,7 @@
 - 未计入收入(结果 = 保守下限,见证明文档「未入账项」节):
   奖励节点额外金/补给角色金等价/遭遇奖励金等价
 
-跑法:PYTHONPATH=src python skills/sr-od-dev-currency-war/scripts/proofs/p97_refresh_budget_check.py
+跑法:uv run python skills/sr-od-dev-currency-war/scripts/proofs/p97_refresh_budget_check.py
 """
 from __future__ import annotations
 

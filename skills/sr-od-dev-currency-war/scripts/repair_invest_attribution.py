@@ -41,7 +41,7 @@ dry-run 报告)。
 **执行前置:无 run 在跑**(单写者;本脚本不并行于 bot)。建议先 ``--replay-dir``
 指向整个 live 流根的拷贝演练 dry-run + --apply,再对真库执行。
 
-## 用法(项目根,PYTHONPATH=src)
+## 用法(项目根, uv run)
 
     uv run python skills/sr-od-dev-currency-war/scripts/repair_invest_attribution.py             # dry-run(默认)
     uv run python skills/sr-od-dev-currency-war/scripts/repair_invest_attribution.py --apply     # 落盘

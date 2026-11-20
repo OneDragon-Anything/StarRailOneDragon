@@ -13,7 +13,7 @@
 (仓库持久文件,防带值漂移);三批 sim 报告住 .debug/temp/(易失),实测数字
 只作对账不进推导。
 
-重跑: $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p89_check.py
+重跑: uv run python skills/sr-od-dev-currency-war/scripts/proofs/p89_check.py
 """
 from __future__ import annotations
 

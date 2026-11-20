@@ -185,8 +185,8 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT, mode: str = 'player') ->
                 cmd.extend(['--env-file', '.env'])
             cmd.extend(['python', '-m', 'sr_od.backend.entry.server',
                         '--port', str(port), '--mode', mode])
-            # src-layout + [tool.uv] package=false：`-m` 解析 sr_od 包必须 src 在 sys.path。
-            # 显式注入绝对路径 PYTHONPATH，不再依赖 .env（.env 含 PYTHONPATH 会被 DSH 的
+            # 幂等兜底：项目经 uv 可编辑安装后，`uv run` 链路已解析 src 包；此注入防
+            # 不经 uv 的直起场景。不依赖 .env（.env 含 PYTHONPATH 会被 DSH 的
             # 启动环境校验拒绝，导致从本项目目录启动 dsh headless/CLI 直接失败）。
             spawn_env = os.environ.copy()
             spawn_env['PYTHONPATH'] = str(PROJECT_ROOT / 'src')
@@ -197,8 +197,8 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT, mode: str = 'player') ->
             # rename 要求无任何打开句柄,旧 server 的继承 stdout fd / GUI 尾读 /
             # 哨兵 tail 任一存在即 PermissionError,且旧代码 except 静默吞掉 →
             # 轮转缺位不可观测。helper 失败时向文件本体落标记,不再静默。
-            # daemon 自身由 `uv run python sr_od_daemon.py` 拉起,src 不在 sys.path
-            # (它只为 server 子进程注入 PYTHONPATH)——本进程内导入前显式补上。
+            # daemon 自身导入前补 src 到 sys.path(可编辑安装经 uv run 已覆盖,此处
+            # 幂等兜底不经 uv 的直起场景;上方注入只作用于 server 子进程)。
             import sys as _sys
             _src = str(PROJECT_ROOT / 'src')
             if _src not in _sys.path:

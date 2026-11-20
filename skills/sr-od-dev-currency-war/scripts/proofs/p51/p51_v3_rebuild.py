@@ -25,7 +25,7 @@
 # 改数据驱动的池化偏移注(按新表重判)。
 #
 # 运行(Windows PowerShell):
-#   $env:PYTHONPATH='src'; $env:PYTHONIOENCODING='utf-8'
+#   $env:PYTHONIOENCODING='utf-8'
 #   uv run python skills/sr-od-dev-currency-war/scripts/proofs/p51/p51_v3_rebuild.py
 #
 # ⚠️ 全部难度公式值标「interim 计算值」:公式缺位面递进/难度修改器/遭遇等级/圣杯特殊项

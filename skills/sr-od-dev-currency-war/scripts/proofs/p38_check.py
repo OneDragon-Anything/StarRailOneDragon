@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """P38 数值自检:K 缺口集齐概率 —— 精确 DP vs 独立乘积闭式近似的偏差对拍。
 
-不进 src、不提交;重跑:PYTHONPATH=src uv run python skills/sr-od-dev-currency-war/scripts/proofs/p38_check.py
+不进 src、不提交;重跑:uv run python skills/sr-od-dev-currency-war/scripts/proofs/p38_check.py
 数据源:REFRESH_PROB / SHOP_SLOTS / POOL_COPIES_PER_CARD(cw_shop_odds,实机 OCR 权威表)。
 """
 from __future__ import annotations

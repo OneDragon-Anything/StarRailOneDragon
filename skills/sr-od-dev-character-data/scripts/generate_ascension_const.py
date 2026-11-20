@@ -3,7 +3,7 @@
 数据流:官方 wiki → 本脚本(拉取+转换) → character_ascension_const.py /
 dungeon_drop_const.py。版本更新后重跑刷新(数据块禁手改,单一源=官方 wiki)。
 
-用法:PYTHONPATH=src 下 uv run python skills/sr-od-dev-character-data/scripts/generate_ascension_const.py
+用法:项目根目录 uv run python skills/sr-od-dev-character-data/scripts/generate_ascension_const.py
 """
 import json
 import re

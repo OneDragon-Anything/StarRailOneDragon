@@ -16,7 +16,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 | 行迹满级 + 星魂全 6 详情 | 本 skill `scripts/fetch_character_details.py` | `.debug/game_data/character/wiki/char_details.json` |
 
 - 接口细节(域名/参数/字段位置/已知坑)见 sr-od-official-api `references/米游社/wiki-角色.md`,本文不重复。
-- 运行方式:项目根目录 `uv run python <脚本路径>`(official-api 两个脚本仅标准库;本 skill 脚本需 `PYTHONPATH=src`)。
+- 运行方式:项目根目录 `uv run python <脚本路径>`(official-api 两个脚本仅标准库;本 skill 脚本有 src 导入,经 uv 可编辑安装解析)。
 - **收录判据**:关键字段齐全才收录;空壳词条(有页面无 avatarId)、占位(avatarId=0)、前瞻未实装(详情行迹**模块名**带「前瞻」,正文提及不算)一律不录。
 - **wiki 映射内嵌于脚本**(2026-11-12 起废除中间权威表 JSON):数字 ID ↔ 中文名/英文名/命途/属性/星级的映射在 `scripts/_wiki_map.py`(WIKI_CHARACTERS dict),是各脚本与人工对账的锚;新角色手工加条目,跑 `align_character_ids.py` 对账验证;不刷不影响按列表录入。
 
@@ -30,7 +30,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 | `src/sr_od/config/trace_levelup_const.py` | 脚本生成(低频) | `generate_trace_cost_const.py`;全 5 星统一固定表,仅游戏机制变更时重跑 | 表结构不变即无需动 |
 | `src/sr_od/config/trace_material_const.py` | 脚本生成 | `generate_trace_material_const.py`(BWIKI 角色页「技能晋阶材料」逐角色抓取,页面缓存可断点续跑;BWIKI 标题与角色定义名不一致走脚本内标题覆盖表) | `find_character_trace_materials('<cn>')` 命中;三重锚点(星神★阿哈/黄泉/藿藿)固化前强制校验。注:行迹材料名随命途线与实装年代变化,数量表的样本页名称不作归属依据 |
 
-- 生成器均项目根运行(`PYTHONPATH=src`);产物头部注释由生成器写入,**禁手改常量数据块**(单一源 = 官方 wiki,修正走重新生成)。
+- 生成器均项目根运行;产物头部注释由生成器写入,**禁手改常量数据块**(单一源 = 官方 wiki,修正走重新生成)。
 - 实机验证(账号有该角色时):编入队伍进大世界,经 MCP `run_operation` 跑 `CheckTeamMembersInWorld`(op_id `sr_od.operations.team.check_team_members_in_world.CheckTeamMembersInWorld`),OCR 读名与头像兜底都认出;账号没有则提交信息注明「头像模板待实机验证」。
 - **边界**:角色专属光锥/遗器归装备数据维护域的版本工序,不在本流程。
 

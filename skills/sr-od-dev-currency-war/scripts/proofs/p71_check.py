@@ -11,7 +11,7 @@
 - REFRESH_PROB / expected_refreshes_for_card: data/cw_shop_odds.py(V4.4 权威);
 - loss_exact / saturation_line: kernel/cw_economy.py(P47 双轨迹递推)。
 
-重跑: $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p71_check.py
+重跑: uv run python skills/sr-od-dev-currency-war/scripts/proofs/p71_check.py
 """
 import itertools
 import math

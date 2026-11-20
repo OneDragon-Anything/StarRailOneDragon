@@ -1,5 +1,5 @@
 # p40 刷新 EV 数值自检脚本(证明 docs/game/currency_war/research/proofs/p40-refresh-ev.md 的算例)
-# 只读代码注册表,不改任何生产文件。入库可重跑: $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p40_refresh_ev_check.py
+# 只读代码注册表,不改任何生产文件。入库可重跑: uv run python skills/sr-od-dev-currency-war/scripts/proofs/p40_refresh_ev_check.py
 import math
 
 from sr_od.application.currency_war.data.cw_shop_odds import (

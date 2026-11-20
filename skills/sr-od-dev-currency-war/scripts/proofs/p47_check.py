@@ -1,6 +1,6 @@
 """P47 数值自检:息律经济账(守 50 期望息流 / 息档损失函数 / 回档轮数)。
 
-重跑:PYTHONPATH=src uv run python skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py
+重跑:uv run python skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py
 数据源(不 import,值按 docs/game/currency_war/research/economy.md 10.1 与代码注册表转写,
 本脚本自含以便离线审阅):
   - 利息 interest(g) = min(g // 10, 5)(50 金满息 5 金/轮;cw_economy.interest 同构)

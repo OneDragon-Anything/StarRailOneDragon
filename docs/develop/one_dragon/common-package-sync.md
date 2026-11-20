@@ -38,7 +38,7 @@
    替换前先 `grep -rn` 确认命中全是注释/docstring、无真实 import。
 4. **验证**：
    - 文件数对齐源项目（如 `one_dragon=204, one_dragon_qt=150, onnxocr=15`）
-   - `PYTHONPATH=src uv run python src/sr_od/gui/sr_full_app.py` 启动 0 错误（GUI 起来）
+   - `uv run python src/sr_od/gui/sr_full_app.py` 启动 0 错误（GUI 起来）
    - `uv run pyright` 无新增 error
    - 仅对改动的 sr_od 文件跑 `uv run ruff check`（公共框架保持源项目风格，不回改）
 5. **提交**：整包镜像、注释替换、sr_od 适配（若有）分开 commit。

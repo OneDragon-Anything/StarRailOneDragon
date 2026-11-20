@@ -5,14 +5,14 @@
 ## 查询工具(遥测 CLI)
 
 ```
-$env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|gold|hp|events|snapshot|final|all
+uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|gold|hp|events|snapshot|final|all
 ```
 
-- **模块入口必须带 `PYTHONPATH=src` 前缀**(上式已含;裸 `-m` 与 `--env-file .env` 都报 ModuleNotFoundError——`.env` 不放 PYTHONPATH)。仓内无独立 `cw_telemetry` 可执行命令,help 的 prog 名显示为 cw_telemetry 而已。
+- **模块入口直接 `uv run` 运行**(无需环境变量前缀,可编辑安装已解析 src 包;`.env` 不放导入路径类变量,DSH 启动校验会拒绝)。仓内无独立 `cw_telemetry` 可执行命令,help 的 prog 名显示为 cw_telemetry 而已。
 - **按局档案(跨 run 段免拼段)**:正常局局终自动装配(切片含 journal,v12+);`--match <game_id>` 直读单局档案(物化切片后与 live 同一读面;崩溃局补装配 `assemble --game <game_id>`);`--recent N` 概览 = 新账 run 清单行扫描,不依赖档案。
 
 - 视图族已迁统一 state 新账(判读读面单一源 = `src/sr_od/application/currency_war/telemetry/journal_query.py`):rounds=逐轮表(段界=行内快照 node 键);gold=金账行间差分;hp=hp 链(写入闸语义,快照即真读值);events=观察事件行(row='obs_event');snapshot=末行快照摘要;final=局终行(match_final)。旧 12 流视图族(supply/anomalies/economy 等)已随旧流拆除,深维度按「新复盘需求=新视图」纪律按行差分直读。
-- **单局深度复盘报告**由渲染器生成:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/replay_to_md.py --match <game_id>`(或 `--journal <journal路径>`);报告结构与判读分工(定位用视图查询、复盘用渲染报告)见 [match-review.md](match-review.md)。
+- **单局深度复盘报告**由渲染器生成:`uv run python skills/sr-od-dev-currency-war/scripts/replay_to_md.py --match <game_id>`(或 `--journal <journal路径>`);报告结构与判读分工(定位用视图查询、复盘用渲染报告)见 [match-review.md](match-review.md)。
 - **生产局秒级自检**:旧 `checks` 子命令已随旧流停用——生产自检走哨兵三件(journal 面;武装口径见 [runtime-ops.md](runtime-ops.md)「哨兵脚本组」);sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations(sim 检查器保留)。
 - 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`;格式标准单一源在 strategy/05 §6。
 

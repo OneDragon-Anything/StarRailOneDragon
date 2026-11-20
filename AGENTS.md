@@ -51,7 +51,7 @@ uv run ruff check src/你修改的文件.py
 uv run ruff check --fix src/你修改的文件.py
 ```
 
-- 因 `pyproject.toml` 设 `[tool.uv] package = false`，运行前需确保 `PYTHONPATH=src`：PowerShell 执行 `$env:PYTHONPATH="src"`，或 `uv run --env-file .env python …`（**`.env` 不放 `PYTHONPATH`**，会被部分工具的启动环境校验拒绝；手动命令优先前者）。
+- 项目经 uv 以可编辑安装管理（`pyproject.toml` 设 `package = true`）：`uv run` 直接可用，无需设置导入路径类环境变量；曾按旧文档配置过的用户级 `PYTHONPATH` 请删除（防遮蔽可编辑安装，详见 quickstart §①-4）。
 - 只对自己修改的文件运行 `ruff check`。
 - 不要对整个 `src/` 目录运行 ruff，现有仓库尚未全面适配。
 - 优先使用 Windows PowerShell 可直接执行的命令。

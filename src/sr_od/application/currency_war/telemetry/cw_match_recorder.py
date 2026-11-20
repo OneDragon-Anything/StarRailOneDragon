@@ -14,7 +14,7 @@
   ``read_bench_view``)→ 一条 JSONL(帧文件名 + 全部字段);离线分析不用再跑识别。
 - 帧文件与 JSONL 同目录(``.debug/temp/currency_war/recording/<session>/``)。
 
-用法(项目根,PYTHONPATH=src):
+用法(项目根, uv run):
     uv run python -m sr_od.application.currency_war.telemetry.cw_match_recorder   # 实时采集(Ctrl+C/STOP 停)
     uv run python -m sr_od.application.currency_war.telemetry.cw_match_recorder --replay <dir>  # 离线重放提取
 """

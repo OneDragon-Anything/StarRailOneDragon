@@ -24,7 +24,7 @@
 
 - **推荐**:[context7](https://github.com/upstash/context7) — 查询库文档;按 MCP server 注册(DSH: 全局 `~/.dsh/cordis.patch.yml` 或项目 `.dsh/mcp.servers.yml`;Claude Code: 插件,见 [entry-file.md](claude-code/entry-file.md))。
 - **项目自有游戏操作 MCP**:**已实现**。把游戏感知 / 操作(窗口状态 / 截图 / OCR / 进游戏)经 MCP 暴露给 agent,辅助开发与调试。
-  - 启动:`$env:PYTHONPATH = "src"; uv run python -m sr_od.backend.entry.server --port 24001`(或经 daemon/GUI 启动,spawn 时自动注入绝对路径 `PYTHONPATH`;`.env` 不放该变量,DSH 启动校验会拒绝)。
+  - 启动:`uv run python -m sr_od.backend.entry.server --port 24001`(或经 daemon/GUI 启动;`.env` 不放导入路径类环境变量,DSH 启动校验会拒绝)。
   - 接入(按所用工具,均在本地配置、不入库):
     - **DSH**:项目根 `.dsh/mcp.servers.yml` 配 `sr_od`(streamable-http,`http://127.0.0.1:24001/mcp`;daemon 另配 `sr_od_daemon` :24000)。workspace-mcp 插件按 cwd 自动加载、保存热生效。
     - **Claude Code**:`claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp`。

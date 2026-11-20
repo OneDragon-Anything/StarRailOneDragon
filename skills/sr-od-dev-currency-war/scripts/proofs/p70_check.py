@@ -8,7 +8,7 @@ L(g, spend, R, Ī) ≡ 0(零息死仓构造,弱支配的息账项),零自由参�
 - 掉血基准 S(n): cw_registry.streak_floor_loss_damage(辖域声明面,不入推导);
 - boss P15v2 基准 26.79 [24.25, 29.23]: p15 冻结语料值直录(math_proofs P15)。
 
-重跑: $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p70_check.py
+重跑: uv run python skills/sr-od-dev-currency-war/scripts/proofs/p70_check.py
 """
 import itertools
 import sys

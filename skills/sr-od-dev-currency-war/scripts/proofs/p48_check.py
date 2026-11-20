@@ -1,6 +1,6 @@
 """P48 数值自检:经验整买纪律与超息线囤钱(口述 [41] 的数学化)。
 
-重跑:PYTHONPATH=src uv run python skills/sr-od-dev-currency-war/scripts/proofs/p48_check.py
+重跑:uv run python skills/sr-od-dev-currency-war/scripts/proofs/p48_check.py
 数据源(不 import,值按代码注册表/证明件转写,本脚本自含以便离线审阅):
   - XP 机制:单击 +4 经验/4 金(XP_PER_BUY,flat 三帧);等级门槛
     XP_TO_NEXT_LEVEL = {3:4, 4:6, 5:20, 6:40, 7:52, 8:72, 9:84}(cw_state,economy.md

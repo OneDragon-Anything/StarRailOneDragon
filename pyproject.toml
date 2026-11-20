@@ -106,7 +106,7 @@ exclude = [
     ".install",
     "sr-od-test",
 ]
-extraPaths = ["src"]  # src-layout + package=false：让 pyright 去 src/ 解析 one_dragon/sr_od 等导入（同 PYTHONPATH=src 的根因）
+extraPaths = ["src"]  # 兜底：不经 uv 的 LSP 直连场景去 src/ 解析导入（uv run 下可编辑安装已覆盖）
 # r98 起 cw 包(活跃战场)先开 basic —— 覆盖 import 解析 + 基础类型错(r92 ImportError
 # 三局才爆的类别;typeCheckingMode off 时 pyright 只当导航用,连 x:int='str' 都不报)。
 # 存量类型债 446 项(argumentType 217/optional 访问 136 等,渐进还):类型级降 warning
@@ -134,8 +134,8 @@ reportUndefinedVariable = "error"
 reportMissingImports = "error"
 reportMissingModuleSource = "none"
 
-# Pytest 配置：src-layout + package=false，让 pytest 自动把 src/ 加入 sys.path
-# (取代 CI 的 PYTHONPATH=src env 和测试文件里手动的 sys.path.insert)
+# Pytest 配置：兜底——不经 uv 直用 python 跑 pytest 时自动把 src/ 加入 sys.path
+# (uv run 下可编辑安装已覆盖;测试 CI 依赖本配置而非环境变量)
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 # 单条用例最大耗时（秒）：超时视为死循环。thread 方法 = dump 全线程栈后杀整个测试进程

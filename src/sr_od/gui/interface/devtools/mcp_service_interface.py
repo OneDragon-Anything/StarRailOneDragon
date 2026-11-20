@@ -103,10 +103,11 @@ def _server_command(root: Path, port: int) -> list[str]:
 
 
 def _server_spawn_env(root: Path) -> dict[str, str]:
-    """主 server 子进程环境：src-layout + package=false，显式注入绝对路径 PYTHONPATH。
+    """主 server 子进程环境：幂等兜底注入绝对路径 PYTHONPATH。
 
-    不依赖 .env 携带 PYTHONPATH（对齐 daemon 的 start_sr_od_mcp_server）；
-    .env 含该变量会被 DSH 的启动环境校验拒绝。
+    项目经 uv 可编辑安装后，`uv run` 链路已解析 src 包；此注入防不经 uv 的
+    直起场景（对齐 daemon 的 start_sr_od_mcp_server）；不依赖 .env 携带该变量，
+    .env 含它会被 DSH 的启动环境校验拒绝。
     """
     env = os.environ.copy()
     env['PYTHONPATH'] = str(root / 'src')

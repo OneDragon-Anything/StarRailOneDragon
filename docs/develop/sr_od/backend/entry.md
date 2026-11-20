@@ -24,7 +24,6 @@ uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001 --mode
 
 - **detached 启动**（如 PowerShell `Start-Process`）优于挂在会话子树下前台跑——前台进程随会话结束连坐；detached 后 server 常驻。detached 不重定向 stdout，判死活看进程列表 + `.log/mcp_server.log`（框架日志，当次现场）；`.log/stdout.log` 是追加模式的 stdout 兜底，尾部内容可能来自历史启动，勿作当次现场判读。
 - **重启前确认旧进程已停**（端口 24001 被占直接起会绑不上）：`Stop-Process` 按 PID，或经 daemon 的 stop 工具（daemon 有对局守卫；无 daemon 的环境自行确认无运行中 run 再停）。
-- `PYTHONPATH=<项目>/src` 注入要求见本节开头说明；这是 src-layout 的解析要求，与启动途径无关。
 
 启动流程：
 

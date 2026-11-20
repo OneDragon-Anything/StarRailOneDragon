@@ -41,7 +41,7 @@ DESIGN.md §2.1/§3):
 - COMP_LIBRARY / V2_FAMILIES:cw_comps.py(12 线枚举域);
 - TRANSITION_TRAITS:cw_deploy_logic.py(三羁绊体系键单一源)。
 
-重跑: $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p65_check.py
+重跑: uv run python skills/sr-od-dev-currency-war/scripts/proofs/p65_check.py
 """
 from __future__ import annotations
 

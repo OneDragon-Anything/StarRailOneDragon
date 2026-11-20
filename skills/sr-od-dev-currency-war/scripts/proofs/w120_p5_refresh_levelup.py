@@ -1,7 +1,7 @@
 # 数学证明计算脚本:P5 刷新-升级选择定理 + P6 前两轮压库账(证明见
 # docs/game/currency_war/research/proofs/p05-refresh-vs-levelup.md 与 p06-first-two-rounds-option.md)
 # 只读真实表(REFRESH_PROB/升级成本/收入三件套),零随机纯表值,可重跑复核。
-# 运行: $env:PYTHONPATH="src"; uv run python skills/sr-od-dev-currency-war/scripts/proofs/w120_p5_refresh_levelup.py
+# 运行: uv run python skills/sr-od-dev-currency-war/scripts/proofs/w120_p5_refresh_levelup.py
 # 产出对应证明单篇的数字表;游戏版本改概率/成本表后重跑本脚本即可复核命题是否仍成立。
 
 from sr_od.application.currency_war.data.cw_shop_odds import (

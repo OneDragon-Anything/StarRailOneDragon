@@ -8,7 +8,7 @@
 #      非 v1 的位面 1 末;门①1.4 口径修正);
 #   4. 分层/CI 一律 run 级 cluster bootstrap(120 局 = 6 数据集 × 40 run)。
 # 数据:AB_{cw3,legacy_v2}_n40_{s0,r2,r3}(r1 无逐轮账本,只有聚合 JSON,不进逐轮标定)。
-# 运行:$env:PYTHONPATH='src'; uv run python .debug/temp/currency_war/redesign/p51_v2_calib.py
+# 运行:uv run python .debug/temp/currency_war/redesign/p51_v2_calib.py
 import json
 import random
 import sys

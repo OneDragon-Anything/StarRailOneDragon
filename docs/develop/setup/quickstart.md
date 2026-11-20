@@ -41,23 +41,22 @@ uv sync --group dev
 - `--group dev` 必须带：本项目 `default-groups = []`，不带只会装运行依赖、漏掉 dev 组（`ruff` / `pytest` / `mcp` / `uvicorn` 等）。
 - 成功判据：生成 `.venv/`、命令无报错退出。
 
-### 4. 让 `src/` 进入模块搜索路径（src-layout 前提）
+### 4. 导入路径无需配置（uv 可编辑安装）
 
-项目是 `src-layout` + `package = false`，源码在 `src/` 下，但**不会自动进 `sys.path`**。二选一（一次设置，跑 app / 测试 / 构建都生效）：
+`uv sync` 已把本项目以**可编辑安装**方式装进 `.venv`：在虚拟环境里登记一个指向 `src/` 的查找指针，import 时直接读源码树文件（源码改动即时生效）。此后 `uv run` 下的任何 import 直接可用，**无需设置 `PYTHONPATH`**。三个边界：
 
-- **IDE（推荐）**：把 `src/` 设为 `Sources Root`（PyCharm），或 VS Code 里设 `PYTHONPATH=src`。
-- **命令行**：每个新 PowerShell 会话先 `$env:PYTHONPATH = "src"`（会话级）；或 `setx PYTHONPATH "src"`（永久，需重开终端）。
+- **项目目录移动/改名后**，可编辑安装的指针会失效（症状 = import 报错）——处置：在新位置重跑一次 `uv sync`。
+- **存量清理**：曾用过 `debug.bat` 或按旧文档执行过 `setx PYTHONPATH` 的机器，请删除用户级 `PYTHONPATH` 环境变量（Windows 设置 → 编辑账户的环境变量）——它排在虚拟环境之前，会遮蔽可编辑安装；星铁 / 绝区零双仓机器还可能跨仓串包。
+- **勿用 `uv build` 安装本项目**：`uv build` 产出的是非可编辑安装——包被复制进 site-packages，`__file__` 不再指向源码树，按 `__file__` 推项目根的资源定位（config/、assets/）会断。本项目只走 `uv sync`（可编辑）。
 
+> IDE 无需配置也可用：把 `src/` 标记为 `Sources Root`（PyCharm）仅为索引与导航友好，不是运行前提。
 > 也可沿用 `debug.bat`（交互式调试入口，已设置好环境）。
-> 这是 **src-layout 的结构前提**，不是测试相关的 `.env`（那摊见 ②）。本阶段不需要任何 `.env` 文件。
+> 本阶段不需要任何 `.env` 文件。
 
 ### 5. 跑起来验证
 
 ```powershell
-# 已在 IDE 设 Sources Root：
 uv run python src/sr_od/gui/sr_full_app.py
-# 纯命令行（本会话临时设 PYTHONPATH）：
-$env:PYTHONPATH = "src"; uv run python src/sr_od/gui/sr_full_app.py
 ```
 
 **主窗口（星穹铁道一条龙 GUI）弹出 = ① 完成。** app 本身不读任何环境变量。
@@ -88,7 +87,7 @@ uv run pytest sr-od-test/
 
 ```powershell
 # 1) 起后端 server（:24001；项目根目录，另起一个常驻终端）
-$env:PYTHONPATH = "src"; uv run python -m sr_od.backend.entry.server --port 24001
+uv run python -m sr_od.backend.entry.server --port 24001
 # 2) 接入你的 AI 工具（配置不入库，每人本地建）—— 按所用工具二选一：
 #    DSH:        项目根 .dsh/mcp.servers.yml 配 sr_od（yaml 见 backend/entry.md「接入 MCP 客户端」）
 #    Claude Code: claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
@@ -99,7 +98,7 @@ $env:PYTHONPATH = "src"; uv run python -m sr_od.backend.entry.server --port 2400
 
 ### LSP（代码导航，pyright）
 
-项目用 uv 方式 pyright 做 LSP（定义 / 引用 / 符号），`pyproject.toml` 已配 `[tool.pyright] extraPaths=["src"]`（同 `PYTHONPATH=src` 的根因）。各 AI 工具经 `uv run pyright-langserver` 接入（必须走 uv 方式；Claude Code 用 uv-pyright 插件）。
+项目用 uv 方式 pyright 做 LSP（定义 / 引用 / 符号），`pyproject.toml` 已配 `[tool.pyright] extraPaths=["src"]`（兜不经 uv 的 LSP 直连场景；经 uv 运行时可编辑安装已覆盖）。各 AI 工具经 `uv run pyright-langserver` 接入（必须走 uv 方式；Claude Code 用 uv-pyright 插件）。
 
 ### Skills
 

@@ -7,7 +7,7 @@
 产物落 ``--out-dir``(默认 ``.debug/temp/currency_war/models/``)。
 
 复跑命令(仓库根):
-    $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/win_model_m1.py
+    uv run python skills/sr-od-dev-currency-war/scripts/win_model_m1.py
 
 CLI:
     [--out-dir PATH]     产物目录(默认 .debug/temp/currency_war/models/)

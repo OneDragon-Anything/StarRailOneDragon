@@ -4,7 +4,7 @@
 
 - Python 3.11.9；包管理用 uv。
 - 安装依赖（含 ruff/pytest/pyright 等 dev 工具）：`uv sync --group dev`
-- 运行：`uv run python src/sr_od/gui/sr_full_app.py`（需 `PYTHONPATH=src`，详见 AGENTS.md）
+- 运行：`uv run python src/sr_od/gui/sr_full_app.py`
 - Lint：`uv run ruff check src/<你修改的文件>.py`
 - 测试：`uv run pytest sr-od-test/`
 - 也可用 `debug.bat` 交互式调试。

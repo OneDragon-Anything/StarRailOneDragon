@@ -8,7 +8,7 @@
 ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §1;
 宽容读入口单一源 = ``sr_od.application.currency_war.telemetry.journal_query``
 (:func:`read_journal_stats`:坏行/半行/非对象行逐行跳过 + 计数留痕),
-本工具是其消费方(运行需 ``PYTHONPATH=src``,先例 =
+本工具是其消费方(项目根 ``uv run`` 直接运行,先例 =
 ``skills/sr-od-dev-currency-war/scripts/repair_invest_attribution.py``)。
 
 ## 渲染结构
@@ -34,7 +34,7 @@
 cw4_counters 等)不渲染;无收尾章、无局况速览。渲染管线与显示规范
 以渲染器自身实现为准(以代码为准)。
 
-## 用法(主仓根目录,PYTHONPATH=src)
+## 用法(主仓根目录, uv run)
 
     uv run python skills/sr-od-dev-currency-war/scripts/replay_to_md.py --match g_20260923_172823 \
         [--run run_20260923_172823] [--out 复盘.md | --stdout]

@@ -20,7 +20,7 @@
   V_gap ≈ Σ V̄_net + Σ卡费 在窗口装配侧现算——本脚本产出 V̄ 表,
   换算式落 calibration.py 注入源注释(单一源,不在此造第二处公式)。
 
-运行(PowerShell):$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/calibration/calib_vuh_v1.py
+运行(PowerShell):uv run python skills/sr-od-dev-currency-war/scripts/calibration/calib_vuh_v1.py
 输出:stdout 报告 + `.debug/temp/currency_war/calib_vuh_v1_report.json`。
 """
 from __future__ import annotations

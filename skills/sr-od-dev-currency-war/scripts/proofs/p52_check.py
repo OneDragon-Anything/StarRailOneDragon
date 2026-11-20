@@ -12,7 +12,7 @@
 - 息差 cap: p47 域 min(g//10,5) 封顶 5 金/轮(P48 §③(a) 同源引用);
 - 濒死带 W_floor: P51 v3 §4-B(pooled p8-12 = 59.3 [48.5, 71.7])。
 
-重跑: $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p52_check.py
+重跑: uv run python skills/sr-od-dev-currency-war/scripts/proofs/p52_check.py
 """
 from dataclasses import dataclass
 

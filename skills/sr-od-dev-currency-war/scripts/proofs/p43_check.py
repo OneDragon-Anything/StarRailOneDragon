@@ -1,6 +1,6 @@
 """P43 数值自检:连胜-息取舍的经济账(连胜金流模型 / 破息保连胜判据 / 弃连胜保息判据)。
 
-重跑:PYTHONPATH=src uv run python skills/sr-od-dev-currency-war/scripts/proofs/p43_check.py
+重跑:uv run python skills/sr-od-dev-currency-war/scripts/proofs/p43_check.py
 数据源(不 import,值按代码注册表与 docs/game/currency_war/research 转写,本脚本自含):
   - 连胜表 STREAK_GOLD_TABLE = (1,1,2,2,2,3,4)(cw_economy,索引=连胜数,越界取尾;
     economy.md 10.1 弹窗实测 49/49)

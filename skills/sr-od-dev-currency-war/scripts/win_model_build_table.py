@@ -6,7 +6,7 @@ battle/遭遇/boss 行)与同 run_id 的**最近战前** decisions 帧join 成
 并实测 join 覆盖率(成功数 / 失败原因分类)。**只读 replay 语料,不写**。
 
 运行命令(仓库根):
-    $env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/win_model_build_table.py
+    uv run python skills/sr-od-dev-currency-war/scripts/win_model_build_table.py
 输出:``.debug/temp/currency_war/cw_dev/win_model_design/train_table.jsonl``
 (gitignored 区,合法)。
 """
