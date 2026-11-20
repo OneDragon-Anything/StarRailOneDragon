@@ -7,7 +7,7 @@
 
 **机制事实层**(游戏怎么运转,只能观测确立):`实机实测/图鉴` > `[米游社]` > `[社区]`(bwiki/NGA/攻略,单源或推算标 🟡,未找到标 🔴)
 
-**策略命题层**(什么打法更优,可证明/可实证):`数学证明([math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md))+ sim/实机分布实证` > `设计文档(skill references/strategy/ 判据权威版本)` > `[米游社]` > `[社区]`
+**策略命题层**(什么打法更优):`sim/实机分布实证` > `设计文档(skill references/strategy/ 判据权威版本)` > `[米游社]` > `[社区]`(数学证明体系已整体废弃删除,考古走 git 历史)
 
 > 旧单层序(口述最高,2026-09-07 废)已由用户裁定废除;历史 `[口述·权威]` 标签=来源出处标记,解释权归本序。**2026-10-16 用户裁定:口述登记簿 user_playstyle.md 整份删除,一切判据以设计文档(skill strategy/)为准;历史条目号 [N] 语义按 git 历史回溯。**
 
@@ -42,7 +42,7 @@
    - [xp-rules.md](xp-rules.md) — 节点基础经验:节点经验结算(+2/+0/BOSS+12 待确认)/ 购买经验 4 金=+4XP / 升级门槛表(实机 145 局统计)
    - [board_structure.md](board_structure.md) — 板面格子结构:前台 4/后台 6 恒定,钻石/召唤物才扩后台;等级只定上场人数 cap(推翻旧 level 驱动布局模型)
    - [merge_mechanics.md](merge_mechanics.md) — 升星合成:买牌落点(备战→触发合成改落点)/场上吸收/备战最左/连锁合成(口述·权威;bot 期望态层与拖拽后状态核对器的合成期望规格)
-   - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略(证据分级标注,码源+口述):穿着即合成/前后台限定/商店自带装备/唯一件/工具 7 件全量+使用语义(策略决策件挂策略池)/冶金炉回收流水线(经济账框架,math_proofs 第 14 号命题生产化)
+   - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略(证据分级标注,码源+口述):穿着即合成/前后台限定/商店自带装备/唯一件/工具 7 件全量+使用语义(策略决策件挂策略池)/冶金炉回收流水线(经济账框架,生产化)
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
     - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
@@ -58,7 +58,6 @@
 5. **方法论与证明**(怎么读阵容 / 怎么论证策略;工具篇,可穿插读):
    - [combo_methodology.md](combo_methodology.md) — 阵容理解方法论(技能 / 羁绊 / 玩法三层)+ 攻略黑话查证纪律
    - [plaza_methodology.md](plaza_methodology.md) — 玩法方法论 M1-M16(资源入口 / 核心×弹性 / 升星经济学 / 装备优先级…)
-   - [math_proofs.md](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) — 策略命题的数学期望证明集**索引**(命题状态表;单篇证明在 [proofs/](../../../develop/sr_od/application/currency_war/proofs/) 目录,一命题一篇含推导过程与数字表;计算脚本在 `skills/sr-od-dev-currency-war/scripts/proofs`)
 
 ## 索引(什么问题查哪篇)
 
@@ -75,7 +74,6 @@
 | **终局阵容分类**(final comps 家族索引+逐类打法;carry 主体优先、家族注检索;**单套阵容打法知识单一源**;V4.7 全量重建 2026-11-16) | [final_comps/README.md](final_comps/README.md) ★ |
 | 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |
 | 玩法方法论 M1-M16:资源入口/核心×弹性/多线通用角色分级/骨架拼装/升星经济学/装备优先级/站位… | [plaza_methodology.md](plaza_methodology.md) |
-| 策略命题证明(某结论为什么成立/口述直觉的数学保证) | [math_proofs.md](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 索引 → [proofs/](../../../develop/sr_od/application/currency_war/proofs/) 单篇 |
 | 单套阵容打法(入场/退场信号/counter/装备叙事) | [final_comps/](final_comps/README.md) 各类文档(2026-08-22 起单一源;原 comps/ 打法卡层已撤销合并) |
 | 投资卡效果全量分类与可建模边界(API 裁定) | [invest_effects.md](invest_effects.md) |
 | **V4.7 赛季适配**:解锁门(真珠的委托+新手关)/奇遇伙伴/武装箱补给/结算经济实证/画面适配状态 | [v47_first_match_observation.md](v47_first_match_observation.md) |
@@ -86,7 +84,6 @@
 
 - research/ **唯一排除**:screen_flow_timing(画面流转时序,运行时/运维侧,非策略面)。
 - data/(`docs/game/currency_war/data/`,**全部策略相关**):gameplay(官方玩法说明)/ competitors(词缀机制+20 竞争阵营唯一源)/ bosses(boss 克制启示)/ advantage_layouts(跨局 meta 增益)/ plaza_meta(实战 meta)。已建模入代码注册表的数据已删 doc,查值直接看注册表(清单见 data/README)。
-- proofs/ 单篇按命题按需读(math_proofs 是命题状态表)。
 
 消费方(sr-od-dev-currency-war skill、判读/验证工作流)引用「改策略前读什么」时指本节,别在别处另列清单。
 

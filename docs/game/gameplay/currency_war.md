@@ -27,7 +27,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 | 终局阵容打法(十类) | [final_comps/](../currency_war/research/final_comps/README.md) |
 | 投资策略 / 环境效果全景 | [invest_effects.md](../currency_war/research/invest_effects.md) |
 | 阵容理解方法 / 攻略黑话查证 | [combo_methodology.md](../currency_war/research/combo_methodology.md) |
-| 高玩方法论(M1-M16)/ 策略数学证明 | [plaza_methodology.md](../currency_war/research/plaza_methodology.md) / [math_proofs.md](../currency_war/research/math_proofs.md) |
+| 高玩方法论(M1-M16) | [plaza_methodology.md](../currency_war/research/plaza_methodology.md) |
 | bot 策略设计 as-built 与决策 why | [docs/develop/sr_od/application/currency_war/](../../develop/sr_od/application/currency_war/)(skill strategy/) |
 
 > 新读者的推荐顺序(依赖驱动:机制 → 纪律 → 过渡 → 阵容 → 方法论)见 [research/README.md「玩家理解序」](../currency_war/research/README.md)。
