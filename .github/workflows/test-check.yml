@@ -34,6 +34,14 @@ jobs:
           .\.venv\Scripts\Activate.ps1
           uv sync --group dev
 
+      - name: Verify project packages importable
+        shell: pwsh
+        run: |
+          # import 探针：本项目以 uv 包形式安装后四个顶级包应可直接 import；
+          # 若包未装上，pytest 的 pythonpath 配置会遮蔽该环境故障让测试照样绿，故在主链显式报错
+          .\.venv\Scripts\Activate.ps1
+          uv run python -c "import sr_od, one_dragon, one_dragon_qt, onnxocr"
+
       - name: Checkout test repo
         id: checkout-test-repo
         uses: actions/checkout@v5

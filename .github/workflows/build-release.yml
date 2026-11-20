@@ -128,7 +128,13 @@ jobs:
 
         # 创建目标目录并生成 wheel 包
         New-Item -ItemType Directory -Path deploy/dist/wheels -Force
-        uv export --no-hashes --no-dev --format requirements-txt > deploy/dist/requirements.txt
+        # --no-emit-project：uv export 默认会把当前项目以 editable 条目写入输出，须排除——
+        # 否则 pip wheel 会在 runner 上构建项目、把指向 runner 临时路径的悬空指针包打进环境包分发给用户
+        uv export --no-hashes --no-dev --no-emit-project --format requirements-txt > deploy/dist/requirements.txt
+        # 追加 setuptools>=64（满足 pyproject [build-system].requires 的版本约束）：
+        # 用户机安装本项目（可编辑安装）时构建隔离需要 setuptools 作构建后端，
+        # 随环境包携带其 wheel 后，断网用户也能通过 --find-links 供给完成安装
+        Add-Content -Path deploy/dist/requirements.txt -Value "setuptools>=64"
         pip wheel --wheel-dir=deploy/dist/wheels -r deploy/dist/requirements.txt
 
         # 压缩生成的 wheels 目录
