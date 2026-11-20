@@ -96,7 +96,7 @@ multi_screens: [enter_game, enter_game_choose_account, enter_game_logout_dialog]
 - **flow 测试**:`sr-od-test/test/sr_od/operations/enter_game/test_enter_game_flow.py` 覆盖
   3 条 happy-path(点击进入 / 账密 / 切换账号),fixture 在 `sr-od-test/screens/`。
 - **登录恢复到战斗画面族**(2026-11-16 起):客户端重启恢复上次中断战斗时,`EnterGame.check_screen`
-  有三个正面识别分支(确认弹窗「战斗-退出确认弹窗」/暂停面板「战斗-暂停面板」/结算页「挑战结束」
+  有三个正面识别分支(确认弹窗「逐光捡金-战斗退出确认弹窗」/暂停面板「战斗-暂停面板」/结算页「挑战结束」
   词)主动退出战斗收敛——画面知识见 [battle_pause.md](battle_pause.md) 与
-  [battle_exit_confirm.md](battle_exit_confirm.md);CW(货币战争)形态不在覆盖范围(有界失败,
+  [treasures_light_battle_exit_confirm.md](treasures_light_battle_exit_confirm.md);CW(货币战争)形态不在覆盖范围(有界失败,
   CW app 自己的恢复链负责)。

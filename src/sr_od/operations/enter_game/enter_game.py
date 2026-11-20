@@ -337,22 +337,25 @@ class EnterGame(SrOperation):
 
     def check_battle_exit_confirm(self, screen: MatLike) -> OperationRoundResult | None:
         """
-        识别战斗退出确认弹窗(「提示」标题 + 「确认」按钮)并点「确认」。
+        识别逐光捡金战斗退出确认弹窗(正文「是否结束本场战斗」+「确认」按钮)并点「确认」。
 
-        双锚同时命中才动作:「提示」单词区分度差(出现「提示」文字的场景多),
-        与「确认」按钮同现才算本弹窗。取 area 中心点击不用 OCR 词点击——按钮
-        位置固定;pc_alt 按最坏光标态点(恢复态可能锁光标,自由光标下 Alt+点击无害)。
-        点击可能不落地,round_retry 逐帧重识别,计入节点 retry 上限有界失败;
-        不用 round_wait(不消耗 retry,弹窗没点掉会永动)。
+        双锚同时命中才动作:识别锚用弹窗正文专属文案——通用「提示」弹窗族的
+        成员弹窗(未达上限警告/跃迁兑换确认等)与本弹窗「提示」标题、「确认」
+        按钮同位同文,位置锚无法区分族员,各族员以各自正文建档(锚词避法与
+        族员清单见 docs/game/screens/treasures_light_battle_exit_confirm.md)。
+        取 area 中心点击不用 OCR 词点击——按钮位置固定;pc_alt 按最坏光标态点
+        (恢复态可能锁光标,自由光标下 Alt+点击无害)。点击可能不落地,round_retry
+        逐帧重识别,计入节点 retry 上限有界失败;不用 round_wait(不消耗 retry,
+        弹窗没点掉会永动)。
 
         :param screen: 当前画面截图
         """
-        tip_result = self.round_by_find_area(screen, '战斗-退出确认弹窗', '标识-提示')
-        confirm_result = self.round_by_find_area(screen, '战斗-退出确认弹窗', '按钮-确认')
-        if not tip_result.is_success or not confirm_result.is_success:
+        body_result = self.round_by_find_area(screen, '逐光捡金-战斗退出确认弹窗', '正文-是否结束本场战斗')
+        confirm_result = self.round_by_find_area(screen, '逐光捡金-战斗退出确认弹窗', '按钮-确认')
+        if not body_result.is_success or not confirm_result.is_success:
             return None
 
-        confirm_area = self.ctx.screen_loader.get_area('战斗-退出确认弹窗', '按钮-确认')
+        confirm_area = self.ctx.screen_loader.get_area('逐光捡金-战斗退出确认弹窗', '按钮-确认')
         if confirm_area is None:  # 档异常防御:识别命中但取不到 area,不动作交兜底
             return None
         log.info('[进入游戏] 命中战斗退出确认弹窗,点击确认继续退出链')

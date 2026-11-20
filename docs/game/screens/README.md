@@ -19,7 +19,7 @@ StarRailOneDragon 各 screen 画面建档 doc 索引。代表截图归档测试�
 | 任务 | [mission.md](mission.md) | 任务 / 委托 |
 | 战斗 | [battle.md](battle.md) | 回合制战斗(过程态 + 结果结算) |
 | 战斗-暂停面板 | [battle_pause.md](battle_pause.md) | 战斗中点右上暂停钮/客户端重启恢复中断战斗弹出的关卡信息面板;双 id_mark(战斗暂停+关卡信息),退出位按钮位置跨玩法固定文案随玩法变;与 CW 档同族(CW 域 op 用旧档,通用兜底用本档);2026-11-16 建 |
-| 战斗-退出确认弹窗 | [battle_exit_confirm.md](battle_exit_confirm.md) | 暂停面板点退出位后弹出的确认弹窗(「提示」+取消/确认,与通用提示弹窗族同构);双 id_mark(提示+确认)战斗退出语境识别档,登录恢复退出链中间站(EnterGame 消费);2026-11-16 建 |
+| 逐光捡金-战斗退出确认弹窗 | [treasures_light_battle_exit_confirm.md](treasures_light_battle_exit_confirm.md) | 逐光捡金系战斗暂停面板点退出位后的确认弹窗;id_mark 用正文锚「是否结束本场战斗」(与通用「提示」弹窗族族员严格区分),登录恢复退出链中间站(EnterGame 消费);2026-11-21 自旧通用屏「战斗-退出确认弹窗」退役拆分 |
 | 对话 | [对话.md](对话.md) | 剧情对话 |
 | 商店 | [store.md](store.md) | 商店购买 |
 | 合成 | [synthesize.md](synthesize.md) | 合成 / 转化 |

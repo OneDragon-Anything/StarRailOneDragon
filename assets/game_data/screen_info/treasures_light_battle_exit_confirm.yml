@@ -1,15 +1,15 @@
-screen_id: battle_exit_confirm
-screen_name: 战斗-退出确认弹窗
+screen_id: treasures_light_battle_exit_confirm
+screen_name: 逐光捡金-战斗退出确认弹窗
 pc_alt: false
 area_list:
-- area_name: 标识-提示
+- area_name: 正文-是否结束本场战斗
   id_mark: true
   pc_rect:
-  - 890
-  - 375
-  - 1030
-  - 450
-  text: 提示
+  - 700
+  - 490
+  - 1320
+  - 535
+  text: 是否结束本场战斗
   lcs_percent: 0.7
   template_sub_dir: ''
   template_id: ''
@@ -17,7 +17,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 按钮-确认
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 980
   - 635
