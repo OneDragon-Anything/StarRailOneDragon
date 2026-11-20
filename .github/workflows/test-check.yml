@@ -25,6 +25,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
+      # 集成分支红灯 issue 的创建/评论/关闭与 test-branch-red 标签自建（缺它 gh issue create 直接 403）
+      issues: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -120,3 +122,34 @@ jobs:
           "@
           Write-Host $message
         shell: pwsh
+
+      - name: 集成分支红灯通知（issue）
+        # 定时联动触发的失败无天然关联人，落为带标签 issue 的自管理指示灯；
+        # 只反映集成分支——push/pull_request 失败有关联人（推送者/PR 作者），维持上面的日志 notice 层
+        if: ${{ failure() && github.event_name == 'workflow_run' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create test-branch-red --color D93F0B --description "集成分支测试失败" --force
+          $runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          $head = "${{ github.event.workflow_run.head_sha }}"
+          $body = "集成分支 test 分支测试失败。`n分支头: $head`n运行: $runUrl"
+          $existing = gh search issues --repo ${{ github.repository }} --label test-branch-red --state open --json number --jq '.[0].number'
+          if ($existing) {
+            gh issue comment $existing --body $body
+          } else {
+            gh issue create --title "集成分支测试失败" --body $body --label test-branch-red
+          }
+
+      - name: 集成分支绿灯熄灯
+        # 显式 success()（不依赖 if 的隐式规则）；仅集成分支联动触发时执行
+        if: ${{ success() && github.event_name == 'workflow_run' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $open = gh search issues --repo ${{ github.repository }} --label test-branch-red --state open --json number --jq '.[].number'
+          foreach ($n in $open) {
+            gh issue close $n --comment "集成分支测试转绿，自动熄灯"
+          }
