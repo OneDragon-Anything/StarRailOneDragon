@@ -74,3 +74,4 @@ docs/superpowers/
 assets/template/cw_equip/_debug/cw_dev/
 .coverage
 OneDragon-Launcher.exe.pre-piped.bak
+src/*.egg-info/
