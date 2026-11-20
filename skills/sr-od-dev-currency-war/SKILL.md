@@ -181,7 +181,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | **策略工作统一说明**(策略是什么与方法主线/改前/开关落地/验证/单帧测试) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
 | **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
 | **CW 工具脚本**(数据采集生成器/哨兵组/复盘渲染/calibration——全家住本 skill `scripts/`,usage 看各脚本 docstring) | `scripts/`(采集生成器 data-collection、哨兵 runtime-ops、渲染 match-review) |
-| **测试分层**(L1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` ≈2.5min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/ -m "not slow"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 策略验证阶梯单一源 = strategy-work「验证」 |
+| **测试分层**(T1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` ≈2.5min/T2=T1+受影响域点名/T3 全量 `uv run pytest sr-od-test/ -m "not slow"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口;改名注:原 L1/L2/L3 与部署评分层 L1/L2/L3 撞名,测试族改 T 前缀消歧——部署评分层与验证阶梯 L0+L1 的 L 编号不变) | 策略验证阶梯单一源 = strategy-work「验证」 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
 | **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,报告按画面章组织——每画面 op 一章,章内 0 观察+动作节×N+策略评价,报告由渲染器 skills/sr-od-dev-currency-war/scripts/replay_to_md.py 生成,复盘者填判定与文末复盘者附加;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选;实机探索 agent 局终后由编排者按需派单执行,产出的缺陷候选交编排者按问题处置循环分诊=autonomous-loop §3) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 改动集中到局间一次重启,局中不改**;重启/早停/残局清理/监控栈与哨兵;效率剖析与巡检阈值回填=「一局时间花在哪」的拆分方法与巡检阈值回填去向) | [references/runtime-ops.md](references/runtime-ops.md) |

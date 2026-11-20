@@ -168,7 +168,7 @@ P1 消费通道篇 §9.2 已登记读数问题族为 swap 写入代码前置项;
 
 ## 7. 写入代码分批建议
 
-- **批 A(仲裁注册面+零变更迁移)**:cw_arbitration.py + deployed/board 两量迁移 + cw_screen_prep 对账调用点替换 + 注册面语义测试/迁移比对测试/细分键互不混流测试。验收=L1 快速集绿+迁移比对测试;风险最低,先立地基。
+- **批 A(仲裁注册面+零变更迁移)**:cw_arbitration.py + deployed/board 两量迁移 + cw_screen_prep 对账调用点替换 + 注册面语义测试/迁移比对测试/细分键互不混流测试。验收=T1 快速集绿+迁移比对测试;风险最低,先立地基。
 - **批 B(布局三信号,行为变更批)**:§3.2 全部 + 防抖帧断言测试/单帧未知测试/level 单一源测试 + defects 细分键 + cw_identity_obs(level 单一源+钩子适配)。验收=失效形态复现帧单测+CW 快速集+一次实机局检查点(到位面 1-r7+ 盯 `deployed_count_2src` 与新增 `back_layout_*` 保留证据行频次,report §3 复用同款判读检查点)。
 - **批 C(与 P1 消费通道篇 swap 写入代码合流)**:§4 三约束——cw_screen_prep vacancy 改造+divergent 传播+放行条件语义,随 swap 放行条件一并落;依赖 P1 消费通道篇玩家过目门。
 - **批序与文件面(A5 修订,替代 v1「三批互斥」)**:批 A 与批 C **同触 cw_screen_prep.py**(不同段:批 A=对账调用点,批 C=vacancy 计算段),批 B 与批 A/C 同触 cw_op_deploy.py(批 B=单一源转调,批 C=swap 收拢位)——**三批是先后串行关系,不是文件面互斥**;批间靠接口锁衔接:批 A 交付注册面 API(锁死)→ 批 B 消费;批 A 交付对账迁移语义→ 批 C 的 vacancy 改造复用同一仲裁值路径。执行序 A→B→C,A 完成前 B/C 不开工。
