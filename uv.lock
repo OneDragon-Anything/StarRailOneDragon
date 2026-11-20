@@ -1278,7 +1278,7 @@ wheels = [
 [[package]]
 name = "starrail-onedragon"
 version = "3.4.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "cryptography", marker = "sys_platform == 'win32'" },
     { name = "gensim", marker = "sys_platform == 'win32'" },
