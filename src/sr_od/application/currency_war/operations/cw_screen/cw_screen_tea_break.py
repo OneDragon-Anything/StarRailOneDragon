@@ -15,7 +15,9 @@ design §2.1)。
 观察重判态,循环有界)。分支选卡 node = 固定规则决策(R1 回血优先 /
 R2 负面 HP 词面排除 / R2b 返回类排除 / R3 取首)→ 点选 → 确认钮在场
 = 选中生效 → 点确认 until 奖励页标题;确认钮未在场 = 点击未生效脉冲
-重试 ≤3(CwScreenPartner CONFIRM_REJECT_MAX 形态)。
+重试 ≤3(CwScreenPartner CONFIRM_REJECT_MAX 形态);点确认连等封顶
+≤3(OPEN_CLICK_MAX 同款——until 点击恒成功锚恒不出现 = 框架
+round_wait 无界,节点自设连等封顶,超限 fail 交外环)。
 
 触发链声明:奇遇 → 茶歇由主循环分发自然衔接,本 op 不感知上游;
 茶歇 → 奖励页同理由判效锚 + 主循环下帧分发衔接,op 内不跳转。
@@ -107,12 +109,20 @@ class CwScreenTeaBreak(CwOperation):
     # 确认钮未在场(点击未生效)脉冲上限(CwScreenPartner CONFIRM_REJECT_MAX
     # 形态;取值 < 节点预算,先于预算耗尽给出精确失败原因)。
     CONFIRM_REJECT_MAX: ClassVar[int] = 3
+    # 确认连等封顶(点确认 until 等待在框架里是 round_wait 无界——
+    # 点击恒成功锚恒不出现时框架不设限,节点自设连等封顶,同款 =
+    # CwScreenTeaBreakReward.OPEN_CLICK_MAX;超限 = 奖励页锚恒不出现
+    # 形态,fail 交外环)。
+    CONFIRM_WAIT_MAX: ClassVar[int] = 3
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-幕后茶歇')
         # 确认未生效脉冲计数(分支选卡 node 自环重入 +1,超限 fail;
         # 实例级,单 op 生命周期)。
         self._confirm_pulses: int = 0
+        # 确认连等计数(select_option until 失败分支每轮 +1,超限 fail;
+        # 封顶语义见 CONFIRM_WAIT_MAX;实例级,单 op 生命周期)。
+        self._confirm_waits: int = 0
         # 确认已发标志(落地复查顶部消费,见 select_option docstring;
         # partner _confirm_pending 同款形态)。
         self._confirm_sent: bool = False
@@ -307,7 +317,9 @@ class CwScreenTeaBreak(CwOperation):
         success/fail 即访问终态交回主循环(带 status 的 SUCCESS 走自环
         兜底边 = 无限循环,故脉冲重入只用 round_wait 不建自环边)。
         点确认 = area 点击原语 + until 判效锚(奖励页出现 = 交互落地),
-        success_wait 显式。
+        success_wait 显式。until 失败分支 = 确认连等(点击恒成功锚恒
+        不出现 = 框架 round_wait 无界面),消费 ``_confirm_waits`` 计数
+        封顶 ``CONFIRM_WAIT_MAX``,超限 round_fail 交外环。
 
         重入顶部落地复查(确认已发 → 奖励页标题在场 = 交互落地 →
         success;CwScreenPartner 落地复查顶部同款):until 验证轮 = 本
@@ -348,6 +360,11 @@ class CwScreenTeaBreak(CwOperation):
         if rr.is_success:
             return self.round_success('已确认交互,画面切茶歇奖励(交回主循环)',
                                       wait=0.5)
+        self._confirm_waits += 1
+        if self._confirm_waits > CwScreenTeaBreak.CONFIRM_WAIT_MAX:
+            return self.round_fail(
+                f'点确认后奖励页锚恒不出现(确认连等超限,'
+                f'>{CwScreenTeaBreak.CONFIRM_WAIT_MAX}轮交外环)')
         self._confirm_sent = True
         return rr
 
