@@ -33,10 +33,10 @@ area_list:
 - area_name: 读区-选项卡区
   id_mark: false
   pc_rect:
-  - 1130
-  - 390
-  - 1855
-  - 545
+  - 1125
+  - 385
+  - 1860
+  - 865
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
