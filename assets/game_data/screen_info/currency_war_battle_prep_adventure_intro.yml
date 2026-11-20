@@ -45,7 +45,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 读区-奇遇标题
-  id_mark: false
+  id_mark: true
   pc_rect:
   - 725
   - 458

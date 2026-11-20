@@ -1,0 +1,8 @@
+sub_dir: currency_war
+template_id: cw_adventure_dialog_arrow
+template_name: 奇遇对话推进箭头
+template_shape: circle
+auto_mask: true
+point_list:
+- 1492, 967
+- 1492, 988
