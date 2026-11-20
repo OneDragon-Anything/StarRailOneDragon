@@ -84,7 +84,7 @@
 过渡层不复制这套分层:过渡阵容库(`TRANSITION_LIBRARY`)为**组合条目制**
 ——`TRANSITION_BONDS` 构造块 × 两两组合建库期生成(单羁绊构造块不是
 条目、永不锁定;点名件在板语义 = core 全员,经 fp 统一表达式承载),语义边界归
-strategy-docs/12 号篇 §3,本表不镜像。
+strategy/12 号篇 §3,本表不镜像。
 
 字段族的具体成员随迭代增减,本表只锁语义边界;「现在有哪些字段」查
 `cw_comps.py` 的 Comp dataclass(单一源,不镜像)。
@@ -105,7 +105,7 @@ strategy-docs/12 号篇 §3,本表不镜像。
 2. **管辖域 = Comp 派生概念**:凡派生自 Comp 数据字段、被策略层或 kernel
    其他模块消费的概念,读口落 `kernel/cw_comps.py`。豁免两类:**策略层
    立场数据**(LINE_HEAT/COMP_MEGASTAR_PREFERENCE/词缀吃怕表——攻略热度
-   统计与策略偏好,按 strategy-docs/12 号篇分层归策略层旁表)与**独立
+   统计与策略偏好,按 strategy/12 号篇分层归策略层旁表)与**独立
    概念**(intention_core——意向核心,∈core 约束是 miss 计数良定义的
    刻意语义,落 cw_intention)。
 3. **两层 docstring 分责**:字段 docstring 写知识登记语义(「凭什么信」:

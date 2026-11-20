@@ -1,6 +1,6 @@
 """货币战争 遭遇结算观测基建(环 + 经验表 + 兑现回调)+ 装填拨盘槽。
 
-本模块 = 裁定 9(strategy-docs/04_survival_budget.md 判据来源裁定表第 9 行,
+本模块 = 裁定 9(skill strategy/04_survival_budget.md 判据来源裁定表第 9 行,
 用户 2026-09-12 逐项确认)授权的敌方通道结算观测持久化基建:
 
 - 结算观测环 :class:`SettlementRing` 与遭遇经验表 :class:`EncounterLog`
@@ -13,7 +13,7 @@
 
 遭遇**选档判据本体**已迁策略层
 ``strategies/impl/mandate_v1/encounter_pick.py``(能力态直通形;宪法五:
-判据值/序随策略本体驻策略层;判据语义权威版本 = strategy-docs/31 号稿)——
+判据值/序随策略本体驻策略层;判据语义权威版本 = skill strategy/31 号稿)——
 本模块不再含任何选档打分与标定判据面。窗口读口
 ``SettlementRing.last_normal_battles`` 与经验读口
 ``EncounterLog.tier_cleared`` 原样保留(迁移后消费方 = 策略层画面文件)。
@@ -247,7 +247,7 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
 
 
 # ===== 遭遇奖励兑现回调(结算确认链插入位置;判据正本 =
-# strategy-docs/31_encounter_screen.md 立场与重拍回退节)=====
+# skill strategy/31_encounter_screen.md 立场与重拍回退节)=====
 
 def claim_encounter_reward(gs: GameState) -> str:
     """遭遇奖励兑现(纯状态容器读零读屏;``CwOpSettleConfirm`` 确认点击后、

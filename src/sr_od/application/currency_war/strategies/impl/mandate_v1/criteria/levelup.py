@@ -1,7 +1,7 @@
 """criteria/levelup——升级面判据(最优概率带单判据 + 单帧原子发射)。
 
 判据体系 = 升级触发统一与资金门重定义批(用户裁定 2026-10-18 四条;
-触发/资金门/删除面权威基准 = strategy-docs/11_shop_decisions.md §2)+
+触发/资金门/删除面权威基准 = skill strategy/11_shop_decisions.md §2)+
 资格门全链判定单一源
 :func:`upgrade_gate_verdict`,支出形态单帧原子,跨画面键退役):
 

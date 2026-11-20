@@ -1,7 +1,7 @@
 # 策略器契约(strategy-contract)
 
 > 路径根 = `src/sr_od/application/currency_war/`;代码定位一律用 `文件::符号名`。
-> 职责分界:策略文档只管「每个画面结合哪些数学证明、怎么产出决策」(`docs/develop/sr_od/application/currency_war/strategy-docs/`);流程控制单独立文档(本篇)——画面识别与路由、访问相位推进、动作发出契约、守卫与停机。
+> 职责分界:策略文档只管「每个画面结合哪些数学证明、怎么产出决策」(`../strategy/`);流程控制单独立文档(本篇)——画面识别与路由、访问相位推进、动作发出契约、守卫与停机。
 
 **策略器 = 决定「此刻做什么动作」的大脑。**画面 op 的策略器处理段(四段规范第 4 段,见 [screen-op.md](screen-op.md))按当前画面调用它对应的决策接口:策略器自己从状态容器读观察事实,返回恰一个动作,画面 op 把动作交给动作 op 执行。策略器不碰屏幕、不管流程编排、不执行动作、不持有跨局状态;决策所需的中间变量一律收拢在自己的实现包私有状态里(§4),不放状态容器。
 
@@ -47,7 +47,7 @@
 |---|---|---|---|
 | `decide_prep_screen` | 状态容器 game state 直读 | **恰一个动作**(CwAction),无 None;重观察 = CwActionObsParam 两口径(in_place 环内重观察 / outer_loop 结束本次访问) | 备战决策 |
 | `decide_shop_action` | 状态容器直读 | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结 | 决策本体 = `mandate_v1/shop.py`;状态容器 shop payload 离屏 = 观察层失约抛错 |
-| pick 族 12:`decide_invest_env` / `decide_invest_strategy` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner` / `decide_star_tome` / `decide_wish_trial` / `decide_box_card` / `decide_fortune` / `decide_expert_invite` | 状态容器槽零参读(候选自各 `*_opts` 槽/payload 槽;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作,互斥单发 | 选项决策;动作编排归画面 op。决策规格 = strategy-docs/13_pick_family.md |
+| pick 族 12:`decide_invest_env` / `decide_invest_strategy` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner` / `decide_star_tome` / `decide_wish_trial` / `decide_box_card` / `decide_fortune` / `decide_expert_invite` | 状态容器槽零参读(候选自各 `*_opts` 槽/payload 槽;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作,互斥单发 | 选项决策;动作编排归画面 op。决策规格 = `../strategy/13_pick_family.md` |
 
 ### 3.3 内部辅助成员(实现层,不属接口)
 

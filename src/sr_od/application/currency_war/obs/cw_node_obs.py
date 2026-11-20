@@ -45,7 +45,7 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
     按 title center-x 左→右排序 → ``idx``。决策消费 = 策略层
     ``mandate_v1/encounter_pick.decide``(能力态直通形:κ_S 三态 + 经验
     档层 + 奖励 tiebreak;不消费阵容成型度——判据语义权威版本 =
-    strategy-docs/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
+    skill strategy/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
     (画面 op act 空候选零点击 round_success
     终结返回主循环重新识别画面,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
     """

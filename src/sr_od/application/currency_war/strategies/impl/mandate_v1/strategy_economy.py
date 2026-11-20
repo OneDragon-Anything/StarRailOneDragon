@@ -1,6 +1,6 @@
 """策略卡经济通道金等价折算(mandate_v1 共用模块;投资策略屏现金分承载面)。
 
-设计权威版本 = strategy-docs/29_invest_strategy_screen.md §2.1(下称
+设计权威版本 = skill strategy/29_invest_strategy_screen.md §2.1(下称
 「29 号稿」);复用契约形态与折算约定沿 env 批
 env_economy.py——``(值, resolved)`` 返回、fail-closed 门、
 :data:`XP_GOLD_RATE` 语义同源,但**通道公式分立**:

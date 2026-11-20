@@ -80,7 +80,7 @@ if TYPE_CHECKING:
 class CwScreenInvestEnv(CwOperation):
     """投资环境 3 选 1:零参决策(候选自状态容器槽,策略器 ``decide_invest_env``;
     起点:货币战争-投资环境 3 选 1 画面;终点:选卡并确认完成,画面离开(返回主循环)。
-    判据 = 策略层 ``invest_env``(strategy-docs/28_invest_env_screen.md))→ 刷新终结分支 ∨ 选卡确认链派发。"""
+    判据 = 策略层 ``invest_env``(skill strategy/28_invest_env_screen.md))→ 刷新终结分支 ∨ 选卡确认链派发。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
     # 卡名行 center-y 过滤带(排除标题 y≈98 / 描述 y≈419+ / 确认 y≈982)。

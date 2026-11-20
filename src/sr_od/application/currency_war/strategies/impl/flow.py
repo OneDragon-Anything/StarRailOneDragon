@@ -336,11 +336,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         两轴判据单一源均在策略层(kind 分派;宪法五「衍生估值/评序归
         策略层」;意向解析留 flow,三参同源直通):
         - env → ``invest_env.decide``/``decide_pick``
-          (:meth:`_decide_invest_env_frame`;判据权威版本 = strategy-docs
+          (:meth:`_decide_invest_env_frame`;判据权威版本 = skill strategy/
           28 号稿);
         - strategy → ``invest_strategy.decide``/``decide_pick``
           (:meth:`_decide_invest_strategy_frame`;判据权威版本 =
-          strategy-docs/29_invest_strategy_screen.md)。
+          skill strategy/29_invest_strategy_screen.md)。
         (用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
         不为过渡阵容服务」):两轴对齐源均 = 意向状态 D*① 三参
         (locked_comp/demoted_endgame/evicted 同源 ist)传入策略层;旧
@@ -369,7 +369,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                       ist: IntentionState,
                                       ) -> CwActionPickInvestStrategyParam | CwActionRefreshInvestCardsParam:
         """投资策略轴决策(策略层单一源 = ``invest_strategy.decide``;判据
-        权威版本 = strategy-docs 投资策略画面篇):纯值出口在此包装动作词表,
+        权威版本 = skill strategy/ 投资策略画面篇):纯值出口在此包装动作词表,
         op handler 与观察写槽零改动。同帧去重 memo 语义与 env 侧同构
         (键 = (kind,候选元组)):建议帧首调发逐卡刷新建议(slots = 策略层
         动作集,与选卡互斥——旧 kernel 单一入口非互斥返回的语义分界),紧随
@@ -445,7 +445,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                  ist: IntentionState,
                                  ) -> CwActionPickInvestEnvParam | CwActionRefreshInvestCardsParam:
         """投资环境轴决策(策略层单一源 = ``invest_env.decide``;判据权威版本
-        = strategy-docs/28_invest_env_screen.md):纯值出口在此包装动作词表,
+        = skill strategy/28_invest_env_screen.md):纯值出口在此包装动作词表,
         op handler 与观察写槽零改动。
         同帧去重 memo 语义不变(键同策略轴结构 = (kind,候选元组)):
         建议帧首调发建议——环境屏 = 整组重掷(单全局钮,handler 只消费
@@ -508,7 +508,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         """遭遇选档/分支刷新(终态零参口;候选 = ``gs.encounter`` payload)。
         判据单一源 = 策略层 ``encounter_pick.decide``(能力态直通形:κ_S
         三态 + 经验档层 + 奖励序数 tiebreak + 刷新阀;判据权威版本 =
-        strategy-docs/31 号稿);刷新次数闸内嵌 decide(读
+        skill strategy/31 号稿);刷新次数闸内嵌 decide(读
         ``gs.encounter_refresh_left`` 剩余语义,用户裁定 2026-09-21,
         全域规范 = op-layer.md §1.4;None = 未观察 → 不可刷 fail-closed),
         不设 refresh_used 预计算。纯值出口在此包装动作词表,op handler

@@ -1,6 +1,6 @@
 """统一部署搜索(评分制;部署判据件,策略层 mandate_v1)。
 
-设计单一源 = 策略面正本 strategy-docs/24_deploy_segment.md
+设计单一源 = 策略面正本 skill strategy/24_deploy_segment.md
 (下称「正本」;评分函数 / §1.2 三段搜索)。职责边界(正本 §1):
 场上去留 = 部署算法单属——本模块回答
 「谁上场、去哪一排、选哪颗星」,输出 target_board(角色名 →
@@ -483,7 +483,7 @@ def search_deploy_target(panel: DeploySearchPanel,
     按现板定型,申报)。
 
     ``margin_out`` = 可选次名分量收集出参(挑边差距遥测的私有槽通道;
-    遥测正本 = strategy-docs/strategy-telemetry.md ``deploy_margin`` 行:
+    遥测正本 = skill strategy/strategy-telemetry.md ``deploy_margin`` 行:
     段 3 并行收集,纯函数零状态写——传入非 None dict
     且搜索成功时填次名键形;缺省 None = 不收集,虚拟定型调用点
     不传即零开销零写入;搜索返 {} 时保持空 = 调用方据此不落值)。

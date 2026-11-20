@@ -4,7 +4,7 @@
 版本会迭代、维护不起)。人看的是"这回合掉了多少血 / boss 血条动没动"这个**结果**。故用
 OCR ground-truth 反馈,不用预测模型。
 
-设计依据:``strategy-docs/15_observation_multisource_arbitration.md``(观察多源仲裁篇)。
+设计依据:``skill strategy/15_observation_multisource_arbitration.md``(观察多源仲裁篇)。
 """
 from __future__ import annotations
 

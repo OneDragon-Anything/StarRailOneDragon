@@ -482,7 +482,7 @@ class StrategyState:
     refresh_blocked: tuple | None = None
 
     # ===== 部署定型次名分量遥测槽(挑边差距遥测的私有槽通道;遥测
-    #       正本 = strategy-docs/strategy-telemetry.md;帧定界 = 入口清
+    #       正本 = skill strategy/strategy-telemetry.md;帧定界 = 入口清
     #       +读后清双保险)=====
     # [索引定义] deploy_margin = 部署定型(备战第 6 步 select_deployment
     # 真实出口)的次名分量键值:键形 = {runner_up: 挑战者

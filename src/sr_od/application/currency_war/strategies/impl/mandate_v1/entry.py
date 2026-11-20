@@ -1,6 +1,6 @@
 """cw4 备战决策入口(十段全扫工序)。
 
-工序结构(判据权威版本 = strategy-docs/22_prep_screen.md §1;2026-10-17
+工序结构(判据权威版本 = skill strategy/22_prep_screen.md §1;2026-10-17
 工序重排(新增第 1 步商店随机态重开,其后顺延;正本 = 22 号稿 §1):每次回
 到备战画面从第 0 步向下扫描,执行第一个满足条件的步骤并返回其动作,
 下一帧重新扫描(单动作循环不变;回跳语义——腾位后回头点晶矿、买完牌
@@ -527,7 +527,7 @@ def emit(session: StrategySession,
 
     # —— 第 9 步:出战(以上全部步骤无动作;备战环唯一完成态)——
     # 出战前置动作发出点机制保留在 bridge(出战就绪帧短路本 emit,机制出处 =
-    # strategy-docs/26 号篇;本迭代零改动);受限商店访问帧不受会话标记
+    # skill strategy/26 号篇;本迭代零改动);受限商店访问帧不受会话标记
     # 覆盖(契约 A 豁免条款,前置位承载)。
     return [Emitted(CwActionStartBattleParam(), True, 'battle')]
 

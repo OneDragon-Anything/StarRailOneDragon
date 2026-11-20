@@ -32,7 +32,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 #: 变换窗触发单位(银狼LV.999,3★):拖上场变下一费用档 1★
-#: (正本 = strategy-docs/24_deploy_segment.md;名单与星级 = 定案口径,机制单一源 =
+#: (正本 = skill strategy/24_deploy_segment.md;名单与星级 = 定案口径,机制单一源 =
 #: docs/game/gameplay/currency_war.md「银狼LV.999 升星升费」条;
 #: 常量宿主原 = deploy_move 上报模块,随其戊批纳入统一管理删除迁入——
 #: 现役唯一消费者 = 本模块上场分支)。

@@ -1,6 +1,6 @@
 """criteria/priority——角色统一让位优先级判据件(唯一排序判据源)。
 
-判定规格单一源 = strategy-docs/32_unified_sell_priority.md(下称 32 号稿)
+判定规格单一源 = skill strategy/32_unified_sell_priority.md(下称 32 号稿)
 (排序输入与两态名单 §2 / 十档判定表 §3 / 保留张与落档边界 §4-/
 档内键口径注 §6 / 在手旗标与随机尾键 §7 / 卖出取用形态 §8)。全部
 卖出/获取消费点(获取角色流程、溢出、凑钱凑位、补给选角色)只消费

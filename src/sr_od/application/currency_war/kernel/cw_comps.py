@@ -12,7 +12,7 @@
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
 
 数据与设计依据(阵容知识源 = ``docs/game/currency_war/research/final_comps/`` 系列 +
-``docs/game/currency_war/data/plaza_meta.md``;观察设计权威版本 = strategy-docs 15 号篇;
+``docs/game/currency_war/data/plaza_meta.md``;观察设计权威版本 = skill strategy/ 15 号篇;
 字段设计方法论 = skill sr-od-dev-currency-war references/comp-definition.md):
 - ``COMP_LIBRARY``:起步 roster(21 套,姬子列车 A/B 拆分后;plaza 784 篇高难帖校准)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
@@ -154,7 +154,7 @@ class Comp:
     #  该字段退役迭代的教训裁定;先例 = required-deployed-retirement〕。)
 
     # ===== 知识卡字段(选线/升级的共用知识地基;设计口径 =
-    # strategy-docs/12_line_and_intention.md §1)。玩法知识(终局阵容的客观
+    # skill strategy/12_line_and_intention.md §1)。玩法知识(终局阵容的客观
     # 定义——攻略数据,换策略不变其值),非策略层立场数据(宪法第 5 条对账
     # 申报见 12 号篇 §1.1)。=====
     # (旧 lock_rules 字段〔角色型/策略型锁定条件查表〕已随统一阵容评分迭代
@@ -275,7 +275,7 @@ class Comp:
     @property
     def members(self) -> tuple[str, ...]:
         """终局成员集 = core ∪ shared 两名单，注册表声明序去重（core 位在前）。
-        消费语义依据 = strategy-docs/12_line_and_intention.md §2（line_members_view
+        消费语义依据 = skill strategy/12_line_and_intention.md §2（line_members_view
         读口/禁第二读口径）与 strategy-telemetry `k_members` 行（锁定帧语义）。
         集合消费写 ``set(comp.members)``；序 = 注册表声明序（首位 = 定义件，
         见 core_chars 字段注释；截断/排序 tie-break 消费）。"""
@@ -357,7 +357,7 @@ def derive_member_priority(comp: Comp) -> dict[str, int]:
     core 先填 0,shared 再 setdefault 1(先到先得,同名不覆盖)——注册表
     条目 core∩shared 恒空(``Comp.__post_init__`` 建库校验),setdefault
     分支在库内条目上不触发,仅为库外构造的 Comp 保持函数稳健。两档序数 =
-    统一让位序的底层档内①键(消费规格 = strategy-docs/
+    统一让位序的底层档内①键(消费规格 = skill strategy/
     32_unified_sell_priority.md;装配读口 :func:`member_rank_of`);
     逐角色线内全序精调若立项,再升显式字段。"""
     rank: dict[str, int] = dict.fromkeys(comp.core_chars, 0)
@@ -1069,7 +1069,7 @@ _validate_comp_equip_assign(COMP_LIBRARY)
 # 羁绊构造块的完整组合(C(5,2)=10 条),组合条目 fp ≥ 1.0(两羁绊都凑齐
 # ∧点名件全在板)才锁定;单羁绊构造块不是阵容、不进库、永不锁定(单
 # 羁绊局保持软方向——候选继续活动、买面双向,直到组合凑齐或终局锁定
-# 统一退役)。语义权威版本 = strategy-docs/12_line_and_intention.md §3
+# 统一退役)。语义权威版本 = skill strategy/12_line_and_intention.md §3
 # (过渡阵容库与条目候选机器)。
 #
 # 组合实证(game/research/transition_combos.md 两两组合实证表,Early
@@ -1325,7 +1325,7 @@ _validate_anchor_invariants()
 
 # (旧 char_lock_hit/strategy_lock_hit 锁定判定原语已随 lock_rules 字段整字段
 #  退役删除〔2026-11-03 用户裁定:全部即时锁退役,锁定 = P2 时点
-#  兜底唯一路径,正本 = strategy-docs/12_line_and_intention.md §1.3〕——角色/策略到手的线关联由线分证据分量(carry_set)与
+#  兜底唯一路径,正本 = skill strategy/12_line_and_intention.md §1.3〕——角色/策略到手的线关联由线分证据分量(carry_set)与
 #  投资通道派生(kernel/cw_invest_channels)数值承载,沿革考古走 git 历史。)
 
 

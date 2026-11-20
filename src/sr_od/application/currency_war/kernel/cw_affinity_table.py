@@ -1,4 +1,4 @@
-"""货币战争 词缀吃怕表注册表(逐线 × 词缀;判据正本 = strategy-docs/12_line_and_intention.md §1.1,下文「正本」同指)。
+"""货币战争 词缀吃怕表注册表(逐线 × 词缀;判据正本 = skill strategy/12_line_and_intention.md §1.1,下文「正本」同指)。
 
 结构 = ``{线名: {词缀注册名: AffixStance}}``;键名空间 =
 data/affix_effects_data 的 ``AFFIX_EFFECTS`` 注册名(52 词缀,运行时采集

@@ -3,7 +3,7 @@
 出处 = 统一阵容评分迭代的数量级标尺设计(四轮对抗审查定稿:正项上界
 全库自算校准,层间支配靠数量级实现,示意值 = 本表锁定值);权威版本
 = 本文件常量(正本 = docs/develop/sr_od/application/currency_war/
-strategy-docs/12_line_and_intention.md §1.1「数量级表」:常数单一源 =
+skill strategy/12_line_and_intention.md §1.1「数量级表」:常数单一源 =
 本模块)。
 
 单一源纪律:本迭代线分数值只写常量名、值在本文件一处定义。消费面 =

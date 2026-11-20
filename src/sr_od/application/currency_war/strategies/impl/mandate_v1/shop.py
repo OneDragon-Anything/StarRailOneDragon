@@ -1680,7 +1680,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     return _emit_buy(card, 'shelf_qualify_buy')
 
     # —— 过渡货架资格臂(过渡侧虚拟评估;语义权威版本 =
-    #    strategy-docs/12_line_and_intention.md §3;
+    #    skill strategy/12_line_and_intention.md §3;
     #    序 1 层内殿后〔终局资格臂之后〕,同帧多资格件按货架槽序)——
     # 触发窗 = 未终局锁定 ∧ 过渡未锁定(ist.transition_locked 空——
     # 过渡锁定后买面 = 锁定条目成员域,资格臂的方向点亮语义与「锁后

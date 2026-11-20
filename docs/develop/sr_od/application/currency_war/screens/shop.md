@@ -1,7 +1,7 @@
 # 商店开画面(shop · 货币战争-备战-开商店)
 
 > 代码 = `operations/cw_screen/cw_screen_shop.py::CwScreenShop`(两 node 画面 op:观察 node + 决策动作 node)+ `operations/cw_screen/cw_screen_prep.py::visit_open_shop`(生产调用编排单一源)。职责:商店打开态的一次访问——入口观察(唯一读屏点)→ 单动作 round_wait 决策循环(执行 → 逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写状态容器(GameState)的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同)→ 终结动作返回主循环(结束本次访问 = 本访问结束、控制权返回主循环重新识别画面;下同)。路径根 = `src/sr_od/application/currency_war/`。
-> **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../strategy-docs/11_shop_decisions.md](../strategy-docs/11_shop_decisions.md)。
+> **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../skill strategy/11_shop_decisions.md](../skill strategy/11_shop_decisions.md)。
 
 ## 1. 分发判定
 

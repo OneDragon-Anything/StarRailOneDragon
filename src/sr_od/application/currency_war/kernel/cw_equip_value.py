@@ -1,4 +1,4 @@
-"""货币战争 装备价值共享机器(选装入口单一源;判据正本 = strategy-docs/13_pick_family.md §1 E18 行·armory-box-value 定稿「装备价值做成通用机器,禁第二套」,下文「13 号稿」同指)。
+"""货币战争 装备价值共享机器(选装入口单一源;判据正本 = skill strategy/13_pick_family.md §1 E18 行·armory-box-value 定稿「装备价值做成通用机器,禁第二套」,下文「13 号稿」同指)。
 
 四件套:
 - ``EQUIP_GENERIC_VALUE`` / ``equip_generic_value``:通用输出先验表

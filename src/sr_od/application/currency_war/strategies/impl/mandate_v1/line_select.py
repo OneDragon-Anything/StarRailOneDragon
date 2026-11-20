@@ -1,6 +1,6 @@
 """终局线选择内核(统一阵容评分,正本 = 12 号稿)。
 
-判据唯一源 = strategy-docs/12_line_and_intention.md §1(统一阵容评分:
+判据唯一源 = skill strategy/12_line_and_intention.md §1(统一阵容评分:
 **纯加权和,一个公式** + 数量级表——四轮对抗审查定稿,特殊处理全退役,
 排除 = 极大减分非布尔特判)。本模块承载:
 
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 
 #: 攻略热度映射常量表(排序立场数据,落策略层;数据源与口径见
-#: strategy-docs/12_line_and_intention.md §1.1——十类帖数→21 线类级映射,
+#: skill strategy/12_line_and_intention.md §1.1——十类帖数→21 线类级映射,
 #: 长尾八线共享「其他长尾」桶;未登记线取 0 = 缺表 fail 方向)。
 #: 量级:每点 +:data:`cw_line_scales.HEAT_PER_POINT`(满热度 274 < 1 插件
 #: ——持有实证 > 社区先验)。

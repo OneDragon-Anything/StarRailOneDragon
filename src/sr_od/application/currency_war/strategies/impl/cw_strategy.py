@@ -279,7 +279,7 @@ class CwStrategy(ABC, Generic[_TState]):
         动作字段透传载荷的通道载体;带缺省参 = 非破坏扩展——旧签名
         覆写收到多余实参 TypeError 走 wrapper 既有异常降级 {} 通道,
         不静默毒化决策返回值),钩子异常降级 {}(strategy-telemetry.md §3 存储与发现面)。
-        载荷两类来源(语义权威版本 = strategy-docs/strategy-telemetry.md):
+        载荷两类来源(语义权威版本 = skill strategy/strategy-telemetry.md):
         **现读键**(出口后 gs/state 现读)与**产物透传键**(词表动作
         字段与私有槽,均为决策帧出口时点快照)——禁依赖未入决策产物
         与既许槽位的内部局部量(更细域内量由策略经私有 state 槽自存、
@@ -355,7 +355,7 @@ class CwStrategy(ABC, Generic[_TState]):
 
     # —— 契约扩员区(三 overlay 选卡判据并入 kernel + handler
     #    改写槽→零参 decide;事件面登记 =
-    #    strategy-docs/13_pick_family.md §2 E16-E18)——
+    #    skill strategy/13_pick_family.md §2 E16-E18)——
 
     @abstractmethod
     def decide_fortune(self) -> CwActionPickFortuneParam:

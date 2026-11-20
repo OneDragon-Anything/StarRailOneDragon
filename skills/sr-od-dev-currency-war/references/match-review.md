@@ -8,7 +8,7 @@
 
 - 玩法知识:`docs/game/currency_war/research/README.md` 玩家理解序全读(机制 → 纪律 → 过渡 → 终局);
 - 游戏数据注册表通读:角色技能(`cw_chars`)、羁绊效果(`cw_traits_data`)、装备效果(`cw_equipment`)、投资策略/环境效果(`cw_invest_data`)、词缀效果(`affix_effects_data`);
-- **已登记裁定面**:进度账本(`.debug/progress/` 当前迭代 `dag.jsonl`)的已登记用户裁定条目(如「经济纪律族」类条目)与 `docs/develop/sr_od/application/currency_war/strategy-docs/` 各篇的【已裁定】注记——判定前先取齐,引用时带条目号。
+- **已登记裁定面**:进度账本(`.debug/progress/` 当前迭代 `dag.jsonl`)的已登记用户裁定条目(如「经济纪律族」类条目)与本 skill `references/strategy/` 各篇的【已裁定】注记——判定前先取齐,引用时带条目号。
 
 ## 阶段 2 · 逐画面章复盘(按渲染报告章序;2026-09-07 用户裁定:粒度 = 外层循环画面 op 调用,报告中载体 = 渲染器画面章)
 

@@ -1,7 +1,7 @@
 """deploy 域判定纯逻辑(支撑观测/新鲜度账本/唯一性键;单一源)。
 
 部署「选人 + 落位」计划已迁策略层(正本 =
-strategy-docs/24_deploy_segment.md 落位决策权归策略层):单一源 =
+skill strategy/24_deploy_segment.md 落位决策权归策略层):单一源 =
 ``strategies/impl/mandate_v1/deploy_plan.py``(``select_deployments``/
 ``select_deployments_reasoned``/``has_deployable``/``can_deploy_single``/
 落位策略 ``deploy_row_pref``/``deploy_slot_plans``/出战链计划入口)。
@@ -163,7 +163,7 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
 # (换阵卖出义务分支 fenced_swap_arm_of 与转型域双门件(SWAP_GUARD_SYSTEMS/
 #  _swap_guard_achieved)已随部署统一批丁纳入统一管理删除——统一部署搜索
 #  定型单属;判别子 swap_bond_gate_domain_of 已随 P88
-#  买侧收窄全套退役整删(正本 = strategy-docs/24_deploy_segment.md),
+#  买侧收窄全套退役整删(正本 = skill strategy/24_deploy_segment.md),
 #  唯一消费 mandate_v1.swap_transition_narrow_frame 同批删除。)
 
 

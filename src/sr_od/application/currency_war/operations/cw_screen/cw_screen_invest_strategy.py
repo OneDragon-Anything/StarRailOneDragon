@@ -90,7 +90,7 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool]:
       分类,消费方停链 fail-closed——与 kernel 帧级闸同一严格轴);
     - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁)。
     (旧第四位 ``top``〔顶级判定,消费 = 已停用的「新卡达顶级停链」〕
-    已随统一阵容评分清理退役(正本 = strategy-docs/12_line_and_intention.md
+    已随统一阵容评分清理退役(正本 = skill strategy/12_line_and_intention.md
     ——顶级判定现经线分引擎派生且依赖
     选卡识别标志线〔gs 面〕,D*-free 单名签名承载不了;刷新链守卫三闸
     均不消费顶级位,随手清理。)

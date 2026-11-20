@@ -86,7 +86,7 @@ run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/roun
 
 > 本分支已坍缩为纯识别派发:备战交互三段链(返回投资策略点击/接管局探针+锁定直出战/补给分流)已迁 `CwScreenPrep` 特殊流程段(观察 node 段1 子态识别四查 + 决策动作 node 段3 三处置,迭代 2026-11-18-prep-special-flow;画面 op 侧形态细则见 screen-op.md「备战(CwScreenPrep)特殊」行),以下为 as-built。
 
-**动作发出决策不在本分支**:达标帧的发出决策宿主 = mandate_v1 决策链最先检查的发出点(`decide_prep_screen` 入口消费 kernel `readiness_launch_decision`;出战就绪帧产受限商店访问意图或 `StartBattle` 终点意图,随派发的备战访问 op 落执行;判据与语义 = strategy-docs/14_p1_consume_arms.md §9.6/§11.10)。
+**动作发出决策不在本分支**:达标帧的发出决策宿主 = mandate_v1 决策链最先检查的发出点(`decide_prep_screen` 入口消费 kernel `readiness_launch_decision`;出战就绪帧产受限商店访问意图或 `StartBattle` 终点意图,随派发的备战访问 op 落执行;判据与语义 = ../strategy/14_p1_consume_arms.md §9.6/§11.10)。
 
 1. **横幅中间态守卫**:OCR「请选择投资策略」lcs 0.8 在场 → round_wait 等展开(选卡页展开中零可交互元素,不处理);
 2. 双识别标志识别(`prep_anchors_hit`)同帧命中 → 兜底清 `_fallback_clear_pending`(本轮分发未接住任何 pending 条目 → 整列清;识别到弹窗屏不清——多弹窗条目逐个存活;sim 不走本清);

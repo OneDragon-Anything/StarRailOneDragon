@@ -7,9 +7,9 @@
 
 **机制事实层**(游戏怎么运转,只能观测确立):`实机实测/图鉴` > `[米游社]` > `[社区]`(bwiki/NGA/攻略,单源或推算标 🟡,未找到标 🔴)
 
-**策略命题层**(什么打法更优,可证明/可实证):`数学证明([math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md))+ sim/实机分布实证` > `设计文档(strategy-docs 判据权威版本)` > `[米游社]` > `[社区]`
+**策略命题层**(什么打法更优,可证明/可实证):`数学证明([math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md))+ sim/实机分布实证` > `设计文档(skill references/strategy/ 判据权威版本)` > `[米游社]` > `[社区]`
 
-> 旧单层序(口述最高,2026-09-07 废)已由用户裁定废除;历史 `[口述·权威]` 标签=来源出处标记,解释权归本序。**2026-10-16 用户裁定:口述登记簿 user_playstyle.md 整份删除,一切判据以设计文档(strategy-docs)为准;历史条目号 [N] 语义按 git 历史回溯。**
+> 旧单层序(口述最高,2026-09-07 废)已由用户裁定废除;历史 `[口述·权威]` 标签=来源出处标记,解释权归本序。**2026-10-16 用户裁定:口述登记簿 user_playstyle.md 整份删除,一切判据以设计文档(skill strategy/)为准;历史条目号 [N] 语义按 git 历史回溯。**
 
 ## 术语表(本目录通用词的白话定义)
 
@@ -47,7 +47,7 @@
     - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
 2. **玩家纪律**(人怎么打;机制之上的打法约束):
-   - ~~user_playstyle.md~~ **已删除(2026-10-16 用户裁定:口述登记簿退役,一切判据以设计文档为准)**——策略判据权威版本 = `docs/develop/sr_od/application/currency_war/strategy-docs/`(判据权威定义 = 各编号篇);历史条目号 [N] 语义按 git 历史回溯
+   - ~~user_playstyle.md~~ **已删除(2026-10-16 用户裁定:口述登记簿退役,一切判据以设计文档为准)**——策略判据权威版本 = `skills/sr-od-dev-currency-war/references/strategy/`(判据权威定义 = 各编号篇);历史条目号 [N] 语义按 git 历史回溯
 3. **过渡体系与战力证据**(位面 1 怎么活到成型、什么形态能过):
    - [transitions.md](transitions.md) — 过渡叙事:开局分级(终局阵容锁定资格)/ 成型停买线 / 换人点 / 保底过渡阵容(已抛弃史料)
    - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐路线定义(引擎池 / 核心池;代码落地依据)
@@ -64,7 +64,7 @@
 
 | 问题 | 文件 |
 |---|---|
-| 人怎么打(开局/经济/等级/阵容/装备判据) | ~~user_playstyle.md~~ 已删(2026-10-16)——判据权威 = [strategy-docs 设计文档](../../../develop/sr_od/application/currency_war/strategy-docs/README.md);历史条目号按 git 历史回溯 |
+| 人怎么打(开局/经济/等级/阵容/装备判据) | ~~user_playstyle.md~~ 已删(2026-10-16)——判据权威 = skill `references/strategy/` 设计文档;历史条目号按 git 历史回溯 |
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
 | 节点经验:基础经验(+2/+0/BOSS+12 待确认)/购买经验 4 金=+4XP/升级门槛表 | [xp-rules.md](xp-rules.md) |
 | 节点类型:三位面默认序列地面真值 / 普通奖励节点=战斗型(有结算屏,档案已定案) | [plane_schedule_observed.md](plane_schedule_observed.md) |
@@ -93,6 +93,6 @@
 ## 关系图
 
 - **值(数据)的单一源 = 代码注册表**(`src/sr_od/application/currency_war/data/cw_*.py`);本目录记「凭什么信」。
-- **设计消费**:`docs/develop/sr_od/application/currency_war/strategy-docs/` 的 as-built 正文引用本目录结论(只引结论一句话+链接,不复制内容)。
+- **设计消费**:`skills/sr-od-dev-currency-war/references/strategy/` 的 as-built 正文引用本目录结论(只引结论一句话+链接,不复制内容)。
 - **上游**:原 ../sources/ 外部原文存档(已删[eb9c72a1],git 历史 `eb9c72a1~1` 可查);仍被引用的条目以各篇「原文细节补记」块为仅存记录,本目录结论的证据等级就地标注。
 - **裁定/教训不进本目录**:玩法取舍 → 设计文档动机段与代码注释(ADR 档案体系已按用户令停用);分析教训 → 本地 insights。

@@ -76,7 +76,7 @@ _VALUES: dict[str, CalibValue | None] = dict.fromkeys(_SLOTS)
 
 def get(name: str) -> CalibValue | None:
     """槽位读(None = fail-closed:对应判据分支不评估/不产追加动作;
-    **绝不向骨架层渗漏为否决**,同 strategy-docs/01_math_framework.md §6
+    **绝不向骨架层渗漏为否决**,同 skill strategy/01_math_framework.md §6
     fail-closed 缺省)。封印族(V̄)恒 None。"""
     slot = _SLOTS.get(name)
     if slot is None:

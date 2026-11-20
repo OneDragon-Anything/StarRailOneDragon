@@ -1,6 +1,6 @@
 """投资环境画面策略(mandate_v1;宪法六「一画面一策略文件」首批兑现)。
 
-设计权威版本 = strategy-docs/28_invest_env_screen.md(本文件是其代码承载面,
+设计权威版本 = skill strategy/28_invest_env_screen.md(本文件是其代码承载面,
 「下称 28 号稿」,节号即该篇节号);评分模型 = 「统一加法标尺」——单位 =
 分,**1 分 := 1 金等价**(归一化约定,非语义拍值;XP 折算沿
 env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸分/
@@ -30,7 +30,7 @@ argmax 取最高,平分取先。禁选(env_forbid 命中)与阵容冲突出域 =
 不含词缀注册名族,该分量现行恒 0——机制与策略屏同源,判据不双源)。
 
 阵容冲突护栏(阵容指向护栏裁定;正本 =
-strategy-docs/28_invest_env_screen.md 护栏节):出域槽(候选环境有阵容指向且与冲突基准零交)并入既有
+skill strategy/28_invest_env_screen.md 护栏节):出域槽(候选环境有阵容指向且与冲突基准零交)并入既有
 excluded 槽位表通道(禁选/自拆台同路)——次数闸过先建议刷新,闸尽落选时
 出域已排除,全出域帧走既有 all-excluded 回退(不制造空选);基准空帧
 (无指向持有 ∧ 未锁定)护栏不辖,行为与无护栏逐位一致。基准语义与
@@ -95,7 +95,7 @@ class InvestEnvDecision:
     idx = options 列表下标(0 基;候选序 = 调用方传入序,取值时机 =
     本帧决策期快照);reason = 归因串(总分与四组件分解,仅观测)。
     margin = 次名分量遥测(词表动作字段通道,遥测正本 =
-    strategy-docs/strategy-telemetry.md ``pick_margin`` 行,键形
+    skill strategy/strategy-telemetry.md ``pick_margin`` 行,键形
     ``{runner_up, runner_up_total, margin}``,值源 = 决策评分帧 scores
     列表[含转向轴],禁用 option_total;竞争域仅 1 候选 → 三键 null;
     空候选帧不落值 None;仅观测,决策面零消费)。

@@ -1119,7 +1119,7 @@ def run_mandate(frame: MandateFrame,
 
 # ============================================================
 # 部署选人纯函数接口(统一让位优先级判定的结构抽取,判据零改动;
-# 接口契约正本 = strategy-docs/32_unified_sell_priority.md §1〔部署先行〕
+# 接口契约正本 = skill strategy/32_unified_sell_priority.md §1〔部署先行〕
 # 与 24_deploy_segment.md §1.4〔三路共用定型〕)
 # ============================================================
 
@@ -1161,7 +1161,7 @@ def select_deployment(frame: MandateFrame,
     """部署定型(统一部署搜索内核;消费接口契约 = target_board = 角色名
     → (排, 选定星)——星维承载
     就位粒度名+排+星;档 1 名集消费 = ``frozenset(target)``;正本 =
-    strategy-docs/24_deploy_segment.md §1)。
+    skill strategy/24_deploy_segment.md §1)。
 
     生产路径(= 三路共用定型:卖出评估器/获取让位/出战链)面板装配 =
     ``deploy_search.build_deploy_panel``(段 0 硬约束过滤:唯一性键
@@ -1172,7 +1172,7 @@ def select_deployment(frame: MandateFrame,
     声明(部署枚举池 = 全部真实单位)。
 
     ``margin_out`` = 可选次名分量收集出参(挑边差距遥测的私有槽通道;
-    遥测正本 = strategy-docs/strategy-telemetry.md ``deploy_margin`` 行:
+    遥测正本 = skill strategy/strategy-telemetry.md ``deploy_margin`` 行:
     透传段 3 收集,纯函数零状态写;真实出口 =
     entry._step5_deploy 传入,虚拟 4 调用点[shop 获取让位×2/
     sell_candidates/supply]不传即零写入——sell_candidates 与 entry

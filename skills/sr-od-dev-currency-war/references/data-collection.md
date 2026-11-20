@@ -74,7 +74,7 @@
 
 | 实体 | 增量属性(人维护) | 消费点 |
 |---|---|---|
-| **投资策略/环境**(`cw_investments`) | `STRATEGY_ECONOMY`(EconomyEffect 45 字段:给金/免费刷/利息覆写/难度Δ/连胜倍率/合成与购买触发族…,字段三分 = 计分/待建模/不计)+ 卡级待建模登记 `STRATEGY_ECONOMY_PENDING_MODELING`;`STRATEGY_GRANTS` 策略卡具名发放(登记判据 = strategy-docs/29_invest_strategy_screen.md §2.3);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定。选卡评序 = 策略层组件分(strategy-docs/29_invest_strategy_screen.md 与 28_invest_env_screen.md),本表不留选卡分 | 两屏选卡策略器(invest_strategy/invest_env)/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
+| **投资策略/环境**(`cw_investments`) | `STRATEGY_ECONOMY`(EconomyEffect 45 字段:给金/免费刷/利息覆写/难度Δ/连胜倍率/合成与购买触发族…,字段三分 = 计分/待建模/不计)+ 卡级待建模登记 `STRATEGY_ECONOMY_PENDING_MODELING`;`STRATEGY_GRANTS` 策略卡具名发放(登记判据 = strategy/29_invest_strategy_screen.md §2.3);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定。选卡评序 = 策略层组件分(strategy/29_invest_strategy_screen.md 与 strategy/28_invest_env_screen.md),本表不留选卡分 | 两屏选卡策略器(invest_strategy/invest_env)/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
 | **角色**(`cw_chars`) | 纯角色无人工增量字段——费用/站位/category_tags 多标签/羁绊三字段(factions+schools+independent)/is_expert/is_hide 全为官方镜像字段;人工维护面 = `SYSTEM_UNITS` 系统单位段(5 条,实机采集溯源,生成器不触碰) | 部署站位/羁绊计数/牌池与费段统计(`is_hide` 过滤由购买/概率语义消费方执行,数据层查询不过滤)/概率 v 值派生(`DISTINCT_CARDS_PER_COST`) |
 | **羁绊**(`cw_traits_data`) | 无人工增量层——`TRAITS`/`trait_by_name` 为官方口径镜像(生成器产物勿手编);count_mode 激活计数控由生成器判定表固化(覆盖表带官方 desc 引文校验防漂移) | 激活档位判定(tiers)/成员关系派生(members)/评分与成型判定 |
 | **comp**(`cw_comps`) | core/shared 名单二分/faction_reqs(羁绊要求优先级结构:档 0 核心、档 ≥1 加分层;原 form_tiers/sub_tiers 已合并)/flex_factions(弹性)/key_equips(可重复)/equip_assign(到人配方)/char_positions(comp 级站位覆盖)/need_star(星级目标;mechanic_attributes/countered_by_bosses 与 level_plan 曲线等评估字段已先后退役,git 可溯) | 线分/候选与锁定/成型判定/部署搜索/装备分配 |

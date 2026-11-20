@@ -1109,7 +1109,7 @@ class CwActionPickInvestStrategyParam:
     「选择动作执行就按成功处理,没有选到就是代码 bug」,原分步上报废除)。
     norm_name/route_tag/margin 不入动作实例键(归因载荷不改变动作身份,
     同 route_tag 先例)。``margin`` = 次名分量遥测载荷(决策评分帧的
-    竞争域次名,键形正本 = strategy-docs/strategy-telemetry.md §1(pick_margin 行);None =
+    竞争域次名,键形正本 = skill strategy/strategy-telemetry.md §1(pick_margin 行);None =
     非选卡出口/空候选帧不落值,经 decision_payload 钩子键 pick_margin
     透传)。
     """

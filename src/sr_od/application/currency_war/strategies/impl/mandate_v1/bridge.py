@@ -369,7 +369,7 @@ class MandateV1Strategy(CwFlowStrategy):
         """决策载荷钩子覆写(策略遥测 mandate_v1 v1 八键 = 现读 6 +
         产物透传 2)。
 
-        语义与键表权威版本 = strategy-docs/strategy-telemetry.md;实现 =
+        语义与键表权威版本 = skill strategy/strategy-telemetry.md;实现 =
         :func:`decision_payload.build_decision_payload` 纯读投影
         (现读键 = 出口后 gs/state 现读,零写、不改决策行为;产物
         透传键 = 动作字段/私有槽出口快照,``result`` = wrapper 传入

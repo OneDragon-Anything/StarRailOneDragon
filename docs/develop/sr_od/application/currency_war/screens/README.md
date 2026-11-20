@@ -24,7 +24,7 @@
 
 - **能力面** = 画面机制上可做的动作全集:游戏在该画面提供了什么可执行操作,以及我们把每个操作落地为哪个动作 op。七动作族(§4)与状态容器上报函数族(`kernel/cw_action_report/` 的 `report_action_<snake>_param` 等逻辑态直写通道)**全保留**,不随策略收缩删除。
 - **策略面** = 默认策略(mandate_v1)在当前策略形态下实际会做的子集。策略面收缩是策略域变更:只改决策入口的提案集,不删执行器/动作类型清单/逻辑态直写。
-- **先例**:卖备战(SellBench)与买经验(LevelUp)是商店开画面的**可用**动作(§5.4),但默认策略**不在商店期做**——两者收缩至备战期决策(策略面清单见 strategy-docs 22/23 号篇)。能力矩阵按能力面记;策略归属见 strategy-docs 画面策略篇。
+- **先例**:卖备战(SellBench)与买经验(LevelUp)是商店开画面的**可用**动作(§5.4),但默认策略**不在商店期做**——两者收缩至备战期决策(策略面清单见 skill strategy/ 22/23 号篇)。能力矩阵按能力面记;策略归属见 skill strategy/ 画面策略篇。
 - 记载纪律:每个画面列「游戏可用动作全集」并逐条给 op 映射;某动作当前不被策略使用时在策略归属列注明「策略面收缩至 X 期」,不删行。
 
 ## 2. 画面文档模板
@@ -93,8 +93,8 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
-| 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(阶段一身份行「货币战争-投资环境」);决策 = pick 族 `decide_invest_env`(规格 = strategy-docs/13_pick_family.md) | 确认离开(overlay 消失) |
-| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即结束本次访问**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = 投资环境刷新三态判据(策略层 `invest_env`,权威版本 = strategy-docs/28_invest_env_screen.md §4;math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
+| 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(阶段一身份行「货币战争-投资环境」);决策 = pick 族 `decide_invest_env`(规格 = skill strategy/13_pick_family.md) | 确认离开(overlay 消失) |
+| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即结束本次访问**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = 投资环境刷新三态判据(策略层 `invest_env`,权威版本 = skill strategy/28_invest_env_screen.md §4;math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
 
 ### 5.3 备战画面(货币战争-备战)
 
@@ -125,14 +125,14 @@
 
 ### 5.5 事件单选族(overlay)
 
-投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱选择(货币战争-备战-武装箱选择,`cw_screen_box_pick.py`)。决策 = pick 族八接口 + `decide_box_card`,规格 = strategy-docs 13 号篇(原选择装备随该屏误判停用删除,2026-09-22)。
+投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱选择(货币战争-备战-武装箱选择,`cw_screen_box_pick.py`)。决策 = pick 族八接口 + `decide_box_card`,规格 = skill strategy/ 13 号篇(原选择装备随该屏误判停用删除,2026-09-22)。
 
 **选卡动作执行载体(选卡动作统一迭代起统一;事件屏统一迭代更新)**:12 屏的选卡动作 = 12 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 点完立即按成功写入**:这批画面的选卡动作都是「点完立刻把完整结果写进游戏状态,不等下一帧确认」(旧的先记发出、再等落地证据的两步机制已全部删除;用户裁定 = [../flow/action_ops.md](../flow/action_ops.md) §1「用户裁定(点完即写)」)。写入内容:投资两屏的选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给在动作发出时一次性写入:获得道具、上场的单位及其效果、获得后果链(`kernel/cw_action_report/pick_supply.py`);遭遇在动作发出时立即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划按效果类型分支写入:附带条件分支(代码 branch_type='rider')先行,装备写入与升费(费用档提升)写入含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`)——画面 op 不写游戏状态、点击发出后即结束本次访问,确认未生效由外循环重识别重派。契约权威版本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(阶段一身份分发,分支号制已停用) | 确认离开(overlay 消失)= 画面终结 |
-| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 内置动作)/ 遭遇(`cw_screen_encounter.py` 刷新终结分支,状态容器 `encounter_refresh_left` 剩余闸)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定,状态容器 `supply_refresh_left` 剩余闸);建议刷新 = 各屏策略层刷新判据(策略屏 = `invest_strategy` 帧级门+槽级动作集,权威版本 = strategy-docs/29_invest_strategy_screen.md §4;环境屏 = `invest_env` 三态,28_invest_env_screen.md §4;P81) | **刷新 = 终结为全域规范**(权威版本 = [op-layer.md](op-layer.md) §1.4):投资环境整组重掷、投资策略逐卡、遭遇、补给(点钮 + 2s 后 round_success 返回主循环重进 = 入口重建)全链终结语义,闸全域 = 剩余语义观察真值(`*_refresh_left`,禁已用推算);确认离开才画面终结 |
+| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 内置动作)/ 遭遇(`cw_screen_encounter.py` 刷新终结分支,状态容器 `encounter_refresh_left` 剩余闸)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定,状态容器 `supply_refresh_left` 剩余闸);建议刷新 = 各屏策略层刷新判据(策略屏 = `invest_strategy` 帧级门+槽级动作集,权威版本 = skill strategy/29_invest_strategy_screen.md §4;环境屏 = `invest_env` 三态,28_invest_env_screen.md §4;P81) | **刷新 = 终结为全域规范**(权威版本 = [op-layer.md](op-layer.md) §1.4):投资环境整组重掷、投资策略逐卡、遭遇、补给(点钮 + 2s 后 round_success 返回主循环重进 = 入口重建)全链终结语义,闸全域 = 剩余语义观察真值(`*_refresh_left`,禁已用推算);确认离开才画面终结 |
 | 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `CwActionOpenBookcardOp`(备战决策环终结动作,`terminal=True`;动作发出点 = 策略器 entry ① prep 实体面卡片分支 `strategies/impl/mandate_v1/entry.py`)→ 弹窗由阶段一身份分发 `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite` 选卡 | 开卡即备战访问终结;弹窗选卡确认离开 = 弹窗访问终结 |
 | 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别 id_mark = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 | 关「属性详情」面板 | 点卡身上部误触发 | 未建模独立处理(点卡 = 机械单发);面板残留由下一帧重新识别自愈(重分发重走链/详情 overlay 族分支) | 面板关闭即随重新访问收敛 |
@@ -165,7 +165,7 @@
 
 ## 7. 先例与边界
 
-- **先例(2026-09-14 收缩先例已废止)**:卖备战/买经验是商店开画面**可用且在产**的动作(执行链已接入调用,§5.4)——店内可卖备战席(候选池仅备战席)与店内购买经验(整批连点)为现行策略面动作(置换账/筹资/会话内升级,策略归属 = [../strategy-docs/23_shop_screen.md](../strategy-docs/23_shop_screen.md));备战期接收面 = [../strategy-docs/22_prep_screen.md](../strategy-docs/22_prep_screen.md)(节点内关店/重开不刷新牌面、牌面持久,节点切换才自动刷新,`research/economy.md` §2.1)。
+- **先例(2026-09-14 收缩先例已废止)**:卖备战/买经验是商店开画面**可用且在产**的动作(执行链已接入调用,§5.4)——店内可卖备战席(候选池仅备战席)与店内购买经验(整批连点)为现行策略面动作(置换账/筹资/会话内升级,策略归属 = [../skill strategy/23_shop_screen.md](../skill strategy/23_shop_screen.md));备战期接收面 = [../skill strategy/22_prep_screen.md](../skill strategy/22_prep_screen.md)(节点内关店/重开不刷新牌面、牌面持久,节点切换才自动刷新,`research/economy.md` §2.1)。
 - **商店锁**:游戏机制存在(整店级),建档已有按钮坐标,生产链路未建模——能力面登记为「存在但未接入调用」。
 - **SwapDeploy**:动作类型清单/状态容器逻辑态直写/sim 消费在用,生产执行器未接入调用——能力面按动作类型清单完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为识别标志(`research/economy.md` §2.1)。

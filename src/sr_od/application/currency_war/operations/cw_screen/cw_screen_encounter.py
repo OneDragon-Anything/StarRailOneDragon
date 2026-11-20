@@ -28,7 +28,7 @@
 ✅ 判据接入调用:``decide_encounter`` = 策略层单一源
   ``strategies/impl/mandate_v1/encounter_pick.py``(能力态直通形:κ_S
   三态 + 经验档层 + 奖励序数 tiebreak + 刷新阀;判据语义权威版本 =
-  strategy-docs/31_encounter_screen.md;用 pick.idx 选卡,**非默认选左**)。
+  skill strategy/31_encounter_screen.md;用 pick.idx 选卡,**非默认选左**)。
 坐标(screen_info 化债):卡身/选择经 ``cw_obs_core.area_center`` 读 screen_info
   ``currency_war_encounter``(``遭遇卡-其一/其二`` + ``按钮-选择``);缺失才用兜底常量。
   档案帧回验:sr-od-test/screens/货币战争-遭遇节点/default.webp 上 标识-遭遇节点 /
@@ -196,7 +196,7 @@ class CwScreenEncounter(CwOperation):
                      ' → 重调一次决策', _left)
             act = match.strategy.decide_encounter()
             if isinstance(act, CwActionRefreshNodeOptionsParam):
-                # 防线(正本 = strategy-docs/31_encounter_screen.md fail-closed
+                # 防线(正本 = skill strategy/31_encounter_screen.md fail-closed
                 # 纪律):重调仍返刷新建议 ∧ 刷新识别标志读缺 =
                 # 无界重进循环面——round_fail 返回主循环,失败计入外循环
                 # OP_FAIL_REDISPATCH_LIMIT(零点击 round_success 结束本次访问不

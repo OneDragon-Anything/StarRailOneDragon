@@ -1,6 +1,6 @@
 """投资策略画面策略(mandate_v1;宪法六「一画面一策略文件」)。
 
-设计权威版本 = strategy-docs/29_invest_strategy_screen.md(下称「29 号稿」,
+设计权威版本 = skill strategy/29_invest_strategy_screen.md(下称「29 号稿」,
 节号即该篇节号);评分模型 = 「统一加法标尺」——单位 = 分,
 **1 分 := 1 金等价**(归一化约定,沿 28 号稿 §1;XP 折算沿
 env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
@@ -33,7 +33,7 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 tag/输出与无护栏逐位一致。
 
 阵容冲突护栏(阵容指向护栏裁定,下称「护栏设计」;正本 =
-strategy-docs/29_invest_strategy_screen.md §5):基准 = 锁线 Comp.factions
+skill strategy/29_invest_strategy_screen.md §5):基准 = 锁线 Comp.factions
 (锁定帧,历史误持不入基)∨ 已持有
 投资指向并集(未锁定帧,:func:`_conflict_basis`);基准空帧护栏不辖,
 选卡行为与无护栏逐位一致。排除语义 = 域收缩非负分;刷新侧出域卡沿
@@ -119,7 +119,7 @@ class InvestStrategyDecision:
     见模块 docstring 量纲申报);components = 六组件分解
     (现金,方向,赠卡,立场,转向轴,克制减分),与总分同帧快照,仅观测。
     margin = 次名分量遥测(词表动作字段通道,遥测正本 =
-    strategy-docs/strategy-telemetry.md ``pick_margin`` 行,键形
+    skill strategy/strategy-telemetry.md ``pick_margin`` 行,键形
     与边界值表同 invest_env.InvestEnvDecision;取域 = 结构分区竞争域
     [:func:`_pick_domain` 输出],空候选帧不落值 None;仅观测)。
     """
@@ -463,7 +463,7 @@ def _pick_decision(cands: list[_Cand]) -> InvestStrategyDecision:
     空候选帧不进本函数,由入口防御)。
 
     margin = 竞争域次名分量(纯观测,词表动作字段通道;
-    遥测正本 = strategy-docs/strategy-telemetry.md ``pick_margin`` 行):
+    遥测正本 = skill strategy/strategy-telemetry.md ``pick_margin`` 行):
     次名 = 域内除胜者外按**同一平分裁决键** :func:`_tie_key`
     的最高者(禁另立排序);域内不足 2 候选 → 三键 null 形态。收集面
     只加变量不改序——argmax 与域过滤逻辑逐行不动。"""

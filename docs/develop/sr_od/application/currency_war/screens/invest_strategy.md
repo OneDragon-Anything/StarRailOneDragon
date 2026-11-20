@@ -11,7 +11,7 @@
 
 **横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**无任何可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],识别标志判定天然 miss,现行分发判据与该裁定一致)。
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口识别标志复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落状态容器(GameState) `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,权威版本 = [../strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口识别标志复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落状态容器(GameState) `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,权威版本 = [../skill strategy/29_invest_strategy_screen.md](../skill strategy/29_invest_strategy_screen.md);接口规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
 
 ## 3. 观察面
 
@@ -49,7 +49,7 @@ act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 inves
 │    三闸全败(建议帧但无槽可执行)→ 同访问重调一次落选卡:
 │      策略侧同帧去重(scratch 键 = (kind, 候选元组):建议帧首调发建议、
 │      紧随重调落选卡,选卡不漂移;依据 = strategies/impl/flow.py::
-│      _decide_invest docstring、strategy-docs/13_pick_family.md §1 invest
+│      _decide_invest docstring、skill strategy/13_pick_family.md §1 invest
 │      行「重决策仍经本入口」;重调发生在任何刷新执行之前、零新事实,
 │      不触 op-layer.md §1.4「禁重调决策」的刷新链禁令——已登记形态非违例)
 │        重调返回选卡 → 落「选卡确认链」分支;
@@ -110,4 +110,4 @@ act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 inves
 - journal op 名 =「投资策略」(dispatch 包装统一落 `[cw-op]` 主日志行);op 内日志 tag = `[cw-strat]`(options/chose/reason、槽位刷新结束本次访问);获得链侧 tag = `[cw-gain]`(效果账本登记/板面重写桥/策略落地分步)。
 - 缺陷面:登记分支失败 = `gain_chain_strategy_register_failed`;无效载荷 = `pick_invest_invalid_payload`(不发出无依据的动作的配套)。
 - 测试:两 node 行为测试 + 写入流交叉核对 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(发出即终结+发出时点写入交叉核对/空候选不发出无依据的动作/无 match 局外无早退支沿正常链路失败/观察复探窗与 report 含 left 摄入/刷新结束本次访问);即时上报与去重链测试 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);获得链测试 = `test_gain_chain.py`(gain_invest_strategy/gain_invest_env 链内写入分支);动作 op 类型分派 = `test_cw_unified_action_4.py`。
-- game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md)。
+- game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md)。

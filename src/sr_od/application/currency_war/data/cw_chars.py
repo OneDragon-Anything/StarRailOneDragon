@@ -251,7 +251,7 @@ def assert_expert_names(names: frozenset[str] | set[str] | tuple[str, ...]) -> N
 
 def char_first_faction(char_id: str) -> str:
     """主阵营注册表派生单一源(faction 不入状态容器形状;「首位 = 定义件」
-    契约正本 = strategy-docs/12_line_and_intention.md §1.1 carry_anchor 行,
+    契约正本 = skill strategy/12_line_and_intention.md §1.1 carry_anchor 行,
     三类消费口径共用):注册表命中 → ``factions[0]``
     (命中但无阵营登记 = '');未注册名/空名 = '?'。"""
     if not char_id:

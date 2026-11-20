@@ -1,8 +1,8 @@
 """mandate_v1 决策载荷(decision_payload 钩子的 v1 实现;纯读投影)。
 
 职责 = 决策帧出口后组装七个键(语义权威版本 =
-strategy-docs/strategy-telemetry.md;判据载体出处 =
-strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
+skill strategy/strategy-telemetry.md;判据载体出处 =
+skill strategy/22_prep_screen.md 第 6 步与 12_line_and_intention.md
 方向状态),两类来源:
 
 - 现读键 5(direction/k_members/k_fallback/transition_

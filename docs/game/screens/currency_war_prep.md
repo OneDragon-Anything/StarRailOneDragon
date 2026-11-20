@@ -7,7 +7,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
 # 货币战争-备战(策略主战场)
 
-每个位面每轮的备战:买牌 / 升等级 / 刷新商店(抽牌,社区也叫 D 牌) / 部署 / 出战。bot 备战决策(`CwScreenPrep` 单动作决策循环,判据设计见 develop 侧 strategy-docs/)在此运行,是自动化核心画面,也是货币战争出现最多的画面。screen_info:`assets/game_data/screen_info/currency_war_battle_prep.yml`(screen_id `currency_war_battle_prep`)。
+每个位面每轮的备战:买牌 / 升等级 / 刷新商店(抽牌,社区也叫 D 牌) / 部署 / 出战。bot 备战决策(`CwScreenPrep` 单动作决策循环,判据设计见 develop 侧 skill strategy/)在此运行,是自动化核心画面,也是货币战争出现最多的画面。screen_info:`assets/game_data/screen_info/currency_war_battle_prep.yml`(screen_id `currency_war_battle_prep`)。
 
 ## 何时出现 + 状态流转
 
@@ -59,7 +59,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **「装备推荐」按钮**(2026-08-09 VLM 跨 2 样本 + **live 实测确认**:在详情面板底部,~x1509,y816)。
   - **实机实测机制(位面 1-1 藿藿,2026-08-09)**:click「装备推荐」→ **弹出「推荐装备」+「次选装备」列表面板**(OCR 已实测确认:推荐装备@(969,575)/追踪@(1278,576)/次选装备@(968,762)),**不是一键自动穿** —— 我"一键穿最佳"假设证伪。装备仍需从列表选(点推荐装备→穿?)或拖拽。
   - **点推荐装备 = 弹该装备信息详情**(live 验:点"生命之环"弹详情,显 进阶装备/stats/适配角色/合成公式,**不穿戴、无穿戴按钮**)→ list-click 是**信息浏览非穿戴**。
-  - **→ 装备机制 = 拖拽**(research 攻略 + 排除法:click-flow 全是浏览、无穿戴动作);实机对局实证:drag 穿戴回归经备战执行面验证修复(该执行面已随装备组合壳退役,考古归 git;现役载体 = `CwActionWearEquipOp`/统一拖拽原语),非 list-click 流程。装备穿戴策略语义详 [strategy-docs/18_equip_wear_semantics.md](../../develop/sr_od/application/currency_war/strategy-docs/18_equip_wear_semantics.md)。
+  - **→ 装备机制 = 拖拽**(research 攻略 + 排除法:click-flow 全是浏览、无穿戴动作);实机对局实证:drag 穿戴回归经备战执行面验证修复(该执行面已随装备组合壳退役,考古归 git;现役载体 = `CwActionWearEquipOp`/统一拖拽原语),非 list-click 流程。装备穿戴策略语义详 [skill strategy/18_equip_wear_semantics.md](../../develop/sr_od/application/currency_war/skill strategy/18_equip_wear_semantics.md)。
 - **装备区(区域-道具装备 x1252-1918)= 右侧 owned 装备 icon 列 + 选中驱动详情面板**(已纠正旧「装饰球体」误判):
   - **owned 装备 = 多列规则网格**(用户:不止一列,默认 5 列从右往左;col1 x1800-1918 + col2 x1660-1800 + ...,列满溢左)。**无空槽**(「+」=星徽 icon)。read_equips(thr7)名准+无假阳,`equip_rect` 默认 **x1620-1918 覆盖 col1-3**(排除立绘 x1252-1450 + 面板 x1450-1620),thr7 单次扫 **8/8 全命中两列**(col1 7 + col2 冶金炉 1,点击已实测确认)。col4-5 若溢到面板区需关面板扫。固定 cell 模型(装备格-cIrJ)未来硬化,当前 zone 扫够用。**装备类别(穿戴 vs 工具)识别需可靠**(drag 工具如拆装扳手/冶金炉会拆/转化装备,已实测)。
   - **详情面板 = 选中驱动常驻信息面板(非开/关弹窗,已定案)**:右侧面板总显示当前选中实体。点装备 icon → 装备详情(详情-装备名/详情-装备类型,x1450-1620);再点/展开 →「可合成列表」overlay(该装备可合成的高阶装备);点已部署角色 → 角色详情(名/属性/天赋 + 详情/出售 按钮)。
@@ -183,4 +183,4 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **node_type band 不稳**:顶部标签 band 偶把非当前节点(如 reward)或 shop 开启态漏读;仅 battle/boss 稳,其余节点类型待多子态实机核全。
 - **费用字段 OCR 不可行**:见上「不可行」;静态估是对的,别建/修 area、别接入调用 cost reader。
 - **streak / enemy_difficulty**:实图读不到(streak 全 None;difficulty stylized 常空);待核实显示条件 / 改 digit-CV。
-- 策略接法详 `docs/develop/sr_od/application/currency_war/strategy-docs/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。
+- 策略接法详 `skills/sr-od-dev-currency-war/references/strategy/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。

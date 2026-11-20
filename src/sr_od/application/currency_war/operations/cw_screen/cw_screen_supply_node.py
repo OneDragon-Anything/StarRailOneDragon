@@ -310,7 +310,7 @@ class CwScreenSupplyNode(CwOperation):
 
     def _refresh_gate_allows(self, left: int | None) -> bool:
         """刷新对照闸全式(两态分量不同,正本 =
-        strategy-docs/23_shop_screen.md §1 刷新放行条件):
+        skill strategy/23_shop_screen.md §1 刷新放行条件):
         状态容器 ``supply_refresh_left`` 读数 ≥1 ∧ 识别标志分量——实机 =
         ``_refresh_point`` 在位(识别标志缺并入拒绝面,防「残值 ∧ 识别标志缺」帧机械
         点击 None,遭遇屏同款先例);sim = 无识别标志条件(恒过,sim 分支不依赖

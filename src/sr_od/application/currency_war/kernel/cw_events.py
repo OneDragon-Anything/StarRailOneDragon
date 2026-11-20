@@ -6,9 +6,9 @@
 ``EncounterOption``/``SupplyOption``)。
 
 投资两屏选卡评序不在本模块(宪法五:衍生估值/评序归策略层):投资环境轴
-= ``strategies/impl/mandate_v1/invest_env.py``(判据权威版本 = strategy-docs
+= ``strategies/impl/mandate_v1/invest_env.py``(判据权威版本 = skill strategy/
 28 号稿),投资策略轴 = ``strategies/impl/mandate_v1/invest_strategy.py``
-(判据权威版本 = strategy-docs 29 号稿),flow 按 kind 分派。
+(判据权威版本 = skill strategy/ 29 号稿),flow 按 kind 分派。
 """
 from __future__ import annotations
 
@@ -146,7 +146,7 @@ class PartnerOption:
     流派名/空 = op-layer.md §1.1 :34 转换失败待修项形态,收敛方向 = 观察
     失败 round_fail 零写零上报;屏级转换成功性边界由 screens/partner.md
     登记,含多候选同名同判);缺省选卡语义单一源 = 策略器 ``decide_partner``
-    (strategy-docs/13_pick_family.md §1 E6)。
+    (skill strategy/13_pick_family.md §1 E6)。
     """
     idx: int
     char_id: str = ""

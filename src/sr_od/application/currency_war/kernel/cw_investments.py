@@ -12,10 +12,10 @@
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
   - ``STRATEGY_GRANTS``(策略卡具名发放登记,机制事实留 kernel;「档→分」
     映射 = 策略层 gift_value,消费核 = ``strategies/impl/mandate_v1/
-    invest_strategy.py``,权威版本 = strategy-docs/29_invest_strategy_screen.md);
+    invest_strategy.py``,权威版本 = skill strategy/29_invest_strategy_screen.md);
   - ``env_faction_scope``/``strategy_faction_scope``(环境/策略的阵容指向集
     派生,零手抄登记;消费 = 投资选卡阵容冲突护栏,invest_strategy 冲突基准)。
-  两屏选卡评序不在本文件(模块职责说明第五条:衍生打分归策略层,权威版本 = strategy-docs
+  两屏选卡评序不在本文件(模块职责说明第五条:衍生打分归策略层,权威版本 = skill strategy/
   28/29 号稿)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
@@ -528,7 +528,7 @@ class GiftGrant:
     """投资环境的**具名发放**结构(送卡/送道具估值;InvestmentEnv 同区 schema)。
 
     发放按「取环境当场到手(即时)」与「满足条件后到手(条件)」两分——估值只对
-    确定性部分给足档,条件部分降档处理(正本 = strategy-docs/29_invest_strategy_screen.md §2.3 赠卡分)。送卡的价值判据 =
+    确定性部分给足档,条件部分降档处理(正本 = skill strategy/29_invest_strategy_screen.md §2.3 赠卡分)。送卡的价值判据 =
     **所赠角色是否被候选终局阵容使用**(结构集合级,零数值零战力,开局静态可用;
     模块职责说明 00_framework §1.1 禁战力建模,卖价残值对「送的人有没有人用」零判别力)。
     档位机器 = ``cw_comps.gift_hit_tier``;档位是定序实现常数非金流期望
@@ -3155,7 +3155,7 @@ def resolve_strategy_canonical(name: str) -> str | None:
 
 
 # ===== 阵容指向集(投资选卡阵容冲突护栏的判据源;护栏正本 =
-# strategy-docs/29_invest_strategy_screen.md §5 与 28_invest_env_screen.md
+# skill strategy/29_invest_strategy_screen.md §5 与 28_invest_env_screen.md
 # 护栏节)=====
 # 指向集 = 「这张投资服务哪些阵容阵营」的阵营名集合:非空 = 有阵容指向;
 # 空 = 通用卡(纯经济/纯战力/随机角色族/时代规则类),无冲突可判。全部
@@ -4259,7 +4259,7 @@ _validate_endorse_choice_disclosure()
 # 与功能价值)= 零现金分维持(现金通道 fail-closed 即无值;
 # 知识评估已对两半作过知识性净评),两层从不相加——
 # 「层 E 有值时以现金分参与、无值时零兜底」,取两层各自标尺下结果的较优
-# 呈现(标尺语义权威版本 = strategy-docs/28_invest_env_screen.md;层 E 语义
+# 呈现(标尺语义权威版本 = skill strategy/28_invest_env_screen.md;层 E 语义
 # = 策略层 env_economy._pool_rewrite_value docstring)。
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域
 # 价值不折金不进层 E,字段只登记事实;执行消费端 = sim

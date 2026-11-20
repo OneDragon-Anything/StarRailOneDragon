@@ -5,7 +5,7 @@
 折成金等价期望。kernel 侧只留游戏原始真值 ``cw_investments.ENV_ECONOMY``
 (通道结构 = 游戏效果原文的结构化,【注】);``ENV_ECONOMY_PENDING_
 MODELING`` 亦驻本模块(下方「待建模」已登记段)——「留 kernel 不迁」系
-早期过时表述,以代码体为准。语义权威版本 = strategy-docs/28_invest_env_
+早期过时表述,以代码体为准。语义权威版本 = skill strategy/28_invest_env_
 screen.md §2 现金分行;迁移批的删除面对照
 
 迁入改造(迁移迭代 3.1):

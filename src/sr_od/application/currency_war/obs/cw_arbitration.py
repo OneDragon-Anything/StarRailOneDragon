@@ -1,6 +1,6 @@
 """观察层读数多源仲裁·统一注册面(15 号稿 §2.4)。
 
-设计出处 = ``docs/develop/sr_od/application/currency_war/strategy-docs/15_observation_multisource_arbitration.md``
+设计出处 = ``skills/sr-od-dev-currency-war/references/strategy/15_observation_multisource_arbitration.md``
 (量纲分类与泛化规则)(统一注册面)。病灶 = 家族内六处成型仲裁各自
 私写裁决规则/分歧带/保留证据键,判读侧要拼多文件才能回答「这个量现在怎么裁」;
 本模块把「裁决规则 + 分歧带 + 分键」收敛为声明式注册表,证据通道**不新建**
