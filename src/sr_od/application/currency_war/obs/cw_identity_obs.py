@@ -62,6 +62,33 @@ from sr_od.application.currency_war.obs.cw_equipment import read_equipped_below
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.sr_context import SrContext
 
+# 开拓者命途形态模板归一表(模板目录名 → 现役规范名)。模板库的
+# ``开拓者·欢愉`` / ``开拓者·记忆`` 是旧季 plaza 独立卡名(烘焙库留存的旧季
+# 模板);现役赛季 role_list 收敛为单一 ``开拓者``,实机对应卡 = 开拓商店专属
+# 个性化开拓者(卡面显示玩家昵称,立绘 = 开拓者当前命途形态 art,与旧季
+# 欢愉/记忆形态模板同源强命中,fixture bench6_momojie_r13 备战栏-6 裁片
+# inliers=50 实证)。命中本表键而不过归一 → resolve None → 槽位身份被
+# 静默丢弃,备战席把已入席卡读成空槽。
+# 放置序 = 在册检查**之后**:未来赛季 role_list 若重新收录该名,注册表
+# 语义自动接管,本表自然休眠。
+_TRAILBLAZER_FORM_TO_BASE: dict[str, str] = {
+    '开拓者·欢愉': '开拓者',
+    '开拓者·记忆': '开拓者',
+}
+
+
+def _validate_trailblazer_form_map() -> None:
+    """归一表目标名闭集校验(import 期,同 ``_validate_pinned_names_match_bridge``
+    先例):目标必须全是现役 roster 成员——换季收缩致目标掉册时启动即炸,
+    防归一静默产出注册表外名字。"""
+    bad = {v for v in _TRAILBLAZER_FORM_TO_BASE.values()
+           if v not in CHARACTER_ROSTER}
+    if bad:
+        raise ValueError(f'开拓者形态归一表目标名不在现役 roster(换季收缩?):{bad}')
+
+
+_validate_trailblazer_form_map()
+
 
 def resolve_char_name(avatar_id: str) -> str | None:
     """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(注册表成员,双 roster)。
@@ -74,6 +101,10 @@ def resolve_char_name(avatar_id: str) -> str | None:
     deployed_p1r9 后排-2 姬子·启行 inliers=38,基础姬子 <7 连 top3 未进 —— 共脸对分数拉开,
     非无法区分;旧「脸库归一·SIFT 无法区分变体」结论是脸库时代产物,已废)。
 
+    换季改名归一:旧季独立卡名的留存模板(开拓者命途形态,见
+    ``_TRAILBLAZER_FORM_TO_BASE`` 表注)归一到现役规范名后才判
+    "不在注册表";归一目标名 import 期闭集校验。
+
     legacy 脸库路径(``get_character_by_id`` 英文 id→cn + 子串消歧)是
     英文 id 兜底,半身立绘库基本不走;两 roster 都不在 → 走 legacy →
     仍无 → None(SIFT 命中但不在货币战争注册表,如脸库误匹配)。
@@ -82,6 +113,8 @@ def resolve_char_name(avatar_id: str) -> str | None:
         return avatar_id   # CW 立绘库 key 是中文规范名(plaza 烘焙),直接返(非主游英文 id)
     if avatar_id in SYSTEM_UNIT_ROSTER:
         return avatar_id   # 系统单位模板(实拍 key 同为规范名)
+    if avatar_id in _TRAILBLAZER_FORM_TO_BASE:
+        return _TRAILBLAZER_FORM_TO_BASE[avatar_id]   # 换季改名归一(表注:在册检查优先)
     c = get_character_by_id(avatar_id)
     if c is None:
         return None
