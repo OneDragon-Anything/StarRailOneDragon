@@ -6,7 +6,9 @@ runner 包络)与出战发出链(``launch_battle_unified`` 统一执行器 +
 面封装 + ``_battle_chain_deploy_moves`` 计划装配件)同居;发出链消费方 =
 画面 op armed 面(CwScreenPrep)与 loop resume 面(CwLoop)。
 **防线边界申报**:执行前守卫现役 = drag 类浮层守卫(``prep_drag_overlay_gate``,
-拦截错误画面上的机械拖拽),非动作后判效——动作落地判定仍归观察侧
+拦截错误画面上的机械拖拽)+ 出战前置席满守卫(``guard_bench_overflow_for_battle``,
+告警横幅在场时先卖一个备战席角色腾位再放行出战——席满态出战会被游戏静默
+忽略),非动作后判效——动作落地判定仍归观察侧
 reconcile 对账,与「机械执行、不含玩法判断」申报不抵。出战链两道执行前
 防线(屏态复验/浮层闸门)已退役(2026-11-19 用户裁定,挂账板 §二.7⑤)——
 错屏/浮层下的误发出由阶段一身份分发(每帧)+ drag 浮层守卫 + 调用方
@@ -62,6 +64,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     CwActionLevelUpParam,
+    CwActionSellBenchParam,
     CwActionStartBattleParam,
 )
 from sr_od.context.sr_context import SrContext
@@ -622,6 +625,96 @@ def _battle_chain_deploy_moves(session) -> list:
     return list(battle_chain_deploy_params(session))
 
 
+# ============================================================ 出战前置席满守卫(执行前输入契约守卫)
+
+#: 席满腾位守卫卖出后的告警复查等待(固定时长,等待归产生动画的操作:
+#: 卖出动作 op 内已含卖出动画固定等待,本等待覆盖告警横幅消失的过场窗;
+#: 横幅消失依据 = 游戏机制(告警 = 有未安置单位,卖 1 腾 1 → 溢出件
+#: 入位 → 无未安置;实机人工验证「卖 1 个后台角色腾位 → 出战生效」
+#: 流程),值取卖出动画之外的保守整档余量)。
+_BENCH_OVERFLOW_SETTLE_S: float = 0.8
+
+
+def _bench_overflow_banner_present(op: SrOperation) -> bool:
+    """「备战席已满」告警横幅画面现读(与观察链写端同源同口径:
+    同 area 同查法,观察链 = cw_screen_prep._observe 溢出告警段)。
+    OCR 区单锚在场判定,真值 = 游戏侧权威信号(横幅在场 = 出战被忽略
+    的处理门,见 screen_info 备战画面档告警 area 建档)。"""
+    screen = op.screenshot()
+    return op.round_by_find_area(screen, SCREEN_NAME,
+                                 '告警-备战席已满',
+                                 crop_first=False).is_success
+
+
+def guard_bench_overflow_for_battle(op: SrOperation, ctx: SrContext,
+                                    ex: PrepActionExecutor
+                                    ) -> tuple[bool, str]:
+    """出战前置席满守卫(执行前输入契约守卫,防线边界申报见模块头)。
+
+    游戏侧事实(实机实证 + prep.md 告警节建档):「备战席已满」告警
+    横幅在场时出战会被游戏**静默忽略**(无战斗无结算金币不变),bot
+    侧无感知继续跑。守卫 = 该缺口的流程侧兜底(防 bug 守卫族,合法
+    判断面——不改出战意图本身,只保证出战动作物理有效):
+    告警在场 → 卖一个备战席角色腾位(机械必要操作,零策略语义——
+    选槽 = 槽位表第一个 kind='unit' 槽的确定性规则;卖出经 runner
+    包络正常记账,上报溢出分支当帧记溢出件入位并投影告警清零)→
+    复查告警消失再放行出战。
+
+    - 告警不在场 → ``(True, '')`` 放行,零行为变化(仅付一帧告警
+      area 识别成本);
+    - 告警在场但选不出槽(无局状态/备战席槽表未观察/无 unit 槽)→
+      ``(False, detail)`` 出战未发出,交回外循环重观察重决策(下一帧
+      heavy 观察重建真值,策略对账后自然重派,守卫不自旋);
+    - 卖出后复查告警仍在场(拖拽被吞等机械落空)→ ``(False, detail)``
+      出战未发出(发了必被忽略);单次卖出 + 单次复查,重试治理交
+      外循环(卖出的逻辑态已按「点完即写」契约落账,真值纠偏归下一帧
+      观察对账——守卫内不做二次选槽,防基于失真逻辑态误卖)。
+
+    sim 布局零触及(机械 IO 门内才检查;sim 的 overflow_warning 真值
+    由获得链维护、卖出上报溢出分支投影清零,无画面守卫需求)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        game_state_from_ctx,
+    )
+    from sr_od.application.currency_war.sim import cw_sim_ports
+    if not cw_sim_ports.mechanical_io_allowed():
+        return True, ''
+    if not _bench_overflow_banner_present(op):
+        return True, ''
+    gs = game_state_from_ctx(ctx)
+    _bview = gs.bench.value if gs is not None else None
+    slots = list(_bview.slots) if _bview is not None else None
+    if not slots:
+        log.warning('[cw!][battle] 席满守卫:告警在场但备战席槽表不可用'
+                    '(无局状态/未观察)→ 出战未发出,交回外循环重观察')
+        return False, '未执行:席满腾位失败(告警在场但备战席槽表不可用)'
+    # [索引定义] idx = BenchView.slots 列表下标(0 基,物理槽 = idx+1);
+    #             取值时机 = 守卫执行期现读状态容器逻辑态,立即用于卖出。
+    idx = next((i for i, s in enumerate(slots)
+                if s.kind == 'unit' and s.unit is not None), None)
+    if idx is None:
+        log.warning('[cw!][battle] 席满守卫:告警在场但槽表无角色可卖'
+                    '→ 出战未发出,交回外循环重观察')
+        return False, '未执行:席满腾位失败(告警在场但无角色可卖)'
+    param = CwActionSellBenchParam(bench_idx=idx,
+                                   expect=slots[idx].unit.char_id,
+                                   reason='self_rescue_sell')
+    ex.execute(param)
+    _sold_detail = getattr(ex, 'last_detail', '')
+    _sold_rr = getattr(ex, 'last_round_result', None)
+    _sold_ok = bool(_sold_rr is not None and _sold_rr.is_success)
+    log.info('[cw][battle] 席满守卫:告警在场 → 卖备战栏%d 腾位(%s;round=%s)',
+             idx + 1, _sold_detail, '成功' if _sold_ok else '受阻')
+    time.sleep(_BENCH_OVERFLOW_SETTLE_S)
+    if _bench_overflow_banner_present(op):
+        log.warning('[cw!][battle] 席满守卫:卖出后告警仍在场(卖出未生效'
+                    '或仍席满)→ 出战未发出,交回外循环重观察')
+        return False, (f'未执行:席满腾位失败(卖出后告警仍在场:'
+                       f'卖备战栏{idx + 1} {_sold_detail})')
+    log.info('[cw][battle] 席满守卫:腾位生效(告警消失)→ 放行出战')
+    return True, f'席满腾位守卫:已卖备战栏{idx + 1}腾位'
+
+
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     """出战底层动作发出核(C1 单一发出函数,skill strategy/14_p1_consume_arms.md §9.6):部署原子序 +
     CwActionStartBattleParam 的执行核,恢复局面与达标分支两调用面共用,禁各写一套
@@ -640,9 +733,13 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 
     返回 ``(launch_ok, detail)`` = 出战**点击已执行**(出战域重设计
      收缩语义,单击原子;执行器 last_launch_ok 旁路;False = 找不到按钮/area
-    缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,结束后
-    画面状态由外循环下一帧重判)。 刹车短路(停机标志
+    缺失/席满腾位守卫失败等未执行形态——旧「动作发出点内部事实」判效面
+    随 op 重写停用,结束后画面状态由外循环下一帧重判)。
+    刹车短路(停机标志
     已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
+
+    执行序 = 部署原子序 → 席满守卫(:func:`guard_bench_overflow_for_battle`,
+    两 face 共同生效;失败 = ``(False, detail)`` 零出战交回外循环)→ 出战单击。
     """
     ex = PrepActionExecutor(op, ctx)
     try:
@@ -677,6 +774,14 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
                 ex.execute(_mv)
             log.info('[cw-loop] 达标臂部署原子序 ×%d: %s',
                      len(_moves), getattr(ex, 'last_detail', ''))
+        # —— 出战前置席满守卫(两 face 汇合点;部署原子序先行,部署可能
+        #      移动 bench 单位改变席位占用,守卫按部署后的画面现读判定):
+        #      告警在场 → 先卖腾位再出战;守卫失败 = 出战未发出交回外循环
+        #      (发了必被游戏静默忽略,伪装成功会让外循环白等战斗窗)。
+        _guard_ok, _guard_detail = guard_bench_overflow_for_battle(op, ctx,
+                                                                   ex)
+        if not _guard_ok:
+            return False, _guard_detail
         ex.execute(CwActionStartBattleParam())
     except StopBrakeShortCircuit as e:
         log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)

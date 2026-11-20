@@ -1174,16 +1174,24 @@ class CwScreenPrep(CwOperation):
         旁路消费;开店返回 = 商店访问级完成事实,非动作 op round 结果)
         = None,终结口透传不适用。"""
         if isinstance(action, CwActionStartBattleParam):
-            # 出战意图执行 = 统一执行器(face=armed:部署原子序→出战点击链
-            # ——策略前置动作发出点的意图在此落执行;执行器住 prep_actions;
-            # 旧屏态复验/浮层闸门两道执行前防线已退役,见 prep_actions
-            # 模块头「防线边界申报」)。
+            # 出战意图执行 = 统一执行器(face=armed:部署原子序→席满守卫→
+            # 出战点击链——策略前置动作发出点的意图在此落执行;执行器住
+            # prep_actions;旧屏态复验/浮层闸门两道执行前防线已退役,见
+            # prep_actions 模块头「防线边界申报」)。
             from sr_od.application.currency_war.prep_actions import (
                 launch_battle_unified,
             )
-            _, _detail_lbu = launch_battle_unified(self, self.ctx,
-                                                   face='armed')
+            _ok_lbu, _detail_lbu = launch_battle_unified(self, self.ctx,
+                                                         face='armed')
             log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
+            if not _ok_lbu:
+                # 出战未发出(席满腾位守卫失败/按钮定位缺失)→ 终结口失败
+                # 透传语义(既有 QC 通道,见 _terminal_exit docstring):
+                # 失败如实转 round_fail 交回外循环重观察重判——伪装成功
+                # 交战斗分支会让外循环无界白等(战斗窗等不到)。
+                return self.round_fail(
+                    f'{action_key(action)} 终结动作未发出(出战发出链失败'
+                    f'透传):{_detail_lbu}', wait=1.0)
             return None
         if isinstance(action, CwActionOpenShopParam):
             # 开店 = 唯一普通形态(正本 = flow/action_ops.md §4 OpenShop 行:受限访问截流分支
