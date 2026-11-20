@@ -1,6 +1,6 @@
 """视界层:R_全局/R_剩余/R_截(场字段自算)+ Δ利息流̂ 增量算子。
 
-单一源纪律(R3-2 定理 L-R3-2;位面轮次单一源):长度唯一真值源 =
+单一源纪律(位面轮次单一源):长度唯一真值源 =
 GameState 场字段 ``node_seq_by_plane``(环境注册刻一次性落全量:修饰局
 P1=10/P2=8、默认局 9/7;None = 未注册态,开局 P1 前段/裸 session,读侧
 回退默认表 ``cw_node_schedule.PLANE_NODE_TABLES``)。
@@ -14,8 +14,8 @@ r_remaining_in_plane)已自 kernel/cw_plane_table 停用,本层为策略侧自�
 P1+P2+P3,全序列真值在表)——**位面 ∉ 序列表键集(≥4)契约:返回 0**
 (表外位面无剩余轮;禁 KeyError/异常形态)。
 
-Φ(未来纯金流)口径:P51 终态 E[局终金−g](R5-1 定案);**全量 Φ/W_floor/
-W_flow 数值模块私有、类型上不对外暴露**(R5-7/R6-4 收尾)——Φ 只在增量
+Φ(未来纯金流)口径:终态 E[局终金−g];**全量 Φ/W_floor/
+W_flow 数值模块私有、类型上不对外暴露**——Φ 只在增量
 算子(Δ利息流̂)与区间敞口比较 API 内部使用,对外输出列不含 Φ 数值。
 """
 from __future__ import annotations
@@ -70,14 +70,14 @@ def r_global(session: object, plane: int, node_in_plane: int) -> int:
 
 
 def r_remaining(session: object, plane: int, node_in_plane: int) -> int:
-    """R_剩余(到局终的总剩余轮数;Φ̂=Ī×R_剩余 的组成因子,R2-8)。"""
+    """R_剩余(到局终的总剩余轮数;Φ̂=Ī×R_剩余 的组成因子)。"""
     return r_global(session, plane, node_in_plane)
 
 
 def r_trunc() -> int:
-    """R_截 = λ₃ 视界(3 轮窗累积危险率的截断口径,P51 §R/§5-11)。
+    """R_截 = λ₃ 视界(3 轮窗累积危险率的截断口径)。
 
-    值取 proof_consts.LAMBDA3_WINDOW(【证】常数白名单,R17-5)——本层禁
+    值取 proof_consts.LAMBDA3_WINDOW(常数白名单)——本层禁
     新建长度常量纪律覆盖「位面长度」维;R_截系证明声明常数,归宿在白名单模块。
     """
     return proof_consts.LAMBDA3_WINDOW
@@ -85,13 +85,13 @@ def r_trunc() -> int:
 
 def delta_interest_flow(refund: int, cap_sup: int = INTEREST_CAP_SUP,
                         trunc: int | None = None) -> int:
-    """Δ利息流̂ 生产式(R9-3 上界形态;R63-1:cap 消费 cap_sup 而非现值)。
+    """Δ利息流̂ 生产式(上界形态;cap 消费 cap_sup 而非现值)。
 
     ``min(⌈r/10⌉, cap_sup) + cap_sup × max(0, R_截−1)``
 
     方向保证:生产式 ≥ 轨迹真值 Σ_t Δ息_t 且 ≤ 复合安全界 cap_sup×R_截
-    (交叉核对基准 §5.3「Δ利息流交叉核对」行,升帽注入反例基准 R63-1 在测试侧构造)。
-    卖出抬高 g 使后续利息流严格增加(R5-1);第二项按现值 cap 组装即红。
+    (交叉核对基准 §5.3「Δ利息流交叉核对」行,升帽注入反例基准在测试侧构造)。
+    卖出抬高 g 使后续利息流严格增加;第二项按现值 cap 组装即红。
     """
     if trunc is None:
         trunc = r_trunc()
@@ -103,9 +103,9 @@ def delta_w_increment(lambda_upper: float, refund: int,
                       cap_sup: int = INTEREST_CAP_SUP) -> int:
     """V_power 增量敞口第一项系数通道:λ_U × (refund + Δ利息流̂)。
 
-    R5-1 修正后的卖面消费形态——全量 W_floor=λ×(g+Φ) 在 Φ 取下界时卖出门槛
+    修正后的卖面消费形态——全量 W_floor=λ×(g+Φ) 在 Φ 取下界时卖出门槛
     系统性下偏(fail-open),卖面消费改为**增量敞口**(refund + Δ利息流̂ 组装
-    保守上界)。λ 端点由 lambda_death 层供给(判据侧禁自持端点,R19-3)。
+    保守上界)。λ 端点由 lambda_death 层供给(判据侧禁自持端点)。
     """
     return int(lambda_upper * (refund + delta_interest_flow(refund, cap_sup)))
 

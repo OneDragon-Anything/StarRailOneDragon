@@ -212,7 +212,7 @@ class MandateV1Strategy(CwFlowStrategy):
                  registry: DecisionV2Registry | None = None) -> None:
         """核构造(终态契约 §2.1:gs/config 透传基类构造注入)。
 
-        (原 ``calibration.apply()`` P76 两槽注入位已删除——
+        (原 ``calibration.apply()`` 两槽注入位已删除——
         V_C_MINUS_V_F/E2_CONCENTRATION_BAND 槽位不迁移,
         停用面申报;audit/calibration.py 一并移除。)"""
         super().__init__(gs, config, registry)

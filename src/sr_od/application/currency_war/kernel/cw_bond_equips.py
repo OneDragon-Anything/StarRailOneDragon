@@ -126,7 +126,7 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
         tags.append(ch.independent)
     seen = set(tags)
     equips = list(getattr(bc, 'equips', None) or [])
-    # 两遍法(P19 幂等性):第一遍收齐全部门卡带授予集 T̄——星徽的「已有不重复」
+    # 两遍法(幂等性):第一遍收齐全部门卡带授予集 T̄——星徽的「已有不重复」
     # 以终局成员身份为准,与装备穿戴顺序无关(「卡带X+星徽X」无论先后均计 1);
     # 第二遍星徽判 x∉seen∪T̄、卡带无条件 +1(可双计,不查 seen)。
     tape_grants = {b for eq in equips for b in _TAPE_BOND_GRANTS.get(eq, ())}

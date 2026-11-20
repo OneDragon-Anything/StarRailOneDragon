@@ -111,11 +111,11 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
 
 
 def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
-    """P48 整买纪律(D-BUYNOTE):整批 XP 放行判据。
+    """整买纪律(D-BUYNOTE):整批 XP 放行判据。
 
     仅当「一次买齐到下一级」的金够付时放行(clicks×click_cost ≤ gold)
     ——散买 XP(买不够升级)零收益,拦截(整买形态判据位,
-    足支的判据位;P72(1) 整买形态 = Leontief 互补的实现载体)。
+    足支的判据位;整买形态 = Leontief 互补的实现载体)。
     """
     if clicks_to_next <= 0:
         return False
@@ -139,7 +139,7 @@ def prob_band_of_cost(cost: int) -> tuple[int, int]:
     禁写成「全域最高值区间 ∩ ≤9」:4/5 费全域峰在 lv10(0.40/0.25),
     截掉得空集;域内峰口径下 4/5 费带 = [9,9](lv9 的 0.30/0.10)。
 
-    lv10 出域依据:P35 已证停手窗 lv9→10 恒负 + ``peak_refresh_level``
+    lv10 出域依据:停手窗 lv9→10 恒负 + ``peak_refresh_level``
     在产表即此口径(1..9 域内取峰,cw_plane_table);带成员与该表的
     关系 = 带上界取 max(带)(单点峰形态,并列取高档),peak_refresh_
     level 作域上限校验,非带定义本体(11 号稿 §2 带成员
@@ -414,7 +414,7 @@ def terminal_all_in(gs: GameState, session: StrategySession) -> bool:
     """终局域末战 ALL IN 判定(位面末战 ∧ R_全局 ≤ 1)。
 
     单一源供 :func:`levelup_fund_gate` 豁免支消费(末位面末战后金无
-    任何消费场景,P41 终局清仓恒优/P23 死亡域攥金价值恒零——ALL IN
+    任何消费场景,终局清仓恒优/死亡域攥金价值恒零——ALL IN
     维持花光原语义)。``r_remaining`` 门面场字段自算查表(R 含当前
     节点,决策帧最小值 = 末位面末战的 1;禁自推位面数——宪法 01 §8-1
     位面参数化不变量)。

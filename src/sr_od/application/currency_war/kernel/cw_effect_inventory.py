@@ -799,7 +799,7 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
     grant = ENV_GIFTS.get(env_name)
     if grant is not None:
         # 发放形状字段全量渲染(段名 = 通道语义;清单闭合声明:sell_value_
-        # note = 注释性估值注记(【注】下界)非发放形状,渲染进占位 notes
+        # note = 注释性估值注记(下界)非发放形状,渲染进占位 notes
         # 是噪声,现值全仓零登记,排除无行为差)
         _parts = ['GiftGrant']
         if grant.chars_immediate:

@@ -12,7 +12,7 @@ def stockpile_buy(gold: int, s_reserve: int, bench_free: int,
                   card_cost: int, card_star: int,
                   t_search: frozenset[int],
                   ) -> tuple[bool, str]:
-    """EV 追加压牌库买入(P49;01_math_framework §3.5 三段适用范围统一形态)。
+    """EV 追加压牌库买入(01_math_framework §3.5 三段适用范围统一形态)。
 
     发出限定(R11-2/R12-3):档匹配 ∧ refund_full_star_ok(1★ 全额
     可退);席位:free≥2 直过,free=1 过 V_slot 净门

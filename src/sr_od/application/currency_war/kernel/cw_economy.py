@@ -255,7 +255,7 @@ def streak_gold(streak: int) -> int:
 # ===== 调用零改)=====
 
 #: 默认利息帽档数 = 息封顶金位/10(cw_plane_table.GOLD_CAP_INTEREST=50 的
-#: 结构派生,【注】机制真值;禁在本模块另写裸 5)
+#: 结构派生,机制真值;禁在本模块另写裸 5)
 DEFAULT_INTEREST_CAP: int = GOLD_CAP_INTEREST // 10
 
 #: cap 视界上确界(注册表 interest_cap 值域上界 10;消费位按 canonical
@@ -440,7 +440,7 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
 
 def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
                cap: int = DEFAULT_INTEREST_CAP) -> int:
-    """金位 gold 花 spend 金后未来 rounds 轮的精确期望息损(P47 命题 2)。
+    """金位 gold 花 spend 金后未来 rounds 轮的精确期望息损。
 
     双轨迹对照:基线 B(不花,守饱和线,富余即花)vs A(花后守线);每轮息损
     = interest(B) − interest(A),两轨迹同收入演化。截断视界 R=rounds 由
@@ -690,9 +690,8 @@ _REWARD_BASE_DEFAULT: int = BASE_INCOME
 # streak 带符号(连胜 + / 连败 −);真值归宿 = gs.streak 结算覆盖写端
 # (kernel/cw_game_state.py::apply_settlement_cover 的 streak_after,
 # 写点 = battle_wait 结算观测),经济/观察消费读状态容器。
-# 无「连胜 ≥2 跌破利息档」阈值常量(未核经验值,与已证跌破利息档-保利息判据
-# 冲突;连胜经济语义由利息线判据默认承载,激活分支 Δp 通道
-# 封锁——登记 = math_proofs P43)。
+# 无「连胜 ≥2 跌破利息档」阈值常量(未核经验值,与跌破利息档-保利息判据
+# 冲突;连胜经济语义由利息线判据默认承载,激活分支 Δp 通道封锁)。
 
 # —— 购买经验决策 helper(机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_economy 单一源)——
 # ⚠️ 本接缝族签名已切 GameState。字段读统一经状态容器读口单一源
@@ -898,7 +897,7 @@ def xp_batch_payment_gate_for(gs: GameState | None,
 
 
 
-#: 刷新基价【注】= 赋值别名,非第二源:权威版本 = ``cw_state.REFRESH_COST_BASE``
+#: 刷新基价 = 赋值别名,非第二源:权威版本 = ``cw_state.REFRESH_COST_BASE``
 #: (游戏定义真值:实付恒 2 金,不随金位/次数/等级变,三流对账
 #: 定案,出处注在彼处)。本名保留 = 存量消费面(proof/budget/本模块)零迁移;
 #: 改值只改 cw_state 权威版本,禁在此另写数值。
@@ -913,12 +912,8 @@ SHOP_REFRESH_COST: int = REFRESH_COST_BASE
 
 
 def _expected_level(round_num: int, plane: int) -> int:
-    """阶段期望等级(里程碑刻度,663 帖攻略精读实证)。
-
-    【拟】社区先验待证待办:本曲线处置 = 立证明骨架
-    (原 P58 骨架草案已随证明史清理删除;重derive 时按
-    游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
-    派生等级日程),证明完成前数值维持现状;届时按证明输出重derive 或停用。
+    """阶段期望等级(里程碑刻度,663 帖攻略精读实证;社区先验,无游戏定义
+    出处)。
 
     P1:1-3 上5 / 1-7 遭遇前6 / boss 前 6-7(通用曲线取 6)。
     P2:**2-1 即 7**(升7找主C;H1 修复后 bot 进 P2 应带 7)/ 2-5 前留 7 慢D主C三星 /
@@ -1123,12 +1118,11 @@ def _schedule_target_core(session: StrategySession) -> str:
     """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧返回 '' →
     调用方缺省 3 费档,供给不断)。
 
-    P86 权威版本申报(p86-no-target-period-fund-allocation.md §4.1-1 选项
-    「维持缺省 3 费」):未锁帧阵容核心基准(FALLBACK_COMP_NAME
+    未锁帧阵容核心基准(FALLBACK_COMP_NAME
     单线硬编码)已停用——峰值级基准只进概率校准分量,
-    方向语义中性,未锁帧峰值档统一回落 3 费缺省。
+    方向语义中性,未锁帧峰值档统一回落 3 费缺省(裁定 = 「维持缺省 3 费」)。
     ⚠️ 边界申报:淘汰计划文档本体已不在仓(docs/develop/currency_war/archive/
-    目录不存在,漂移登记见 P86 权威版本 §4.1-2),码内注释是原唯一在档裁决
+    目录不存在),码内注释是原唯一在档裁决
     记录,本注即其承接。"""
     return _vd_core_of(session)
 

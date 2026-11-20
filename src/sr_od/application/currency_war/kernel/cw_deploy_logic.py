@@ -162,13 +162,13 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
 
 # (换阵卖出义务分支 fenced_swap_arm_of 与转型域双门件(SWAP_GUARD_SYSTEMS/
 #  _swap_guard_achieved)已随部署统一批丁纳入统一管理删除——统一部署搜索
-#  定型单属;判别子 swap_bond_gate_domain_of 已随 P88
+#  定型单属;判别子 swap_bond_gate_domain_of 已随
 #  买侧收窄全套退役整删(正本 = skill strategy/24_deploy_segment.md),
 #  唯一消费 mandate_v1.swap_transition_narrow_frame 同批删除。)
 
 
 # (ctx 形态判别子 swap_bond_gate_domain / fenced_swap_gate_open / 让渡序
-#  度量对(_swap_yield_union_achieved/swap_yield_contribution,P79-4)已随部署
+#  度量对(_swap_yield_union_achieved/swap_yield_contribution)已随部署
 #  统一批丁纳入统一管理删除:换谁下 = 统一部署搜索定型单属,独立让渡度量退役。)
 
 

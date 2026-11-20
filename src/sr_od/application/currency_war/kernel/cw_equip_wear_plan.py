@@ -366,7 +366,7 @@ def _build_equip_wear_plan(session: Any,
         wearable = [n for n in owned_names
                     if EQUIPMENTS.get(n) is not None
                     and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-        # λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
+        # λ 标定埋点(λ 行「待遥测标定」的数据源):
         # 每次派发记 owned 全量快照(含工具;每 pass 恰一次 = 每次派发至多
         # 调本函数一次)——离线 diff 相邻轮快照 = 各节点发放件数。
         # (换源:plane/round 取状态容器 node;未观察显 '?' 同旧缺帧形态)
@@ -379,7 +379,7 @@ def _build_equip_wear_plan(session: Any,
                  _ref_node.plane if _ref_node is not None else '?',
                  _ref_node.round_num if _ref_node is not None else '?',
                  _own_ct)
-        # 判读基准(P14 检验点 2):「缺什么囤什么」——目标 K 的
+        # 判读基准:「缺什么囤什么」——目标 K 的
         # 组件需求 − 当前库存正差,判读/值守按此报装备面。
         if _tgt_comp is not None and _tgt_comp.key_equips:
             from sr_od.application.currency_war.data.cw_synthesis import (

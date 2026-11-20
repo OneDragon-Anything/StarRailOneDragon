@@ -40,7 +40,7 @@ def line_members(comp: Comp | None) -> tuple[str, ...]:
 
 
 def zero_overlap(name: str, k: tuple[str, ...]) -> bool:
-    """与目标线 K 零重叠(P41 分类表第一行资格条件「与终局阵容锁定零重叠」;
+    """与目标线 K 零重叠(资格条件「与终局阵容锁定零重叠」;
     M4 燃料件卖出的前提之一)。"""
     return name not in k
 
@@ -151,11 +151,11 @@ def p2_blood_floor(state: GameState) -> bool:
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
                 cap_resolved: int) -> bool:
-    """T5 未锁定止血买的结构判据支撑谓词(p46 P1 谓词
-    原式,判据 = loss_exact 现算,不按任何帧集清单)。
+    """T5 未锁定止血买的结构判据支撑谓词(判据 = loss_exact 现算,
+    不按任何帧集清单)。
 
-    ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出 p46 否决域(D =
-    P1∧P2∧P3 恒假)——无需 E_rev、无需 V_deploy、无需 P2 分析,止血买
+    ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出否决域(D =
+    P1∧P2∧P3 恒假;P1/P2/P3 系函数名承袭的历史谓词名)——无需 E_rev、无需 V_deploy、无需 P2 分析,止血买
     的正当性由「占用集合基数严格扩 + 全额可退可逆 + 息账零损」三结构量
     的支配论证独立承载(仅作「有比没有强」接受
     形态的已登记先例,适用范围限定同节)。判据全为注册表派生量,零 hp/胜率/
@@ -170,9 +170,8 @@ def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
     return loss_exact(gold, spend, rounds, net_income, cap_resolved) == 0
 
 
-# ===== 前窗/零成型谓词族(P90 面①;设计权威版本 =
-# 11 号稿 §3.1(P90 前窗行);
-# 命题 = math_proofs P90-P94 行)=====
+# ===== 前窗/零成型谓词族(设计权威版本 =
+# 11 号稿 §3.1 前窗行)=====
 
 #: 零战斗节点词集(节点表查表的战斗性判定的非战斗半边):生产表中文词
 #: (就地展开;原 ``P1_NODE_TEMPLATE`` 词表/``tools/cw_node_validate`` 校验器
@@ -227,7 +226,7 @@ def front_window_frame(state: GameState) -> bool:
 
 
 def zero_form_frame(deployed: list) -> bool:
-    """零成型帧谓词(P90 收窄适用范围 e=0;P94 谓词原文 = per-体系
+    """零成型帧谓词(适用范围 e=0;谓词原文 = per-体系
     ``board_factions[s] < 羁绊注册表[s].tiers[0]``,V4.4 希儿系复合判据
     已随希儿系退役删除)。
 
@@ -262,12 +261,12 @@ def zero_form_frame(deployed: list) -> bool:
 
 
 def advances_four_system(name: str) -> bool:
-    """体系推进件判定(零成型帧排序层前移对象;P20 方向级背书,
+    """体系推进件判定(零成型帧排序层前移对象;方向级背书,
     非金量纲、不构成支出放行)。
 
     推进件 = 角色羁绊标签命中体系键(SYSTEM_CARDS × 羁绊注册表同注册表
     派生,zero_form_frame 同源注释)。零成型帧上全部体系 < tiers[0],
-    任一体系成员买入都单调推进激活进度(P90 收益面 iii)。
+    任一体系成员买入都单调推进激活进度。
     (V4.4 希儿系贡献件分支〔kernel ``is_seele_system_member``:希儿本人
     + 量子/贝放大器〕随希儿系退役删除——两放大器羁绊消失、希儿掉出
     角色注册表,纯标签命中即 v4.7 数据下的完整语义。)

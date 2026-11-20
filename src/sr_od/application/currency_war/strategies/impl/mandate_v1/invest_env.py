@@ -17,7 +17,7 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
   环境方向差异由赠卡分/立场分承载);
 - 赠卡分 = gift_value 具名口径(ENV_GIFTS)+ 概念股随机阵营口径(28 号稿
   赠卡分行);
-- 立场分 = :data:`STANCE_SCORE`(【拍】形态,每行带理由;
+- 立场分 = :data:`STANCE_SCORE`(拍值形态,每行带理由;
   宪法五:策略立场归策略层,合法性来自裁定本身);
 - 转向轴 = user-priority + :data:`STEERING_PRIORITY_BONUS`(软偏好,立场
   系数,压不过 S 线方向分 = 「用户点名是偏好不是支配」);user-forbid =
@@ -120,7 +120,7 @@ class RefreshSuggestion:
 # 下方名字 = 该模块 re-export(本文件内引用与既有测试/判读面零改名)。
 
 
-# ===== 立场分表(28 号稿 §2 立场分行;【拍】形态,每行带理由)=====
+# ===== 立场分表(28 号稿 §2 立场分行;拍值形态,每行带理由)=====
 
 @dataclass(frozen=True)
 class StanceRow:

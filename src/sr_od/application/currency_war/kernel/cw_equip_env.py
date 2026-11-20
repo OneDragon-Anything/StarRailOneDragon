@@ -498,7 +498,7 @@ TOOL_EXEC_CHANNEL_READY: bool = True
 TOOL_REJECT_G1_NOT_ADMITTED: str = 'g1_not_admitted(执行通道未建档)'
 TOOL_REJECT_NO_TARGET: str = 'key_equips 空(recycle_qualified 空集,fail-closed)'
 TOOL_REJECT_IN_DEMAND: str = '件在需求向量内(留合成)'
-TOOL_REJECT_M1_GAP: str = 'm=1 缺件专留(P14 定理 2,不值得喂炉)'
+TOOL_REJECT_M1_GAP: str = 'm=1 缺件专留(不值得喂炉)'
 TOOL_REJECT_DEST_UNREADY: str = '去向登记制未落地(10 号稿 §2.1.2)'
 TOOL_REJECT_RC_MISSING: str = 'R(c) 缺档 fail-closed(21 号稿 §3.4)'
 TOOL_REJECT_COLD_START_LATER: str = '冷启动分支外(10 号稿 §2.1.7 准入顺序)'
@@ -521,7 +521,7 @@ class ToolAction:
 def _privilege_base_name(priv_name: str) -> str | None:
     """特权件名 → 对应进阶成品名('X·特权' → 'X';非特权名 → None)。
 
-    进阶→特权映射 = 注册表命名规则(P14 Q4:特权件无合成/炉/令牌通道,
+    进阶→特权映射 = 注册表命名规则(特权件无合成/炉/令牌通道,
     特权卡是唯一获取通道;对应进阶 = 同名去「·特权」后缀且在注册表)。
     """
     suffix = '·特权'
@@ -542,10 +542,10 @@ def evaluate_tool_actions(owned: list[str], comp) -> list[ToolAction]:
     冷启动两件(炉准入 + 扳手闸),其余按 fail-closed 带拒因分键。
 
     逐件判据(21 号稿 §3.4 并入转写):
-    - 冶金炉(单件用法):owned 存在 b ∈ recycle_qualified(K)(死库存,
-      P14 定理 3)→ 放行;K 空 → 拒(no_target);全部死库存已在炉面无件
+    - 冶金炉(单件用法):owned 存在 b ∈ recycle_qualified(K)(死库存)
+      → 放行;K 空 → 拒(no_target);全部死库存已在炉面无件
       可烧 → 不产条目;b 满足但 hoard_gaps 正份额档恰为 1(m=1 缺件专留)
-      → 拒(m1_gap)。角色模式三件同刷(P14 定理 2 流水线)候工具拖曳
+      → 拒(m1_gap)。角色模式三件同刷(流水线)候工具拖曳
       op 批(执行面依赖扳手先行取下判定),现不产条目。
     - 拆装扳手/精密扳手:去向登记制(每件取下物落位①重穿②回囤,找不
       到去向 = 不拆)未落地 → 一律拒(dest_unready,fail-closed——拆完

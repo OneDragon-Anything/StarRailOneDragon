@@ -190,8 +190,7 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
 
 
 def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
-    """该卡再遇窗(自然帧)= 1/P(≥1 张/帧)——P77 §1.4「再遇窗 1/q」同式
-    (math_proofs/p77-shop-spot-availability-signal.md;消费位 = s_reserve
+    """该卡再遇窗(自然帧)= 1/P(≥1 张/帧)(消费位 = s_reserve
     拒绝对价载体,shop.py)。
 
     q = 单次刷新 5 格出现至少 1 张该卡的概率,超几何精确算

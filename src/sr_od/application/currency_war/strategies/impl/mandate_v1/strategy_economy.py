@@ -9,7 +9,7 @@ env_economy.py——``(值, resolved)`` 返回、fail-closed 门、
 
 归属(宪法五:框架层只留游戏原始真值,衍生估值归策略层):kernel 侧只留
 游戏原始真值 ``cw_investments.STRATEGY_ECONOMY``(通道结构 = 游戏效果
-原文的结构化,【注】);本模块承载策略层的金等价折算。
+原文的结构化);本模块承载策略层的金等价折算。
 
 职责:策略卡可数值化经济通道折成**金等价期望** ``(expected_gold,
 resolved)``——resolved=False = fail-closed(缺参/日程不可得/位置缺失帧
@@ -73,7 +73,7 @@ if TYPE_CHECKING:
 # 「不计」= 结构登记永不为分。字段分类校验覆盖「有字段分支」;卡级登记
 # (PENDING_MODELING)覆盖「无字段分支 ∪ 字段已登记未挂值分支」,两适用范围不重叠。
 
-#: 计分通道字段(v1 公式直算,值全 = 注册表游戏定义【注】直读):
+#: 计分通道字段(v1 公式直算,值全 = 注册表游戏定义直读):
 #: - instant_gold:选卡当场一次性金(面值);
 #: - gold_at_final_supply:「进入最后一个补给阶段后」金(尾款交付,
 #:   面值——触发 = 展平全序列最末 supply 位〔必经节点,存活即到〕,
@@ -96,18 +96,18 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
 #: 待建模通道字段(v1 fail-closed = 0;逐字段建模缺口与29 号稿 §2.1
 #: 通道清单一一对应):
 #: - 息 cap 覆写:interest_cap_override(金轨线依赖);
-#: - 升级流:gold_per_level_up(E[剩余升级次数] = P58 期望等级日程,
-#:   草案/证明骨架未证,处置规则 A 禁数值实现——P58 证明完成为解封条件);
+#: - 升级流:gold_per_level_up(E[剩余升级次数] = 期望等级日程,
+#:   未证,处置规则 A 禁数值实现);
 #: - 时点大额族:gold_at_node/gold_at_node_offset(超发货币型,正向分支条件
 #:   兑现概率未建模且负向分支 = 清空持有金轨迹依赖)、gold_at_level/
 #:   gold_at_level_target(成长基金型,到达等级概率未建模);
 #: - 刷新族:free_refresh_burst/free_refresh_per_node/refresh_surprise_
 #:   every/refresh_per_compose/refresh_free_chance/refresh_shop_rewrite_
 #:   every_3cost/free_refresh_cond_gold_above/step/cap/
-#:   free_refresh_cond_prev_node_unspent(刷新机会成本模型缺,P97 预算
+#:   free_refresh_cond_prev_node_unspent(刷新机会成本模型缺,预算
 #:   只证可达性不证单次价值);
 #: - XP 通道:xp_per_refresh(刷新 XP 收入的价值缺金值口径)、
-#:   xp_buy_cost_discount/xp_click_discount_from_level/_at(P22 占优方向
+#:   xp_buy_cost_discount/xp_click_discount_from_level/_at(占优方向
 #:   已登记但金值未立);
 #: - 轨迹依赖:win_reward_mult/sell_price_mult;
 #: - 合成触发族:gold_per_2star2cost_merge/gold_per_3star_merge(频次
@@ -306,7 +306,7 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     (行为申报 7:计 2 金/节点流,取款/存款分支待建模塌 0);未建模字段
     天然不入下方通道公式 = 塌 0,建模落地加通道即自动进现金分。
 
-    通道(值全部 = 注册表游戏定义【注】直读;剩余视界查表单一源 =
+    通道(值全部 = 注册表游戏定义直读;剩余视界查表单一源 =
     策略门面 ``statefn/horizon.r_remaining``/``r_global`` 场字段自算,
     禁新写第三实现):
     - instant_gold:选卡当场一次性金,面值(**勿读 gold_next_nodes_amount

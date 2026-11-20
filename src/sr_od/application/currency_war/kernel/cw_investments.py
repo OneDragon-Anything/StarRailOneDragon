@@ -316,15 +316,14 @@ def is_blood_economy(eff: EconomyEffect | None) -> bool:
     return eff.xp_buy_hp_cost > 0 or eff.hp_gold_swap
 
 
-# ===== 持续通道引擎判别(②类判据留驻 kernel 的划界依据 =
-# proofs/p81-invest-refresh-dominance.md §7.2)=====
+# ===== 持续通道引擎判别(②类判据留驻 kernel)=====
 
 # 「引擎 vs 一次性」的界 = 效果原文持续/一次性**结构事实**(模块职责说明
 # 第五条②类:换一套策略实现,同一张卡的引擎/一次性判定不会不同),
 # 幅度恒零、值人为定为。消费方
 # = 策略层刷新判据的帧级顶级类(strategies/impl/mandate_v1/invest_strategy.
-# py)与 op 层观测位;kernel 驻留依据 = P81 §7.2 依据一/三(判据线优先于
-# 消费方定位;与 STRATEGY_BINDINGS 援 ENV_FACTION 先例同族对账)。
+# py)与 op 层观测位;kernel 驻留依据 = 判据线优先于
+# 消费方定位(与 STRATEGY_BINDINGS 援 ENV_FACTION 先例同族对账)。
 
 #: 引擎单字段通道:(字段,默认值)——非默认即通道存在;四族 = 利息(含
 #: cap 覆写)/持续金流/刷新/经验。``interest_cap_override`` 默认 None,
@@ -555,7 +554,7 @@ class GiftGrant:
     - advisor: True=专家顾问入商店语义(特邀专家;创造一个可购买的购买选项,
       需再花店价且占购买预算,价值严格低于同档白得——资产账/可得性账分立,
       29 号稿 §2.3「付费期权 < 白得」);False=直接送卡(契约,白得资产)
-    - sell_value_note: 卖价残值注记(【注】下界;卖价 ≈ 按费用退金,度量费用
+    - sell_value_note: 卖价残值注记(下界;卖价 ≈ 按费用退金,度量费用
       不度量阵容价值,不进任何分值族,29 号稿 §2.3)
     - chars_random_immediate: 取环境当场发放的随机角色,元素 =
       RandomCharSpec,数量 = 元素重复次数(效果原文「获得1个随机N费角色」
@@ -6595,7 +6594,7 @@ STRATEGY_RANDOM_GRANT_ASSUMPTION_UNIFORM_V0: str = (
 FORESIGHT_REWRITE_SCREEN_SHAPE: str = 'foresight_rewrite_screen_shape_unverified'
 
 #: 难度豁免读法披露键(读法 A 自身豁免 = 实现惯例链申报:registry 字段挂
-#: 远见自身 + P51 diff_formula 同式代码化 + 知识文档转抄单源链;读法 B
+#: 远见自身 + diff_formula 同式代码化 + 知识文档转抄单源链;读法 B
 #: 授予豁免 = 卡文子句位次依据,需发放源追踪机制已登记无载体)。773 轮聚合
 #: 对账对豁免分支系空载背书(语料期仅 2/67 局 exercised 且 settled 微分
 #: 两式均非零残差不可判读),不构成实证;证伪通道 = 远见局 settled 备战

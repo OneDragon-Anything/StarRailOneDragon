@@ -40,7 +40,7 @@ class RoundOutcome:
     # —— streak(连胜/连败;2026-08-11 结算「连胜×N」前缀=方向,fixture 核实)——
     streak: int | None = 0    # 带符号:+N 连胜 / -N 连败 / 0 无(结算 OCR 读;economy C 杠杆用);
     # None 仅收束终局行携带(不发 streak 真值,镜像 hp_after 口径)
-    # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3;P15 脱删失/P12 幅度授权真值通道)——
+    # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3;脱删失/幅度授权真值通道)——
     # progress_fill_ratio = 挑战进度条填充率 [0,1](幅度绝对值通道;±N 浮字是符号+
     # 增量真值,两通道同帧并记互为交叉核对);damage_base/damage_unfinished_progress =
     # 掉血说明 tooltip 两分量(进页瞬窗内捕获,miss=None 删失显式可辨,勿造假值);

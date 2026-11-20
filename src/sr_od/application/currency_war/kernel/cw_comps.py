@@ -1490,9 +1490,8 @@ def _pairing_guard_ok(worn_basics: dict[str, list[str]], char: str, basic: str,
 
 
 def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
-    """穿着可行性三谓词纯判定(P95 支配命题 §2-A 的分配前排除实现;单源判定)。
+    """穿着可行性三谓词纯判定(分配前排除实现;单源判定)。
 
-    命题单篇 = docs/develop/sr_od/application/currency_war/proofs/p95-allocation-feasibility-dominance.md
     (「必拒对分配前排除严格支配分配后重试」;三谓词即「必拒判定可前置」的
     机制事实)。``equip_allocation`` 的内嵌 ``_wearable_ok`` 与
     ``equip_alloc_empty_reason``(分配空归因)共用本函数,保证「分配语义」与
@@ -1507,9 +1506,9 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
       判据,非「不可合成」断言(蓝钻/红钻自配路线注册表已登记而图谱按类别
       排除)。判据形态 = ``self_advance(item) is None``:同名对只可能命中
       图谱的自配半边。推断级判据:唯一实证为「同名 + 槽满混叠」帧(同名
-      单因未直证),定案前按必拒保守拦截(P95 §3 边界②;错杀 = 件滞留
+      单因未直证),定案前按必拒保守拦截(错杀 = 件滞留
       owned,漏放 = 白拖 + 拉黑记忆,不对称),实测定案后收窄或确证。
-      谓词一输入经合成产物展开(P95 §2-A「worn = 现读 ∪ 合成产物展开」)。
+      谓词一输入经合成产物展开(「worn = 现读 ∪ 合成产物展开」)。
     - **谓词二(件专属前置)→ 拒**:结构化条目(data/cw_equipment_wear_rules_data,
       前置/可穿性建模单一源)声明前置(「需要空装备栏」族)∧ 不满足。
       读法定案前取最保守「身上有任意件即拒」(真值读法空间「全空 vs
@@ -1529,7 +1528,7 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
     已知输入失真面(部分有效申报):谓词一/二的 worn 输入与容量扣减同源
     (below-avatar 画面现读),read_row_equipped mini icon 漏读(3 件读 1 实证)
     使 worn 缩水 → 漏读帧拦不全;识别面批收束前谓词部分有效,禁把漏读帧
-    的漏拦读成谓词无效(P95 §2 附加范围外声明)。
+    的漏拦读成谓词无效。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
     from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
@@ -1697,20 +1696,20 @@ def equip_allocation(comp: Comp | None,
     采纳默认穿):组件与进阶成品同池参与分配,期望收益由磨损标定仪持续
     测量(设计件:借实机/sim 对照测简易件穿戴的真实期望收益)。
 
-    (P14 期望模型接入,口述「穿着即合成/囤积/回收线」):两条新纪律——
+    (口述「穿着即合成/囤积/回收线」):两条新纪律——
     1. **防误合成配对守卫**(全 plane):同一角色身上不得出现互为配方的两件
        基础件,除非 ①配对产物 ∈ key_equips 且穿者是 core(=想要的配对,
        穿着触发合成即快路径),或 ②两件都是回收合格死库存且穿者非 core
        (回收线 2合1 的有意触发)。口述依据:穿着触发自动合成无确认,「会被
        角色身上的残留件带偏,可能合出非预期产物」——非预期合成不可逆地
        消耗两件组件。
-    2. **死库存回收去向**(全 plane 生效):回收合格基础件(P14 定理 3:
-       不是任何目标进阶的组件)优先发非 core 工具人、每人至多 2 件(有意
+    2. **死库存回收去向**(全 plane 生效):回收合格基础件
+       (不是任何目标进阶的组件)优先发非 core 工具人、每人至多 2 件(有意
        触发 2合1,产物=无用进阶,等冶金炉 3 件同刷);发不完留在 owned
        囤着(口述囤积原则「没什么用就先不装备囤着」)。死库存不穿 core
        ——穿着合成产物落在 core 身上=后续转移摩擦。
 
-    **穿着可行性三谓词**(P95 支配命题 §2-A 的分配前排除实现;判定单源 =
+    **穿着可行性三谓词**(分配前排除实现;判定单源 =
     模块级 ``_wearable_gate_ok``,docstring 载三谓词全文与证据分级):对游戏
     以概率 1 拒收的 (件,角色) 对,分配前排除严格支配分配后重试——谓词一:同名∧
     非两基础件合成图谱对 / 谓词二:件专属前置(「需要空装备栏」族,结构化载体
@@ -1719,8 +1718,8 @@ def equip_allocation(comp: Comp | None,
     ``_pairing_ok``/``_emblem_ok`` 同构并列,被拦件**留 pool**(跳过=留
     owned,不 pop 丢弃);谓词一拦域与配对守卫例外①②适用范围显式互斥(两域交=空,
     同名自配对合法穿着即合成通道不拦)。消费位 = key 环/core 吃满/非 core
-    保底/阵容=None 轮转四处候选过滤(与 _emblem_ok 挂载点全集一致;P95
-    命题主语 = (件,角色) 对,必拒对全分配通道排除)。死库存回收线不挂:
+    保底/阵容=None 轮转四处候选过滤(与 _emblem_ok 挂载点全集一致;
+    必拒对全分配通道排除)。死库存回收线不挂:
     池域 = 基础件,三谓词对基础件恒放行。
     """
     occ = occupied or {}
@@ -1738,7 +1737,7 @@ def equip_allocation(comp: Comp | None,
         used = sum(len(occ.get((_rn, _sn), [])) for _rn, _sn, _d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
-    # =====:防误合成守卫 + 回收去向(P14 定理 3/4)=====
+    # =====:防误合成守卫 + 回收去向 =====
     from sr_od.application.currency_war.data.cw_synthesis import (
         RESERVED_COMPONENTS,
         recycle_qualified,

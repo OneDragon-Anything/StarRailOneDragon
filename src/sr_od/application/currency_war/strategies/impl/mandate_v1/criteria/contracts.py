@@ -143,7 +143,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     # —— criteria/sell ——
     ('sell', 'sell_for_interest'): Contract(
         None, '凑息档 EV 面(T_SEARCH 缺省 fail-closed 自带)',
-        '01_math_framework §3.2+P41 桶不动资格'),
+        '桶不动资格(11_shop_decisions §2)'),
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
         '02_mandate_layer §2/§7+BYPASS_TABLE 行(支付支撑通道)'),
@@ -160,8 +160,8 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '整段;输入全为游戏定义量)',
         '11_shop_decisions §2 停留门(带模型)'),
     ('levelup', 'spend_unified'): Contract(
-        None, 'P48 整买纪律(M3 义务侧消费)',
-        'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文考古走 git 历史)'),
+        None, '整买纪律(M3 义务侧消费)',
+        '11_shop_decisions(D-BUYNOTE 修复池编号,原文考古走 git 历史)'),
     ('levelup', 'lv9_stop'): Contract(
         None, '等级上限停(历史键名;单一源=注册表 level_max,消费位传'
         '上下文注册表 .level_max;义务侧消费)',
@@ -198,9 +198,9 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '2026-10-28 用户裁定实费档实现口径(停留目标 = '
         'stay_target_of 单一源)'),
     ('refresh', 'qualified_member_costs'): Contract(
-        None, '合格集费带单一源(P91 压牌库同轴带单一消费源;'
+        None, '合格集费带单一源(压牌库同轴带单一消费源;'
         '注册表现读纯函数;T-263 批)',
-        'math_proofs P91 行'),
+        '注册表(压牌库轴带)'),
     # —— criteria/stockpile ——
     ('stockpile', 'stockpile_buy'): Contract(
         _s_reserve_line_formed,

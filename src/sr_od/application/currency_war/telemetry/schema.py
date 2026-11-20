@@ -47,7 +47,7 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
     """shop 单帧 ρ 实测分子:各体系「当前可买且对 form 有贡献」的在店件数。
 
     - 口径出处:R-A 设计件 §2.1——ρ(s,t)=观测窗 W 内体系 s 成员在店帧
-      占比(P31① 辅通道)。本函数只记**单帧分子计数**;W 窗占比由读端
+      占比(辅通道)。本函数只记**单帧分子计数**;W 窗占比由读端
       按帧聚合,窗口假设不进采集点。消费=理论口径(E_rounds 超几何)
       的交叉核对与牌池结构变化检出,决策消费主通道不经此。
     - 成员判定 = ``knowledge.cw_line_facts.bond_members``(阵营∪流派全成员;
@@ -527,7 +527,7 @@ class DecisionTrace:
     # (sess_pv_bench_block 已停用;存量 runs.jsonl
     #  判读脚本如遇旧键按历史台账读,新数据不再写。)
     # —— R-A  方向重估决策面观测(纯观测零行为;设计=.debug/temp/
-    # currency_war/w919_ra_obs/DESIGN.md 采集点2,P31 方向供给感知)——
+    # currency_war/w919_ra_obs/DESIGN.md 采集点2,方向供给感知)——
     # 适用范围=plane==1 ∧ 有意向状态机;P2+ 方向=locked_comp 已由 v3_intention
     # 嵌套行携带不重复平铺。缺省 None=无意向/采集失败/旧记录(不破坏 schema)。
     # (方向重估三观测键(sess_dir_candidate/switch/supply_drought)的

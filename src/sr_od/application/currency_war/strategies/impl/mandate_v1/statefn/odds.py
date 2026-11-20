@@ -1,10 +1,10 @@
 """q / P_shop / E[refreshes] / p̄:商店概率层(cw_shop_odds 单一源消费)。
 
-01_math_framework §2 三行的包装消费:概率表本体在 ``cw_shop_odds``(【注】注册表),
+01_math_framework §2 三行的包装消费:概率表本体在 ``cw_shop_odds``(注册表),
 本模块不重算 E[refreshes(超几何 DP)——直接 import 消费;新增实现仅
-q(槽级命中)与 p̄(多项×超几何精确式,P16 修复批口径)。
-P41 A2 防错注:第 4 参 c = **同费非目标已拿走数(taken_c),禁传 cost**——
-跨档购零压缩系模型结构事实(q_X 不含 taken_Y,P49 (7) 行为断言)。
+q(槽级命中)与 p̄(多项×超几何精确式,修复批口径)。
+防错注:第 4 参 c = **同费非目标已拿走数(taken_c),禁传 cost**——
+跨档购零压缩系模型结构事实(q_X 不含 taken_Y)。
 """
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (
 
 def slot_q(level: int, cost: int, j: int, taken_c: int) -> float:
     """槽级命中概率 q = p(L,c) × (a−j)/(v·a − j − taken_c)(01_math_framework §2「q」行;
-    P38 ③层口径)。j=特定卡持有数(池衰减),taken_c=同费非目标已拿走数
-    (禁传 cost,P41 A2)。分母与注册表权威 ``cw_shop_odds._refresh_dist``
+    含池衰减口径)。j=特定卡持有数(池衰减),taken_c=同费非目标已拿走数
+    (禁传 cost)。分母与注册表权威 ``cw_shop_odds._refresh_dist``
     同式(total = va−j−c,「拥有的 j 张已离开牌库」)——分子分母同扣 j,
     漏扣 j 使 q 随持牌数系统性低估(IMPL_ADV_R200 症2 勘误)。"""
     p = refresh_prob(level, cost)
@@ -63,7 +63,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
     """塌缩带比值线 ω 解析(缺省 = DEFAULT_REGISTRY.omega_collapse_ratio,
     同源单一值;窗口判据 = 塌缩带比值基准)。
 
-    ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为
+    ω 处置申报:ω 是策略阈值参数,非游戏定义量——现值为
     refresh_ev_budget 归零分支的复用值(未独立标定),登记待证形态、不扩
     适用范围(判据输入全游戏定义量纪律不破:表值/峰值查表皆游戏定义量,
     ω 仅作窗口比值阈值);fail-closed 语义 = ω 越大窗口越窄。
@@ -77,7 +77,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
 
 
 def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]:
-    """档级搜索窗口(档级消费位:压牌库/凑息/M6;P49 档匹配)。
+    """档级搜索窗口(档级消费位:压牌库/凑息/M6;档匹配)。
 
     判据(塌缩带重定基准,承 塌缩带归零线):费档 c 在搜索窗内
     ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
@@ -126,7 +126,7 @@ def _char_has_tag(ch: object, tag: str) -> bool:
 
 
 def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:
-    """{cost: (目标张数 A,池总张数 T)}——阵营/流派标签圈目标集(P16 口径)。
+    """{cost: (目标张数 A,池总张数 T)}——阵营/流派标签圈目标集。
 
     is_hide 过滤(牌池口径,registry 详设 2.7:数据层查询不过滤、概率
     统计消费方过滤——本函数即消费方之一):官方隐藏态不可刷,不进费段
@@ -148,12 +148,12 @@ def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:
 
 
 def p_bar_exact(tag: str, level: int) -> float:
-    """p̄(换线命中率)精确式 = 多项×超几何(P16 修复批口径,R2-11 交叉核对基准)。
+    """p̄(换线命中率)精确式 = 多项×超几何(修复批口径,交叉核对基准)。
 
     ``P(全空) = Σ_{m_c} [5!/Πm_c!·Πp_c^{m_c}] · Π_c C(T_c−A_c, m_c)/C(T_c, m_c)``
 
     旧 union bound(Σ_cost P(≥1|cost))系并集上界,高估 +8.1% 已勘误——
-    禁再产上界口径。分母恒用满池 T=v·a(P16 ①「分子修正+分母满池」)。
+    禁再产上界口径。分母恒用满池 T=v·a(「分子修正+分母满池」)。
     resolved 池突变语境(黑塔纪元 216 池等)下 v_c/a_c 变化 ⇒ 本式参数化
     自动正确(DIRECT_LINE_MATH_CHECK 补注①:公式是参数化的,不用重推;
     池参数 resolved 接入调用随判据层步 4 落)。
@@ -185,7 +185,7 @@ def slot_q_tag_by_cost(tag: str, level: int,
                        held_counts: dict[str, int] | None = None,
                        extra_copies_by_cost: dict[int, int] | None = None,
                        ) -> dict[int, float]:
-    """标签合格集的**分费档**槽级命中概率 {cost: q_c}(P38 ③层含池衰减)。
+    """标签合格集的**分费档**槽级命中概率 {cost: q_c}(含池衰减)。
 
     q_c = p(L,c)·(n_c·a_c − j_c)/(v_c·a_c − j_c − t_c):n_c = 该费档带
     标签的卡种数,a_c/v_c = 池参数(注册表);j_c = 已持有该标签卡副本数
@@ -233,7 +233,7 @@ def slot_q_tag_by_cost(tag: str, level: int,
 def slot_q_tag(tag: str, level: int,
                held_counts: dict[str, int] | None = None,
                extra_copies_by_cost: dict[int, int] | None = None) -> float:
-    """标签合格集槽级命中概率 q = Σ_c q_c(P38 ③层;分项单一源 =
+    """标签合格集槽级命中概率 q = Σ_c q_c(分项单一源 =
     ``slot_q_tag_by_cost``)。单卡标签退化域(n_c=1)与 ``slot_q`` 同式
     一致(测试)。全档不计 → 0.0(静态不可达,诚实出「锁劣」向)。"""
     return sum(slot_q_tag_by_cost(tag, level, held_counts,

@@ -56,7 +56,7 @@ fuel_filler_stall/ev/p90/p91/p94)随各分支
 并入保留,键语义与写点注释见各分支段(原 transition 族随 ④ 转投分支
 退役删除,十档口径 = 32 号稿 §3;dominance 族键随富余买入通道
 退役停写——通道并入 M6 一星兜底带(20 号稿 §3 出口序申报行),
-历史键不清理)。P86 三分支旧键族(shop_no_target_*/
+历史键不清理)。无目标期三分支旧键族(shop_no_target_*/
 hub_option_*)随并入停用。
 统一让位优先级定型退役键族:shop_refresh_target_unbuyable
 (刷新预测门拒因)/ core_*(C1 单卡核心囤积规则整规退役)/
@@ -216,8 +216,7 @@ if TYPE_CHECKING:
 
 # (R1 路径总账装配侧 _r1_ledger_terms 已随三段式刷新判据实现停用——
 # 判据替换申报(11 号稿 §3):期望比较的连续判据 → 目标状态的
-#  结构判据,消费面改由 criteria/refresh.refresh_warranted 查表承载;
-#  P40/P47/P54 命题本体保留已登记。)
+#  结构判据,消费面改由 criteria/refresh.refresh_warranted 查表承载。)
 
 
 def _r2_card_reserve(gs: GameState) -> int:
@@ -279,12 +278,12 @@ def _frame_search_windows(session: StrategySession, gs: GameState,
     """帧级搜索窗口(11 号稿 §6 买面设计)。
 
     窗口判据重定基准(V̄ 链停用随批):旧 V̄ 门式
-    (``vbar.window_vbar`` 帧级现算 + P57 双读法参数化)随 V̄ 比较项
+    (``vbar.window_vbar`` 帧级现算 + 双读法参数化)随 V̄ 比较项
     一并停用,窗口改为塌缩带基准——费档在窗内 ⟺ 该级命中率 ≥ ω×峰值级
     命中率(``statefn/odds.tier/card_search_window``,ω 基准与
     refresh_ev_budget 归零分支同源),全游戏定义量(REFRESH_PROB
     表 + 峰值查表 + 注册表 ω 字段)。空集语义 = 真无窗口帧(该级全部
-    费档归零),非门控。P57 读法分歧随单一判据消解(文档面声明)。
+    费档归零),非门控。读法分歧随单一判据消解(文档面声明)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.odds import (
         card_search_window,
@@ -505,27 +504,27 @@ def _obligation_book(session: StrategySession) -> dict:
 #  sell_gate.line_switch_orphans_of,备战域卖出位按需直读。)
 
 
-# ===== P77 缺口面装载(2★ 直出现货比较子 + s_reserve 拒绝对价)=====
+# ===== 缺口面装载(2★ 直出现货比较子 + s_reserve 拒绝对价)=====
 
 def spot2_direct_out_card(cands: list[ShopCard], name: str, level: int,
                           c_eff: int) -> ShopCard | None:
-    """j=1 帧的同名 2★ 直出现货比较子(P77 缺口面1)。
+    """j=1 帧的同名 2★ 直出现货比较子(缺口面1)。
 
-    账式(P77 §2.2 原式,零新自由参数):DIY 账 = 再收 2 张 1★
+    账式(原式,零新自由参数):DIY 账 = 再收 2 张 1★
     (2×基价)+ 付费刷新账 c_eff·E(D|j=1,k=3)(E 单一源 =
-    ``expected_refreshes_for_card``;溢价表 P77 §2.2:3费@L7=30.9 /
-    2费@L6=30.4 / 4费@L8=57.2 / 5费@L9=80.7 金【推】,全档>0);现货账
+    ``expected_refreshes_for_card``;溢价表:3费@L7=30.9 /
+    2费@L6=30.4 / 4费@L8=57.2 / 5费@L9=80.7 金,全档>0);现货账
     = 星级费用实付(card.cost,徽章 ×3 律,merge_mechanics §2.6)。
     现货账 ≤ DIY 账 ⇔ 发卡。
     - fail-closed 边界:p(level,基价)=0 帧 E=0 系函数约定(该级 DIY
       结构性不可达,非「零刷新成本」),比较子判不可评 → None(维持
-      星过滤拒;P77 溢价表覆盖可行 DIY 域,域外延未证不入)。
+      星过滤拒;溢价表覆盖可行 DIY 域,域外延不入)。
     - 席/金交互不在本函数(比较子只裁「值不值」):买不买仍走分支内既有
       闸序(金闸前置 → M4 腾席,与 1★ 路径同序同闸,装载设计 §1.3;
       买入后 cnt2=1 分支触发自灭,二-1 守卫防重复)。
     - [A/B 切换面] 本函数 = 模块级槽位:基线分支经 monkeypatch 置恒 None
       关闭(fixtures/cw_ab.py;strategy-work §3「A/B 对照手段不进生产
-      代码」)。j=2 帧归 M2b(P77 备注5:DIY 再买 1★ 严格占优,禁重开)。
+      代码」)。j=2 帧归 M2b(DIY 再买 1★ 严格占优,禁重开)。
     """
     char = get_char(name)
     if char is None or not char.cost:
@@ -549,13 +548,13 @@ _REMEET_WINDOW_CAP_FRAMES: int = 999_999
 
 def _s_reserve_remeet_frames(level: int, bench, deployed,
                              card: ShopCard) -> int:
-    """s_reserve 拒帧的对价侧(P77 缺口面3):被拒现货的再遇窗
+    """s_reserve 拒帧的对价侧(缺口面3):被拒现货的再遇窗
     (自然帧,ceil)——「留保息 vs 收现货」权衡自此有量值载体。
 
     纯遥测累计,禁决策判据消费;让路裁决(下界是否/如何为现货让路)
-    归 P56 设计批(P77 适用范围申报:本命题不裁决)。held 折算 = 全局面
+    归 s_reserve 设计批(本面不裁决)。held 折算 = 全局面
     同名基础副本数(1★×1/2★×3/3★×9);窗式单一源 =
-    ``reencounter_window_frames``(P77 §1.4「再遇窗 1/q(自然帧)」)。
+    ``reencounter_window_frames``(「再遇窗 1/q(自然帧)」)。
     """
     name = card.name or ''
     char = get_char(name)
@@ -588,14 +587,14 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
     check_affordable)不含买后线检查(历史动机首证于已退役的
     富余买入通道——该通道无买后线检查的形态见 git 历史;现役
     消费位 = 档 1 可上场非定向买);②单动作串行链——一次
-    店访每帧买一张、金为期望态现值,串行消费下末笔可穿线;③P78-1 同
+    店访每帧买一张、金为期望态现值,串行消费下末笔可穿线;③同
     visit 禁卖回(定义性抵消买入);④T3 同轮垫保——买入即入动作发出登记
     簿(press 类 τ=同轮),卖回恢复通道当轮结构性不可达;⑤息结算在
-    轮末、按裸金(bench 资产不计息,P47)——穿线笔使当轮利息档恰降
+    轮末、按裸金(bench 资产不计息)——穿线笔使当轮利息档恰降
     1 档且当轮不可恢复。
 
     口径分界(禁三处买分支判据漂移):
-    - 与 P56 s_reserve(可变现口径)**不同源不同面禁统一**(账本预裁):
+    - 与 s_reserve(可变现口径)**不同源不同面禁统一**(账本预裁):
       s_reserve 管 EV 分支完成度价值买入的财富账,本线管纪律面当轮结算
       利息档,本谓词不消费 s_reserve 谓词;
     - 档 1 press_buy_deployable 的金位地板为同形判据,
@@ -603,10 +602,10 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
     - ②(b) 当轮档地板是**另一形状**(当轮利息档保持 cost ≤ gold −
       10×⌊gold/10⌋,带内语义),不合流、勿合并。
 
-    拦截语义 = 资格修正非票据废除(P88 同族):买后金 ≥ g* 的购买全程
-    处于富余带——该带内支出息损 L≡0(P70 全网格复算已证),地板保留的
+    拦截语义 = 资格修正非票据废除(同族):买后金 ≥ g* 的购买全程
+    处于富余带——该带内支出息损 L≡0(全网格复算),地板保留的
     全部行为都在已证零损域内;穿线笔(出域段)无在证授权,fail-closed。
-    被截笔价值面(压缩/垫件)不进判据(P49 判据一:跨档压缩恒 0 为
+    被截笔价值面(压缩/垫件)不进判据(跨档压缩恒 0 为
     结构事实;价值账归显式模型轨,已登记为待办)。
 
     权威版本规格指认的家 = mandate.check_s_reserve 旁;因 mandate.py 存在
@@ -910,7 +909,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     else:
         missing = [m for m in obligation_members if m not in owned]
 
-    # P60 容量超限告警门(检查对象 = 义务面;分母 = cap_hold 现读)。
+    # 容量超限告警门(检查对象 = 义务面;分母 = cap_hold 现读)。
     if obligation_members and _cap_hold_now is not None \
             and len(obligation_members) > _cap_hold_now:
         _count('shop_hoard_over_capacity')
@@ -1438,7 +1437,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     def _buy_view(arm_key: str) -> list[ShopCard]:
         """店内卡全集的 L2 过滤视图(本轮已卖名集剔除;零成型帧推进件
-        前移排序——P90 前窗,现行语义保留)。"""
+        前移排序——前窗,现行语义保留)。"""
         out: list[ShopCard] = []
         for c in shop_payload_content_cards(gs.shop.value):
             n = c.name or ''
@@ -1500,7 +1499,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         return _emit_buy(card, 'm2_line_member' if m in k_members
                          else 'm2_locked_member')
 
-    # m2_stockpile(分支① 囤分支,j=1 第二份;现行判据本体不动——含 P77
+    # m2_stockpile(分支① 囤分支,j=1 第二份;现行判据本体不动——含
     # 现货比较子;席满 → 六步流程,金不足 → 筹资。遍历域 = 义务面,design
     #:囤货面成员同名副本退出义务类买入/筹资,恢复压牌库/凑星通道)。
     for m in obligation_members:
@@ -2199,7 +2198,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # ===== 序 6:纯冗余停买(反向门——不命中任何序即停)=====
     # (dominance_buy 邻位通道已随富余买入并入压牌库整删——M6 一星兜底带
     #  承接其富余金 1★ 占位语义,comp-structure-unification 3.4,
-    # press-stockpile §1;P88 特殊帧收窄同步退役,见 mandate.py 墓注)
+    # press-stockpile §1;特殊帧收窄同步退役,见 mandate.py 墓注)
 
     # ===== 刷新链三组件:判据 → 金线闸 → 发射(11 号稿 §3;
     # 金线闸算式 = 刷新链三组件定型口径;目标可买合取拆除 =

@@ -115,13 +115,13 @@ class SellSceneSpec:
     - ``exempt_unmet_members``:凑息豁免(节末凑息独有场景参数,
       32 号稿 §9 凑息豁免)——候选池剔除线内
       未达标成员,池空零卖出;字段语义详见字段注;
-    - ``legacy_channel``:P78 通道标记(sell_exclusions 装配的通道谱系
+    - ``legacy_channel``:通道标记(sell_exclusions 装配的通道谱系
       参数;None = 不装配)。
     """
 
     scenario: str                # 场景 id(闭集成员)
     face: str                    # 循环防线资格面(FACE_* 闭集)
-    legacy_channel: str | None   # P78 通道标记(None = 不装配)
+    legacy_channel: str | None   # 通道标记(None = 不装配)
     cross_tier_only: bool = False   # 跨档止盈(节末凑息)
     exempt_unmet_members: bool = False
     """凑息豁免(节末凑息独有;32 号稿 §9 凑息豁免):
@@ -289,7 +289,7 @@ def evaluate_sell_candidates(
        沿袭);
     2. 部署重排定型(``mandate.snapshot_frame`` + ``assemble_prep_context``
        + ``select_deployment`` 纯函数现算;档 1 名集);
-    3. 全局面候选(备战席 ∪ 场上;无场景专属池子【拍】——利息动机
+    3. 全局面候选(备战席 ∪ 场上;无场景专属池子——利息动机
        例外 = 凑息豁免池过滤,见步 6)经循环防线过滤:常规面 =
        sell_exclusions(窗口段/L1 同轮禁卖/种子年龄豁免;身份段已随
        统一让位优先级迭代 3.4 退役,装配自动收缩)+ 合成素材拒入

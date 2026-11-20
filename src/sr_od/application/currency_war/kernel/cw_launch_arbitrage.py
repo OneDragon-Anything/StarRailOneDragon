@@ -6,13 +6,11 @@
 (flow 层仲裁段已停用,消费位 = 策略决策入口自限,分层依据 =
 flow/README.md §1 决策控制分层铁律):
 
-- 数学授权 = P70 动作发出帧溢出段支配(已证,proofs/
-  p70-launch-frame-overflow-spend-dominance.md:动作发出帧窗内剩余备战决策
+- 数学授权 = 动作发出帧溢出段支配(动作发出帧窗内剩余备战决策
   数 = 0 ⇒ 溢出段息损恒零 ⇒ 任一 ΔV≥0 的合法即时消费弱支配留存);
-- 适用范围 = 溢出量预算 g − g* 内的 Δ息=0 帧;**花穿利息线部分不适用**(p70
-  边界 1「出溢出段即失效」)——带内段(g ≤ g*)挂 L1' 独立命题,
-  fail-closed 证不出不花(与 P68 同构不同号禁并键,p70 单篇「带内段
-  声明」段);
+- 适用范围 = 溢出量预算 g − g* 内的 Δ息=0 帧;**花穿利息线部分不适用**
+  (「出溢出段即失效」)——带内段(g ≤ g*)挂 L1' 独立命题,
+  fail-closed 证不出不花(带内段与溢出段同构不同号,禁并键);
 - 花什么仍由 shop 出口族既有评估栈(策略器 decide_shop_action 单动作核)
   按既有资格与评估序裁决,预算闸只提供「这帧有多少零息死仓金可花」——
   不新造第二套评估语义(金出口族 DESIGN v1.1 红线 1/红线 5)。
@@ -85,7 +83,7 @@ def launch_spend_cost(action) -> int:
 
 def launch_arbitration_gate(action, gold: int,
                             session: StrategySession | None) -> tuple[bool, str]:
-    """单动作预算闸(P70 Δ息=0 形:花后金位 ≥ g*;两面共用的判定核)。
+    """单动作预算闸(Δ息=0 形:花后金位 ≥ g*;两面共用的判定核)。
 
     判定式:``gold − launch_spend_cost(action) ≥ saturation_line(
     cap_resolved_of_session(session))`` ——花穿利息线部分不适用(p70 边界 1),

@@ -124,7 +124,7 @@ def self_advance(base: str) -> str | None:
 
 
 def expand_worn_products(worn: list[str]) -> list[str]:
-    """穿着即合成产物展开(P95 §2-A 谓词输入口径)。
+    """穿着即合成产物展开。
 
     「穿着即合成」下,已穿名单中构成图谱对的两基础件已被游戏自动合成
     (无确认无日志);画面现读/跟踪账面在该时点附近可能仍见原始组件对。
@@ -134,9 +134,7 @@ def expand_worn_products(worn: list[str]) -> list[str]:
 
     集合语义:每件可达成产物至多补一次(消费方只做成员资格判定,不消费
     件数);输入列表不 mutate。组件按多重集计数(自配对需同件 ×2)。
-    命题单篇 = docs/develop/sr_od/application/currency_war/proofs/
-    p95-allocation-feasibility-dominance.md;消费位 =
-    kernel/cw_comps._wearable_gate_ok。
+    消费位 = kernel/cw_comps._wearable_gate_ok。
     """
     from collections import Counter
     have = Counter(worn)
@@ -153,20 +151,18 @@ def expand_worn_products(worn: list[str]) -> list[str]:
     return out
 
 
-# ===== 装备策略接入(P14 期望模型的生产化)=====
-# P14(docs/develop/sr_od/application/currency_war/proofs/p14-equipment-acquisition-ev.md)
-# 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读基准点消费;
-# 证明脚本与本文档共享图谱单一源(本模块),数值改动自动传导。
+# ===== 装备策略接入(期望模型的生产化)=====
+# 装备分配准入/判读基准点消费;图谱单一源在本模块,数值改动自动传导。
 
 
 def component_demand(key_equips: list[str]) -> dict[str, int]:
-    """目标装备多重集 K 的**基础件需求向量**(P14 决策表的输入)。
+    """目标装备多重集 K 的**基础件需求向量**(决策表的输入)。
 
     每件 K 展开为配方组件:交叉件 = 两件不同基础(火力风暴潮 = 轮滑鞋+
     折叠小刀);自配件 = 同基础 ×2(反重力皮靴 = 轮滑鞋×2)。K 中无配方件
-    (白昼/特权类,无常规获取通道)跳过——不产生可规划需求(P14 Q4)。
+    (白昼/特权类,无常规获取通道)跳过——不产生可规划需求。
     例:K=[反重力皮靴×2,火力风暴潮] → {轮滑鞋: 5,折叠小刀: 1}
-    (皮靴=轮滑鞋×2,两双=4;风暴潮再加 1 轮滑鞋+1 小刀)——交叉核对 P14 例 1。
+    (皮靴=轮滑鞋×2,两双=4;风暴潮再加 1 轮滑鞋+1 小刀)。
     """
     demand: dict[str, int] = {}
     for adv in key_equips:
@@ -282,9 +278,9 @@ def plan_syntheses(
 
 
 def recycle_qualified(key_equips: list[str] | None) -> frozenset[str]:
-    """**回收合格**基础件集(P14 定理 3 准入的生产化)。
+    """**回收合格**基础件集。
 
-    判据(证明见 P14 Q3):基础件 b 回收合格 ⟺ b 不是任何目标进阶的组件
+    判据:基础件 b 回收合格 ⟺ b 不是任何目标进阶的组件
     ——b 若能合成出想要的进阶,回收(销毁它换 1/36 抽卡机会)严格劣于
     留着合成;只有「连合成原料都当不上」的件才允许进回收流水线
     (2合1 → 3 件同刷,equipment_mechanics「回收流水线」节)。
@@ -300,12 +296,12 @@ def recycle_qualified(key_equips: list[str] | None) -> frozenset[str]:
 
 
 def hoard_gaps(key_equips: list[str], owned: list[str]) -> dict[str, int]:
-    """「缺什么囤什么」差集(P14 结论的判读基准点):基础件需求 − 库存。
+    """「缺什么囤什么」差集(判读基准点):基础件需求 − 库存。
 
     抵扣序:owned 已持有的**进阶件** 1:1 抵 K 同名需求(持有成品不再
     需要组件);剩余需求展开组件向量后减 owned 基础件库存,取正差。
-    输出 = 「现在缺、发放流来了该囤住」的基础件及件数(P14 对实现的
-    检验点 2:遥测按组件需求向量 − 库存向量报)。
+    输出 = 「现在缺、发放流来了该囤住」的基础件及件数(遥测按组件
+    需求向量 − 库存向量报)。
     """
     from collections import Counter
     if not key_equips:

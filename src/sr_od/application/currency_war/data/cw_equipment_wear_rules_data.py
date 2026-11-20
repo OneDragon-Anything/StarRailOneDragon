@@ -24,9 +24,7 @@ affix_wear_semantics_data.py ↔ affix_effects_data.py):``EQUIPMENTS`` = 真值�
 皆错)。事件卡文装备识别锚(cw_events ``_PLANNER_EQUIP_ANCHORS``)以门键集
 为源,随门重建自动恢复。
 
-**消费位**:kernel/cw_comps._wearable_gate_ok(``equip_allocation`` 分配前排除,
-P95 支配命题 §2-A;命题单篇 =
-docs/develop/sr_od/application/currency_war/proofs/p95-allocation-feasibility-dominance.md)。
+**消费位**:kernel/cw_comps._wearable_gate_ok(``equip_allocation`` 分配前排除)。
 禁散落硬编码(前置/可穿性建模单一源 = 本文件)。
 """
 from __future__ import annotations

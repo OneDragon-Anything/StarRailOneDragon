@@ -15,7 +15,7 @@ R5-4 类别分列 + R7-1 第四类「动作发出面」;表内类别字面量沿
 修复池落点(R189-5 表):D-D(refresh+buy)、
 D-F1(选卡 eval,pick 接口覆盖外——本包登记接口占位)、D-FM1(全局
 candidates+economy sink)、D-P3(待办登记载体 = 表尾 endgame_context 行)、
-D-BUYNOTE(buy 内嵌 P48 整买纪律)。
+D-BUYNOTE(buy 内嵌整买纪律)。
 """
 from __future__ import annotations
 

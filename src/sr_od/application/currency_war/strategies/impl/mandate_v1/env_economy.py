@@ -3,7 +3,7 @@
 归属(宪法五:框架层只留游戏原始真值,衍生估值归策略层):本模块承载
 **策略层的衍生估值**——把 ``cw_investments.ENV_ECONOMY`` 的整局经济通道
 折成金等价期望。kernel 侧只留游戏原始真值 ``cw_investments.ENV_ECONOMY``
-(通道结构 = 游戏效果原文的结构化,【注】);``ENV_ECONOMY_PENDING_
+(通道结构 = 游戏效果原文的结构化);``ENV_ECONOMY_PENDING_
 MODELING`` 亦驻本模块(下方「待建模」已登记段)——「留 kernel 不迁」系
 早期过时表述,以代码体为准。语义权威版本 = skill strategy/28_invest_env_
 screen.md §2 现金分行;迁移批的删除面对照
@@ -13,10 +13,8 @@ screen.md §2 现金分行;迁移批的删除面对照
   带;治理校验随之删除「域带上界越界」项(无域带则该项无语义);
 - ``gold_after_refreshes`` 系(长线利好/二手市场)不走运行时条件分支——
   不读 ``gs.effects`` 刷新计数、不消费 refresh_p/refresh_after 估算参数,
-  改为拍值注册(:data:`_GOLD_AFTER_REFRESHES_FIXED`;拍值锚定 =
-  docs/develop/sr_od/application/currency_war/proofs/p97-refresh-budget.md
-  消费契约,下称 P97 §7;历史频率参数 refresh_total_ge20_p/
-  refresh_paid_ge30_p 随拍值注册停用,P97 §7);
+  改为拍值注册(:data:`_GOLD_AFTER_REFRESHES_FIXED`;历史频率参数
+  refresh_total_ge20_p/refresh_paid_ge30_p 随拍值注册停用);
 - 其余 A/B/C 通道公式、fail-closed 门、估算注册表、C 类治理校验原样保留。
 
 职责:经济通道折成**金等价期望** ``(expected_gold, resolved)``——
@@ -33,13 +31,13 @@ P(位面可达)(全局无条件到达率;条件化 P(可达|已至当前) 更准
 **通道分型**(沿原 kernel 模块):
 - A 类精确:游戏定义值直算(增发货币/蓝海/成功经验/策略大师);
 - B 类拍值:公式结构游戏定义(长线利好/二手市场),估值按拍值注册
-  (P97 §7 消费契约;原「概率/期望参数进估算注册表」形态随拍值停用);
+  (原「概率/期望参数进估算注册表」形态随拍值停用);
 - C 类估算:效果无数值(「掉落更多战利品」),每奖励节点期望增益进估算
   注册表(经济过热/经济严重过热;当前零有效估计 → fail-closed)。
 
-**宪法对账**:A 类 = 【注】游戏定义值(cw_invest_data 原文直读)+ 【推】
-位面到达加权;C 类 = 【拟】估算(值+CI+来源+截止,fail-closed 门);拍值
-= 用户裁定的平价实现形态(P97 §7「证明归证明,实现拍平价」);零位面
+**宪法对账**:A 类 = 游戏定义值(cw_invest_data 原文直读)+
+位面到达加权;C 类 = 估算(值+CI+来源+截止,fail-closed 门);拍值
+= 用户裁定的平价实现形态(「证明归证明,实现拍平价」);零位面
 字面量(位面仅作通道索引/到达权重键);无开关(回滚 git revert,
 strategy-work §3)。
 """
@@ -68,7 +66,7 @@ _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 _REWARD_BONUS_KEY = 'reward_node_bonus_{}'
 
 # (刷新分布两参数键 refresh_{scope}_ge{阈值}_p / refresh_{scope}_after{阈值}_e
-# 随 gold_after_refreshes 拍值注册停用,不再约定——P97 §7 消费契约;
+# 随 gold_after_refreshes 拍值注册停用,不再约定;
 #  tools 重采脚本的对应重采面归 3.2 随 kernel 删除面一并处理。)
 
 # C 类环境 → 增益参数变体映射(单一源;新 C 类环境先落映射再落参,漏映射
@@ -79,18 +77,18 @@ _REWARD_BONUS_VARIANTS: dict[str, str] = {
     '经济严重过热': 'super',
 }
 
-# 奖励节点槽位结构先验(【拟】对局档案众数结构,数据截至 2026-09-12;样本量与
+# 奖励节点槽位结构先验(对局档案众数结构,数据截至 2026-09-12;样本量与
 # 槽位变异性申报 = invest-env data-batch-estimates 详设)。
 # (位面,轮次) 1 基;P3 结构零样本不计 = 视界保守低估(模板已登记后补)。
 _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 
 # 取卡序→位面结构映射(k 1 基;策略大师通道 P(第 k 张策略可取) 的位面归属)。
-# 【推】结构:k1 = 开局取卡(entry 流程固定,局首)、k2 = P1 中段首取卡
+# 结构:k1 = 开局取卡(entry 流程固定,局首)、k2 = P1 中段首取卡
 # (screen_flow_timing #11:1-3 节点完成后)、k3 = P2 前段(63 局
 # decisions.jsonl 观测拼版主位 (2,2);旧 sim 注入日程
 # SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已删除(随sim 重做)面停用,
 # 取卡时点 = 投资策略 offer 固定轮次日程,权威版本 = sim-design.md §2.2)。
-# 基线取卡基数 = 本表长度【推·效果原文序数】(效果原文:
+# 基线取卡基数 = 本表长度(效果原文序数;效果原文:
 # 头彩点名「第一个投资策略」/尾彩点名「第三个投资策略」→ 固定取卡集
 # 基数 3;策略大师/联席的 3-5 节点「额外」取卡不计——策略域价值非经济
 # 通道,不入本折算)。
@@ -102,14 +100,13 @@ _STRATEGY_PICK_PLANES: tuple[int, ...] = (1, 1, 2)
 
 # ===== gold_after_refreshes 拍值注册(28 号稿 §2 现金分行;用户裁定
 # 2026-09-23「证明归证明,实现拍平价」)=====
-# 键 = 环境注册表规范名,值 = 无条件计的金等价价值。可达性已由 P97 证明确
+# 键 = 环境注册表规范名,值 = 无条件计的金等价价值。可达性已实证确
 # 立,不读局内刷新计数(gs.effects.refresh_total/refresh_paid 不消费)、
 # 不做按阵容预算分支(唯一例外阵容景元仙舟按拍值平摊 = 「拍一个价值」
-# 语义的接受面,P97 §7)。改拍值先重跑 P97 脚本
-# (skills/sr-od-dev-currency-war/scripts/proofs/p97_refresh_budget_check.py,P97 §7 消费契约)。
-#: 二手市场 = 30:阈值 20 次总刷新,P97 实证 20/20 阵容可达 → 全局兑现,
+# 语义的接受面)。
+#: 二手市场 = 30:阈值 20 次总刷新,实证 20/20 阵容可达 → 全局兑现,
 #: 价值 = 返金 30(用户确定);
-#: 长线利好 = 50:阈值 30 次付费刷新,P97 均值 60.5 次/19-20 阵容可达 →
+#: 长线利好 = 50:阈值 30 次付费刷新,均值 60.5 次/19-20 阵容可达 →
 #: 价值 ≈ 返金 20 + 过阈值节省 ×(均值 60.5−30)≈ 50(裁决窗确认的建议值)。
 _GOLD_AFTER_REFRESHES_FIXED: dict[str, float] = {
     '二手市场': 30.0,
@@ -119,7 +116,7 @@ _GOLD_AFTER_REFRESHES_FIXED: dict[str, float] = {
 
 @dataclass(frozen=True)
 class EconomyEstimate:
-    """【拟】估算参数(原 invest-env 迭代注册表条目形;00_framework 数字三形态)。
+    """估算参数(原 invest-env 迭代注册表条目形;00_framework 数字三形态)。
 
     ci 两端点参与 fail-closed 方向检验:端点重算 expected_gold ≤ 0(金期望
     方向翻转)→ resolved=False。source/cutoff = 数据来源与统计截止申报
@@ -140,7 +137,7 @@ class EconomyEstimate:
 #:   ×1)但遥测无扑满战利品独立字段,奖励轮收支差分混入备战净支出,增益不可
 #:   分离 → 经济过热/经济严重过热 fail-closed(补采建议见口径文档)。
 #: (refresh_total_ge20_p / refresh_paid_ge30_p 随 gold_after_refreshes 拍值
-#: 注册停用,不再登记——P97 §7 消费契约)
+#: 注册停用,不再登记)
 ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
     # —— 位面到达率(原 invest-env 迭代需估参数①;完成局命中 110/114 与 10/114)——
     'plane_arrival_p2': EconomyEstimate(
@@ -260,7 +257,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥已语义化豁免(同键共存
     合法性见 cw_investments._validate_env_pool_rewrite)。
 
-    通道(值除注明外全部为注册表游戏定义【注】):
+    通道(值除注明外全部为注册表游戏定义):
     - gold_instant:选卡当场一次性金(零参数,精确);
     - gold_per_plane_start:每位面开局金 × 位面可达权(剩余口径:既往位面
       不计;当前位面仅在开局轮(轮次 ≤ 1)可领——位面开局发放发生在轮 1 之前;
@@ -272,7 +269,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
       已持有 k,发 coef×k,首张 coef×1;已持有数起、基线取卡基数止),
       P(k) = 取卡所在位面的可达权(_STRATEGY_PICK_PLANES 结构表);
     - gold_after_refreshes(拍值):按 :data:`_GOLD_AFTER_REFRESHES_FIXED`
-      无条件计(28 号稿 §2 现金分行;P97 §7 消费契约——不读 gs.effects 刷新计数、
+      无条件计(28 号稿 §2 现金分行——不读 gs.effects 刷新计数、
       不消费 refresh_p/refresh_after 估算参数,刷价节省项已并入拍值);
       拍值表缺登记(新 gold_after_refreshes 环境漏拍)= fail-closed,
       防静默按 0 计入;
@@ -333,7 +330,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
                 continue
             _gain = eff.gold_per_strategy_coef * _k
             _acc((_gain * _w[0], _gain * _w[1], _gain * _w[2]))
-    # 通道 5:刷新阈值返金(拍值注册,无条件计;28 号稿 §2/P97 §7 消费契约
+    # 通道 5:刷新阈值返金(拍值注册,无条件计;28 号稿 §2,
     # 见 env_economy_value docstring)
     if eff.gold_after_refreshes is not None:
         _fixed = _GOLD_AFTER_REFRESHES_FIXED.get(env.name)
@@ -414,7 +411,7 @@ _validate_estimates_governance()
 #: 实采取代。
 _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 
-#: μ_E per (品质,视界):品质子池受限通道金流均值(【拟】,EconomyEstimate
+#: μ_E per (品质,视界):品质子池受限通道金流均值(估算,EconomyEstimate
 #: 四元组;键第二维 = H_k,公式 μ_E(q; H) 视界入参化的直接承载)。品质键 =
 #: 注册表品质名('棱彩'/'金'/'银')。
 #: **不落参数申报(转正数据批判定:准入门未过)**:全通道重算与序一致性
@@ -426,7 +423,7 @@ _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 #: 头彩/尾彩维持零现金分(现行为零变化)。
 STRAT_POOL_ECON_MEANS: dict[tuple[str, int], EconomyEstimate] = {}
 
-#: π_offer per 取卡序:无改写环境时第 k 次取卡的 offer 品质分布(【拟】;
+#: π_offer per 取卡序:无改写环境时第 k 次取卡的 offer 品质分布(估算;
 #: 键 = k 1 基,值 = 品质 → EconomyEstimate。「未解析」份额不单列建模,
 #: 入式前按已知三品质份额归一,归一口径随数据批申报)。缺位该 k =
 #: 缺参 fail-closed。**不落参数申报(与 μ 表同判,准入门未过)**:k=1/k=2

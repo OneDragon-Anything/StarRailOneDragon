@@ -17,7 +17,7 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
 
 
 def is_engine_piece(name: str) -> bool:
-    """引擎件身份(注册表现算单一源;种子排除,P78-7)。
+    """引擎件身份(注册表现算单一源;种子排除)。
 
     判据 = 角色注册表 factions∪schools 与引擎三阵营(ENGINE_FACTIONS,
     桥池 engine_bonds 派生)交集非空(与原 ``cw_line_defs.classify_buy``

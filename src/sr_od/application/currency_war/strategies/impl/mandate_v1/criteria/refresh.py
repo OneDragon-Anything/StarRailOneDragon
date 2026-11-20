@@ -156,7 +156,7 @@ def qualified_member_costs(buy_members: tuple[str, ...],
                            bench: list, deployed: list,
                            level: int) -> list[int]:
     """合格集成员费带 = 未 2★ 成型 ∧ 该级可刷出(refresh_prob>0)成员的
-    注册表 cost 列表(P91 压牌库同轴带偏好单一消费源)。R2 预留 ρ 已改
+    注册表 cost 列表(压牌库同轴带偏好单一消费源)。R2 预留 ρ 已改
     基准停留目标实费档(:func:`r2_card_reserve`),不再经本过滤——两判定
     源解耦(旧「同源消费」声明随 ρ 重定义废止)。
 
@@ -200,7 +200,7 @@ def r2_card_reserve(state: GameState) -> int:
       是口径而非缺省)。
 
     ⚠ 同名异义基准:本 ρ 与 ``statefn/s_line.py`` 的
-    ``rho(delta_v_band, delta_v_pop, rounds)``(P48 整买价值率)毫无
+    ``rho(delta_v_band, delta_v_pop, rounds)``(整买价值率)毫无
     关系,两 ρ 共存于同一模块树,消费禁接错源。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (

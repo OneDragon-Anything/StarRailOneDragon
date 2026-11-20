@@ -269,7 +269,7 @@ class StrategyState:
     # ===== M2 停摆续段缓存(必花分支重试风暴;段标识/结论标志/帧动作
     # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」
     # 的腾席拒绝无记忆重推导,把一次停摆事件逐帧放大成 N 个事件帧——
-    # 缓存命中帧跳过扫描且事件键不增,恢复 P60 诚实停摆的事件粒度语义)=====
+    # 缓存命中帧跳过扫描且事件键不增,恢复诚实停摆的事件粒度语义)=====
     # 段序号。构成:会话态单调递增 int;置位:各段入口 +1(商店 visit
     # 开始[商店画面 op 观察 node 入口 / bridge.decide_shop_screen
     # 入口=回放/序列测试]、备战期
@@ -307,7 +307,7 @@ class StrategyState:
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
-    # 统一发出登记簿(P78 窗口段载体):
+    # 统一发出登记簿(窗口段载体):
     # 名 → (买因,登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
     # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压牌库簿
     # 完全合一(编者裁);属性名沿用旧簿:执行侧 cw_op_deploy 按鸭子
@@ -459,7 +459,7 @@ class StrategyState:
     # 置 True;收工消费——True ∧ 本会话零处理动作 ⇒ 不置标记(非处理性
     # 会话,同节点后续真实会话不受污染)。任意关店出口清位。
     shop_read_intent: bool = False
-    # 本 visit 受限访问标记(P70 动作发出帧仲裁授权的溢出段消费;受限
+    # 本 visit 受限访问标记(动作发出帧仲裁授权的溢出段消费;受限
     # visit 豁免条款):visit 入口按 launch_restricted_session_active 现算快照——
     # 受限 visit 的关店不置标记、不受会话标记覆盖。
     shop_visit_restricted: bool = False

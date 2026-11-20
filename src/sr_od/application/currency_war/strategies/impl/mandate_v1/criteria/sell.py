@@ -93,7 +93,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
        一张(逐帧单张模型:跨档后下帧按新金位重评,缺口重算自然
        收敛,不一次多卖);
     ③ **槽位布尔门停用**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
-       链归 P57 裁决,与本重写分账)。
+       链归换线判据裁决,与本重写分账)。
 
     资格谓词(占位件物理门 ∧ 1★ ∧ 零重叠,与
     funding_support_sell 同一;占位件恒拒判据单一源 =
@@ -136,7 +136,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。凑息通道消费释放
-    成员 = 卖掉意图已死的近零值资产,正是燃料类语义(P78-5′ 对价豁免
+    成员 = 卖掉意图已死的近零值资产,正是燃料类语义(对价豁免
     条款照常覆盖,无新增豁免需求)。
     """
     # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
@@ -171,7 +171,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
         if not predicates.zero_overlap(name, k_members):
             continue
         if name in exclude_names:
-            continue   # P60:买面义务集成员禁入卖出资格集(防义务换手)
+            continue   # 买面义务集成员禁入卖出资格集(防义务换手)
         if name in defer_names:
             _count('t3_protect_deferred')   # T3 同轮保留:回拉通道绝对跳过
             continue
@@ -238,7 +238,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     统一序列档 9;卖回量最小化 [11]);跨帧语义 = 变现金
     作用于下一备战期义务动作(延迟=1 备战期间隔,进遥测 reason)。
     无对象 ⇒ 空。
-    ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
+    ``exclude_names`` = 买面义务集成员禁入(与凑息卖/M4 燃料同款)。
     ``defer_names``(T3 同轮保留;支付变现 = 转化类,**仅降序放行**,
     非绝对禁卖):集合内名字排候选末位——为骨架义务筹资的卖出优先级
     支配保护(保护若覆盖此通道 = 安全域内抑制发展动作的回归);非保
@@ -256,7 +256,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。支付变现消费释放
-    成员的对价豁免条款(P78-5/5′ 两条分支)照常覆盖,无新增豁免需求。
+    成员的对价豁免条款(两条分支)照常覆盖,无新增豁免需求。
     """
     if gold >= need_gold:
         return [], 'not_needed'
@@ -287,7 +287,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
         if not predicates.zero_overlap(name, k_members):
             continue
         if name in exclude_names:
-            continue   # P60:买面义务集成员禁入卖出资格集
+            continue   # 买面义务集成员禁入卖出资格集
         if merge_material_reject_reason(name, star, bench, _deployed) \
                 and name not in merge_guard_release:
             if counters is not None:

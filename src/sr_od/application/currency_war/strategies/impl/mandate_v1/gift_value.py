@@ -31,7 +31,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     GiftGrant,
 )
 
-#: 赠卡档分(28 号稿 §2;【拍】形态,初值经用户裁定窗过目):
+#: 赠卡档分(28 号稿 §2;拍值形态,初值经用户裁定窗过目):
 #: - core = 50:白得一条 A 线核心 ≈ 半条 A 线方向分量级;
 #: - shared = 20:常用成员;
 #: - off = 0:无消费方。

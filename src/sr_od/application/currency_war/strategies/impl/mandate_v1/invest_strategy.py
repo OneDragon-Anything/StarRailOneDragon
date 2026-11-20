@@ -20,7 +20,7 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
   评分设计的用户决定形态(纯加权和一个公式),定义卡支配由 +500 压过现金
   满档实现(旧定义型分区退役);
 - 赠卡分 = STRATEGY_GRANTS + gift_value.grant_gift_value(29 号稿 §2.3);
-- 立场分 = :data:`STANCE_SCORE`(【拍】形态,现行无非零行;表外卡恒 0);
+- 立场分 = :data:`STANCE_SCORE`(拍值形态,现行无非零行;表外卡恒 0);
 - 转向轴 = strategy_priority 命中 + :data:`pick_common.
   STEERING_PRIORITY_BONUS`(软偏好,立场系数);strategy_forbid = 排除出
   候选(不走分值,29 号稿 §2.4);
@@ -39,7 +39,7 @@ skill strategy/29_invest_strategy_screen.md §5):基准 = 锁线 Comp.factions
 选卡行为与无护栏逐位一致。排除语义 = 域收缩非负分;刷新侧出域卡沿
 E-豁免同款(不入帧级顶级/不计 max_N/恒入动作集/不算 L1)。
 
-刷新判据(29 号稿 §4;P81 承接):帧级门与槽级顶级两谓词分立,
+刷新判据(29 号稿 §4):帧级门与槽级顶级两谓词分立,
 帧级门 = 候选恰 3 ∧ 全精确分类 ∧ 无帧级顶级卡 ∧(终局阵容锁定帧 max_N≠1);
 槽级动作集 = 非槽级顶级可刷/被禁与出域恒入/唯一 L1 守卫。**顶级类派生
 修订**(统一阵容评分裁定):定义型查表布尔退役 → 「给 top1 线加分 ≥
@@ -143,7 +143,7 @@ class StrategyRefreshSuggestion:
     slots: tuple[int, ...]
 
 
-# ===== 立场分表(29 号稿 §2.4;【拍】形态,每行带理由)=====
+# ===== 立场分表(29 号稿 §2.4;拍值形态,每行带理由)=====
 
 @dataclass(frozen=True)
 class StanceRow:
@@ -182,7 +182,7 @@ _validate_stance_registry()
 
 # ===== 平分裁决键(29 号稿 §3)=====
 
-#: 品质序 tie-break(棱彩>金>银,【注】游戏定义;零拍值序表)。**命名
+#: 品质序 tie-break(棱彩>金>银,游戏定义;零拍值序表)。**命名
 #: 声明**:本表驻策略层、独立命名(``_RARITY_TIE_RANK``)——品质序
 #: tie-break 是策略评序内容(29 号稿 §3),宪法五归策略层,不复用
 #: kernel 侧符号名。
@@ -522,7 +522,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
       evicted 与现役 kernel 调用的三参同源(flow 意向状态直通);
     - 选卡 = 结构分区 + 组件总分 argmax(见 :func:`decide_pick`;冲突基准
       在本入口算好,护栏设计);
-    - 刷新判据(P81 承接,29 号稿 §4):帧级门 = 候选恰 3 ∧ 全
+    - 刷新判据(29 号稿 §4):帧级门 = 候选恰 3 ∧ 全
       精确分类 ∧ 帧内无帧级顶级卡 ∧(终局阵容锁定帧 max_N≠1)——帧级门失败
       (含未锁定帧)→ 整帧不刷,槽级不评;帧级门过 → 槽级动作集 = 非槽级
       顶级可刷/被禁与出域恒入/唯一 L1 守卫,动作集非空 → 建议(输出槽序
@@ -554,7 +554,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
 
 def _refresh_slots(cands: list[_Cand],
                    locked_frame: bool) -> tuple[int, ...]:
-    """刷新判据(29 号稿 §4;P81 判据结构迁入,帧级/槽级两谓词分立)。
+    """刷新判据(29 号稿 §4;帧级/槽级两谓词分立)。
 
     返回可刷槽位元组;空元组 = 不建议刷(帧级门失败或动作集空)。
     **G8 消费序依赖沿旧机器纪律**:分类存档只在帧级触发(恰 3 ∧ 全精确)
@@ -573,7 +573,7 @@ def _refresh_slots(cands: list[_Cand],
     # 帧级门④:终局阵容锁定帧 max_N≠1(E-豁免:被禁/出域卡不计入 max_N;
     # max_N=0 或 ≥2 → 继续)。未锁定帧无 N 语义,本门只覆盖终局阵容锁定帧
     # (保守缺省:终局阵容锁定帧单元素命中 → 整帧不刷;门的依据重建归
-    # P81 换基重演必答③;出域不计在数据面上冗余——绑元命中锁线则指向集
+    # 换基重演必答;出域不计在数据面上冗余——绑元命中锁线则指向集
     # 必交基准、不可能是出域卡——与被禁同款防御性对称保留)
     if locked_frame:
         max_n = max((c.align_n for c in cands

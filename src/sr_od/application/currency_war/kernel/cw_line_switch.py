@@ -18,7 +18,7 @@ line_switch_enabled/theta/debias_delta/min_dwell 为零消费死字段,
     E_rounds(c) ≈ distance(c) / per_round(c)
     per_round(c) = (1 + 可负担刷次数) × p̄(c, lv) # 自然刷 1 次/轮 + 买刷;截断到 bench 空位
 
-p̄ 同超几何模型(cw_shop_odds P5 表实值;**p̄ 乐观偏差**:理论满池值未扣
+p̄ 同超几何模型(cw_shop_odds 实值;**p̄ 乐观偏差**:理论满池值未扣
 NPC 消耗/争夺,系统性偏乐观 10-20%,消费侧方向判读时知悉)。
 """
 from __future__ import annotations

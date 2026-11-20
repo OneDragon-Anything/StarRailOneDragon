@@ -124,7 +124,7 @@ def _near_redeem(name: str, pairs_by_key: dict[str, tuple[tuple[str, str], ...]]
 
     操作条件:交叉对 = name 为零侧且另一侧 ≥1;自对 = 持 1 补第 2 只
     (cnt 恰 1;持 0 不成对、持 ≥2 已可合,均不升档)。对数净增加的
-    宽定义(第 2+ 件 K)归 P42 数值化适用范围,不进序数档。"""
+    宽定义(第 2+ 件 K)不进序数档。"""
     for k in unmet_keys:
         for a, b in pairs_by_key.get(k, ()):
             if name != a and name != b:

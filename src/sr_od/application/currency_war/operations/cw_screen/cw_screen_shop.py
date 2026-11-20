@@ -164,7 +164,7 @@ def apply_action_outcome(
 ;原清单为会话产物不入库,语义以此为准)。
 
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不写逻辑态、
-    不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2)。
+    不入「已买」集(防检出帧名污染 prefer_names/churn,应修-2)。
     状态容器逻辑态直写已随动作 op 重组并入各 op 自上报(op 内直调
     自己的上报函数,op-layer.md §1.2)——原非终结直写块(apply_shop_action_
     logic + 合成升星分支)删除 = 双记防线;终结跳写判断随 op 自覆盖不再需要。
