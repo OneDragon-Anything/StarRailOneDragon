@@ -1,6 +1,6 @@
 ---
 name: sr-od-dev-currency-war
-description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、单局深度复盘/复盘模板维护、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-write-application,通用任务账本/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
+description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、单局深度复盘/复盘模板维护、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-write-application,通用任务待办/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
 ---
 
 # 货币战争开发·维护·自主推进
@@ -36,7 +36,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
         ▼                                                 │
 ┌───────────────────────────────┐                         │
 │ game state 内核(kernel/)       │                          │
-│ GameState 状态容器             │                            │
+│ GameState(game state)          │                            │
 │ (观察态/逻辑态/未观察 三态)    │                                   │
 │ apply_* 单一转移函数族         │                               │
 │ cw_reconcile 观察边界对账·锚定│                                 │
@@ -65,7 +65,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
                                     ┌────────────────────────────┐
                                     │ 动作原语(operations/actions)│
                                     │ 纯动作:点击/拖拽/固定序列;  │
-                                    │ 零判效·零决策·简单参数,   │
+                                    │ 零效果验证·零决策·简单参数,   │
                                     │ MCP 可直调(与 flow 层共用)  │
                                     └────────────────────────────┘
                                                       ⑤ 执行(点击/拖拽)
@@ -98,7 +98,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 动作 op | `operations/cw_op` | 动作提案的执行器:理解动作语义(带领域参数与局内状态),执行并上报;机械部分组合 actions 原语 |
 | 动作原语 | `operations/actions` | 纯动作(点击/拖拽/固定序列),不做判定不做决策;flow 层与 MCP agent 共用(纪律见 §1.4) |
 | 策略 | `strategies/impl/mandate_v1` | 读 game state、产出动作提案;量化判据(criteria)与状态函数(statefn) |
-| 内核 | `kernel/` | GameState 状态容器 + 经济/阵容/装备等领域纯函数 |
+| 内核 | `kernel/` | GameState(game state)+ 经济/阵容/装备等领域纯函数 |
 | 观察 | `obs/`(一屏一解析器 + `recognizers/`) | 读屏解析;识别器注册为 MCP extras(§1.4) |
 | 数据 | `data/` | 注册表(角色/羁绊/装备/投资/主角光环/敌情),官方 API 口径镜像 |
 | 模拟 | `sim/` | 单局模拟器,充当游戏后端:只模拟环境,不评判策略 |
@@ -112,7 +112,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 - 策略消费口唯一:策略器只从 game state 读;
 - 对账只在观察边界(`cw_reconcile`):推算预期 vs 下一帧实读,对不上 = 有 bug;
 - sim 局与实机局跑同一套循环/op/策略,只换环境;
-- 决策控制分层:凡控制决策行为的闸门与判断(政策闸/动作放行/花金限制/值域过滤)必须在策略侧实现——流程侧(外循环/画面 op/动作执行)禁止任何形式的决策闸门,合法判断面仅限画面识别与路由、防 bug 守卫断言、失败治理与停机;流程侧出现「需要判断该不该放某个动作过」= 分层错误,修法 = 迁策略侧。
+- 决策控制分层:凡控制「该不该做某动作」的判断(策略级开关、动作许可、花钱限制、取值范围过滤)必须在策略侧实现——流程侧(外循环/画面 op/动作执行)禁止任何形式的决策拦截判断,合法判断仅限画面识别与路由、防 bug 守卫断言、失败治理与停机;流程侧出现「需要判断该不该放某个动作过」= 分层错误,修法 = 迁策略侧。
 
 ### 1.4 双消费面(图 B):一条龙与 MCP agent 共用底层件
 
@@ -126,20 +126,20 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 └────────────┘   run_operation:直调         └────────────────────┘
                  ─────────►┌──────────────────┐
                            │ actions/* 动作原语│
-                           │ (零判效·零决策)  │
+                           │ (零效果验证·零决策)  │
                            └──────────────────┘
 回环:agent 执行后再 analyze_screen 观察对账(点击生效与否由调用方验证)
 ```
 
-- **动作原语 `operations/actions/`**:动作 op 的纯动作部分抽出,构造参数只用 JSON 简单类型,可被 MCP `run_operation` 直接运行。三条纪律:**零判效**(点击后不验证生效,对账归调用方下一帧观察)、**零决策**(买哪张/选哪个/何时做归调用方,槽位/坐标/次数全为参数)、**读屏仅限动作本体的目标定位**(坐标默认从 screen_info 画面档静态解析;唯一例外拾晶矿:识别球→点球,识别即动作本体)。
+- **动作原语 `operations/actions/`**:动作 op 的纯动作部分抽出,构造参数只用 JSON 简单类型,可被 MCP `run_operation` 直接运行。三条纪律:**零效果验证**(点击后不验证是否生效,对账归调用方下一帧观察)、**零决策**(买哪张/选哪个/何时做归调用方,槽位/坐标/次数全为参数)、**读屏仅限动作本体的目标定位**(坐标默认从 screen_info 画面档静态解析;唯一例外拾晶矿:识别球→点球,识别即动作本体)。
 - **参数面规范(全部动作原语迁移的目标形态)**:
   - ①固定槽位:传下标——商店牌固定 5、备战栏固定 9,坐标按 screen_info 槽位直算
   - ②半固定:传下标 + 槽位总数——后排布局随部署数重排(槽位家族 6/7/8/9),下标单独不可定位
-  - ③动态元素:显式传 (cx,cy) + 语义参数(如确认/取消)——晶矿、合成浮层钮、装备栏条目等位置不固定的目标,坐标来自调用方当帧读数(extras/gs)
+  - ③动态元素:显式传 (cx,cy) + 语义参数(如确认/取消)——晶矿、合成浮层钮、装备栏条目等位置不固定的目标,坐标来自调用方当帧读数(MCP extras 读数或 game state)
   - 名称字段(装备名/角色名)= 语义参数:可选传入,不参与定位与校验,仅决定 op 日志内容
-  - 执行路径零 game state 依赖:gs 可选快路径全部拔除;参数缺失 = 参数校验显式报错(禁静默兜底)
+  - 执行路径零 game state 依赖:game state 可选快路径全部拔除;参数缺失 = 参数校验显式报错(禁静默兜底)
   - 坐标新鲜度纪律归调用方:op 纯机械不做落点前校验;坐标须来自当帧读数,读完即用
-  - 参数 dataclass 统一补 `from_dict`(run_operation JSON 通道构造要求);配套 gs 状态容器给实体记录坐标(策略层从 gs 取坐标传参的前提)
+  - 参数 dataclass 统一补 `from_dict`(run_operation JSON 通道构造要求);配套的 game state 给实体记录坐标(策略层从 game state 取坐标传参的前提)
   - 迁移按 op 切迭代(每 op 所有牵涉面一次改净),流程 = 设计→review→实施→review 四角色子代理流水线;设计稿归 CW 设计文档区 changes/ 迭代目录
 - **画面识别器 `obs/recognizers/`**:备战/开商店/结算/简报/投资策略五族注册为 `analyze_screen` 的 extras 扩展——MCP 读到的 extras 与画面 op 观察是同一份实现,不是两套。
 
@@ -152,9 +152,9 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 改画面 op / 观察解析(obs) | 改前必读 [references/flow/screen-op.md](references/flow/screen-op.md)(职责四段·node=1+N+策略器按需/唯一读屏点/观察上报;完整细则在 docs screens/,后续批次迁) | flow/screen-op |
 | 改动作 op(cw_op)/ 上报函数族 | 改前必读 [references/flow/action-op.md](references/flow/action-op.md)(规范集:零验证/零重试/点完即写/零读屏/一动作一文件/坐标契约;全量清单与转移声明表) | flow/action-op |
 | 改入口链 / 退出链 / 弹窗守卫族 | 改前必读 [references/flow/entry-exit.md](references/flow/entry-exit.md)(三层结构/退出分发序/A 类名单与停机位同源契约) | flow/entry-exit |
-| 改守卫 / 停机闸 / 降级链 | 改前必读 [references/flow/guards.md](references/flow/guards.md)(重派网/未知兜底/停机闸处理流程/降级链表) | flow/guards |
+| 改守卫 / 停机 / 降级链 | 改前必读 [references/flow/guards.md](references/flow/guards.md)(重派上限/未知兜底/停机处理流程/降级链表) | flow/guards |
 | 改策略契约面 / 状态分离(session/StrategyState/GameState 分工) | 改前必读 [references/flow/strategy-contract.md](references/flow/strategy-contract.md)(四身份分离/17 接口/三条契约) | flow/strategy-contract |
-| 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据) | telemetry-reading |
+| 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先定标准:当期目标行判据) | telemetry-reading |
 | 单局深度复盘 / 复盘模板修订 | match-review(粒度=外层循环画面op调用序,报告按画面章组织:0 观察+动作节+策略评价;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选清单,落点=报告文末复盘者附加) | match-review |
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work「验证」) | sim-testing |
@@ -163,8 +163,8 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 游戏版本更新(CW 侧适配) | version-update 清单(判型/各域明细/换赛季战役组织;总流程归 sr-od-dev-version-update-adaptation) | version-update |
 | 数据采集 / 版本重采 / 新字段建模 | §3单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 改用户配置字段(增/删/语义) | 改前必读 [references/config.md](references/config.md)(归属判据红线:用户会因个人目的想改它吗;转向轴四类×三档语义表) | config |
-| 改状态容器(写入入口 / 上报函数 / 字段增删) | 改前必读 [references/game-state.md](references/game-state.md)(三种来源与对账 / 上报函数族形态 / 字段设计纪律) | game-state |
-| 改状态流水 / 判读账本(行结构 / 渠道签名 / 版本号 / 落盘 / 寿命清理) | 改前必读 [references/journal.md](references/journal.md)(两种行型 / 签名字段面 / 单版本事务 / 三道闸滚动清理 / 常开装配) | journal |
+| 改 game state(写入入口 / 上报函数 / 字段增删) | 改前必读 [references/game-state.md](references/game-state.md)(三种来源与对账 / 上报函数族形态 / 字段设计纪律) | game-state |
+| 改状态流水 / 判读方法(行结构 / 渠道签名 / 版本号 / 落盘 / 寿命清理) | 改前必读 [references/journal.md](references/journal.md)(两种行型 / 签名字段面 / 单版本事务 / 三道判据滚动清理 / 常开装配) | journal |
 | 改获得链 / 加获得类效果(原语 / 事件回调 / 检查分支 / 升星合成) | 链式规范单一源 = `kernel/cw_gain_chain.py` 模块 docstring(七原语契约 / 枚举回调 / 固定时序 / 随机态纪律 / 失败安全)+ 各函数 docstring;策略卡效果体注册表在 `kernel/cw_gain_effects.py` | — |
 | 改效果域 / 加卡建模(规格声明 / 计数器 / 事件接入 / 词缀源) | 改前必读 [references/effect-inventory.md](references/effect-inventory.md)(声明式建模 / 单调计数器 / 写入两分 / 事件映射 / 零响应教义);逐卡是什么效果归注册表条目注释(`kernel/cw_investments.py::STRATEGY_EFFECTS` 各源注册表) | effect-inventory |
 | 改 sim 后端 / 加观察生成器 / 端口与声明契约 | 架构正本 = docs 设计区 sim/ 两篇(sim-design.md 驱动反转与保真度分层 + sim-wiring.md 逐域对接表,接入调用变更须同步更新对接表);跑 sim 测试的操作面见 [references/sim-testing.md](references/sim-testing.md) | sim-testing |
@@ -172,13 +172,13 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | ADR / as-built 维护 | §4文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查 §3 单一源地图,仍定位不了 → 给分诊表补行 | — |
 
-开发循环轮从分诊表进,走所属域的主线;分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度账本/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
+开发循环轮从分诊表进,走所属域的主线;分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度追踪文件/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
 
 ## 3. 单一源地图(知识在哪,别造第二源)
 
 | 要什么 | 去哪 |
 |---|---|
-| **策略工作统一说明**(策略是什么与骨架/改前/开关落地/验证/单帧测试) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
+| **策略工作统一说明**(策略是什么与方法主线/改前/开关落地/验证/单帧测试) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
 | **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
 | **CW 工具脚本**(数据采集生成器/哨兵组/复盘渲染/calibration——全家住本 skill `scripts/`,usage 看各脚本 docstring) | `scripts/`(采集生成器 data-collection、哨兵 runtime-ops、渲染 match-review) |
 | **测试分层**(L1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` ≈2.5min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/ -m "not slow"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 策略验证阶梯单一源 = strategy-work「验证」 |
@@ -197,9 +197,9 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 新版本实机探索局作业方法(实机局怎么跑/探索产出怎么变四层覆盖) | [references/version-update-live-exploration.md](references/version-update-live-exploration.md)(目标口径/开局三步/派发纪律/单局作业/局间循环;编排机制归 autonomous-loop,总流程归 version-update) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
 | 运行状态/焦点/待办 | 新迭代走 `.temp/changes/active/<迭代名>/`(迭代目录含 tasks.md 进度,规范见 od-dev-run-iteration);`.debug/progress/` 下的 CW 存量目录(dag.jsonl 与旧文法 `进度.md`)只读封存,新登记事项不再写入。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针 |
-| **跨迭代挂账**(货币战争专用的待办文件:等实机取证 / 等用户裁定的家族议题 / 等外部条件 / 欠账导航——寿命超过单个迭代的事项) | `.debug/progress/CW跨迭代挂账.md`(全域唯一板;迭代内欠账留各迭代收尾清单,收口时转移进板) |
+| **跨迭代挂账**(货币战争专用的待办文件:等实机取证 / 等用户裁定的家族议题 / 等外部条件 / 欠账导航——寿命超过单个迭代的事项) | `.debug/progress/CW跨迭代挂账.md`(全域唯一文件;迭代内欠账留各迭代收尾清单,收口时转移进该文件) |
 
-分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度账本,一律不进共享文档。**
+分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度追踪文件,一律不进共享文档。**
 
 ## 4. 文档同步(行为变更同步)
 
