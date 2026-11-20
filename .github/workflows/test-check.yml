@@ -4,10 +4,24 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [main]
+    branches: [main, feat/mcp-backend-sync2]
+  workflow_run:
+    workflows: ["Build Test Branch"]
+    types: [completed]
+
+concurrency:
+  # 分组键：workflow_run 用触发运行头 sha（其 github.ref 是默认分支 ref，裸用会与 push main 同组互杀），其余事件用自身 ref
+  group: test-check-${{ github.event.workflow_run.head_sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 集成分支基线（workflow_run 联动时测试仓取同名分支）；与 build-test-branch.yml 的同名 env 成对维护
+  BASE_BRANCH: feat/mcp-backend-sync2
 
 jobs:
   test-check:
+    # workflow_run 联动：Build Test Branch 失败的重建不跑测试（失败时 test 分支未更新）
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: windows-latest
     permissions:
       contents: read
@@ -17,6 +31,8 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
+          # workflow_run 事件的默认检出是默认分支头（非触发运行头），必须显式取 test 分支头
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: Install uv
         shell: pwsh
@@ -48,7 +64,7 @@ jobs:
         with:
           repository: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name && format('{0}/sr-od-test', github.event.pull_request.head.repo.owner.login) || 'OneDragon-Anything/sr-od-test') || 'OneDragon-Anything/sr-od-test' }}
           path: sr-od-test
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || (github.event_name == 'workflow_run' && env.BASE_BRANCH) || 'main' }}
           fetch-depth: 1
           persist-credentials: false
         continue-on-error: true
