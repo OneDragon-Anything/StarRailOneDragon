@@ -1,10 +1,13 @@
 """货币战争 分发画面清单常量(中立单源)。
 
-``CW_DISPATCH_SCREENS`` = 主循环画面身份分发与出战发出链浮层闸门共用的
-画面名清单。原住 CwLoop 类属性;浮层闸门迁 ``prep_actions.py`` 后,
-为消解 prep_actions → cw_loop 的潜在循环 import(调用方传名单则
-CwScreenPrep 仍需 import cw_loop,循环未消解),落 kernel 中立模块一处
-单源,两消费方同源 import(design §2.4/§2.7-5)。
+``CW_DISPATCH_SCREENS`` = 主循环画面身份分发的画面名清单。原住 CwLoop
+类属性;浮层闸门迁 ``prep_actions.py`` 后为消解潜在循环 import 落 kernel
+中立模块一处单源。**现役唯一代码消费方 = CwLoop**(分发 + 预检 + 候选
+过滤,全 src grep 证实):出战发出链两道执行前防线(屏态复验/浮层闸门)
+已退役(2026-11-19 用户裁定,退役裁定与防线边界的持久指针 =
+``prep_actions.py:8-15`` 模块头),其现役 ``prep_drag_overlay_gate`` 用
+自有小清单 ``_DRAG_BLOCK_OVERLAYS``(docstring 明言非全量分发扫描),与
+本清单无关。
 
 清单内容维护口径(哪些画面该登记)见消费方 CwLoop 类属性处的申报;
 本模块只承载常量本体。

@@ -364,6 +364,16 @@ ACTOR_REGISTRY: dict[str, ScreenSpec] = {
     'CwScreenWaitOneOne': ScreenSpec('CwScreenWaitOneOne'),
     'CwScreenPrepLockedReturn': ScreenSpec('CwScreenPrepLockedReturn'),
     'CwScreenDeployNotFull': ScreenSpec('CwScreenDeployNotFull'),
+    # —— cw-p0chain 四新画面 op(观察键 = 各屏 obs report 写入的
+    #    game state 字段;茶歇奖励推进型零写点 = 辅助 op 形态)——
+    'CwScreenTeaBreak': ScreenSpec('画面-幕后茶歇', True,
+                                   ('tea_break_opts',)),
+    'CwScreenTeaBreakReward': ScreenSpec('CwScreenTeaBreakReward'),
+    'CwScreenAdventureDialog': ScreenSpec('画面-奇遇对话', True,
+                                          ('adventure_card_opts',
+                                           'adventure_partner_name')),
+    'CwScreenAuraSelect': ScreenSpec('画面-主角光环', True,
+                                     ('aura_select_opts',)),
 }
 
 #: 节点类型中文映射(词表来源 = NodeKey.kind 注释 cw_game_state.py:697;

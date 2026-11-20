@@ -39,11 +39,17 @@ from sr_od.application.currency_war.obs.cw_observation import (
     reset_phase_round_cache,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_adventure_dialog import (
+    CwScreenAdventureDialog,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_aha_equip_pick import (
     CwScreenAhaEquipPick,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_armory_box import (
     CwScreenArmoryBox,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_aura_select import (
+    CwScreenAuraSelect,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_battle_wait import (
     CwScreenBattleWait,
@@ -127,6 +133,12 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply_node i
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_synthesis_confirm import (
     CwScreenSynthesisConfirm,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_tea_break import (
+    CwScreenTeaBreak,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_tea_break_reward import (
+    CwScreenTeaBreakReward,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_wait_one_one import (
     CwScreenWaitOneOne,
@@ -285,9 +297,11 @@ class CwLoop(CwOperation):
     #: 序,非优先级——各画面身份经语料两向验证互不共命中,顺序不影响结论)。
     #: 清单不含:备战(阶段二两识别标志同帧判定默认,扩展识别标志语料误杀)、补给锁定
     #(按钮在普通节点 revisit 备战同样出现,#18 接入调用暂缓)、道具详情弹窗/
-    #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则)。
+    #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则);主角锁定为暗色
+    #: 锁定族走阶段一先例(已入清单,与策略/遭遇锁定同一分支三元组消费)。
     #: 单一源 = kernel/cw_dispatch_tables(常量本体与内容维护口径申报住彼;
-    #: 第二消费方 = prep_actions 浮层闸门)。
+    #: 现役唯一代码消费方 = 本 loop 的分发 + 预检 + 候选过滤——出战发出链
+    #: 浮层闸门已退役,退役裁定持久指针 = prep_actions.py:8-15 模块头)。
     CW_DISPATCH_SCREENS: ClassVar[tuple[str, ...]] = \
         cw_dispatch_tables.CW_DISPATCH_SCREENS
 
@@ -1003,10 +1017,12 @@ class CwLoop(CwOperation):
                 frame_tag='overlay_shop_card_detail', wait=1.5,
                 on_result=_on_shop_card_detail, on_fail_retry=True)
 
-        if name in ('货币战争-备战-策略锁定', '货币战争-备战-遭遇锁定'):
+        if name in ('货币战争-备战-策略锁定', '货币战争-备战-遭遇锁定',
+                    '货币战争-备战-主角锁定'):
             _lock_screen = name
             _lock_area = ('按钮-返回投资策略选择' if name == '货币战争-备战-策略锁定'
-                          else '按钮-返回遭遇选择')
+                          else '按钮-返回遭遇选择' if name == '货币战争-备战-遭遇锁定'
+                          else '按钮-返回主角选择')
 
             def _on_prep_locked(ok: bool, _res: Any,
                                 _ls: str = _lock_screen) -> None:
@@ -1165,6 +1181,34 @@ class CwLoop(CwOperation):
                 CwScreenSynthesisConfirm(self.ctx), journal_name='合成确认浮层',
                 frame_tag='overlay_synthesis_confirm', wait=1.5,
                 on_fail_retry=True)
+
+        if name == '货币战争-幕后茶歇':
+            # 茶歇交互页(首页双卡态/分支选项态两态,态判别与处置在 op 内;
+            # 完成后画面切茶歇奖励页 → 下帧分发派奖励 op)。
+            return self._dispatch_screen_op(
+                CwScreenTeaBreak(self.ctx), journal_name='幕后茶歇',
+                frame_tag='flow_tea_break', wait=2)
+
+        if name == '货币战争-茶歇奖励':
+            # 茶歇奖励页(点「开启」= 节点完成触发器;双锚判效回备战)。
+            return self._dispatch_screen_op(
+                CwScreenTeaBreakReward(self.ctx), journal_name='茶歇奖励',
+                frame_tag='flow_tea_break_reward', wait=2)
+
+        if name == '货币战争-奇遇对话':
+            # 奇遇对话(推进循环 + 奇遇卡两段式;奇遇完成触发茶歇时链路
+            # 由主循环分发自然衔接——op 交回 → 下帧命中茶歇页派茶歇 op)。
+            return self._dispatch_screen_op(
+                CwScreenAdventureDialog(self.ctx), journal_name='奇遇对话',
+                frame_tag='flow_adventure_dialog', wait=2)
+
+        if name == '货币战争-主角光环选择':
+            # 位面末 BOSS 战前强制主角选择(选光环+拖主角+微距确认,
+            # 判效回备战;从光环屏点「返回备战界面」后的锁定帧走上方
+            # 暗色锁定扩员分支点「返回主角选择」回本屏,链路闭合)。
+            return self._dispatch_screen_op(
+                CwScreenAuraSelect(self.ctx), journal_name='主角光环',
+                frame_tag='flow_aura_select', wait=2.0)
 
         if name == '货币战争-大厅':
             return self._lobby_return_collect(screen)
