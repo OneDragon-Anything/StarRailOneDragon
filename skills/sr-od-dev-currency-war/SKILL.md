@@ -185,7 +185,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
 | **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,报告按画面章组织——每画面 op 一章,章内 0 观察+动作节×N+策略评价,报告由渲染器 skills/sr-od-dev-currency-war/scripts/replay_to_md.py 生成,复盘者填判定与文末复盘者附加;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选;实机探索 agent 局终后由编排者按需派单执行,产出的缺陷候选交编排者按问题处置循环分诊=autonomous-loop §3) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 改动集中到局间一次重启,局中不改**;重启/早停/残局清理/监控栈与哨兵;效率剖析与巡检阈值回填=「一局时间花在哪」的拆分方法与巡检阈值回填去向) | [references/runtime-ops.md](references/runtime-ops.md) |
-| **自主推进模式运转框架**(开启/停止仪式/需求线流水线/资源闸门) | `od-dev-agent-autonomous-mode`(公共 skill);CW 实机探索期运转细则+领域叠加件+策略迭代期最小定义 = [references/autonomous-loop.md](references/autonomous-loop.md);进度账本规范见 od-dev-progress-tracking |
+| **自主推进模式运转框架**(开启/停止仪式/需求线流水线/资源闸门) | `od-dev-agent-autonomous-mode`(公共 skill);CW 实机探索期运转细则+领域叠加件+策略迭代期最小定义 = [references/autonomous-loop.md](references/autonomous-loop.md);迭代流程与迭代内进度(tasks.md)归 od-dev-run-iteration |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `skills/sr-od-dev-currency-war/references/strategy/README.md`(分篇入口;判据权威 = skill strategy/ 各编号篇 + math_proofs;决策 why 收敛于设计文档动机段与代码注释,decisions/ ADR 档案停用) |
 | 单套阵容打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
@@ -195,8 +195,8 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md) |
 | 版本更新后 CW 域要做哪些事(适配清单) | [references/version-update.md](references/version-update.md)(判型/各域明细/换赛季战役组织) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
-| 运行状态/焦点/待办 | `.debug/progress/` 根下的当前活跃迭代目录(未封存);账本规范单一源 = od-dev-progress-tracking(现行形态 = dag.jsonl 事件流,旧文法 `进度.md` 目录按其规则只读封存;CW 存量目录尚为旧文法,新登记事项往现行形态收敛)。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针 |
-| **跨迭代挂账**(货币战争专用的待办文件:等实机取证 / 等用户裁定的家族议题 / 等外部条件 / 欠账导航——寿命超过单个迭代的事项) | `.debug/progress/CW跨迭代挂账.md`(全域唯一板;迭代内欠账留各迭代收尾清单,开工时按当时活跃迭代立项进 dag 账本) |
+| 运行状态/焦点/待办 | 新迭代走 `.temp/changes/active/<迭代名>/`(迭代目录含 tasks.md 进度,规范见 od-dev-run-iteration);`.debug/progress/` 下的 CW 存量目录(dag.jsonl 与旧文法 `进度.md`)只读封存,新登记事项不再写入。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针 |
+| **跨迭代挂账**(货币战争专用的待办文件:等实机取证 / 等用户裁定的家族议题 / 等外部条件 / 欠账导航——寿命超过单个迭代的事项) | `.debug/progress/CW跨迭代挂账.md`(全域唯一板;迭代内欠账留各迭代收尾清单,收口时转移进板) |
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度账本,一律不进共享文档。**
 

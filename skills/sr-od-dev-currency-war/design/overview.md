@@ -6,7 +6,7 @@
 
 ## 边界
 
-- **不管**:新玩法从零搭建(od-dev-write-application)、通用任务账本方法(od-dev-progress-tracking)、停机钩子生命周期(od-dev-stop-hooks)、画面建档(od-dev-screen-onboarding)、写单个 op(od-dev-write-operation)——CW 场景下按 SKILL.md 入口序路由到它们,本 skill 不复述其内容。
+- **不管**:新玩法从零搭建(od-dev-write-application)、迭代流程与迭代内进度(od-dev-run-iteration)、停机钩子生命周期(od-dev-stop-hooks)、画面建档(od-dev-screen-onboarding)、写单个 op(od-dev-write-operation)——CW 场景下按 SKILL.md 入口序路由到它们,本 skill 不复述其内容。
 - **不管**:游戏机制知识本身(在哪查由单一源地图指路)、策略的具体行为语义(strategy/01-07 是源)。
 - 面向**已存在的 CW app**;若 CW 被推倒重写,本 skill 随之修订。
 
@@ -27,7 +27,7 @@
 
 - 全局/项目 AGENTS:always-on 通用纪律(工作流级);本 skill 只管 CW 特定操作,通用部分不复述。
 - `docs/`:知识与设计本体;本 skill 是「怎么消费/维护它们」的操作规程。
-- `.debug/progress/` 根下的当前活跃迭代目录:运行状态;本 skill 的操作对象(读写),不是知识源(账本规范单一源=od-dev-progress-tracking)。
+- `.debug/progress/` 根下的存量迭代目录:历史运行状态,只读封存;新迭代的进度住 `.temp/changes/` 迭代目录(tasks.md,规范见 od-dev-run-iteration)。
 
 ## 动机记录
 
