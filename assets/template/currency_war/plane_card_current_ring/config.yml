@@ -1,6 +1,6 @@
 sub_dir: currency_war
-template_id: plane_card_selected_ring
-template_name: 位面卡选中态金色环
+template_id: plane_card_current_ring
+template_name: 位面卡当前位面金色环
 template_shape: rectangle
 auto_mask: true
 point_list:

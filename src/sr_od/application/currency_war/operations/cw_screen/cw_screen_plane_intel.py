@@ -29,9 +29,10 @@
   best-effort 不阻塞上报主链)。
 
 节点图(6 node,@node_from 显式边):识别位面1 → 点开位面2 → 识别位面2
-→ 点开位面3 → 识别位面3 → 上报。点开节点带转移证据(详情条联动:
-选中态模板命中位 = 目标位面——选中卡渲染金色上半环+光晕,三卡位
-搜索域逐位匹配,信号不依赖 OCR 参数);识别失败重试预算:识别 node = 3、
+→ 点开位面3 → 识别位面3 → 上报。点开节点带转移证据(查看位面联动:
+查看态白环命中位优先、当前位面金环兜底,命中位 = 目标位面——环的
+渲染语义见画面档 docs/game/screens/货币战争-位面详情.md,信号不依赖
+OCR 参数);识别失败重试预算:识别 node = 3、
 点开 node = 2,耗尽 = op fail(瞬时噪声由框架重试覆盖)。
 
 坐标全走 screen_info area;boss 节点圆由 ``read_plane_detail_nodes``
@@ -69,13 +70,18 @@ _log = logging.getLogger(__name__)
 
 #: 位面详情屏(画面档 docs/game/screens/货币战争-位面详情.md)
 _PD_SCREEN: str = '货币战争-位面详情'
-#: 三张位面卡 area(点位面卡中心切换选中;节点带随选中位面切换)
+#: 三张位面卡 area(点位面卡中心切换查看位面;节点带随查看位面切换)
 _PLANE_CARD_AREAS: tuple[str, ...] = ('按钮-位面卡1', '按钮-位面卡2', '按钮-位面卡3')
-#: 三张位面卡选中态判据 area(同一模板 plane_card_selected_ring——选中卡
-#: 的金色上半环+光晕,数字区 mask 抠除——在三个卡位搜索域分别匹配;
-#: 下标 i 命中 = 选中位面 i+1。搜索域坐标见 currency_war_plane_detail.yml)
-_PLANE_CARD_SELECTED_AREAS: tuple[str, ...] = (
-    '标识-位面卡1选中态', '标识-位面卡2选中态', '标识-位面卡3选中态')
+#: 三张位面卡查看态判据 area(模板 plane_card_viewed_ring——非当前位面卡
+#: 被查看时卡上的白色细环,数字区在 mask 外;下标 i 命中 = 正在查看
+#: 位面 i+1。搜索域坐标见 currency_war_plane_detail.yml)
+_PLANE_CARD_VIEWED_AREAS: tuple[str, ...] = (
+    '标识-位面卡1查看态白环', '标识-位面卡2查看态白环', '标识-位面卡3查看态白环')
+#: 三张位面卡当前位面环判据 area(模板 plane_card_current_ring——金环+
+#: 光晕恒亮标记当前对局进度位面,不随点击移动;白环全 miss 时命中位 =
+#: 正在查看的当前位面。环语义详见画面档 docs/game/screens/货币战争-位面详情.md)
+_PLANE_CARD_CURRENT_AREAS: tuple[str, ...] = (
+    '标识-位面卡1当前位面环', '标识-位面卡2当前位面环', '标识-位面卡3当前位面环')
 
 # 用户定值等待(切卡动画短):点位面卡/boss 节点后等动画落定再读。
 _PLANE_SWITCH_WAIT_S: float = 2.0
@@ -122,17 +128,18 @@ class CwScreenPlaneIntel(CwOperation):
         return cw_sim_ports.sim_or_live_plane_intel_view(lambda: None)
 
     def _selected_plane_no(self, screen: MatLike) -> int | None:
-        """选中位面号判据:选中态模板命中位(1 基)| None(未联动)。
+        """当前查看位面号判据:查看态白环命中位优先,当前位面金环兜底
+        (1 基)| None(未联动)。
 
-        选中卡渲染金色上半环+光晕,与未选中暗紫卡强区分;模板在三张卡
-        的卡位搜索域分别匹配,命中位 = 当前选中位面,三卡位全 miss =
-        未联动(过渡帧/动画中),由调用方按未联动处置。模板数字区经
-        mask 抠除,卡号(1/2/3)不参与计分,一模板通用于三卡位。
-
-        信号不依赖 OCR 检测参数——前判据「详情条节点编号 OCR 位面段」
-        在全局 det_limit_side_len=1920 下对该小字号孤立短文本零检测框
-        (960/1280 稳定读出,帧类相关逐帧确定性),联动判定被误判永假
-        致点位面卡重试空转,已退役。
+        位面卡两种环语义(渲染事实见画面档 docs/game/screens/
+        货币战争-位面详情.md):金环+光晕 = 当前对局进度位面,恒亮不随
+        点击移动,不是选中信号;白色细环跟随点击,仅在查看非当前位面
+        (2/3)时出现,查看当前位面时卡上只有金环。判据:任一卡位白环
+        命中 → 该位 = 查看位面;白环全 miss → 金环命中位 = 正在查看的
+        当前位面;两族全 miss = 未联动(过渡帧/动画中),由调用方按
+        未联动处置。详情条节点编号 OCR 不可作联动判据(小字号孤立短
+        文本在全局检测参数下逐帧漏读),负事实登记在画面档「automation
+        要读信息」节。
 
         sim 改道:呈现面直出 selected_plane(语义不变)。area 缺失/
         识别层异常 → None(失读语义,与未联动同处置)。
@@ -142,19 +149,21 @@ class CwScreenPlaneIntel(CwOperation):
             return _pd.selected_plane
         from one_dragon.base.screen import screen_utils
         from one_dragon.base.screen.screen_utils import FindAreaResultEnum
-        for idx, area_name in enumerate(_PLANE_CARD_SELECTED_AREAS, start=1):
-            r = screen_utils.find_area(self.ctx, screen, _PD_SCREEN, area_name)
-            if r == FindAreaResultEnum.TRUE:
+        for idx, area_name in enumerate(_PLANE_CARD_VIEWED_AREAS, start=1):
+            if screen_utils.find_area(self.ctx, screen, _PD_SCREEN, area_name) == FindAreaResultEnum.TRUE:
+                return idx
+        for idx, area_name in enumerate(_PLANE_CARD_CURRENT_AREAS, start=1):
+            if screen_utils.find_area(self.ctx, screen, _PD_SCREEN, area_name) == FindAreaResultEnum.TRUE:
                 return idx
         return None
 
     def _select_plane(self, plane_no: int) -> OperationRoundResult | None:
-        """点位面卡切换选中位面 + 转移证据(选中态模板联动)。
+        """点位面卡切换查看位面 + 转移证据(查看位面联动)。
 
         点「已生效」必须验联动:点击可能没落,下一个识别节点会在错误
-        位面上继续跑。证据 = 选中态模板命中位 == 目标位面(三卡位全
-        miss = 未联动);未联动 = round_retry(点开 node 重试账),None =
-        已选中继续。
+        位面上继续跑。证据 = 查看位面判据命中位 == 目标位面(白环优先/
+        金环兜底,见 :meth:`_selected_plane_no`);未联动 = round_retry
+        (点开 node 重试账),None = 已切换继续。
         """
         card = self._area_center(_PLANE_CARD_AREAS[plane_no - 1])
         if card is None:
@@ -173,7 +182,7 @@ class CwScreenPlaneIntel(CwOperation):
         if self._selected_plane_no(screen) == plane_no:
             return None
         return self.round_retry(
-            f'位面{plane_no}卡已点但选中态模板未联动(三卡位无命中或位面不符),重重点')
+            f'位面{plane_no}卡已点但查看位面未联动(白环/金环判据无命中或位面不符),重重点')
 
     def _boss_node_center(self, slots: list | None = None) -> Point | None:
         """当前位面节点条的最右(boss)节点圆心(read_plane_detail_nodes 动态定位)。
@@ -330,7 +339,7 @@ class CwScreenPlaneIntel(CwOperation):
     @node_from(from_name='识别位面1')
     @operation_node(name='点开位面2', node_max_retry_times=2)
     def open_plane_2(self) -> OperationRoundResult:
-        """点开位面卡2(带转移证据:选中态模板联动到卡2)。"""
+        """点开位面卡2(带转移证据:查看位面联动到卡2)。"""
         rs = self._select_plane(2)
         return rs if rs is not None else self.round_success('位面2已选中')
 
@@ -343,7 +352,7 @@ class CwScreenPlaneIntel(CwOperation):
     @node_from(from_name='识别位面2')
     @operation_node(name='点开位面3', node_max_retry_times=2)
     def open_plane_3(self) -> OperationRoundResult:
-        """点开位面卡3(带转移证据:选中态模板联动到卡3)。"""
+        """点开位面卡3(带转移证据:查看位面联动到卡3)。"""
         rs = self._select_plane(3)
         return rs if rs is not None else self.round_success('位面3已选中')
 
