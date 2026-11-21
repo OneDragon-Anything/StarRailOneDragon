@@ -37,6 +37,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_ORE_OPEN_EFFECTS,
     RandomCharSpec,
     dakuozhao_deduction_plan,
+    equips_by_category,
     random_char_pool,
 )
 from sr_od.application.currency_war.kernel.cw_pool import (
@@ -631,51 +632,58 @@ STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS: tuple[str, ...] = (
 )
 
 #: 随机装备族发放表单一源(卡规范名 → (装备类别名, 件数);卡文「获得
-#: N个随机X装备」直读,类别 ∈ EQUIPMENTS category 词表)。效果体条目由
-#: 下方工厂从本表生成,禁另写字面量(箱条目/援军表先例纪律:表与效果体
-#: 两处独立字面量的漂移在备战断言不可见,唯一致性测试与落位真值可暴露)。
-#: 泛化表不加专设 import 期校验(沿族既定裁定:池随注册表传导,池空属
-#: 数据面事故非本条目职责;'星徽' 行搭环境侧 import 期独立闸便车 =
-#: cw_investments._validate_env_gifts,单一闸两消费者),运行期池空走
-#: 工厂 log 防御分支零写兜底。
+#: N个随机X装备」直读,类别 = 注册表现役词)。效果体条目由下方工厂从本表
+#: 生成,禁另写字面量(箱条目/援军表先例纪律:表与效果体两处独立字面量的
+#: 漂移在备战断言不可见,唯一致性测试与落位真值可暴露)。
+#: 类别词口径 = cw_equipment_data v4.7 现役体系(官方 7 类直落 + 派生类
+#: 「简易装备」;官方分类表 plaza config equip_category_list 无「简易」类,
+#: 派生依据见 cw_equipment_data 模块头):卡文短词「简易/进阶/特权」对应
+#: 注册表词「简易装备/进阶装备/特权装备」,「星徽」卡文与官方词同名未漂移。
+#: 池空哨 = 工厂构建期单一收口(泛化表行与直书组合卡的随机条目全经
+#: ``_make_random_equip_effect`` 在本模块 import 期构建):登记类别词
+#: 派生池空即炸(错字/版本改名都表现为池空,一道闸兼顾两类,沿
+#: cw_investments._validate_env_gifts 漂移哨先例);运行期池空 = 注册表
+#: 被运行时改写的异常态,效果体显式报错不静默零写(静默丢发会把缺口
+#: 洗成 sim/live 对账分叉,禁 log 兜底丢弃)。
 _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
-    '打捞人才库+': ('简易', 1),
+    '打捞人才库+': ('简易装备', 1),
     '买彩票': ('星徽', 1),
-    '公司军火更新·银': ('简易', 1),
-    '公司军火更新·金': ('简易', 2),
+    '公司军火更新·银': ('简易装备', 1),
+    '公司军火更新·金': ('简易装备', 2),
     # 公司军火更新·彩(id 330601)条目2「获得1件随机特权装备」直读行;
-    # '特权' 类别泛化表首例(池 = category='特权' 全集 36 件现值,随注册
-    # 表传导);变异效果条目(条目1)由 SE 效果条目承载(银/金/彩三卡条目全建)。
-    '公司军火更新·彩': ('特权', 1),
+    # 「特权装备」类别泛化表首例(池 = category='特权装备' 全集 36 件现值,
+    # 随注册表传导;卡文短词「特权」→ 注册表词「特权装备」);变异效果条目
+    # (条目1)由 SE 效果条目承载(银/金/彩三卡条目全建)。
+    '公司军火更新·彩': ('特权装备', 1),
     # 数值碾压(id 332101)条目2「获得2件随机简易装备」直读行;效果条目1「角色
     # 穿戴的简易装备额外提供8倍的基础属性」= 战力类零建模判读申报制
     # (T-242/T-365/T-360 三姊妹稿同构定案已登记,在码零条目复核);count=2
     # 放回 v0 先例(枪在手+ 同形)。
-    '数值碾压': ('简易', 2),
+    '数值碾压': ('简易装备', 2),
     # 自由市场(id 130601)条目2「获得1个随机的简易装备」直读行;条目1 转换
     # 条目不辖本表(「改为获得」条件改写另表
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段拦截),
     # 两条效果条目分治。自我交互属卡面字面:选卡先注册后跑本效果,掷得的采样名
     # 经原语时被转换条目拦截消费——净得 1 箱,rng 消耗序不变(先掷后转),
     # 非特例豁免)。
-    '自由市场': ('简易', 1),
+    '自由市场': ('简易装备', 1),
     # 枪在手(id 200501)「立刻获得1件随机简易装备」即时条目直读行(cw_
     # invest_data.PLAZA_AUGMENTS 同 id 行);同卡战后条目「首领战后,获得
     # 1件随机简易装备」触发时点非选卡拍,不入本表——另立
     # cw_investments.STRATEGY_BOSS_BATTLE_GRANTS(扩形状各建各表)。
-    '枪在手': ('简易', 1),
+    '枪在手': ('简易装备', 1),
     # 枪在手+(id 200502)「立刻获得2件随机简易装备」即时条目直读行;count=2
     # 放回语义首个实成员(两次独立掷可重复同件,工厂 docstring 放回口径的
     # 兑现点——卡面无「不同」限定,放回即 v0 直读);战后条目与模式卡同句
     # 同值,另立 cw_investments.STRATEGY_BOSS_BATTLE_GRANTS 行。
-    '枪在手+': ('简易', 2),
+    '枪在手+': ('简易装备', 2),
     # 空仓(id 202401)「获得1件随机的简易装备」即时条目直读行(cw_invest_
     # data.PLAZA_AUGMENTS 同 id 行);同卡条件条目「进入新节点时,如果物品栏
     # 和备战席没有任何装备(消耗品除外),则获得2经验值」触发时点非选卡拍,
     # 不入本表——另立 cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS(节点
     # 条件 XP 通道,判定 = check_strategy_empty_equip_xp)。
-    '空仓': ('简易', 1),
-    '空仓+': ('简易', 1),
+    '空仓': ('简易装备', 1),
+    '空仓+': ('简易装备', 1),
     # 好运来(id 231601)条目2「获得2件随机简易装备」即时条目直读行(cw_
     # invest_data.PLAZA_AUGMENTS 同 id 行);count=2 放回语义实成员
     # (两次独立掷可重复同件,卡面无「不同」限定,放回即 v0 直读,
@@ -684,7 +692,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段
     # 拦截,两条效果条目分治(自由市场同构);自我交互属卡面字面:选卡先注册后
     # 跑本效果,掷得的采样名 ∈ 简易池不入本卡进阶谓词照常入栏)。
-    '好运来': ('简易', 2),
+    '好运来': ('简易装备', 2),
 }
 
 
@@ -694,7 +702,7 @@ def roll_random_equip(rng: random.Random, category: str) -> str:
     (函数内惰性 import,沿本模块效果体惰性纪律——公开注册表函数,零新增
     模块级边;注册表构建序确定性,种子可复现)。等概率均匀;分布形态未
     实测,披露键 ``strategy_random_equip_uniform``。池空 = 注册表漂移,
-    防御归工厂(本函数纯采样,零状态容器零日志面)。"""
+    防御归工厂构建期哨(本函数纯采样,零状态容器零日志面)。"""
     from sr_od.application.currency_war.kernel.cw_investments import (
         equips_by_category,
     )
@@ -715,8 +723,22 @@ def _make_random_equip_effect(
     ``strategy_random_equip:<名>(skipped)``(跳写,骇客 mod_equip/
     mod_sampled 两形态同构);发放事实与落位成败解耦,效果串恒 count 条。
     count>1 放回语义为 v0 口径(每次独立掷,可重复件名),后继多件卡另案
-    复核。池空 = 注册表漂移 → log 防御分支零写(不炸链,环境侧随机装备支
-    on_env_gained 同款)。"""
+    复核。
+
+    池空哨(构建期 = 本模块 import 期,泛化表行与直书组合卡全经本工厂
+    构建 = 单一收口):类别词派生池空 = 登记词漂移/注册表漂移,显式报错
+    (错字与版本改名都表现为池空,一道闸兼顾两类,沿
+    cw_investments._validate_env_gifts 漂移哨先例——池 = 注册表模块级
+    常量派生,漂移属数据面事故,应在 import/测试期暴露而非静默丢发)。
+    运行期仍空 = 注册表被运行时改写的异常态,效果体显式报错不静默零写
+    (静默丢发会把缺口洗成 sim/live 对账分叉,禁 log 兜底丢弃)。"""
+
+    # 构建期池空哨(池派生口 = 模块级既有 import 边,零新增模块级边)
+    if not equips_by_category(category):
+        raise ValueError(
+            f"策略随机装备类别池空(category={category!r} count={count}):"
+            f"过滤后无装备(类别词漂移/注册表漂移?——现役体系见 "
+            f"cw_equipment_data 模块头)")
 
     def _effect(gs: GameState, *, sig: ChannelSig,
                 rng: random.Random) -> list[str]:
@@ -726,15 +748,12 @@ def _make_random_equip_effect(
             gain_equipment,
         )
 
-        # 池空防御同源取池(泛化表不设 import 期闸,运行期 log 兜底,环境
-        # 侧随机装备支同款;正常路径与采样器同源,零第二表达式)
-        from sr_od.application.currency_war.kernel.cw_investments import (
-            equips_by_category,
-        )
+        # 运行期防线(构建期哨已拦漂移;仍空 = 注册表运行期被改异常态,
+        # 显式报错不静默零写,禁 log 兜底丢弃)
         if not equips_by_category(category):
-            log.warning(f'[cw-gain] 策略随机装备类别池空(注册表漂移?):'
-                        f'category={category!r}')
-            return []
+            raise ValueError(
+                f'[cw-gain] 策略随机装备类别池空(注册表运行期漂移?):'
+                f'category={category!r}')
         steps: list[str] = []
         for _ in range(count):
             name = roll_random_equip(rng, category)
@@ -1772,14 +1791,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 随机装备泛化表(同名键 dict 顺序覆盖丢条目)、不入具名装备授予族(该族无
     # 表,工厂直呼);条目序 = 卡文语序具名条目先/随机条目后,条目参数在此单次出现
     # (单一源);rng 恰消费 1 次(仅条目2 采样,条目1 具名确定发放零采样面);
-    # 「随机简易武装」= 同 '简易' 池(类别词表无「简易武装」第二候选,家族
-    # 已登记先例 = 打捞人才库+/武装支援/自由市场/枪在手+/公司军火更新·金);
+    # 「随机简易武装」= 同 '简易装备' 派生池(卡文短词「简易武装」无独立
+    # 类别,并入简易装备池;家族已登记先例 = 打捞人才库+/武装支援/自由市场/
+    # 枪在手+/公司军火更新·金);
     # 精密拆装扳手 ∉ 精密金面判据映射(gate 恒 None)走纯发放循环——本卡
     # 发放精密自身,二次持有照常入栏零自我拦截(金面规则只辖「再获得拆装
     # 扳手」)。
     '精密拆装·银': _compose_grant_legs(
         _make_named_equip_grant_effect('精密拆装扳手', 1),
-        _make_random_equip_effect('简易', 1)),
+        _make_random_equip_effect('简易装备', 1)),
 
     # 精密拆装·金 = 三条效果条目组合登记行(卡文「获得1个【精密拆装扳手】，1个
     # 【冶金炉】和2个随机简易武装」;条目1 具名扳手/条目2 具名炉 rand=False
@@ -1788,19 +1808,19 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 仅条目3 消费)。
     '精密拆装·金': _compose_grant_legs(_make_named_equip_grant_effect('精密拆装扳手', 1),
                                      _make_named_equip_grant_effect('冶金炉', 1),
-                                     _make_random_equip_effect('简易', 2)),
+                                     _make_random_equip_effect('简易装备', 2)),
     # 武装支援 = 两条效果条目混发组合卡(卡文「获得1件随机简易装备和2个随机3费
     # 角色。」):直书登记行(非表生成),不入援军/随机装备两族表
     # (入表 = 表生成的单条效果条目效果体与组合体同名键顺序覆盖丢条目);条目序 =
     # 卡文语序装备条目先/角色条目后,条目参数在此单次出现(单一源)。
-    '武装支援': _compose_grant_legs(_make_random_equip_effect('简易', 1),
+    '武装支援': _compose_grant_legs(_make_random_equip_effect('简易装备', 1),
                                     _make_reinforcement_effect(((3, 2),))),
     # 武装支援+ = 三条效果条目分层组合卡(卡文「获得1件随机简易装备和1个随机4费
     # 角色，获得6金币。」):效果体两条效果条目同上(装备条目先/角色条目后,4 费池
     # 放回抽 1);金条目分层 = STRATEGY_ECONOMY 注册行(instant_gold=6)已登记
     # 承载,金面禁直写不进效果体(sim 金发放写端缺口归 T-112 族级待办);
     # 不入两族表同上(同名键顺序覆盖丢条目)。
-    '武装支援+': _compose_grant_legs(_make_random_equip_effect('简易', 1),
+    '武装支援+': _compose_grant_legs(_make_random_equip_effect('简易装备', 1),
                                      _make_reinforcement_effect(((4, 1),))),
     # 大扩招 = 变量计数随机角色条目 + 具名装备条目组合卡(卡文「每损失4金币,
     # 获得一个随机4费角色，最多扣除40金币。获得1个【完美投影仪】」):
@@ -1965,14 +1985,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 类别池均匀 v0(STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS 家族键类别
     # 无关承载,零新增键;回收计划表行注释引设计稿判读节)。
     '回收计划': _compose_grant_legs(
-        _make_random_equip_effect('进阶', 1),
+        _make_random_equip_effect('进阶装备', 1),
         _make_delayed_only_grant_effect('回收计划')),
 
     # 回收计划+ = 两条效果条目组合登记行(卡文「获得1件进阶装备,并在4个节点后获得
     # 1件随机简易装备」;条目1 随机进阶/条目2 延时入队类别池第 2 例,4 节点;
     # 不入泛化表防同名键覆盖丢条目,条目参数唯一出现点;判读申报制随 T-237
     # 在案口径,禁当已定案转引)。
-    '回收计划+': _compose_grant_legs(_make_random_equip_effect('进阶', 1),
+    '回收计划+': _compose_grant_legs(_make_random_equip_effect('进阶装备', 1),
                                  _make_delayed_only_grant_effect('回收计划+')),
 
     # 红钻闪耀 = 具名装备×延时入队两条效果条目组合登记行(卡文「获得1个【红钻】。
@@ -1993,10 +2013,10 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 
     # 好运令牌·金 = 具名装备×随机简易两条效果条目组合登记行(卡文「获得1个【好运
     # 令牌】和1件随机简易装备」;条目1 具名令牌 rand=False 确定写;条目2 简易
-    # 池 8 件均匀随机;不入泛化表防同名键覆盖丢组合条目,条目参数唯一出现点;
-    # rng 仅条目2 消费)。
+    # 装备池全集均匀随机(现值 11 件,随注册表传导);不入泛化表防同名键覆盖
+    # 丢组合条目,条目参数唯一出现点;rng 仅条目2 消费)。
     '好运令牌·金': _compose_grant_legs(_make_named_equip_grant_effect('好运令牌', 1),
-                                     _make_random_equip_effect('简易', 1)),
+                                     _make_random_equip_effect('简易装备', 1)),
     # 好运令牌·彩 = 双条目工厂直书登记行(人才激励同形:即时 1 令牌+延时
     # 入队;延时效果条目周期型首例,repeat 语义 = 到点弹除后同参重排队至局终,
     # 计数起点 = 拿卡节点后继窗(家族口径);登记值单源住 STRATEGY_DELAYED_
