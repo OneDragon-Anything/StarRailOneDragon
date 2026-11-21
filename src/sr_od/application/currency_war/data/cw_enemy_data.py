@@ -2,7 +2,8 @@
 
 ①BOSS_NICKNAMES 俗称→规范名映射(简报 boss 读数两段转换第一段;
 白厄重开级 boss 记载用俗称「史瓦罗」,2026-11 统一阵容评分批 2 补映射);
-②BOSS_MECHANICS 20 boss 机制 tag 注册表(bosses.md 图鉴实采,版本 V4.4)
+②BOSS_MECHANICS boss 机制 tag 注册表(bosses.md 图鉴实采 20 个,版本 V4.4;
+新赛季公司见 dict 内条目注释)
 ——tag 只作观察分组,**不参线分**(线侧 boss 克制单一源 =
 ``kernel/cw_affinity_table.BOSS_AFFINITY`` 攻略实证吃怕表)。
 
@@ -58,6 +59,7 @@ BOSS_MECHANICS: dict[str, tuple[str, ...]] = {
     '深穹智械科技': ('summon', 'control'),
     '冷锋兵器工业': ('aoe', 'control', 'freeze_combo'),
     '巨鹿生物制药': ('summon', 'aoe'),                           # 枝梢数放大斑龙触;蕉覆韧性锁(时窗性)
+    '深渊育种科技': (),      # 新赛季公司(20 图鉴集外);机制 tag 待实采——简报逐字 OCR(2026-11-21)+代表 boss 堕神之血·亚婆离(位面详情大图标实机比对),空 tag = 未采不猜
     '不死者联盟': ('aoe', 'control', 'self_heal'),               # 幸福6层傀儡化+凶梦汲取吸血(2026-08-17 采)
     '绘师家族产业': ('aoe', 'dot', 'summon'),                     # 怨火灼身DoT高覆盖+吞神子嗣(2026-08-17 采)
 }

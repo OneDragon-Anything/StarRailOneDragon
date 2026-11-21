@@ -796,10 +796,11 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
 def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     """位面详情屏 详情条「文本-节点类型名」OCR → 类型名(如 首领节点/奖励节点)| None。
 
-    boss 定位验证识别标志:boss 节点有**两种渲染态**——头像态(run29 型,大图标
-    SIFT 可认)与纹章风头像渲染变体(run30 型:最右节点=金色纹章图案,
-    图案即该 boss 的纹章风头像;大图标 SIFT 未命中系模板库缺该风格所致,
-    属识别能力缺口,**非「本屏无身份信息」**——证据帧 = sr-od-test/screens/
+    boss 定位验证识别标志:boss 节点有**多种渲染态**——图鉴头像态与变体渲染
+    (run30 型:最右节点=金色纹章图案,图案即该 boss 的头像)。大图标 SIFT
+    未命中 = 模板库缺该公司/该渲染(图鉴 20 公司外的新赛季公司属此因;
+    深渊育种科技已按实机大图标补采,其余变体仍缺口),属识别能力缺口,
+    **非「本屏无身份信息」**——证据帧 = sr-od-test/screens/
     货币战争-位面详情/位面详情-纹章风头像-run30.png)。类型名稳定可 OCR
     (run30 已实测确认「首领节点」全字命中),作「点到的确是 boss 节点」验证。
     读不到 → None(过渡帧/OCR 失败,调用方重试,重试耗尽响亮失败)。

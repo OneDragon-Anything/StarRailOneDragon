@@ -111,10 +111,12 @@ BOSS_SIFT_RATIO: float = 2.0
 def load_boss_templates(templates_dir: Path) -> dict[str, tuple]:
     """加载 boss 头像 SIFT 模板库 → ``{boss名: (keypoints, descriptors)}``。
 
-    模板源 = 竞争对手图鉴页顶导航圆形头像(``assets/template/currency_war/
-    boss_avatar/*.png``,20 件全量,从 .debug/images 图鉴采集批
-    裁取;命名 = 图鉴标题 OCR = ``cw_enemy_data.BOSS_MECHANICS`` 规范名,
-    20/20 对齐)。通道:read_image → RGB → GRAY(SIFT 单通道)。
+    主源 = 竞争对手图鉴页顶导航圆形头像(``assets/template/currency_war/
+    boss_avatar/*.png``,图鉴 20 公司,从 .debug/images 图鉴采集批
+    裁取;命名 = 图鉴标题 OCR = ``cw_enemy_data.BOSS_MECHANICS`` 规范名);
+    图鉴外的新赛季公司按实机位面详情大图标裁片补采(如 深渊育种科技,
+    模板与实机识别域同渲染,来源差异见各批 commit)。通道:read_image →
+    RGB → GRAY(SIFT 单通道)。
     """
     out: dict[str, tuple] = {}
     sift = cv2.SIFT_create(nfeatures=2000)
