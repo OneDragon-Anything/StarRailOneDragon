@@ -1566,9 +1566,9 @@ class PlaneIntelPresentation:
     ``report_screen_plane_intel_obs`` 写门)。
 
     字段形状与实机 CV 读链逐点同形(消费方 = CwScreenPlaneIntel 的
-    sim 改道读点,逐字段映射):``selected_plane`` ↔ 文本-节点编号 OCR
-    位面段;``node_slots`` ↔ ``read_plane_detail_nodes``;``enemy_affixes``
-    ↔ ``read_detail_affixes``;``node_type_label`` ↔
+    sim 改道读点,逐字段映射):``selected_plane`` ↔ 选中态模板命中位
+    (`_selected_plane_no`);``node_slots`` ↔ ``read_plane_detail_nodes``;
+    ``enemy_affixes`` ↔ ``read_detail_affixes``;``node_type_label`` ↔
     ``read_detail_node_type_label``(boss 节点点击后呈现,否则 None);
     ``boss_name`` ↔ 大图标 SIFT 命中;``difficulty`` = sim 未建模恒
     None(实机该读数本就 best-effort 缺位容忍,语义同形)。

@@ -198,3 +198,45 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
+- area_name: 标识-位面卡1选中态
+  id_mark: false
+  pc_rect:
+  - 431
+  - 204
+  - 695
+  - 341
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: currency_war
+  template_id: plane_card_selected_ring
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-位面卡2选中态
+  id_mark: false
+  pc_rect:
+  - 861
+  - 204
+  - 1125
+  - 341
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: currency_war
+  template_id: plane_card_selected_ring
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-位面卡3选中态
+  id_mark: false
+  pc_rect:
+  - 1276
+  - 204
+  - 1540
+  - 341
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: currency_war
+  template_id: plane_card_selected_ring
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
