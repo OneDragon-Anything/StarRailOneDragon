@@ -878,6 +878,9 @@ class ShopCard:
     # 坐标会落空槽框(实机局实证:「买牌点击不注册」根因;布局双源同族 =
     # bench 布局错位的商店牌行版)。
     slot: int = 0
+    # 试用形态标记(与帧版 cw_vocab.ShopCard.trial 同语义,映射透传):
+    # 牌面红「试用」标签命中 = True;写入端 = 读链 read_shop_cards。
+    trial: bool = False
 
 
 @dataclass(frozen=True)
@@ -1392,7 +1395,8 @@ def shop_card_to_container(card) -> ShopCard:
                     star=int(getattr(card, 'star', 1) or 1),
                     cost_source=str(getattr(card, 'cost_source', '')
                                     or 'roster'),
-                    slot=int(getattr(card, 'slot', 0) or 0))
+                    slot=int(getattr(card, 'slot', 0) or 0),
+                    trial=bool(getattr(card, 'trial', False) or False))
 
 
 def shop_cards_to_legacy(cards: list[ShopCard]) -> list:
@@ -1419,7 +1423,8 @@ def shop_cards_to_legacy(cards: list[ShopCard]) -> list:
             name=str(c.name or ''),
             cost=int(c.cost or 0),
             star=int(c.star or 1),
-            cost_source=str(c.cost_source or 'roster')))
+            cost_source=str(c.cost_source or 'roster'),
+            trial=bool(c.trial or False)))
     return out
 
 

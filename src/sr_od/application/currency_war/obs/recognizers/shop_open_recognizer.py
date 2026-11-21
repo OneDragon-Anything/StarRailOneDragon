@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 def _shop_slots_to_json(slots: list) -> list[dict]:
     """ShopSlot 列表 → JSON 可序列化 list(定长 5,下标 0-4 ↔ 物理槽 1-5)。
 
-    ShopCard 字段(x/slot/faction/name/cost/star/cost_source)经 asdict 展开为 dict;
+    ShopCard 字段(x/slot/faction/name/cost/star/cost_source/trial)经 asdict 展开为 dict;
     slot = 物理槽号(1 基,= screen_info「商店牌-N」序号),买牌点击按它取坐标。
     """
     out: list[dict] = []
@@ -67,7 +67,8 @@ class ShopOpenRecognizer(ScreenRecognizer):
     extras_doc: dict[str, str] = {
         **PREP_EXTRAS_DOC,
         'shop_cards': '商店五槽 list(定长 5,下标 0-4 ↔ 物理槽 1-5);元素 {kind: content/empty/unknown,'
-                      'card: {slot: 物理槽号1基, x: 槽中心x(点击用), faction, name, cost, star, cost_source} | null}。'
+                      'card: {slot: 物理槽号1基, x: 槽中心x(点击用), faction, name, cost, star, cost_source, trial} | null}。'
+                      'trial=红「试用」标签命中(试用形态卡,灰暗化渲染致亮度落灰带,经标签确证放行);'
                       '买光 = [empty×5] 合法真值;unknown = 应为内容但识别失败(决策一律跳过);店未开读不到→None',
         'refresh_probs': '刷新概率条 {费用档: 概率}(read_refresh_probs;读不到→None)',
     }

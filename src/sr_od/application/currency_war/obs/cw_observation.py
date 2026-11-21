@@ -1874,6 +1874,70 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
     return base_cost, 1, COST_SOURCE_ROSTER_FALLBACK
 
 
+# ===== 商店牌试用形态分流(红「试用」标签检测)=====
+# 形态裁决(第六跑停机存证帧 + 现场帧双帧实证):
+# - 试用卡 = 牌面右上角红底白字「试用」标签(通用 UI 元素,卡内位置固定)
+#   + 立绘灰暗化。**判别依据只有标签**——灰暗化是渲染症状不是标记
+#   (灰暗程度随立绘色调浮动,不可作判据)。
+# - 一张标签模板通吃全家族:身份仍走既有 SIFT 链(试用景元灰暗卡实测
+#   内点 49,远超阈值 10,免降阈值免逐卡模板——亮度门是唯一拦截点),
+#   标签只回答「这是试用形态」。
+# - TM 分离度实测(存证帧+现场帧两帧 5 槽):试用槽 0.999,其余槽(正卡/
+#   空槽)最高 0.345——阈值取 0.8,两侧余量 ≥0.2。
+_TRIAL_BADGE_TM_PATH = ('currency_war', 'cw_shop_trial_badge', 'raw.webp')
+#: 标签搜索带(相对「商店牌-N」rect 的右上角子区偏移 (x1,y1,x2,y2)):
+#: 标签实测 bbox 全图 (1639,122)-(1680,147)(红连通域),相对槽5 rect
+#: (1452,70)-(1680,260) = (187,52)-(228,77);搜索带 (150,30)-(228,100)
+#: 包住之并留浮动余量(标签右缘恒贴卡右缘 = 槽 rect 右缘)。
+_TRIAL_BADGE_SUB_RECT: tuple[int, int, int, int] = (150, 30, 228, 100)
+#: TM 采信阈值(TM_CCOEFF_NORMED;分离度实测见上段注释)。
+_TRIAL_BADGE_TM_THRESH: float = 0.8
+#: 标签灰度模板模块级缓存(None=未加载,加载失败亦置 None 不重试)。
+_trial_badge_gray: MatLike | None = None
+_trial_badge_loaded: bool = False
+
+
+def _get_trial_badge_gray() -> MatLike | None:
+    """加载试用标签 TM 模板灰度图(模块级缓存,幂等,缺文件 → None)。
+
+    模板 = 实帧裁片 45×34 红标签(assets/template/currency_war/
+    cw_shop_trial_badge/raw.webp,无损 webp;来源帧 = 第六跑停机存证帧
+    .debug/images/stop_hook_shop_unknown_card_1795251951514.png 槽5)。
+    加载手法同 ``cw_identity_obs`` 模块级只读模板缓存惯例。
+    """
+    global _trial_badge_gray, _trial_badge_loaded
+    if not _trial_badge_loaded:
+        _trial_badge_loaded = True
+        p = get_project_root() / 'assets' / 'template' / _TRIAL_BADGE_TM_PATH[0] \
+            / _TRIAL_BADGE_TM_PATH[1] / _TRIAL_BADGE_TM_PATH[2]
+        img = cv2.imdecode(np.fromfile(str(p), np.uint8),
+                           cv2.IMREAD_COLOR) if p.is_file() else None
+        _trial_badge_gray = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                             if img is not None else None)
+    return _trial_badge_gray
+
+
+def _trial_badge_hit_in_crop(card_crop: MatLike) -> bool:
+    """牌面裁片(RGB,「商店牌-N」rect 域)右上角搜索带 TM → 试用标签在场。
+
+    纯 CV 离线可测(无 ctx 依赖);搜索带 = ``_TRIAL_BADGE_SUB_RECT`` 相对
+    偏移(标签在卡内位置固定,带内定点搜,非全牌搜——立绘红色元素不进
+    搜索域,零误报面)。灰度口径:调用方 crop 与模板同走灰度 TM,相对
+    匹配一致(模板源自同灰度管线实帧裁片)。
+    """
+    tm = _get_trial_badge_gray()
+    if tm is None or card_crop is None or card_crop.size == 0:
+        return False
+    sx1, sy1, sx2, sy2 = _TRIAL_BADGE_SUB_RECT
+    sub = card_crop[sy1:sy2, sx1:sx2]
+    if sub.shape[0] < tm.shape[0] or sub.shape[1] < tm.shape[1]:
+        return False
+    gray = cv2.cvtColor(sub, cv2.COLOR_RGB2GRAY)
+    _, max_val, _, _ = cv2.minMaxLoc(
+        cv2.matchTemplate(gray, tm, cv2.TM_CCOEFF_NORMED))
+    return bool(max_val >= _TRIAL_BADGE_TM_THRESH)
+
+
 def _anchor_hit_full_ocr(full_ocr, area) -> bool:
     """全帧 OCR 位匹配识别标志判定(token 文本 LCS≥0.5 且 bbox 中心落在
     area.rect 内;识别层同源全帧路径——裁剪路径对买光态暗钮确定性
@@ -1918,9 +1982,11 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     逐槽判定表(详设 shop-slot-model §2):rect 缺失 = unknown+缺陷
     (建档漂移,旧 continue 静默跳过是病灶根);亮度均值 <50 = empty
     (确定性占位带,实测真卡 min 67.4 vs 空槽 19.5);50-60 灰带 =
-    unknown+缺陷(疑暗卡不猜,原 [cw!] 日志升级 defect);≥60 进 SIFT:
-    命中 = content(识别链原样:x=faction/name/cost/badge 费用星级),
-    miss = unknown+读空缺陷(置信度面)。
+    先查试用形态标签(红「试用」标签 TM,``_trial_badge_hit_in_crop``):
+    命中 = 试用卡放行 SIFT 并标 ``trial=True``(试用卡灰暗化渲染致亮度
+    落带,身份识别实测不受影响);无标签 = unknown+缺陷(灰带不猜,
+    防线不放松);≥60 进 SIFT:命中 = content(识别链原样:x=faction/
+    name/cost/badge 费用星级),miss = unknown+读空缺陷(置信度面)。
 
     终判稳定门(对抗窄攻 F2,防过渡帧误判):全 empty 或含 unknown 的
     判定成立前,0.8s 后新截屏重读一次——两帧逐槽一致才接受;不一致 =
@@ -2002,19 +2068,25 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                 # 确定性占位带(实测空槽 19.5;低等级商店后槽未解锁是常态)
                 out.append(ShopSlot(kind='empty'))
                 continue
+            _is_trial = False
             if _mean < 60:
-                # 灰带:疑暗卡被特效/裁切偏移压暗,不猜=unknown(r15 保留证据升级)
-                try:  # noqa: SIM105  遥测 best-effort
-                    record_defect(
-                        'confidence', 'perception_conflict',
-                        expected=f'商店牌{i} 亮度≥60(真卡)或 <50(空槽)',
-                        observed=f'均值{_mean:.1f}(灰带,疑暗卡)',
-                        reader_source='read_shop_cards', confidence=_mean,
-                        note='灰带不猜=unknown;采到暗卡击穿即闭环降阈值')
-                except Exception:   # noqa: BLE001  遥测 best-effort
-                    pass
-                out.append(ShopSlot(kind='unknown'))
-                continue
+                # 灰带:先查试用形态标签——命中 = 试用卡(灰暗化渲染致亮度
+                # 落带;实测试用景元 52.4/53.5,缺陷台账同值),放行走既有
+                # SIFT 链并标 trial;无标签 = 维持 unknown 不猜(防线不放松:
+                # 灰带放行仅限标签确证的试用形态,SIFT 阈值不变)。
+                if not _trial_badge_hit_in_crop(crop):
+                    try:  # noqa: SIM105  遥测 best-effort
+                        record_defect(
+                            'confidence', 'perception_conflict',
+                            expected=f'商店牌{i} 亮度≥60(真卡)或 <50(空槽)',
+                            observed=f'均值{_mean:.1f}(灰带,疑暗卡)',
+                            reader_source='read_shop_cards', confidence=_mean,
+                            note='灰带无试用标签不猜=unknown')
+                    except Exception:   # noqa: BLE001  遥测 best-effort
+                        pass
+                    out.append(ShopSlot(kind='unknown'))
+                    continue
+                _is_trial = True
             avatar_id, _inliers = (identify_character(crop, templates)
                                    if templates is not None else (None, 0))
             # 非空槽 SIFT 仍 miss → unknown + 读空事件落台账(置信度分布
@@ -2069,6 +2141,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                 cost=cost,
                 star=star,
                 cost_source=cost_src,
+                trial=_is_trial,
             )
             out.append(ShopSlot(kind='content', card=card))
         while len(out) < 5:
