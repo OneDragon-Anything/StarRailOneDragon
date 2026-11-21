@@ -168,7 +168,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 改获得链 / 加获得类效果(原语 / 事件回调 / 检查分支 / 升星合成) | 链式规范单一源 = `kernel/cw_gain_chain.py` 模块 docstring(七原语契约 / 枚举回调 / 固定时序 / 随机态纪律 / 失败安全)+ 各函数 docstring;策略卡效果体注册表在 `kernel/cw_gain_effects.py` | — |
 | 改效果域 / 加卡建模(规格声明 / 计数器 / 事件接入 / 词缀源) | 改前必读 [references/effect-inventory.md](references/effect-inventory.md)(声明式建模 / 单调计数器 / 写入两分 / 事件映射 / 零响应教义);逐卡是什么效果归注册表条目注释(`kernel/cw_investments.py::STRATEGY_EFFECTS` 各源注册表) | effect-inventory |
 | 改 sim 后端 / 加观察生成器 / 端口与声明契约 | 架构正本 = docs 设计区 sim/ 两篇(sim-design.md 驱动反转与保真度分层 + sim-wiring.md 逐域对接表,接入调用变更须同步更新对接表);跑 sim 测试的操作面见 [references/sim-testing.md](references/sim-testing.md) | sim-testing |
-| 自主推进(实机探索期:派实机探索 agent / 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill,需求线流水线);CW 实机探索期运转细则+领域叠加件(核心面清单/共享资产枚举/串行模式映射)+策略迭代期最小定义(§6,时期切换种子) → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
+| 自主推进(各阶段:阶段判定 / 派实机探索 agent(阶段一)/ app 自动流程跑局(阶段二)/ 问题处置循环 / 窗口所有权) | 通用框架 = od-dev-agent-autonomous-mode(公共 skill,需求线流水线);CW 分阶段运转细则(四阶段模型/通用编排/各阶段节)+领域叠加件(核心面清单/共享资产枚举/串行模式映射) → autonomous-loop.md(编排者只调度与传话,不做技术判断) | autonomous-loop |
 | ADR / as-built 维护 | §4文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查 §3 单一源地图,仍定位不了 → 给分诊表补行 | — |
 
@@ -183,9 +183,9 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | **CW 工具脚本**(数据采集生成器/哨兵组/复盘渲染/calibration——全家住本 skill `scripts/`,usage 看各脚本 docstring) | `scripts/`(采集生成器 data-collection、哨兵 runtime-ops、渲染 match-review) |
 | **测试分层**(T1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` ≈2.5min/T2=T1+受影响域点名/T3 全量 `uv run pytest sr-od-test/ -m "not slow"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口;改名注:原 L1/L2/L3 与部署评分层 L1/L2/L3 撞名,测试族改 T 前缀消歧——部署评分层与验证阶梯 L0+L1 的 L 编号不变) | 策略验证阶梯单一源 = strategy-work「验证」 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
-| **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,报告按画面章组织——每画面 op 一章,章内 0 观察+动作节×N+策略评价,报告由渲染器 skills/sr-od-dev-currency-war/scripts/replay_to_md.py 生成,复盘者填判定与文末复盘者附加;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选;实机探索 agent 局终后由编排者按需派单执行,产出的缺陷候选交编排者按问题处置循环分诊=autonomous-loop §3) | [references/match-review.md](references/match-review.md) |
+| **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,报告按画面章组织——每画面 op 一章,章内 0 观察+动作节×N+策略评价,报告由渲染器 skills/sr-od-dev-currency-war/scripts/replay_to_md.py 生成,复盘者填判定与文末复盘者附加;判定尺=玩法文档+既有规范,算法自洽≠合格;产出含算法缺陷候选;实机探索 agent 局终后由编排者按需派单执行,产出的缺陷候选交编排者按问题处置循环分诊=autonomous-loop §2.4) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 改动集中到局间一次重启,局中不改**;重启/早停/残局清理/监控栈与哨兵;效率剖析与巡检阈值回填=「一局时间花在哪」的拆分方法与巡检阈值回填去向) | [references/runtime-ops.md](references/runtime-ops.md) |
-| **自主推进模式运转框架**(开启/停止仪式/需求线流水线/资源闸门) | `od-dev-agent-autonomous-mode`(公共 skill);CW 实机探索期运转细则+领域叠加件+策略迭代期最小定义 = [references/autonomous-loop.md](references/autonomous-loop.md);迭代流程与迭代内进度(tasks.md)归 od-dev-run-iteration |
+| **自主推进模式运转框架**(开启/停止仪式/需求线流水线/资源闸门) | `od-dev-agent-autonomous-mode`(公共 skill);CW 分阶段运转细则(阶段模型/通用编排/各阶段节)+领域叠加件 = [references/autonomous-loop.md](references/autonomous-loop.md);迭代流程与迭代内进度(tasks.md)归 od-dev-run-iteration |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `skills/sr-od-dev-currency-war/references/strategy/README.md`(分篇入口;判据权威 = skill strategy/ 各编号篇;决策 why 收敛于设计文档动机段与代码注释,decisions/ ADR 档案停用) |
 | 单套阵容打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
