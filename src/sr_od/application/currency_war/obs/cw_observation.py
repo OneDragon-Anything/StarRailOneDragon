@@ -1874,24 +1874,29 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
     return base_cost, 1, COST_SOURCE_ROSTER_FALLBACK
 
 
-# ===== 商店牌试用形态分流(红「试用」标签检测)=====
-# 形态裁决(第六跑停机存证帧 + 现场帧双帧实证):
-# - 试用卡 = 牌面右上角红底白字「试用」标签(通用 UI 元素,卡内位置固定)
-#   + 立绘灰暗化。**判别依据只有标签**——灰暗化是渲染症状不是标记
-#   (灰暗程度随立绘色调浮动,不可作判据)。
+# ===== 商店牌试用形态分流(「试用」标签检测)=====
+# 形态裁决(第六跑停机存证帧 + 正常亮度四连帧双形态实证,fixture =
+# sr-od-test/screens/货币战争-备战-开商店/ 下「试用景元灰带帧」「正常亮度
+# 试用四连帧」):
+# - 试用卡 = 牌面右上角「试用」标签(蓝紫底白字,通用 UI 元素,卡内位置固定)
+#   + 可选的立绘灰暗化。**判别依据只有标签**——灰暗化是渲染症状不是标记
+#   (同一试用形态存在两种渲染:灰暗化[存证帧,亮度落 50-60 灰带]与正常
+#   亮度[四连帧,亮度 ≥60],标签是唯一跨形态稳定判别);标签底为半透明,
+#   透出卡面背景致标签底色随卡浮动。
 # - 一张标签模板通吃全家族:身份仍走既有 SIFT 链(试用景元灰暗卡实测
-#   内点 49,远超阈值 10,免降阈值免逐卡模板——亮度门是唯一拦截点),
-#   标签只回答「这是试用形态」。
-# - TM 分离度实测(存证帧+现场帧两帧 5 槽):试用槽 0.999,其余槽(正卡/
-#   空槽)最高 0.345——阈值取 0.8,两侧余量 ≥0.2。
+#   内点 49,远超阈值 10,免降阈值免逐卡模板),标签只回答「这是试用形态」。
+# - TM 阈值依据(多帧 20+ 标签实例离线分布,帧名见上 fixture 目录):
+#   试用侧(标签在场目验) 0.750-1.000,非试用侧(正卡/入口帧)
+#   max 0.479,「标签抹除合成」帧 0.602——阈值 0.68 两侧余量 ≥0.07。
+#   存证帧单帧 0.999 系模板同源帧分数,不代表跨卡渲染方差,不作定阈依据。
 _TRIAL_BADGE_TM_PATH = ('currency_war', 'cw_shop_trial_badge', 'raw.webp')
 #: 标签搜索带(相对「商店牌-N」rect 的右上角子区偏移 (x1,y1,x2,y2)):
 #: 标签实测 bbox 全图 (1639,122)-(1680,147)(红连通域),相对槽5 rect
 #: (1452,70)-(1680,260) = (187,52)-(228,77);搜索带 (150,30)-(228,100)
 #: 包住之并留浮动余量(标签右缘恒贴卡右缘 = 槽 rect 右缘)。
 _TRIAL_BADGE_SUB_RECT: tuple[int, int, int, int] = (150, 30, 228, 100)
-#: TM 采信阈值(TM_CCOEFF_NORMED;分离度实测见上段注释)。
-_TRIAL_BADGE_TM_THRESH: float = 0.8
+#: TM 采信阈值(TM_CCOEFF_NORMED;分离度实测依据见上段注释)。
+_TRIAL_BADGE_TM_THRESH: float = 0.68
 #: 标签灰度模板模块级缓存(None=未加载,加载失败亦置 None 不重试)。
 _trial_badge_gray: MatLike | None = None
 _trial_badge_loaded: bool = False
@@ -2068,25 +2073,26 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                 # 确定性占位带(实测空槽 19.5;低等级商店后槽未解锁是常态)
                 out.append(ShopSlot(kind='empty'))
                 continue
-            _is_trial = False
-            if _mean < 60:
-                # 灰带:先查试用形态标签——命中 = 试用卡(灰暗化渲染致亮度
-                # 落带;实测试用景元 52.4/53.5,缺陷台账同值),放行走既有
-                # SIFT 链并标 trial;无标签 = 维持 unknown 不猜(防线不放松:
-                # 灰带放行仅限标签确证的试用形态,SIFT 阈值不变)。
-                if not _trial_badge_hit_in_crop(crop):
-                    try:  # noqa: SIM105  遥测 best-effort
-                        record_defect(
-                            'confidence', 'perception_conflict',
-                            expected=f'商店牌{i} 亮度≥60(真卡)或 <50(空槽)',
-                            observed=f'均值{_mean:.1f}(灰带,疑暗卡)',
-                            reader_source='read_shop_cards', confidence=_mean,
-                            note='灰带无试用标签不猜=unknown')
-                    except Exception:   # noqa: BLE001  遥测 best-effort
-                        pass
-                    out.append(ShopSlot(kind='unknown'))
-                    continue
-                _is_trial = True
+            # 「试用」标签检查对全部内容亮度域(≥50)无条件执行——标签是试用
+            # 形态唯一可靠判别(见上段形态裁决:同一试用形态有灰暗化[亮度落
+            # 灰带]与正常亮度[≥60]两种渲染,亮度门判不出试用形态):
+            # ≥60 有标签 = 正常亮度试用渲染,50-60 灰带有标签 = 灰暗化试用
+            # 渲染,两形态都标 trial 放行既有 SIFT 链(阈值不变)。
+            _is_trial = _trial_badge_hit_in_crop(crop)
+            if _mean < 60 and not _is_trial:
+                # 灰带无标签 = 维持 unknown 不猜(防线不放松:灰带放行仅限
+                # 标签确证的试用形态,SIFT 阈值不变)。
+                try:  # noqa: SIM105  遥测 best-effort
+                    record_defect(
+                        'confidence', 'perception_conflict',
+                        expected=f'商店牌{i} 亮度≥60(真卡)或 <50(空槽)',
+                        observed=f'均值{_mean:.1f}(灰带,疑暗卡)',
+                        reader_source='read_shop_cards', confidence=_mean,
+                        note='灰带无试用标签不猜=unknown')
+                except Exception:   # noqa: BLE001  遥测 best-effort
+                    pass
+                out.append(ShopSlot(kind='unknown'))
+                continue
             avatar_id, _inliers = (identify_character(crop, templates)
                                    if templates is not None else (None, 0))
             # 非空槽 SIFT 仍 miss → unknown + 读空事件落台账(置信度分布
