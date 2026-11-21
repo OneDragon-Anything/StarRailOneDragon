@@ -77,4 +77,4 @@ pick = decide_wish_trial()(零参;候选读状态容器 wish_trial_opts 槽)
 
 - journal op 名 =「祈愿试炼」;op 内日志 tag = `[cw-wish]`(决策描述/点击点)。
 - 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报状态容器/坐标域同门双写/入口门 miss fail/wish 落地裁决时点写/决策出口守卫——无对局上下文无早退支自然失败、动作类型清单外/None round_fail、idx 越界断言、直发零重建)、test_cw_unified_action_4.py(确认链机械行为测试:点击点 = 状态容器 `wish_trial_opts_xy[param.idx]`,缺席/越界 = 守卫断言)、test_screen_report_ports.py(report 写面契约:双域写 + 等长守卫)、test_cw_game_state_consume.py(chosen_wish 接入调用测试)。
-- game 侧知识:画面与机制(节点级 quest、奖励形态) = [../../../../game/screens/currency_war_wish_trial.md](../../../../../game/screens/currency_war_wish_trial.md);决策规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E5。
+- game 侧知识:画面与机制(节点级 quest、奖励形态) = [screens/货币战争-祈愿试炼.md](../../../../../../skills/sr-od-currency-war/references/screens/货币战争-祈愿试炼.md);决策规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E5。

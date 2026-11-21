@@ -96,7 +96,7 @@ pick = match.strategy.decide_supply()(零参;候选读状态容器 supply 槽)
 
 - journal op 名 =「货币战争-补给节点」;op 内日志 tag = `[cw-supply]`(options/pick/click、空候选零点击 info、对照闸拒绝两态(实机 round_fail 告警/sim 零点击 info)、chosen 记录失败告警)。
 - 测试:`sr-od-test/test/sr_od/application/currency_war/` 下 test_obs_arch_event_screens.py(supply 两 node 行为测试:chosen 确认即写/刷新闸 left 语义(剩余 1 点钮恰一次终结/0 与 None 零点击重调链有界——stub 闸面断言,实机拒绝防线 = round_fail 专属测试)/act 流转形态)、test_cw_screen_supply_node.py(空候选零点击终结、守卫①词表外 round_fail、守卫②idx 越界 AssertionError、对照闸拒绝两态防线(实机 round_fail 计入重派上限形态/sim 零点击终结零派发)、刷新两态(实机读数引用点+dx 机械点击/sim area 点击触发后端 `_supply_refresh`)、sim 两态 pick 流(decide_supply 被调/内容载荷分支入账/chosen_supply 写行/节点推进))、test_overlay_ops.py(`CwActionPickSupplyOp` 动作回执两出口簿记:实机确认定位缺失 = `定位缺失(按钮-确认)`/sim 受理恒 reason='')、test_cw_game_state_consume.py(chosen_supply 接入调用)、sim 补给刷新段测试(初始 left=1 与 left−1 截断)、strategies/impl/mandate_v1/test_supply.py(策略单帧测试 + flow 接入调用)。
-- game 侧知识:画面与机制(动态列数/钻) = [../../../../game/screens/currency_war_supply.md](../../../../../game/screens/currency_war_supply.md);装备价值 = [../../../../game/currency_war/research/equipment_mechanics.md](../../../../../game/currency_war/research/equipment_mechanics.md)。
+- game 侧知识:画面与机制(动态列数/钻) = [screens/货币战争-补给.md](../../../../../../skills/sr-od-currency-war/references/screens/货币战争-补给.md);装备价值 = [../../../../game/currency_war/research/equipment_mechanics.md](../../../../../game/currency_war/research/equipment_mechanics.md)。
 
 ## 开放设计注
 

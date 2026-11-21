@@ -14,7 +14,7 @@ draft（操作部分已按三局实机走查沉淀成文；玩法知识三篇为
 - **全局交互铁律放 SKILL.md 正文不放 references**：胶囊按钮微距拖拽、卡片图标点击、op 静默失败重跑等坑的触发条件 agent 自己认不出（它们跨画面出现），按需文件会想不起来读；画面专属的坑随画面卡走。
 - **op 只封装动作不封装决策**：actions 包 op 参数为简单类型（槽位/次数/坐标），「买什么/选哪个」的决策留给 agent 读 extras 后自行判断。决策层不放 op、放三篇知识文档（gameplay-basics 机制地基 / decision-guide 决策骨架 / comps-codex 线参数），文档间分工 = 骨架与参数分离（guide 讲跨阵容通用决策，线特定参数全在 codex，两者拼接使用）。
 - **玩法层是仓库 docs 知识的浓缩复制面，版本同步是维护义务**：comps-codex 浓缩自 `docs/game/currency_war/research/final_comps/`（19 篇），economy/机制知识浓缩自 research 各篇——仓库 docs 是单一事实源。换赛季或知识层重建（final_comps 的 `rebuilt` 时点变化）后，玩家 skill 这三篇必须同批同步浓缩，否则玩家面拿到过期打法。此义务已登记进 sr-od-dev-version-update-adaptation 的路由面。
-- **三篇文档声明阅读顺序（SKILL.md → basics → guide → codex），写作验收 = 按序通读无「不知道在说什么」的卡点**：概念先在动线早处落地（羁绊机制在 basics §2 先讲，三大经济引擎才在 §3.4 用它）；关键前提在引用处随文带一句重述（如 guide 讲开拓银轨时先重述其效果）；数据级内容给查询指针（`cw_lookup` 三工具），不复制进文档。
+- **三篇文档声明阅读顺序（SKILL.md → basics → screens → codex），写作验收 = 按序通读无「不知道在说什么」的卡点**：概念先在动线早处落地（羁绊机制在 basics §2 先讲，三大经济引擎才在 §3.4 用它）；关键前提在引用处随文带一句重述（如 guide 讲开拓银轨时先重述其效果）；数据级内容给查询指针（`cw_lookup` 三工具），不复制进文档。
 - **主角光环的拖拽源用坐标参数**：光环画面的角色预览槽居中排布、位置随部署数变化，无固定槽位 area——源坐标由 agent 从当前帧读出后传参（观察即输入）；槽/卡/确认的目标坐标走画面档 area（坐标单一真相源）。
 - **命名**：sr-od-currency-war（用户定）。与 sr-od-dev-currency-war（开发 skill）分界：玩家 skill 不谈代码与流程改造，只谈怎么玩。
 

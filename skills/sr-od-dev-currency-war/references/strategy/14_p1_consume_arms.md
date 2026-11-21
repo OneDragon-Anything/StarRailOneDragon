@@ -489,7 +489,7 @@ victim 合格集与保护域关系(防与 P59 冲突,硬边界):**资格仍由 �
 |---|---|---|
 | 发出核拆分（C1 规格） | `launch_prepared_battle(op, ctx, *, sync_once)` 单一发出核（RunDeploy+StartBattle）;两调用面:恢复局面面（标志位管辖+重试上限 3+放弃在遥测中可见,原 R1 语义）与达标分支面（不过标志位,每达标帧发出） | cw_loop.py |
 | 发出失败防线 | 达标分支发出连续失败 3 次 → 放弃短路回落守卫链 + `readiness_launch_giveup` 细分键在遥测中可见;成功即复位。**归类:执行层活性阈值（非决策闸门参数,不撞零调参门）** | cw_loop.py 备战分支 |
-| 浮层排除+面板 OCR 排除+新鲜屏态复验（第 15 局实雷,as-built 已落库） | 投资策略等浮层在场 → 达标分支不发出（readiness_overlay_hold,探测复用身份分发 id_mark 识别表 + 遭遇 OCR 词「遭遇其」前缀,currency_war_encounter.md:22）;执行时刻新鲜屏态复验（重截图复验备战画面的两个 id_mark 识别标志,非备战屏 → readiness_stale_screen 放弃发出不耗 C1 计数）;发出失败连续 3 次回落守卫链（readiness_launch_giveup）。判别稳定化 N5 = 投资策略分发层双信号+复探（现役载体 = cw_screen_invest_strategy.py ENTRY_REPROBE_* 注） | cw_loop.py |
+| 浮层排除+面板 OCR 排除+新鲜屏态复验（第 15 局实雷,as-built 已落库） | 投资策略等浮层在场 → 达标分支不发出（readiness_overlay_hold,探测复用身份分发 id_mark 识别表 + 遭遇 OCR 词「遭遇其」前缀,玩家 skill 货币战争-遭遇节点卡）;执行时刻新鲜屏态复验（重截图复验备战画面的两个 id_mark 识别标志,非备战屏 → readiness_stale_screen 放弃发出不耗 C1 计数）;发出失败连续 3 次回落守卫链（readiness_launch_giveup）。判别稳定化 N5 = 投资策略分发层双信号+复探（现役载体 = cw_screen_invest_strategy.py ENTRY_REPROBE_* 注） | cw_loop.py |
 | arm0_need 排除口径 | 纯 name 口径 = **执行层语义对齐**（check_seats 同名禁上阵 + cw_deploy_logic cid 去重实答）;玩法机制定案（同名异星可否同场）候实机帧证据,§8⑫ 登记待办保留不收窄 | §4.2/predicates.py |
 | 出口③动作发出点接入调用（17 篇 §7） | Φ_stall 四支（锁定布尔/D=∅/δ_board>0/g>s_reserve）∧ 垫件资格单一源（1★∧∉buy_members∧零重叠∧可全退）∧ 净成本≤1 金 → 垫件买入授权;发出位次 M6 后 EV 前;七细分键禁止无痕迹失败;负向测试(四支 fail 向形态)候补强轮 | shop.py/cw_deploy_logic |
 

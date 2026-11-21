@@ -77,4 +77,4 @@ idx = _decide_card_index(决策动作 node):
 
 - journal op 名 =「武装箱选择」(阶段一身份分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/结束本次访问)。
 - 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(box_pick 观察 report 接入调用/两道闸 skip report/点卡决策/局外无早退支自然失败/标准化门测试)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为测试 + 画面常量)、test_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自状态容器取点测试)。
-- game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E18。
+- game 侧知识:画面与机制 = [screens/货币战争-备战-武装箱选择.md](../../../../../../skills/sr-od-currency-war/references/screens/货币战争-备战-武装箱选择.md);决策规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E18。
