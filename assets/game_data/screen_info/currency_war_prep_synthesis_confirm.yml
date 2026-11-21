@@ -11,8 +11,8 @@ area_list:
   - 518
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: currency_war
-  template_id: synthesis_confirm_ok
+  template_sub_dir: cw_synthesis_confirm_ok
+  template_id: cw_synthesis_confirm_ok
   template_match_threshold: 0.8
   color_range: null
   goto_list: []
@@ -25,8 +25,8 @@ area_list:
   - 518
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: currency_war
-  template_id: synthesis_confirm_cancel
+  template_sub_dir: cw_synthesis_confirm_cancel
+  template_id: cw_synthesis_confirm_cancel
   template_match_threshold: 0.8
   color_range: null
   goto_list: []

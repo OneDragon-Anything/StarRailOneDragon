@@ -151,7 +151,7 @@ area_list:
   - 424
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: currency_war
+  template_sub_dir: cw_shop_lock_unlocked
   template_id: cw_shop_lock_unlocked
   template_match_threshold: 0.8
   color_range: null
@@ -165,7 +165,7 @@ area_list:
   - 166
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: currency_war
+  template_sub_dir: cw_shop_card_locked
   template_id: cw_shop_card_locked
   template_match_threshold: 0.85
   color_range: null

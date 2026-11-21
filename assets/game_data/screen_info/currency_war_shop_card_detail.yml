@@ -39,7 +39,7 @@ area_list:
   - 95
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: currency_war
+  template_sub_dir: cw_lobby_close
   template_id: cw_lobby_close
   template_match_threshold: 0.8
   color_range: null
