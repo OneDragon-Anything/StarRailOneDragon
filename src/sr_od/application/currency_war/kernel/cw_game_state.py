@@ -36,8 +36,8 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 两条语义分界:①观察覆盖差异 = 随机效果落地,**预期内非 bug**——只落
 ``logic_rand_outcome`` 台账行留存证据(无告警无停机,随机模型校准遥测面),
 不进失配三分流;②策略器消费前**必须重观察**(查询口 =
-:meth:`GameState.logic_rand_fields`;跨动作污染经
-:meth:`GameState.any_logic_rand` 入口判定继承)。
+:meth:`GameState.logic_rand_fields`;跨动作污染继承在写入口自动生效,
+见 :meth:`GameState._write_logic_frame`「污染继承」节)。
 
 **开局初始值与锚定标志**:局状态容器经 :func:`game_state_of` 缓存单例支每局全新创建
 即以开局初值播种 A 类字段(:func:`seed_opening_state`,随机态通道——
@@ -4210,7 +4210,10 @@ class GameState:
         的预期效果**直接写入字段**(source=logic),策略器立即可读——
         「在观察态到来之前供决策使用」是逻辑态的全部职能。
         随机效果口径走 :meth:`write_logic_rand`(逻辑随机态,失配预期内),
-        确定面仍走本口。
+        确定面仍走本口。落到现值来源为 logic_rand 的字段时本口**升格
+        随机态落帧**(污染继承,语义与出处见 :meth:`_write_logic_frame`
+        「污染继承」节)——确定面推算建立在未验证采样基座上时,产出仍是
+        可能局面,随机态保持到观察收尾。
 
         - 历史「仅限显式申报豁免写端」的限制随 expect/confirm 两步机制
           废除一并解除:凡逻辑推算写入统一走本口,不再有
@@ -4256,11 +4259,15 @@ class GameState:
           observation/carried,logic_rand 自然落入不可信侧)。
 
         污染传递:采样链上全部写入标随机态(含终值受随机分支影响的
-        联动写,如晶矿摘除);跨动作由上报入口判定(:meth:`any_logic_rand`)
-        继承。边界:gold 结算屏真值收束(:meth:`settle_truth`)不经
-        随机面,logic_rand gold 与结算真值的差不落 boundary_income 行。
-        其余契约(produced_by/evidence/sig/note、域级跳写、行域 board
-        派生挂钩继承随机态)与 write_logic 同一条。
+        联动写,如晶矿摘除);跨动作继承在写入口自动生效
+        (:meth:`write_logic` 落到 logic_rand 现值字段时升格随机态,
+        见 :meth:`_write_logic_frame`「污染继承」节;上位机经
+        :meth:`any_logic_rand` 查询输入域污染作分支判据仍合法,但继承
+        不再依赖逐写端接线)。边界:gold 结算屏真值收束
+        (:meth:`settle_truth`)不经随机面,logic_rand gold 与结算真值的
+        差不落 boundary_income 行。其余契约(produced_by/evidence/sig/
+        note、域级跳写、行域 board 派生挂钩继承随机态)与 write_logic
+        同一条。
         """
         _validate_sig(sig, ('logic_action', 'logic_hook'))
         self._write_logic_frame(target, value, source='logic_rand',
@@ -4294,7 +4301,22 @@ class GameState:
           settle_xp_observe 结算函数显式调,不经本宿主)。xp 字段分支 =
           预留扩展位:现役零回调(已登记的连锁效果全部是「升级」的后果,
           无「经验增加但不升级也要做事」的效果);后继经验非升级类效果
-          登记时再建,形态 = 同分支尾同构回调,零结构改动。"""
+          登记时再建,形态 = 同分支尾同构回调,零结构改动。
+
+        **污染继承(写入口根)**:确定面写(source=logic)落到现值来源为
+        logic_rand 的字段 → 升格 logic_rand 落帧。语义依据 = 采样链下游
+        推导值同为可能局面(:meth:`write_logic_rand` 值三形态之「采样值」
+        形态天然含确定外壳),随机态保持到观察收尾;不升格则确定性写会把
+        基座里的未验证采样洗成确定性账(logic_rand provenance 被覆盖),
+        观察修正采样差异时走失配三分流 → 预期内随机落地被判真失配停机
+        (run_20261121_152706 实证:晶矿奖励角色采样落位后买牌投影重写
+        席位,观察修正时 9 槽席位对 8 槽实读判 observe_vs_logic_mismatch
+        停机)。写入口根实现而非各上报函数自判(:meth:`any_logic_rand`
+        跨动作判定契约从未接线,委托逐写端申报 = 漏接线即复发),且逐字段
+        判定比逐动作粗粒度(「本动作全部产出标随机态」)暴露面更小。
+        """
+        if source == 'logic' and target.source == 'logic_rand':
+            source = 'logic_rand'
         name = self._field_name(target)
         old_row_value = target.value if name == 'deployed' else None
         old_affixes = target.value if name == 'enemy_affixes' else None
@@ -4374,10 +4396,11 @@ class GameState:
                 and getattr(self, f.name).source == 'logic_rand']
 
     def any_logic_rand(self, field_names: list[str]) -> bool:
-        """任一名字段现来源为 logic_rand(**跨动作污染判定入口**):动作
-        上报入口检查「本次要读的输入域中是否有随机态」→ 有则本动作
-        全部产出标随机态(采样状态的下游计算同为可能局面,污染沿动作
-        链传递直到观察收尾)。field_names = 状态容器 Field 字段名子集;
+        """任一名字段现来源为 logic_rand(**跨动作污染查询口**):动作
+        上报入口可查「本次要读的输入域中是否有随机态」作分支判据
+        (早退/拒单/跳写等);污染的随机态继承本身在写入口自动生效
+        (:meth:`_write_logic_frame`「污染继承」节),不依赖本查询接线。
+        field_names = 状态容器 Field 字段名子集;
         未登记名字跳过(容错,不炸)。"""
         for n in field_names:
             f = getattr(self, n, None)
