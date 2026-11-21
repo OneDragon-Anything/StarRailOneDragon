@@ -8,7 +8,7 @@
 
 **识别方案**(单模板带内 TM,先例 = ``battle_prep_recognizer.find_rail_shop_train``
 横幅列车图案):光标 = 亮蓝白 8 角雪花,39×41 紧裁模板(帧 20261121_191638
-前排-1 顶带,assets/template/currency_war/cw_aura_marker/raw.webp 无损归档),
+前排-1 顶带,assets/template/cw_aura_marker/cw_aura_marker/raw.webp 无损归档),
 带内全搜 = 画面档「标识-主角光环光标」带状 pc_rect(前排四槽头顶带
 y 283-345:覆盖光标本体 y 300-341、排除各槽卡顶固有蓝条 y≥347——
 该蓝条为卡片固有元素非光环标记,四槽 occupied 卡同形实证)。
@@ -67,8 +67,8 @@ def _get_marker_gray() -> MatLike | None:
     global _marker_gray, _marker_loaded
     if not _marker_loaded:
         _marker_loaded = True
-        p = (get_project_root() / 'assets' / 'template' / 'currency_war'
-             / 'cw_aura_marker' / 'raw.webp')
+        p = (get_project_root() / 'assets' / 'template'
+             / 'cw_aura_marker' / 'cw_aura_marker' / 'raw.webp')
         img = cv2.imdecode(np.fromfile(str(p), np.uint8),
                            cv2.IMREAD_COLOR) if p.is_file() else None
         _marker_gray = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

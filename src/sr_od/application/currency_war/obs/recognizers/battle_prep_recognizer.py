@@ -208,15 +208,15 @@ _rail_train_loaded: bool = False
 def _get_rail_train_gray() -> MatLike | None:
     """加载银轨商店横幅列车图案 TM 模板灰度图(模块级缓存,幂等,缺文件 → None)。
 
-    模板 = 实帧裁片 128×62 列车图案(assets/template/currency_war/cw_rail_shop_train/
-    raw.webp,与画面档「标识-银轨商店列车图案」template_id 同源)。加载手法同
+    模板 = 实帧裁片 128×62 列车图案(assets/template/cw_rail_shop_train/
+    cw_rail_shop_train/raw.webp,与画面档「标识-银轨商店列车图案」template_id 同源)。加载手法同
     func:`cw_identity_obs._get_bookcard_gray`(并发安全:模块级只读模板缓存)。
     """
     global _rail_train_gray, _rail_train_loaded
     if not _rail_train_loaded:
         _rail_train_loaded = True
-        p = (get_project_root() / 'assets' / 'template' / 'currency_war'
-             / 'cw_rail_shop_train' / 'raw.webp')
+        p = (get_project_root() / 'assets' / 'template'
+             / 'cw_rail_shop_train' / 'cw_rail_shop_train' / 'raw.webp')
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _rail_train_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _rail_train_gray
