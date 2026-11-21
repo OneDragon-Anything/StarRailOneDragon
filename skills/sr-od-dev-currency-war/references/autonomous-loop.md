@@ -183,6 +183,6 @@ CW 自主推进分四个阶段。方法骨架跨阶段不变(§2+§7),阶段只�
 
 1. **推进模式映射**:CW 自主推进各阶段=串行模式(游戏窗口与 MCP server 单跑道,独占资源天然串行——并行度取值恒为 1)——本领域缺省串行,用户当次明示并行时按通用层取值序生效(实机与 MCP 单跑道的互斥由占用表把关,不随线数放宽);公共 skill 未提供并行启用判据的领域定义位,本领域亦不定义,要开并行由用户当次明示。
 2. **核心面清单**(landing 影响面申报与对抗/review 对照用):CW 的核心/策略面 = `strategies/`(策略行为、量化判据与状态函数)+「决策控制分层」铁律面(流程侧出现决策闸门=分层错误,判据见 SKILL.md §1.3 铁律)。判定口径:画面/流程任务的改动不得触碰策略行为模块(评分/权重/搜索/选择);局内状态对象(GameState)字段定义不算策略面。
-3. **共享资产枚举**(影响面申报第二层=共享资产面的 CW 实例):`kernel/cw_vocab.py` 词表、`data/` 全部注册表、`knowledge/` 事实常量、screen_info 的 `currency_war_*.yml` 画面档与 `_od_merged.yml` 合并缓存、模板资产 `assets/template/currency_war/`、立绘/首领头像库(character_avatar/boss_avatar)。任一被列入线的申报面时按共享资产层申报。
+3. **共享资产枚举**(影响面申报第二层=共享资产面的 CW 实例):`kernel/cw_vocab.py` 词表、`data/` 全部注册表、`knowledge/` 事实常量、screen_info 的 `currency_war_*.yml` 画面档与 `_od_merged.yml` 合并缓存、模板资产 `assets/template/currency_war/`、立绘/首领头像库(character_avatar/cw_boss_avatar)。任一被列入线的申报面时按共享资产层申报。
 4. **MCP 重启窗**:改 `src/sr_od/` 运行时代码的线,申报第三层(=共享资源面)必带重启标记;重启执行权归编排者,前置确认四步与局间时机 = runtime-ops.md「启动与重启」节。
 5. **影响面申报落位**:全线迭代设计的申报节落 landing.md 首节——模板单一源 = od-dev-run-iteration skill 的 references/iteration-docs.md §3(landing 五节,首节即影响面申报)。

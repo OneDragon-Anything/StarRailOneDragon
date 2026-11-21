@@ -487,7 +487,7 @@ def _classify_node_row(ctx: SrContext, screen: MatLike) -> tuple[list | None, tu
     if not _NODE_TYPE_TEMPLATES:
         return None, (0, 0, 0, 0)
     if _BOSS_TEMPLATES is None:
-        _bd = get_project_root() / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
+        _bd = get_project_root() / 'assets' / 'template' / 'cw_boss_avatar'
         _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
     # 节点行区域单一源 = screen_info「区域-节点条」(boss 识别:
     # yml 扩到含 boss 圆 ~x1354;常量仅兜底,漂移以 yml 为准)
@@ -777,7 +777,7 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
         from sr_od.application.currency_war.obs.cw_node_reader import (
             load_boss_templates,
         )
-        _bd = get_project_root() / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
+        _bd = get_project_root() / 'assets' / 'template' / 'cw_boss_avatar'
         _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
     if not _NODE_TYPE_TEMPLATES:
         return None

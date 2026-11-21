@@ -33,7 +33,7 @@
 
 **恒全采位面1→2→3**:
 
-- **三位面 boss**(每个识别 node 同体执行 `_recognize_current_plane`):点该位面卡(「货币战争-位面详情.按钮-位面卡1..3」;转移证据 = 查看位面判据命中位联动到目标位面——`_selected_plane_no`)→ 点最右 boss 节点(位置先验「首领 = 位面最后节点」;`read_plane_detail_nodes` 动态定位节点圆,节点数随位面/投资策略变,不硬编码)→ 详情条类型名标签验「首领」(`read_detail_node_type_label`;非首领 = 位置先验失效,重试)→ 大图标 SIFT 交叉核对 boss_avatar 模板库(`_read_boss_big_icon`,「货币战争-位面详情.区域-boss大图标」~107px;`obs/cw_node_reader.py::match_boss_sift`;锁态小图 SIFT 特征塌缩认不出,大图标增熵破局)。
+- **三位面 boss**(每个识别 node 同体执行 `_recognize_current_plane`):点该位面卡(「货币战争-位面详情.按钮-位面卡1..3」;转移证据 = 查看位面判据命中位联动到目标位面——`_selected_plane_no`)→ 点最右 boss 节点(位置先验「首领 = 位面最后节点」;`read_plane_detail_nodes` 动态定位节点圆,节点数随位面/投资策略变,不硬编码)→ 详情条类型名标签验「首领」(`read_detail_node_type_label`;非首领 = 位置先验失效,重试)→ 大图标 SIFT 交叉核对 cw_boss_avatar 模板库(`_read_boss_big_icon`,「货币战争-位面详情.区域-boss大图标」~107px;`obs/cw_node_reader.py::match_boss_sift`;锁态小图 SIFT 特征塌缩认不出,大图标增熵破局)。
   **boss 节点两种渲染态**:①头像态——节点 = 红框头像,大图标 SIFT 命中;②**纹章风头像渲染变体**——节点 = 金色纹章风头像图案,图案即 boss 的纹章风头像(boss 身份在屏;游戏侧画面档 = [../../../../game/screens/货币战争-位面详情.md](../../../../game/screens/货币战争-位面详情.md))。模板库缺该风格致 SIFT 未命中,属识别能力缺口;证据帧 = `sr-od-test/screens/货币战争-位面详情/位面详情-纹章风头像-run30.png`。两种态统一同一失败语义:**识别失败 = node 重试,耗尽 = op fail 响亮暴露,无 None/占位/降级分支**(把识别失败降级为 None 违反对账真值纪律;纹章风头像模板采集另行立项前,含该类 boss 的中断恢复对局会响亮失败,属预期失败暴露)。
 - **敌人词缀**:「货币战争-位面详情.区域-词缀横条」(`read_detail_affixes`,位面1 同帧读一次;词缀不随位面卡切换变;空 = 无词缀〔含删尽态有效语义读数〕,上报走写门三分支)。
 - **位面节点带**:该位面全节点预览序列随采随存(`_detail_seqs`,键 = 位面号 1 基;node6 经台账口统一落账)。

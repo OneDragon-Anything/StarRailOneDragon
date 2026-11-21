@@ -111,22 +111,25 @@ BOSS_SIFT_RATIO: float = 2.0
 def load_boss_templates(templates_dir: Path) -> dict[str, tuple]:
     """加载 boss 头像 SIFT 模板库 → ``{boss名: (keypoints, descriptors)}``。
 
-    主源 = 竞争对手图鉴页顶导航圆形头像(``assets/template/currency_war/
-    boss_avatar/*.png``,图鉴 20 公司,从 .debug/images 图鉴采集批
-    裁取;命名 = 图鉴标题 OCR = ``cw_enemy_data.BOSS_MECHANICS`` 规范名);
-    图鉴外的新赛季公司按实机位面详情大图标裁片补采(如 深渊育种科技,
-    模板与实机识别域同渲染,来源差异见各批 commit)。通道:read_image →
-    RGB → GRAY(SIFT 单通道)。
+    主源 = 统一模板库 ``assets/template/cw_boss_avatar/<公司名>/raw.png``
+    (目录制,键 = 公司目录名 = ``cw_enemy_data.BOSS_MECHANICS`` 规范名;
+    对齐 character_avatar 库形态)。raw.png = 原尺度 128px 模板 + alpha 合成
+    实机大图标域底色 RGB(34,30,61)——经 60 帧实机语料回归(22 正命中/38 负
+    零误报)验证的唯一形态,论证与数字见 skills/sr-od-dev-currency-war/design/
+    boss-avatar-library-integration.md。同目录 ``mask.png`` = 透明通道掩码,
+    备后续「忽略透明通道匹配」升级(当前链不消费);``src.png`` = 原始透明底
+    素材存档(溯源)。旧平铺库 ``currency_war/boss_avatar`` 已退役,不再回退。
+    通道:imdecode → GRAY(SIFT 单通道,通道序无关)。
     """
     out: dict[str, tuple] = {}
     sift = cv2.SIFT_create(nfeatures=2000)
-    for p in sorted(templates_dir.glob('*.png')):
+    for p in sorted(templates_dir.glob('*/raw.png')):
         img = cv2_utils_read_rgb_gray(str(p))
         if img is None:
             continue
         kp, des = sift.detectAndCompute(img, None)
         if des is not None and len(kp) >= 4:
-            out[p.stem] = (kp, des)
+            out[p.parent.name] = (kp, des)
     return out
 
 

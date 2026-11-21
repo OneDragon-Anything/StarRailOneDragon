@@ -3,7 +3,7 @@
 职责:在「货币战争-位面详情」屏恒全采三位面情报:
 - **三位面 boss**:每识别 node 点该位面卡 → ``read_plane_detail_nodes``
   动态定位 boss 节点(最右,位置先验)→ 详情条类型名标签验「首领」→
-  大图标 SIFT 交叉核对 boss_avatar 模板库(锁态小图 SIFT 特征坍缩认不出,
+  大图标 SIFT 交叉核对 cw_boss_avatar 模板库(锁态小图 SIFT 特征坍缩认不出,
   大图标增熵破局)。**boss 节点多种渲染态**:图鉴头像态(SIFT 命中)与
   变体渲染(节点=金色纹章图案等)——大图标 SIFT 未命中 = 模板库缺该
   公司/该渲染(图鉴 20 公司外的新赛季公司属此因;深渊育种科技已实机
@@ -206,7 +206,7 @@ class CwScreenPlaneIntel(CwOperation):
         return Point(s.cx + ox, s.cy + oy)
 
     def _read_boss_big_icon(self, plane_no: int) -> str | None:
-        """详情条 boss 大图标 → SIFT 交叉核对 boss_avatar 库 → boss 名 | None。
+        """详情条 boss 大图标 → SIFT 交叉核对 cw_boss_avatar 库 → boss 名 | None。
 
         大图标 area「区域-boss大图标」(~107px,特征 70+ vs 节点小图 ~17);
         未命中 → None(记日志留存证据;SIFT 断层判据防次名撞分)。
