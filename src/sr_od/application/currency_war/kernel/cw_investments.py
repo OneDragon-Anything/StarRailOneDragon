@@ -3461,7 +3461,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     ),
     # ===== 概念股族(id 1001-1016,模式卡 T-48;族展开登记模板 =
     #     GiftGrant(chars_random_immediate=(RandomCharSpec(faction='X', star=1),),
-    #               equips_random_immediate=('简易',)),X = desc【X】直读)=====
+    #               equips_random_immediate=('简易装备',)),X = desc【X】直读)=====
+    # 类别词口径(全族共享):'简易装备' = 装备注册表现役类别词(v4.7 重灌
+    # 后官方 7 类直落 + 派生类「简易装备」——官方分类表 plaza config
+    # equip_category_list 无「简易」类,简易件在官方是合成材料层无独立
+    # 条目,生成器 gen_equip_registry.py 从全部条目的 compose_list 子件
+    # 展开去重派生;旧「简易」类 8 件全部平移进新派生类,另并入旧「特殊」
+    # 类的蓝钻/红钻/垃圾袋 3 件成现值 11 件;卡文「随机简易装备/简易武装」
+    # 同指本池)。
     # ⚠️ **v4.7 换赛季退役声明**:消失档羁绊轴的 10 条概念股(燃血/列车同行/
     # 银河学者/贝洛伯格/仙舟/狼狩/昼之半神/夜之半神/减益/战技点,id 1002/1004/
     # 1005/1006/1008/1009/1010/1011/1014/1016)随羁绊消费点迁移批退役——
@@ -3471,31 +3478,31 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # id 1001 效果原文直读:「追击」= desc【追击】直读(流派名,与羁绊
     # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS);
-    # 简易池 = category '简易' 现值 8 件。
+    # 简易装备池 = category '简易装备' 现值 11 件(类别词口径见上方族模板声明)。
     '追击概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='追击', star=1),),
-                            equips_random_immediate=('简易',)),
+                            equips_random_immediate=('简易装备',)),
     # id 1003 效果原文直读:「能量」= desc【能量】直读(流派名,与羁绊
     # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS);
-    # 简易池 = category '简易' 现值 8 件。
+    # 简易装备池 = category '简易装备' 现值 11 件。
     '能量概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='能量', star=1),),
-                            equips_random_immediate=('简易',)),
+                            equips_random_immediate=('简易装备',)),
     # id 1012 效果原文直读:「击破」= desc【击破】直读(流派名,与羁绊
     # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
     # economy.md 四卡线索名单不含击破,身份零先验,fixed_hypothesis 家族键
-    # 已登记);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
+    # 已登记);简易装备池 = category '简易装备' 现值 11 件;采样域 = 牌库时点过滤
     # (族级裁定 2026-10-28:未解锁专家不入候选;独立条目「姬子·启行」
     # schools 空非本域,勿混淆)。
     '击破概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='击破', star=1),),
-                            equips_random_immediate=('简易',)),
+                            equips_random_immediate=('简易装备',)),
     # id 1013 效果原文直读:「群攻」= desc【群攻】直读(流派羁绊名,与
     # 羁绊注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
     # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
     # economy.md 四卡线索名单不含群攻 = 装备身份零先验,均匀 v0 + 按卡固定
-    # 假说待校准);简易池 = category '简易' 现值 8 件。
+    # 假说待校准);简易装备池 = category '简易装备' 现值 11 件。
     '群攻概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='群攻', star=1),),
-                            equips_random_immediate=('简易',)),
+                            equips_random_immediate=('简易装备',)),
     # —— 邀请族首例(模式卡 T-63;后继邀请卡 T-64..T-82 逐卡套用本行形状,
     # 纯数据行零机制新增)——
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
@@ -3839,31 +3846,33 @@ def _validate_env_gifts() -> None:
                 f"ENV_GIFTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
         for _spec in _grant.chars_random_immediate:
             _validate_random_char_spec('ENV_GIFTS', _name, _spec)
-        # [v4.7 待恢复] 装备注册表换季重灌(官方分类直落,旧「简易/星徽」类词与旧装备
-        # 名判据失效),装备侧哨暂注释——投资域按新分类重建时恢复:①随机装备类别
-        # 池空哨 ②装备名漂移哨 ③'星徽'类别池独立闸(消费面含 cw_gain_effects
-        # ._STRATEGY_RANDOM_EQUIP_GRANTS 星徽行搭便车,单一闸两消费者,恢复勿漏)。
-        # for _cat in _grant.equips_random_immediate:
-        #     if not equips_by_category(_cat):
-        #         raise ValueError(
-        #             f"ENV_GIFTS 随机装备池空({_name!r}):"
-        #             f"category={_cat!r} 过滤后无装备(错字/注册表漂移?)")
-        # for _eq in _grant.equips_immediate:
-        #     if _eq not in EQUIPMENTS:
-        #         raise ValueError(
-        #             f"ENV_GIFTS 装备名漂移({_name!r} 注册表无此装备,"
-        #             f"版本改名?):{_eq!r}")
+        # 装备侧哨三件套(类别词口径 = cw_equipment_data v4.7 现役体系:
+        # 官方 7 类直落 + 派生类「简易装备」,官方分类表无「简易」类,
+        # 派生依据见概念股族模板声明):①随机装备类别池空哨——登记词
+        # 非现役类别(错字/版本改名)时 import 即炸,拦截运行期池空;
+        # ②装备名漂移哨;③'星徽'类别池独立闸。
+        for _cat in _grant.equips_random_immediate:
+            if not equips_by_category(_cat):
+                raise ValueError(
+                    f"ENV_GIFTS 随机装备池空({_name!r}):"
+                    f"category={_cat!r} 过滤后无装备(错字/注册表漂移?)")
+        for _eq in _grant.equips_immediate:
+            if _eq not in EQUIPMENTS:
+                raise ValueError(
+                    f"ENV_GIFTS 装备名漂移({_name!r} 注册表无此装备,"
+                    f"版本改名?):{_eq!r}")
     # 本闸系环境登记首例(劳务派遣合同)所立,消费面含策略侧随机装备支
     # (买彩票经 cw_gain_effects._STRATEGY_RANDOM_EQUIP_GRANTS 星徽行搭
     # 便车——泛化表不另设 import 期闸,沿族既定裁定)——单一闸两消费者,
-    # 环境登记迁移时勿误删本闸。
-    # if not equips_by_category('星徽'):
-    #     raise ValueError(
-    #         "ENV_GIFTS 随机装备类别池空:'星徽' 类别过滤后无装备"
-    #         "(首例登记类别,类别改名致池静默变空 = 注册表漂移)")
+    # 环境登记迁移时勿误删本闸。'星徽' = 现役官方分类直落词(id 3),与
+    # 旧注册表同名保留(成员换血但词未漂移),闸照旧值守。
+    if not equips_by_category('星徽'):
+        raise ValueError(
+            "ENV_GIFTS 随机装备类别池空:'星徽' 类别过滤后无装备"
+            "(首例登记类别,类别改名致池静默变空 = 注册表漂移)")
 
 
-# [v4.7 待恢复] _validate_env_gifts()
+_validate_env_gifts()
 
 
 # ===== 策略卡具名发放登记表(白名单制)=====
