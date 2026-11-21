@@ -28,7 +28,10 @@ CwSelectProtagonist),做完锚定回备战,交回主循环。
   语义 = 优先同卡换点、跨卡取下一候选点如实申报——落位主角随重试漂移,
   v1 固定决策仅约束首发;功能无害:非适配角色放置无阻拦),超限
   round_fail 交外环(CwScreenPartner 脉冲形态:确认是否落地由下一轮
-  验证)。**不消费「按钮-返回备战界面」**(放弃 = 主角未选 = 堵主线
+  验证)。判效双锚过 = 选择落地:按末次抓点槽写 ``aura_slot``
+  (动作上报 ``report_action_aura_select_param`` 单一写函数,与备战帧
+  光标观察同字段互证;抓点落后排越值域跳写交观察收尾)。
+  **不消费「按钮-返回备战界面」**(放弃 = 主角未选 = 堵主线
   持续,fail 交外环如实暴露)。
 """
 from __future__ import annotations
@@ -41,7 +44,11 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_spot_lights import SPOT_LIGHTS
+from sr_od.application.currency_war.kernel.cw_action_report.aura_select import (
+    report_action_aura_select_param,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -122,6 +129,11 @@ class CwScreenAuraSelect(CwOperation):
         # 判效 miss 计数(判效 node 累计,超 VERIFY_RETRY_MAX fail;
         # 实例级,单 op 生命周期)。
         self._verify_misses: int = 0
+        # 末次抓点预览下标(行主序;动作 node 每次进入经 _grab_point_for
+        # 更新,None = 动作未发;选择记账消费——判效过后按它落 aura_slot,
+        # 下标 0-3 = 前排槽 1-4(与 aura_select_preview_xy 坐标系同源申报),
+        # ≥4 = 后排越值域跳写)。
+        self._last_grab_idx: int | None = None
 
     def _normalize_aura_name(self, raw: str) -> str:
         """观察标准化门两段转换(域级单一实现住本 op,机制同
@@ -264,8 +276,27 @@ class CwScreenAuraSelect(CwOperation):
             extra = CwScreenAuraSelect.GRAB_ALT_OFFSET
         elif attempt >= 2:
             idx = min(attempt - 1, len(pts) - 1)
+        self._last_grab_idx = idx
         x, y = pts[idx]
         return Point(int(x) + extra, int(y))
+
+    def _report_aura_slot(self) -> None:
+        """选择记账:判效双锚过后光环归属槽写 logic(动作上报单一函数
+        ``report_action_aura_select_param``;落点 = 末次抓点槽——换抓点
+        重试漂移如实记账,与备战帧光标观察同字段同语义互证)。
+        抓点落后排 = 越前排查值域跳写交观察收尾(现役重试预算内不可达,
+        防御面如实申报);局外(gs 缺席)= 零写,同观察上报口径。"""
+        gs = game_state_from_ctx(self.ctx)
+        if gs is None or self._last_grab_idx is None:
+            return
+        if self._last_grab_idx >= CwScreenAuraSelect.FRONT_SLOTS:
+            log.info('[cw-aura] 末次抓点 idx=%d 落后排,越 aura_slot 前排'
+                     '值域跳写(交下一备战帧观察收尾)', self._last_grab_idx)
+            return
+        report_action_aura_select_param(
+            gs, self._last_grab_idx + 1,
+            sig=ChannelSig(family='logic_action', actor='CwScreenAuraSelect',
+                           screen=_SCREEN, mode='compute'))
 
     @node_from(from_name='动作')
     @operation_node(name='判效')
@@ -281,6 +312,7 @@ class CwScreenAuraSelect(CwOperation):
         aura_gone = not self.round_by_find_area(
             screen, _SCREEN, A_TITLE, crop_first=False).is_success
         if back and aura_gone:
+            self._report_aura_slot()
             return self.round_success('已回备战(判效双锚过,交回主循环)',
                                       wait=2.0)
         self._verify_misses += 1

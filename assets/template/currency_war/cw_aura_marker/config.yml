@@ -1,0 +1,6 @@
+sub_dir: currency_war
+template_id: cw_aura_marker
+template_name: 备战前排角色头顶主角光环蓝色光标(光环归属可视标记;紧裁自帧 20261121_191638 前排-1 顶带)
+template_shape: rectangle
+auto_mask: true
+point_list: []

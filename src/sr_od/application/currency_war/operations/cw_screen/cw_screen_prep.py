@@ -70,6 +70,9 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
+from sr_od.application.currency_war.obs.cw_aura_cursor import (
+    read_front_aura_slot,
+)
 from sr_od.application.currency_war.obs.cw_faction_obs import (
     compare_factions,
     read_displayed_factions,
@@ -426,6 +429,17 @@ class CwScreenPrep(CwOperation):
                     _gs_obs.carry(_gs_obs.deployed,
                                   frame=_dep_frame,
                                   sig=_dep_carried_sig)
+                # 主角光环光标观察写端(备战 heavy 帧顺带读;光环归属标记,
+                # 用户设计裁定 = 备战帧读前排头顶蓝标取数走状态,不点左上角
+                # 角落):识别单一实现 = obs/cw_aura_cursor(识别器 extras
+                # 同源消费),命中才写(读不到不写保旧值,全库纪律);商店
+                # 开态牌行盖住前排卡与合成特效窗闪光盖标记两门跳读,失读
+                # 语义与 bench/deployed 写端同族。
+                if not obs.shop_open and not is_merge_effect_window(screen):
+                    _aura_slot = read_front_aura_slot(self.ctx, screen)
+                    if _aura_slot is not None:
+                        _gs_obs.observe(_gs_obs.aura_slot, _aura_slot,
+                                        sig=_prep_sig)
                 # 备战帧现行链写端:slots 由 observe_full
                 # heavy 回传(原弃槽点改造),写状态容器在 director 侧(单写者
                 # 原则);逐格映射/写门/基线回填语义见函数 docstring。

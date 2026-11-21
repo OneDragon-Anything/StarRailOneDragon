@@ -66,6 +66,9 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _area_rect,
     _ocr,
 )
+from sr_od.application.currency_war.obs.cw_aura_cursor import (
+    read_front_aura_slot,
+)
 from sr_od.application.currency_war.obs.cw_equipment import (
     ensure_equip_sift_templates,
     ensure_equip_tm_templates,
@@ -149,6 +152,7 @@ class _BattlePrepState:
     bench: BenchView | None        # 备战席状态容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
     armory_boxes: list[dict] | None      # 备战栏简易武装箱槽位(read_armory_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;首见机制)
+    aura_slot: int | None                # 前排主角光环光标槽位(read_front_aura_slot 带内 TM;光环归属可视标记,1 基前排物理槽;未命中→None)
     reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;首见机制)
     rail_shop: dict | None           # 银轨商店入口域(_read_rail_shop;{present,cx,cy,open_cx,open_cy,balance,buyable};模板/画面档缺失→None 整键;两态都返回,见 PREP_EXTRAS_DOC)
 
@@ -343,7 +347,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     """
     omit_keys = frozenset() if full_read else frozenset({
         'front_line', 'back_line', 'deploy_count', 'deploy_cap',
-        'hp', 'reward_ores', 'owned_equips',
+        'hp', 'reward_ores', 'owned_equips', 'aura_slot',
     })
     # 装备(slot_idx → 装备名;先读,再注入 Unit.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
     # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
@@ -439,6 +443,9 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         armory_boxes=([
             {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_armory_boxes(ctx, image)
         ] or None),
+        # 光环光标槽位:商店开态整键省略(同 front_line 口径,牌行盖住
+        # 前排卡不可靠),full_read 才读(画面 op 观察写端同源单一实现)。
+        aura_slot=(read_front_aura_slot(ctx, image) if full_read else None),
         reward_ores=([
             {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)
         ] or None) if full_read else None,
@@ -490,6 +497,10 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=槽 rect 几何中心'
                     '(slot = 备战栏物理槽位 1 基;开箱点击坐标另走建档「武装箱开启位-N」直查,'
                     '本坐标供交叉定位);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
+    'aura_slot': '前排主角光环光标槽位(int|None;备战前排头顶蓝色雪花光标 = 主角光环归属可视标记,'
+                 '带内 TM 匹配命中槽映射 1 基前排物理槽;未命中→None〔无光环/主角在后排未采样形态〕;'
+                 '开商店画面整键省略(同 front_line 口径)。与 game state aura_slot 同源单一实现'
+                 '(obs/cw_aura_cursor),选择记账(CwScreenAuraSelect 落账)互证',
     'reward_ores': '奖励面板晶矿 list(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r},'
                       'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None;开商店画面整键省略(晶矿在商店画面不可见,检出全是商品图标误报)',
     'rail_shop': '左侧开拓银轨商店入口域 dict {present, cx, cy, open_cx, open_cy, balance, buyable}'

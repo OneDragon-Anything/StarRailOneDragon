@@ -239,6 +239,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'aura_select_opts': 1,     # 主角光环卡名固定二槽(str;左=idx 0;观察标准化门适用,cw_spot_lights 注册表)
     'aura_select_opts_xy': 1,  # 主角光环卡中心坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
     'aura_select_preview_xy': 1,  # 主角光环预览卡拖拽源点伴随域(行主序;选择坐标观察上报,op-layer.md §1.1)
+    'aura': 1,                 # 主角光环归属标记槽位(aura_slot;备战前排蓝色
+                               # 光标观察 + 光环选择记账双写端。持久局面事实
+                               # 非画面附加载荷,不入 _PAYLOAD_DOMAINS——光环
+                               # 跨帧存续,离屏清值语义不适用)
     'expert_invite': 2,        # 专家邀请函选卡载体(ExpertInvitePayload;域版本 2 =
                                # payload 扩选项坐标字段 card_points/cash_point
                                # (选择坐标观察上报,op-layer.md §1.1);版本 1 =
@@ -3610,6 +3614,27 @@ class GameState:
     aura_select_opts: Field[list[str] | None] = field(default_factory=Field)
     aura_select_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
     aura_select_preview_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+
+    # —— 主角光环归属标记(备战前排蓝色光标;用户设计裁定:左上角
+    #    奇遇/光环角落太小不建档识别,光环在谁头上 = 备战光标观察 +
+    #    选择记账双写端取数走状态)——
+    # [索引定义] aura_slot:
+    # 值 = 前排物理槽号,1 基(坐标系 = DeployedView.front_slots 下标 + 1 =
+    #   建档「货币战争-备战.前排-N」同序,布局恒稳零换算);
+    # 取值时机 = 观察期快照(备战 heavy 观察帧顺带读);None = 未观察
+    #   (开局初值)/失读(读不到不写,沿用旧值纪律同全库);
+    # 写入端 = ①观察:CwScreenPrep heavy 观察顺带读(识别单一实现 =
+    #   obs/cw_aura_cursor,备战识别器 extras 同源消费);②选择记账:
+    #   CwScreenAuraSelect 判效双锚过后按末次拖拽落点槽写 logic_action
+    #   (kernel/cw_action_report/aura_select 单一写函数;重试换抓点漂移
+    #   落后排 = 越本域值域跳写,交下一备战观察收尾);
+    # 识别域边界(登记后续口):识别面 = 前排四槽头顶带(用户裁定取舍;
+    #   主角落后排形态未采样——识别不到保旧值,可能携带跨位面陈值);
+    #   接管局真值补采 = 点开左上角奇遇/光环角落详情面板识别(面板形态
+    #   候实机探索,登记为后续任务口,本注释即挂账载体);
+    # 值域守卫 = 动作上报函数校验 1..前排容量,域外显式报错禁静默;
+    # sim 无画面识别不建模,恒 None。
+    aura_slot: Field[int | None] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(事件选择:chosen_* 由选择 handler 单次逻辑写入)——
     # (遭遇例外,遭遇扩围批:chosen_encounter 写端 = 动作侧即时上报
