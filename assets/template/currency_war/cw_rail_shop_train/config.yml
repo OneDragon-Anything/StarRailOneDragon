@@ -1,0 +1,6 @@
+sub_dir: currency_war
+template_id: cw_rail_shop_train
+template_name: 银轨商店横幅列车图案(入口按钮区在场识别锚)
+template_shape: rectangle
+auto_mask: true
+point_list: []

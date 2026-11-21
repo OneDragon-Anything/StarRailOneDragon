@@ -21,17 +21,25 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 库缺失→三字段 None。装备经 ``read_row_equipped`` 读 below-avatar icon,按 slot 注入 Unit.equips
 (frozen replace 新构造;备战席无 below icon→bench unit equips 恒 [])。
 
-**银轨商店入口(``rail_shop``)**:备战画面左侧上下文入口的「在场性 + 坐标 + 余额 + 胶囊在场性」。
-徽记带内 TM 匹配(:func:`find_rail_shop_badge` 纯 CV 核心,搜索域 = 画面档
-「标识-银轨商店徽记」带状 pc_rect —— 徽记 y 随羁绊面板布局浮动,必须带内全搜而非定点)
-+ 横幅/胶囊带 OCR 余额与胶囊在场性(纯读,模板模块级幂等缓存)。三子状态(备战 / 商店面板
-开启 / 消费回备战)徽记都在场;商店未开张(开拓银轨 <2)不在场。横幅余额在商店面板开启态
-被面板盖住 → OCR 无锚 → None(正确降级);胶囊 buyable 只回报胶囊在场性(游戏内触发
-语义未收敛:现假设 = 商品池刚刷新出余额可负担的新商品,已实测否定「恒定可负担指示」,
+**银轨商店入口(``rail_shop``)**:备战画面左侧上下文入口的「在场性 + 在场定位 + 开店
+点击点 + 余额 + 胶囊在场性」。横幅左段**列车图案**带内 TM 匹配(:func:`find_rail_shop_train`
+纯 CV 核心,搜索域 = 画面档「标识-银轨商店列车图案」带状 pc_rect —— 横幅 y 随羁绊
+面板布局浮动,必须带内全搜而非定点)作在场识别锚;开店点击点 = 横幅「打开商店」
+文本 OCR 锚中心(:func:`parse_rail_shop_banner`,横幅 = 入口按钮区,点文本即开面板;
+菱形徽记锚定羁绊面板行位置浮动,不可当点击锚)—— 用户现场指导定谳:识别对列车图案
+做模板匹配、开店点「打开商店」文本,别点菱形徽记。横幅带**先裁后 OCR 且 x 下限
+排除列车图案**(含图案的宽带全图/先裁路径均漏检余额小字行「×N」、窄带两行全读出,
+余额读数的生面前提)。三子状态(备战 /
+商店面板开启 / 消费回备战)备战态横幅在场;商店未开张(开拓银轨 <2)不在场。商店
+面板开启态横幅被面板盖住 → TM/OCR 无锚 → present=False/None(正确降级;该画面
+不产 extras,识别面无消费)。胶囊 buyable 只回报胶囊在场性(游戏内触发语义未收敛:
+现假设 = 商品池刚刷新出余额可负担的新商品,已实测否定「恒定可负担指示」,
 待采样收敛 —— 见 ``PREP_EXTRAS_DOC``),False 态不产出(「确无胶囊」与「OCR 失读」
 不可区分,统一 None)。OCR 端到端依赖 ctx,单测覆盖不到 —— 由实机 / 离线
-analyze 验证兜底;徽记纯 CV 核心与余额/在场性解析纯函数有 fixture 回归
-(测试仓 ``test_battle_prep_recognizer.py``)。
+analyze 验证兜底;列车图案纯 CV 核心与横幅/胶囊解析纯函数有 fixture 回归
+(测试仓 ``test_battle_prep_recognizer.py``)。开拓商店浮层的**收店**点击仍锚
+菱形徽记(画面档「标识-银轨商店徽记」,浮层态徽记在场而横幅被盖,唯一稳定锚;
+见 ``cw_toggle_shop_panel``)。
 
 ⚠️ **可靠性标注**:立绘库 ``currency_war/character_avatar``(官方 plaza 烘焙)实测可用 —— D-22
 (手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 交叉核对持平(14 vs 15,一致 13);实机对局实证:
@@ -142,7 +150,7 @@ class _BattlePrepState:
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
     armory_boxes: list[dict] | None      # 备战栏简易武装箱槽位(read_armory_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;首见机制)
     reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;首见机制)
-    rail_shop: dict | None           # 银轨商店入口域(_read_rail_shop;{present,cx,cy,balance,buyable};模板/画面档缺失→None 整键;两态都返回,见 PREP_EXTRAS_DOC)
+    rail_shop: dict | None           # 银轨商店入口域(_read_rail_shop;{present,cx,cy,open_cx,open_cy,balance,buyable};模板/画面档缺失→None 整键;两态都返回,见 PREP_EXTRAS_DOC)
 
 
 def _read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
@@ -163,15 +171,22 @@ def _read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None
 
 # ===== 银轨商店入口域(rail_shop)=====
 
-# 徽记 TM 匹配阈值(与画面档「标识-银轨商店徽记」template_match_threshold 同口径)。
-# 分离度:商店开张三态(备战/商店面板开启/消费回备战)存档帧自帧命中 1.0,
-# 商店未开张帧(开拓银轨<2)带内最高 0.241(标定与回归:测试仓 test_battle_prep_recognizer.py)。
-_RAIL_BADGE_TM_THR: float = 0.7
+# 列车图案 TM 匹配阈值(与画面档「标识-银轨商店列车图案」template_match_threshold
+# 同口径)。分离度(带 (325,250,500,480) 内存档帧实测):备战态命中 0.9998-1.0;
+# 商店未开张帧(开拓银轨<2)最高 0.167;开拓商店面板开启帧 0.518(面板盖住横幅、
+# 仅左缘窄条露出——该画面不产 extras,识别面无消费,阈值仍留 0.18 余量)。
+# 标定与回归:测试仓 test_battle_prep_recognizer.py。
+_RAIL_TRAIN_TM_THR: float = 0.7
 
-# 横幅「打开商店 ×N」OCR 搜索带(1080p x1,y1,x2,y2)。横幅 y 随局浮动(徽记同因浮动,
-# 建档 area 即因此用带状域),带覆盖浮动域;x 下限 330 > 徽记带右缘 310,x 上限 660 <
-# 前排-1 卡左缘 677 —— 带内唯一文本源即横幅自身,不引入徽记/卡面数字噪声。
-_RAIL_BANNER_RECT: tuple[int, int, int, int] = (330, 270, 660, 470)
+# 横幅「打开商店 ×N」OCR 搜索带(1080p x1,y1,x2,y2),**先裁后 OCR**(crop_first=
+# True:全图识别路径漏检小字行,先裁路径可读——余额读数的生面前提;弃 OCR 缓存,
+# 本域每帧恰一次横幅 OCR,可接受)。x 下限 495 **必须排除列车图案**(图案右缘 480):
+# 含图案的宽带实测漏检余额小字行「×0」、排除后锚与余额两行全读出(检测干扰实证,
+# 校准帧 RGB 管线离线复验);x 上限 660 < 前排-1 卡左缘 677。y 域覆盖横幅浮动域
+# (入口指示组锚定羁绊面板布局,见玩家卡「货币战争-备战-开拓商店」入口节);
+# 带内唯一文本源即横幅锚与余额行,不引入面板/卡面数字噪声。校准帧实测锚与余额行
+# 均在带内:「打开商店」中心 (550,283)、「×N」数字中心 (582,309)。
+_RAIL_BANNER_RECT: tuple[int, int, int, int] = (495, 270, 660, 470)
 
 # 「有商品可购买」胶囊条 OCR 搜索带(1080p x1,y1,x2,y2)。胶囊 y 随局浮动(两局实测:
 # 一局紧贴横幅下方 y≈345-375,另一局 y≈445-470)→ 带覆盖两实测域(330-478);
@@ -182,37 +197,40 @@ _RAIL_BANNER_RECT: tuple[int, int, int, int] = (330, 270, 660, 470)
 # (端到端 OCR 依赖 ctx 单测覆盖不到,离线 analyze 验证兜底)。
 _RAIL_CAPSULE_RECT: tuple[int, int, int, int] = (330, 330, 660, 478)
 
-_rail_badge_gray: MatLike | None = None
-_rail_badge_loaded: bool = False
+_rail_train_gray: MatLike | None = None
+_rail_train_loaded: bool = False
 
 
-def _get_rail_badge_gray() -> MatLike | None:
-    """加载开拓银轨商店入口徽记 TM 模板灰度图(模块级缓存,幂等,缺文件 → None)。
+def _get_rail_train_gray() -> MatLike | None:
+    """加载银轨商店横幅列车图案 TM 模板灰度图(模块级缓存,幂等,缺文件 → None)。
 
-    模板 = 实帧裁片 49×49 徽记(assets/template/currency_war/cw_rail_shop_badge/raw.webp,
-    与画面档「标识-银轨商店徽记」template_id 同源)。加载手法同
+    模板 = 实帧裁片 128×62 列车图案(assets/template/currency_war/cw_rail_shop_train/
+    raw.webp,与画面档「标识-银轨商店列车图案」template_id 同源)。加载手法同
     func:`cw_identity_obs._get_bookcard_gray`(并发安全:模块级只读模板缓存)。
     """
-    global _rail_badge_gray, _rail_badge_loaded
-    if not _rail_badge_loaded:
-        _rail_badge_loaded = True
+    global _rail_train_gray, _rail_train_loaded
+    if not _rail_train_loaded:
+        _rail_train_loaded = True
         p = (get_project_root() / 'assets' / 'template' / 'currency_war'
-             / 'cw_rail_shop_badge' / 'raw.webp')
+             / 'cw_rail_shop_train' / 'raw.webp')
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
-        _rail_badge_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
-    return _rail_badge_gray
+        _rail_train_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
+    return _rail_train_gray
 
 
-def find_rail_shop_badge(screen: MatLike, rect: Rect) -> tuple[float, int, int] | None:
-    """纯 CV 核心:徽记带内 TM 匹配 → ``(score, cx, cy)`` | None(离线可测,无 ctx 依赖)。
+def find_rail_shop_train(screen: MatLike, rect: Rect) -> tuple[float, int, int] | None:
+    """纯 CV 核心:列车图案带内 TM 匹配 → ``(score, cx, cy)`` | None(离线可测,无 ctx 依赖)。
 
-    徽记 x 恒定、y 随羁绊面板布局浮动 → 识别必须带内全搜而非定点(搜索域 = 画面档
-    「标识-银轨商店徽记」带状 pc_rect)。命中判定 score ≥ ``_RAIL_BADGE_TM_THR``
-    (与画面档阈值同口径);cx/cy = 匹配中心(1080p 绝对坐标,点它打开商店)。
+    横幅(入口按钮区)左段的列车图案 = 静态渲染图形,作**在场识别锚**;横幅 y 随局
+    浮动 → 识别必须带内全搜而非定点(搜索域 = 画面档「标识-银轨商店列车图案」带状
+    pc_rect)。命中判定 score ≥ ``_RAIL_TRAIN_TM_THR``(与画面档阈值同口径);
+    cx/cy = 匹配中心(1080p 绝对坐标,**在场定位用,不是点击点**——开店点击 =
+    「打开商店」文本锚,见 :func:`parse_rail_shop_banner`;菱形徽记锚定羁绊面板行、
+    位置浮动,不可当开店锚)。
     灰度转换与模板加载同 func:`cw_identity_obs.find_bookcards` 手法
     (模板与画面同权重转灰度,相对匹配一致)。
     """
-    tm = _get_rail_badge_gray()
+    tm = _get_rail_train_gray()
     if tm is None:
         return None
     gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
@@ -221,29 +239,40 @@ def find_rail_shop_badge(screen: MatLike, rect: Rect) -> tuple[float, int, int] 
         return None
     _, max_val, _, max_loc = cv2.minMaxLoc(
         cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED))
-    if max_val < _RAIL_BADGE_TM_THR:
+    if max_val < _RAIL_TRAIN_TM_THR:
         return None
     return (max_val, rect.x1 + max_loc[0] + tm.shape[1] // 2,
             rect.y1 + max_loc[1] + tm.shape[0] // 2)
 
 
-def _parse_rail_shop_balance(texts: list[str]) -> int | None:
-    """横幅带 OCR 文本 → 列车币余额(锚「打开商店」防带外面板文本误配)。
+def parse_rail_shop_banner(results: list) -> tuple[int | None, int | None, int | None]:
+    """横幅带 OCR 结果 → ``(balance, open_cx, open_cy)``(纯函数,离线可测)。
 
-    锚条目自带数字直接取;横幅两行渲染(「打开商店」/「×N」分行)时取锚后第一条数字。
-    无锚(横幅不在场;商店面板开启态横幅被面板盖住)→ None(正确降级,不伪造)。
+    ``results`` 元素需有 ``data`` 与 ``center`` 属性(框架 :class:`OcrMatchResult`
+    即满足;单测以同属性对象构造)。锚 = 「打开商店」文本条目:
+
+    - ``open_cx/open_cy`` = 锚条目 bbox 中心(1080p 绝对坐标)= **开店点击点**
+      (横幅 = 入口按钮区,点文本即开面板);
+    - ``balance`` = 锚条目自带数字;两行渲染(「打开商店」/「×N」分行)时取锚后
+      第一条数字。
+
+    无锚(横幅不在场;商店面板开启态横幅被面板盖住)→ ``(None, None, None)``
+    (正确降级,不伪造);锚在场但数字缺失 → ``(None, open_cx, open_cy)``
+    (点击点与余额独立降级)。
     """
-    for i, t in enumerate(texts):
-        if '打开商店' in t:
-            m = re.search(r'\d+', t)
+    for i, r in enumerate(results):
+        if '打开商店' not in (r.data or ''):
+            continue
+        c = r.center
+        m = re.search(r'\d+', r.data)
+        if m is not None:
+            return int(m.group()), c.x, c.y
+        for r2 in results[i + 1:]:
+            m = re.search(r'\d+', r2.data or '')
             if m is not None:
-                return int(m.group())
-            for t2 in texts[i + 1:]:
-                m = re.search(r'\d+', t2)
-                if m is not None:
-                    return int(m.group())
-            return None
-    return None
+                return int(m.group()), c.x, c.y
+        return None, c.x, c.y
+    return None, None, None
 
 
 def _parse_rail_shop_buyable(texts: list[str]) -> bool | None:
@@ -262,32 +291,35 @@ def _parse_rail_shop_buyable(texts: list[str]) -> bool | None:
 
 
 def _read_rail_shop(ctx: SrContext, screen: MatLike) -> dict | None:
-    """银轨商店入口域(纯读)→ dict {present, cx, cy, balance, buyable} | None。
+    """银轨商店入口域(纯读)→ dict {present, cx, cy, open_cx, open_cy, balance, buyable} | None。
 
     - 模板 / 画面档缺失 → None(整键,同「templates 未加载→None」惯例);
-    - 徽记未命中(present=False)→ balance/buyable 恒 None:横幅与胶囊是入口在场态
+    - 列车图案未命中(present=False)→ 其余字段恒 None:横幅与胶囊是入口在场态
       的配套指示(商店未开张时一并缺席),入口不在场短路两次 OCR,
       也避免「present=False 但 balance 有值」的矛盾态;
-    - balance:商店面板开启态横幅被面板盖住 → 带内 OCR 无锚 → None(正确降级);
-    - OCR 端到端(balance/buyable 的带内 OCR 拼装)依赖 ctx,单测覆盖不到 ——
-      由实机 / 离线 analyze 验证兜底;徽记纯 CV 核心与两个解析纯函数有 fixture 回归
-      (测试仓 ``test_battle_prep_recognizer.py``)。
+    - balance/open_cx/open_cy:商店面板开启态横幅被面板盖住 → 带内 OCR 无锚 →
+      None(正确降级);
+    - OCR 端到端(balance/open 点的带内 OCR 拼装)依赖 ctx,单测覆盖不到 ——
+      由实机 / 离线 analyze 验证兜底;列车图案纯 CV 核心与横幅/胶囊解析纯函数有
+      fixture 回归(测试仓 ``test_battle_prep_recognizer.py``)。
     """
-    if _get_rail_badge_gray() is None:
+    if _get_rail_train_gray() is None:
         return None
-    badge_rect = _area_rect(ctx, '标识-银轨商店徽记')
-    if badge_rect is None:
+    train_rect = _area_rect(ctx, '标识-银轨商店列车图案')
+    if train_rect is None:
         return None
-    hit = find_rail_shop_badge(screen, badge_rect)
+    hit = find_rail_shop_train(screen, train_rect)
     if hit is None:
         return {'present': False, 'cx': None, 'cy': None,
+                'open_cx': None, 'open_cy': None,
                 'balance': None, 'buyable': None}
     _, cx, cy = hit
-    balance = _parse_rail_shop_balance(
-        [r.data or '' for r in _ocr(ctx, screen, Rect(*_RAIL_BANNER_RECT))])
+    balance, open_cx, open_cy = parse_rail_shop_banner(
+        _ocr(ctx, screen, Rect(*_RAIL_BANNER_RECT), crop_first=True))
     buyable = _parse_rail_shop_buyable(
         [r.data or '' for r in _ocr(ctx, screen, Rect(*_RAIL_CAPSULE_RECT))])
     return {'present': True, 'cx': cx, 'cy': cy,
+            'open_cx': open_cx, 'open_cy': open_cy,
             'balance': balance, 'buyable': buyable}
 
 
@@ -460,16 +492,20 @@ PREP_EXTRAS_DOC: dict[str, str] = {
                     '本坐标供交叉定位);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
     'reward_ores': '奖励面板晶矿 list(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r},'
                       'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None;开商店画面整键省略(晶矿在商店画面不可见,检出全是商品图标误报)',
-    'rail_shop': '左侧开拓银轨商店入口域 dict {present, cx, cy, balance, buyable}'
-                 '(徽记带内 TM 匹配 ≥0.7 + 横幅/胶囊带 OCR;两态都返回,不进开商店省略清单)。'
-                 'present=徽记在场(商店开张指示:开拓银轨≥2 开张,备战/商店面板开启/消费回备战三态都在场;'
-                 '银轨<2 商店未开张→False);cx/cy=徽记匹配中心(1080p 绝对坐标,点它打开商店;不在场→None);'
-                 'balance=横幅「打开商店 ×N」列车币余额(OCR 正则锚「打开商店」;商店面板开启态横幅被面板盖住→None 正确降级;'
-                 '入口不在场→None);buyable=「有商品可购买」黄胶囊条在场性(OCR 到→True,带内未读到→None;'
+    'rail_shop': '左侧开拓银轨商店入口域 dict {present, cx, cy, open_cx, open_cy, balance, buyable}'
+                 '(横幅列车图案带内 TM 匹配 ≥0.7 + 横幅/胶囊带 OCR;两态都返回,不进开商店省略清单)。'
+                 'present=列车图案在场(商店开张指示:开拓银轨≥2 开张;银轨<2 商店未开张→False);'
+                 'cx/cy=列车图案匹配中心(1080p 绝对坐标,**在场定位用,不是点击点**;不在场→None);'
+                 'open_cx/open_cy=横幅「打开商店」文本 OCR 锚中心(**开店点击点**:横幅 = 入口按钮区,'
+                 '点文本即开面板;菱形徽记锚定羁绊面板行、位置浮动,别当开店点击目标;OCR 无锚→None,'
+                 '此时无可靠开店点击点);balance=「×N」开拓力余额(横幅带先裁后 OCR 且 x 下限'
+                 '排除列车图案——含图案宽带实测漏检小字行;商店面板开启态横幅被面板盖住→None 正确降级;'
+                 '入口不在场→None);'
+                 'buyable=「有商品可购买」黄胶囊条在场性(OCR 到→True,带内未读到→None;'
                  '⚠️ 游戏语义未收敛:现假设=商品池刚刷新出余额可负担的新商品,已实测否定「恒定可负担指示」'
                  '(同局多帧在场/缺席与余额-可负担性不相关),待采样收敛,勿当「现在买得起」用;'
                  'False 不产出:「确无胶囊」与「OCR 失读」不可区分,消费方按「未知」处理)。'
-                 '模板/画面档缺失→整键 None。徽记 y 随羁绊面板布局浮动,识别为带内全搜',
+                 '模板/画面档缺失→整键 None。横幅 y 随局浮动,识别为带内全搜',
     'xp_progress': '经验面板「N/M」进度 [已攒, 升级所需](读不到→None)',
     'levelup_cost': '购买经验按钮价格(int 金币;读不到→None)',
 }

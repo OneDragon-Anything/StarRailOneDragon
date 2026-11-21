@@ -21,8 +21,10 @@ from sr_od.context.sr_context import SrContext
 #: (备战/开商店)各建同名 area,矩形一致,op 按当前画面档取用)。
 _TOGGLE_AREA: str = '按钮-商店开关'
 
-#: 开拓商店收店徽记 area(与备战档同名同构:带状搜索域 + 模板 cw_rail_shop_badge;
-#: 开拓档新建同名 area 供本 op 取用,非 id_mark 不进画面精准判定面)。
+#: 开拓商店收店徽记 area(仅开拓画面档所有:带状搜索域 + 模板 cw_rail_shop_badge。
+#: 收店态(浮层开启)面板盖住横幅、徽记是唯一完整在场的入口锚,故收店仍锚徽记——
+#: 开店入口识别/点击已改走横幅列车图案 +「打开商店」文本锚
+#:(battle_prep_recognizer rail_shop 域),与本 op 分域不共用)。
 _BADGE_AREA: str = '标识-银轨商店徽记'
 
 

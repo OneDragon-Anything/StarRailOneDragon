@@ -178,11 +178,17 @@ def prep_anchors_hit(op, screen) -> bool:
                                      crop_first=False).is_success)
 
 
-def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None) -> list:
-    """对 screen 的 rect 区域 OCR(rect None → [])。"""
+def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None,
+         crop_first: bool = False) -> list:
+    """对 screen 的 rect 区域 OCR(rect None → [])。
+
+    ``crop_first=True`` 走先裁剪再识别路径:小字行全图识别路径漏检、先裁路径可读时
+    用(先例 = 银轨商店横幅「×0」余额行);弃 OCR 缓存,调用方按每帧调用次数取舍。
+    """
     if rect is None:
         return []
-    return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
+    return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect,
+                                               crop_first=crop_first)
 
 
 #: 非 overlay 上层屏残余段(两段式第二段;设计终版定案 2):
