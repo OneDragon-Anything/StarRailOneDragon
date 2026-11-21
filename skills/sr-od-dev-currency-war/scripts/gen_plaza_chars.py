@@ -7,7 +7,7 @@
 产出(只写 assets/docs 产物与 .debug 片段,**不写任何 src 文件**):
   1. docs/game/currency_war/data/characters/<规范名>.md — 每角色一档(同名多档合并,
      档位节列出全部官方 id 与费用;技能星级效果全文/trait 官方描述);
-  2. 官方立绘模板库 assets/template/currency_war/character_avatar/(立绘图源 =
+  2. 官方立绘模板库 assets/template/cw_character_avatar/(立绘图源 =
      plaza 接口 role_list[].big_icon 烘焙;**角色粒度单模板**——同名多档共用一目录,
      官方多档 icon URL 全同视觉同图,底色取起始档 rarity);
   3. 官方装备模板库 equip_plaza(混合:plaza 进阶 art + 手工简易/特权);
@@ -43,7 +43,7 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))  # 供掉出 diff 报告 import 现役注册表(cw_chars)
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
-TPL_DIR = REPO / "assets/template/currency_war/character_avatar"  # 官方立绘模板库(替代手采库)
+TPL_DIR = REPO / "assets/template/cw_character_avatar"  # 官方立绘模板库(替代手采库)
 EQUIP_TPL_DIR = REPO / "assets/template/currency_war/equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
 PLAZA_DIR = REPO / ".debug/game_data/currency_war/plaza"  # 拉取缓存与生成片段统一落点(与 plaza_fetch.OUT_DIR 同目录)
 

@@ -1,7 +1,7 @@
 """货币战争角色识别:SIFT 特征匹配模板库(纯 CV;库由调用方传 ``avatar_dir``,生产用立绘库)。
 
 **生产实际用的库**:``deploy_bench._get_templates`` 等加载
-``assets/template/currency_war/character_avatar``(**官方立绘库**,plaza big_icon 烘焙,72 角色,
+``assets/template/cw_character_avatar``(**官方立绘库**,plaza big_icon 烘焙,72 角色,
 中文规范名 key,含变体分开取:姬子/姬子·启行、丹恒·饮月/丹恒·腾荒、刃/千冶·刃、银狼/银狼LV.999;
 ``skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py`` 生成)。``resolve_char_name``
 对中文 key 直接返(立绘库),对英文 id 映射(脸库),两库兼容。旧手采库 ``character_cw_portrait``

@@ -1712,8 +1712,8 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
 # 3^(星级−1),1★=原费、2★=×3、3★=×9;用户定稿:数字可为两位,
 # 如饮月 2★=6、4费2★=12)。旧链 cost 从 roster 查表派生 → 2星/3星直出按 1星
 # 记错星级;改读画面数字即可闭环(识别缺口条,落地)。
-#: 数字模板目录(assets/template/ 下子路径)。
-_SHOP_COST_TMPL_DIR: str = 'currency_war/shop_cost'
+#: 数字模板目录(assets/template/ 下子路径,根级 cw_ 前缀)。
+_SHOP_COST_TMPL_DIR: str = 'cw_shop_cost'
 #: 费用 area 名后缀(screen_info「货币战争-备战-开商店」屏,商店牌-N-费用)。
 _SHOP_COST_AREA_SUFFIX: str = '-费用'
 #: TM 采信阈值(二值掩码 TM_CCOEFF_NORMED)。标定:正确数字最低 0.78(「1」字形
@@ -1742,7 +1742,7 @@ def _load_cost_digit_templates() -> dict[int, MatLike]:
     """加载费用数字模板(模块级缓存;目录缺 → {})。
 
     模板 = 白色数字字形的二值掩码(白 ≥235 全通道,最大连通域紧裁),从存档
-    开商店帧原 PNG 裁(来源与裁法见 assets/template/currency_war/shop_cost/;
+    开商店帧原 PNG 裁(来源与裁法见 assets/template/cw_shop_cost/;
     字体固定,跨帧位置稳定)。**样本覆盖 = 数字 1-4**(存档 13 帧徽章数字
     只出现过 1/2/3/4;5-9 无样本):字形模板只作**一级快路**(全部字形皆
     1-4 可分类时直出),模板外的字形组合走二级 OCR(见 ``read_shop_card_cost``)
@@ -1889,7 +1889,7 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
 #   试用侧(标签在场目验) 0.750-1.000,非试用侧(正卡/入口帧)
 #   max 0.479,「标签抹除合成」帧 0.602——阈值 0.68 两侧余量 ≥0.07。
 #   存证帧单帧 0.999 系模板同源帧分数,不代表跨卡渲染方差,不作定阈依据。
-_TRIAL_BADGE_TM_PATH = ('currency_war', 'cw_shop_trial_badge', 'raw.webp')
+_TRIAL_BADGE_TM_PATH: str = 'cw_shop_trial_badge/raw.webp'
 #: 标签搜索带(相对「商店牌-N」rect 的右上角子区偏移 (x1,y1,x2,y2)):
 #: 标签实测 bbox 全图 (1639,122)-(1680,147)(红连通域),相对槽5 rect
 #: (1452,70)-(1680,260) = (187,52)-(228,77);搜索带 (150,30)-(228,100)
@@ -1905,16 +1905,15 @@ _trial_badge_loaded: bool = False
 def _get_trial_badge_gray() -> MatLike | None:
     """加载试用标签 TM 模板灰度图(模块级缓存,幂等,缺文件 → None)。
 
-    模板 = 实帧裁片 45×34 红标签(assets/template/currency_war/
-    cw_shop_trial_badge/raw.webp,无损 webp;来源帧 = 第六跑停机存证帧
+    模板 = 实帧裁片 45×34 红标签(assets/template/cw_shop_trial_badge/
+    raw.webp,无损 webp;来源帧 = 第六跑停机存证帧
     .debug/images/stop_hook_shop_unknown_card_1795251951514.png 槽5)。
     加载手法同 ``cw_identity_obs`` 模块级只读模板缓存惯例。
     """
     global _trial_badge_gray, _trial_badge_loaded
     if not _trial_badge_loaded:
         _trial_badge_loaded = True
-        p = get_project_root() / 'assets' / 'template' / _TRIAL_BADGE_TM_PATH[0] \
-            / _TRIAL_BADGE_TM_PATH[1] / _TRIAL_BADGE_TM_PATH[2]
+        p = get_project_root() / 'assets' / 'template' / _TRIAL_BADGE_TM_PATH
         img = cv2.imdecode(np.fromfile(str(p), np.uint8),
                            cv2.IMREAD_COLOR) if p.is_file() else None
         _trial_badge_gray = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

@@ -121,7 +121,7 @@ class CwScreenPartner(CwOperation):
                 load_avatar_templates,
             )
             portrait_dir = Path(os_utils.get_path_under_work_dir(
-                'assets', 'template', 'currency_war', 'character_avatar'))
+                'assets', 'template', 'cw_character_avatar'))
             if not portrait_dir.is_dir():
                 return [n for n, _cx, _cy in cands]
             templates = load_avatar_templates(portrait_dir)

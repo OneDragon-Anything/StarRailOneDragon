@@ -1,7 +1,7 @@
 """货币战争 专家邀请函弹窗画面 op(选卡;2026-08-30 停机钩子实机建档后实现)。
 
 「书册卡」= 备战席占槽道具(青蓝卡+白色书册 icon+「开启」,模板
-``assets/template/currency_war/supply/书册卡_未知.png``,find_bookcards 识别):
+``assets/template/cw_supply/书册卡_未知.png``,find_bookcards 识别):
 其开卡动作 = 备战词表 ``CwActionOpenBookcardParam``(``kernel/cw_vocab.py``);
 用户裁定 2026-09-19 开卡时机归策略实现管后,动作发出点 = 策略器 entry ①
 prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 只覆盖

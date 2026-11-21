@@ -128,7 +128,7 @@ def resolve_char_name(avatar_id: str) -> str | None:
 
 
 def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
-    """确保 ctx 缓存 ``currency_war/character_avatar`` 立绘 SIFT 模板;返 templates 或 None(目录缺)。
+    """确保 ctx 缓存 ``cw_character_avatar`` 立绘 SIFT 模板(根级库);返 templates 或 None(目录缺)。
 
     首次 load 缓存 ``ctx.cw_portrait_templates``;后续读缓存。**shop SIFT**(D-55,``read_shop_cards``)
     + deployed/bench SIFT 身份识别的模板加载点(deploy_bench 也读写此缓存)。**幂等**:同值重 load 无害。
@@ -139,7 +139,7 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     templates = getattr(ctx, 'cw_portrait_templates', None)
     if templates is None:
         base = get_project_root() / 'assets' / 'template'
-        portrait_dir = base / 'currency_war' / 'character_avatar'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删)
+        portrait_dir = base / 'cw_character_avatar'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删)
         if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)
@@ -171,8 +171,8 @@ def _load_star_tmpl() -> MatLike | None:
     """加载四角星 TM 模板(模块级缓存,首次 imread 后复用);缺失返 None(read_star fallback 1)。"""
     global _STAR_TMPL_CACHE
     if _STAR_TMPL_CACHE is None:
-        # 模板统一目录(用户规范:assets/template/currency_war/<类型>/;star 金星模板在 star/)
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'star' / 'star_gold_tmpl.png'
+        # 模板目录:根级 cw_ 前缀(cw_star/;currency_war 类目已上移退役)
+        p = get_project_root() / 'assets' / 'template' / 'cw_star' / 'star_gold_tmpl.png'
         if p.exists():
             _STAR_TMPL_CACHE = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
     return _STAR_TMPL_CACHE
@@ -1259,7 +1259,7 @@ _BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 秘典
 
 # shape 守卫观测器:槽裁片小于模板尺寸时 matchTemplate 无法进行,守卫跳过该槽。
 # 历史:113x134 整槽尺寸模板在 111x131 的小槽上被守卫静默跳过 = 该槽对此物品判盲
-# (证据链与修复=模板收进槽内,见 assets/template/currency_war/supply/ 模板尺寸约定)。
+# (证据链与修复=模板收进槽内,见 assets/template/cw_supply/ 模板尺寸约定)。
 # 这里只做记数+日志(可见性),不改跳过语义——静默跳过曾让漏检无从排查。
 _shape_guard_skip_count: int = 0
 
@@ -1285,7 +1285,7 @@ def _get_star_tome_grays() -> list[MatLike]:
         _star_tome_loaded = True
         grays: list[MatLike] = []
         for name in ('星徽秘典_金.png', '星徽秘典_红.png'):
-            p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / name
+            p = get_project_root() / 'assets' / 'template' / 'cw_supply' / name
             img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
             if img is not None:
                 grays.append(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
@@ -1294,7 +1294,7 @@ def _get_star_tome_grays() -> list[MatLike]:
 
 
 def _get_bookcard_gray() -> MatLike | None:
-    """加载专家邀请函模板灰度图(r100k;``assets/template/currency_war/supply/专家邀请函.png``)。
+    """加载专家邀请函模板灰度图(r100k;``assets/template/cw_supply/专家邀请函.png``)。
 
     模板 = 旧真值内窗(停机帧 slot1)裁去底部「开启」钮字后的卡片本体(86x97,
     < 全部槽裁片,防 shape 守卫判盲;渲染同源)。无实机重放帧,阈值 0.75 的自身
@@ -1303,7 +1303,7 @@ def _get_bookcard_gray() -> MatLike | None:
     global _bookcard_gray, _bookcard_loaded
     if not _bookcard_loaded:
         _bookcard_loaded = True
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '专家邀请函.png'
+        p = get_project_root() / 'assets' / 'template' / 'cw_supply' / '专家邀请函.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _bookcard_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _bookcard_gray
@@ -1332,11 +1332,11 @@ def find_bookcards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple
 
 
 def _get_armory_box_gray() -> MatLike | None:
-    """加载简易武装箱模板灰度图(模块级缓存;``assets/template/currency_war/supply/简易武装箱.png`` 缺 → None)。"""
+    """加载简易武装箱模板灰度图(模块级缓存;``assets/template/cw_supply/简易武装箱.png`` 缺 → None)。"""
     global _armory_box_gray, _armory_box_loaded
     if not _armory_box_loaded:
         _armory_box_loaded = True
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '简易武装箱.png'
+        p = get_project_root() / 'assets' / 'template' / 'cw_supply' / '简易武装箱.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _armory_box_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _armory_box_gray
@@ -1559,7 +1559,7 @@ _ore_tmpl_loaded: bool = False
 def _get_ore_tmpls() -> list[tuple[str, MatLike]]:
     """加载晶矿裁片模板(RGB 口径;module 级缓存;缺文件 → 空表,本帧不检出)。
 
-    模板 = 实机裁片 webp,``assets/template/currency_war/reward_ore/``(来源与
+    模板 = 实机裁片 webp,``assets/template/cw_reward_ore/``(来源与
     分数带见该目录 README.md):
     - 金晶矿 ← fixture reward_spheres_8.webp (1329,192) r42(含金色光晕整体);
     - 蓝晶矿_大/中/小 ← fixture reward_spheres_15.png(r34/30/18,蓝小裁片左下带
@@ -1573,8 +1573,7 @@ def _get_ore_tmpls() -> list[tuple[str, MatLike]]:
     if not _ore_tmpl_loaded:
         _ore_tmpl_loaded = True
         cache: list[tuple[str, MatLike]] = []
-        base = (get_project_root() / 'assets' / 'template' / 'currency_war'
-                / 'reward_ore')
+        base = (get_project_root() / 'assets' / 'template' / 'cw_reward_ore')
         for name in _ORE_TMPL_NAMES:
             p = base / f'{name}.webp'
             if not p.is_file():
@@ -1765,14 +1764,14 @@ _giftbox_tmpl_loaded: bool = False
 def _get_giftbox_gray() -> MatLike | None:
     """加载惊喜盒板件模板灰度图(模块级缓存;缺文件 → None,本帧不检出)。
 
-    ``assets/template/currency_war/loot/惊喜盒板件.webp``(实机裁片 129x86)。
+    ``assets/template/cw_loot/惊喜盒板件.webp``(实机裁片 129x86)。
     ⚠️ 换模板文件需重启 server(module 级缓存;与星徽秘典/邀请函同型坑)。
     """
     global _giftbox_tmpl_gray, _giftbox_tmpl_loaded
     if not _giftbox_tmpl_loaded:
         _giftbox_tmpl_loaded = True
-        p = (get_project_root() / 'assets' / 'template' / 'currency_war'
-             / 'loot' / '惊喜盒板件.webp')
+        p = (get_project_root() / 'assets' / 'template' / 'cw_loot'
+             / '惊喜盒板件.webp')
         img = (cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR)
                if p.is_file() else None)
         _giftbox_tmpl_gray = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

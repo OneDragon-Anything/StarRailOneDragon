@@ -76,7 +76,7 @@
 
 ### 3.7 识别模板面
 
-- 生成器自动产:角色立绘模板(`assets/template/currency_war/character_avatar/<规范名>/`,多档同名共用一目录,费用底色取起始档官方费用字段)、装备模板——都在 `gen_plaza_chars.py` 内。
+- 生成器自动产:角色立绘模板(`assets/template/cw_character_avatar/<规范名>/`,多档同名共用一目录,费用底色取起始档官方费用字段)、装备模板——都在 `gen_plaza_chars.py` 内。
 - **掉出名单的旧模板不自动删**:生成器产掉出名单 diff 报告(`.debug/game_data/currency_war/plaza/dropped_v<版本>.md`,掉出方向唯一出口),模板删除留给人工裁定(防误删换皮重出单位的识别资产)。
 - 新画面元素(新 UI/新交互)实机冒烟时按 od-dev-screen-onboarding 建档。
 
