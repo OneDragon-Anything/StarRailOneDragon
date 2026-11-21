@@ -80,6 +80,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_emblem_detail
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_encounter import (
     CwScreenEncounter,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_enemy_info import (
+    CwScreenEnemyInfo,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_expert_invite import (
     CwScreenExpertInvite,
 )
@@ -976,6 +979,15 @@ class CwLoop(CwOperation):
             return self._dispatch_screen_op(
                 CwScreenEncounter(self.ctx), journal_name='遭遇节点',
                 frame_tag='overlay_encounter', wait=2)
+
+        if name == '货币战争-敌人信息浮层':
+            # 情报查看浮层关闭(零恢复动作;关不掉 → on_fail_retry 映射
+            # round_retry。退出链 route⑤ 内联特判的清偿承接点:该链委托本
+            # loop 处理浮层,同走本分支)
+            return self._dispatch_screen_op(
+                CwScreenEnemyInfo(self.ctx), journal_name='敌人信息浮层',
+                frame_tag='overlay_enemy_info', wait=1.0,
+                on_fail_retry=True)
 
         if name == '货币战争-未达上限警告':
             return self._dispatch_screen_op(

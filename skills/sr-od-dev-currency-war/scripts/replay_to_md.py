@@ -364,6 +364,7 @@ ACTOR_REGISTRY: dict[str, ScreenSpec] = {
     'CwScreenWaitOneOne': ScreenSpec('CwScreenWaitOneOne'),
     'CwScreenPrepLockedReturn': ScreenSpec('CwScreenPrepLockedReturn'),
     'CwScreenDeployNotFull': ScreenSpec('CwScreenDeployNotFull'),
+    'CwScreenEnemyInfo': ScreenSpec('CwScreenEnemyInfo'),
     # —— cw-p0chain 四新画面 op(观察键 = 各屏 obs report 写入的
     #    game state 字段;茶歇奖励推进型零写点 = 辅助 op 形态)——
     'CwScreenTeaBreak': ScreenSpec('画面-幕后茶歇', True,

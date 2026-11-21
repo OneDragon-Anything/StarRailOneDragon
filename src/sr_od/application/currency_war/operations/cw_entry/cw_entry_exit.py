@@ -12,7 +12,7 @@
 #   流程节点做完单动作即回路由重识别;lobby_check 为终点(SUCCESS = op 完成);
 #   例外:弹窗放弃后直边进挑战失败节点——失败演出帧(单识别标志态)对建档精准
 #   匹配不可见,回路由会被误判未识别,演出等待在该节点内由 retry 承载;
-#   委托对局循环/敌人信息关闭为表外画面的默认去处(cw-exit-dispatch)。
+#   委托对局循环为表外画面的默认去处(cw-exit-dispatch)。
 """从货币战争对局中退出(放弃+结算)回大厅(退局调度器,三分发结构)。
 
 任何可识别的对局内态(备战/战斗中/事件 overlay/胜负结算)→ 识别分发,
@@ -20,8 +20,9 @@
 列车同行事故:表外画面无去处 → 落穿透式两识别标志同帧命中判定误判干净备战 → 原地空转):
 - 退出流程画面(ROUTE_BY_SCREEN)→ 逐节点建档点击走完 弹窗→挑战失败→结算页→大厅;
 - A 类备战态(含免战)→ 点门形「退出对局」图标(替代旧 ESC,误弹中断挑战史);
-- 其余对局中画面 → 默认委托 CwLoop(stop_at_prep=True) 处理到可交还备战态;
-  唯一特判:敌人信息浮层 → 内联关闭节点(loop 无该分支);
+- 其余对局中画面 → 默认委托 CwLoop(stop_at_prep=True) 处理到可交还备战态
+  (零特判:全部表外画面同一去处;敌人信息浮层等清理型浮层由 loop 阶段一
+  身份分发派对应画面 op,终态形态见跨迭代挂账「敌人信息浮层建画面 op」条);
 - 认不出(未建档/过渡帧)→ 重试数拍后按连续计数判战斗中 → 右上 X → 撤退。
 全链零 ESC、零全屏 OCR(识别走框架建档精准匹配,点击走框架建档原语)。
 """
@@ -54,7 +55,6 @@ ST_BATTLE: str = '战斗中'
 ST_SETTLEMENT: str = '胜利结算'
 ST_FAIL_STEP: str = '战败结算'
 ST_DELEGATE: str = '委托对局循环'
-ST_ENEMY_INFO: str = '敌人信息浮层'
 ST_MODE_ONGOING: str = '模式选择进行中'
 ST_GIVEUP_CONFIRM: str = '结束结算确认弹窗'
 
@@ -103,7 +103,6 @@ class CwEntryExit(CwOperation):
     }
     LOBBY_SCREEN: ClassVar[str] = '货币战争-大厅'
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
-    ENEMY_INFO_SCREEN: ClassVar[str] = '货币战争-敌人信息浮层'
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='退出货币战争对局')
@@ -130,7 +129,6 @@ class CwEntryExit(CwOperation):
     @node_from('战斗中点右上X')
     @node_from('战斗暂停撤退')
     @node_from('委托对局循环')
-    @node_from('敌人信息关闭')
     @operation_node(name='画面路由', is_start_node=True, node_max_retry_times=40,
                     timeout_seconds=600)
     def route(self) -> OperationRoundResult:
@@ -174,11 +172,10 @@ class CwEntryExit(CwOperation):
             return self.round_success(ST_GIVEUP_CONFIRM)
 
         # ⑤ 默认委托:非退出流程的对局中画面(穷举清单外零维护——新建档
-        # 画面识别即收)。唯一特判:敌人信息浮层(loop 无该分支)内联关闭。
+        # 画面识别即收,零特判;敌人信息浮层等清理型浮层由委托的 loop 经
+        # 阶段一身份分发派对应画面 op 处理)。
         if name is not None:
             self._miss_streak = 0
-            if name == self.ENEMY_INFO_SCREEN:
-                return self.round_success(ST_ENEMY_INFO)
             return self.round_success(ST_DELEGATE)
 
         # ⑥ 认不出(未建档/过渡帧):重试数拍等画面稳定,连续仍认不出按
@@ -210,18 +207,6 @@ class CwEntryExit(CwOperation):
         if res.success:
             return self.round_success('对局循环已交还,重入路由')
         return self.round_retry('对局循环未交还,重试', wait=1)
-
-    # ---- 节点:敌人信息关闭(⑤唯一特判;loop 无该分支,内联关闭) ----
-    # 触发场景 = 观察采集模式(自动对局不打开,低频);关闭后回路由重识别。
-
-    @node_from('画面路由', status=ST_ENEMY_INFO)
-    @operation_node(name='敌人信息关闭', node_max_retry_times=10,
-                    timeout_seconds=120)
-    def enemy_info_close(self) -> OperationRoundResult:
-        return self.round_by_find_and_click_area(
-            self.last_screenshot, self.ENEMY_INFO_SCREEN, '按钮-关闭',
-            until_not_find_all=[(self.ENEMY_INFO_SCREEN, '标识-敌方信息')],
-            success_wait=1)
 
     # ---- 节点:备战退局发起(点门形图标 → 进入中断挑战弹窗) ----
 
