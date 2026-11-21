@@ -207,17 +207,25 @@ def _log_cw_op(op_name: str, pos: tuple[int, int], dur_s: float,
 
 
 def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
-                            key: str, ok: bool) -> tuple[str | None, int]:
+                            key: str, ok: bool,
+                            ok_clears: bool = True) -> tuple[str | None, int]:
     """外环 op 连续 fail 计数纯函数(计数语义 = 同值累加/异值归一,
     先例:计数语义纯函数化供测试,包装内只做状态落位)。
 
     计数键 = ``chain_key or journal_name``(调用方传入:单发分支缺省 =
     journal_name 分发身份单一源;链形分支传同一链级键归组);计数窗口 =
     「连续 fail 运行」:
-    - **任一** op 的 ok = 屏幕证实推进(本轮分发链把画面往前推了一步,
+    - **推进型** op 的 ok = 屏幕证实推进(本轮分发链把画面往前推了一步,
       同一粘滞画面的前提已破)→ 整窗归零——fail 间歇重置语义,同时消
       「上情节残留计数毒化新情节」的假阳性面(跨情节必有其他 op 的 ok
       穿插,如 overlay 自愈后经备战/战斗环再回,计数不带病累加);
+    - **清理型** op 的 ok(``ok_clears=False``)= 画面恢复到无浮层状态,
+      零资源变化、不解除粘滞根因(fail 的阻断仍在)→ 窗口原样保留
+      (prev_key/prev_n 不动)——活锁根治面:清理型成功与同键 fail 交替
+      (备战环情报采集 fail ↔ 位面详情关闭 ok)不再把计数窗反复清零,
+      同一阻断的计数能累到 ``OP_FAIL_REDISPATCH_LIMIT`` 响亮出口
+      (登记单一源 = ``cw_dispatch_tables.FAIL_STREAK_NON_CLEARING_
+      JOURNALS``);
     - 同键 fail 累加;异键 fail = 粘滞对象已换,新情节从 1 起算
       (原位面过渡误分发专用计数器「仅本分支语义」的推广)。
 
@@ -231,7 +239,7 @@ def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
     哨兵(NODE-DWELL)。
     """
     if ok:
-        return None, 0
+        return (None, 0) if ok_clears else (prev_key, prev_n)
     return key, (prev_n + 1 if key == prev_key else 1)
 
 
@@ -281,6 +289,12 @@ class CwLoop(CwOperation):
     #: 误分发守卫(=3)与 prep streak 守卫(=5)已停用并入本网(阈值
     #: 同值平手,行为无差);链形透传分支(3c)不经本网(各有自身预算)。
     #: on_fail_retry 族原退路是消耗 400 节点重试池 ≈ 13min 同 op 空转。
+    #: 清零语义(活锁根治,2026-11 活锁实证批):归零只由**推进型**成功触发;
+    #: 清理型 op(点关闭/确认/返回的画面恢复族,登记单一源 =
+    #: ``cw_dispatch_tables.FAIL_STREAK_NON_CLEARING_JOURNALS``)的成功
+    #: 保留计数窗——旧「任一 ok 即归零」让「备战 fail ↔ 位面详情关闭 ok」
+    #: 交替形态(画面留位面详情的故障伴生弹窗,供给无限)的计数永达不到
+    #: 本限,同一阻断反复重派无出口(第三跑 16 周期被停机守卫拦截的实证)。
     OP_FAIL_REDISPATCH_LIMIT: ClassVar[int] = 5
     #: 战斗窗口 watch 宽限:出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
@@ -642,10 +656,15 @@ class CwLoop(CwOperation):
             [cw-op] 日志行(journal 行消费面不变)。
         :return: 分支的轮次结果
 
-        环级 fail 重派防线:任一 op 的 ok → 连续 fail 计数窗归零
-        (``op_fail_redispatch_tick``);fail 连续达 ``OP_FAIL_REDISPATCH_
-        LIMIT`` → 显式停机交上层(出口按 ``cleanup_delegate`` 分流,见
-        防线出口契约),取代「fail → round_wait 零预算重派」的无界空转。
+        环级 fail 重派防线:推进型 op 的 ok → 连续 fail 计数窗归零
+        (``op_fail_redispatch_tick``);清理型 op(登记单一源 =
+        ``cw_dispatch_tables.FAIL_STREAK_NON_CLEARING_JOURNALS``)的 ok
+        保留计数窗(画面恢复不解除粘滞根因,活锁根治面);fail 连续达
+        ``OP_FAIL_REDISPATCH_LIMIT`` → 显式停机交上层(出口按
+        ``cleanup_delegate`` 分流,见防线出口契约),取代「fail → round_wait
+        零预算重派」的无界空转。
+        分型按 ``journal_name`` 查表(op 身份属性;链形分支的 chain_key 只
+        归组计数不改分型,现役链形两 op 均为推进型)。
         计数/判定位于 hook 早退之后 → hook 仍可以自身轮次结果短路
         (结构性先于本网);链形透传分支(3c)不经本网(各有自身预算)。
 
@@ -699,13 +718,18 @@ class CwLoop(CwOperation):
             else:
                 ok = res is not None and getattr(res, 'success', False)
             if ok:
-                # 任一分发 ok = 屏幕证实推进 → 连续 fail 窗归零
-                #(fail 间歇重置;含 hook 覆盖返回的 ok 路径)
+                # 推进型 ok = 屏幕证实推进 → 连续 fail 窗归零(fail 间歇重置;
+                # 含 hook 覆盖返回的 ok 路径)。清理型 ok(登记表成员)保留窗口:
+                # 画面恢复不解除粘滞根因,活锁形态(fail↔清理 ok 交替)的计数
+                # 能累到上限响亮出口(分型查表单一源 = cw_dispatch_tables)。
                 (self._op_fail_streak_key,
                  self._op_fail_streak_n) = op_fail_redispatch_tick(
                     getattr(self, '_op_fail_streak_key', None),
                     getattr(self, '_op_fail_streak_n', 0),
-                    chain_key or journal_name, True)
+                    chain_key or journal_name, True,
+                    ok_clears=(journal_name not in
+                               cw_dispatch_tables.
+                               FAIL_STREAK_NON_CLEARING_JOURNALS))
             hook_ret = on_result(ok, res) if on_result is not None else None
             _log_cw_op(journal_name, _op_pos, time.monotonic() - _op_t0,
                        'ok' if ok else 'fail')
