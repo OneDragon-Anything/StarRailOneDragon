@@ -33,10 +33,10 @@ area_list:
 - area_name: 装备卡-1
   id_mark: false
   pc_rect:
-  - 545
-  - 225
-  - 700
-  - 345
+  - 463
+  - 133
+  - 722
+  - 363
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -47,10 +47,10 @@ area_list:
 - area_name: 装备卡-2
   id_mark: false
   pc_rect:
-  - 825
-  - 225
-  - 980
-  - 345
+  - 753
+  - 133
+  - 1013
+  - 363
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -61,10 +61,10 @@ area_list:
 - area_name: 装备卡-3
   id_mark: false
   pc_rect:
-  - 1110
-  - 225
-  - 1265
-  - 345
+  - 1044
+  - 133
+  - 1303
+  - 363
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -75,10 +75,10 @@ area_list:
 - area_name: 装备卡-4
   id_mark: false
   pc_rect:
-  - 1390
-  - 225
-  - 1545
-  - 345
+  - 1334
+  - 133
+  - 1593
+  - 363
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -89,10 +89,10 @@ area_list:
 - area_name: 区域-卡名行
   id_mark: false
   pc_rect:
-  - 545
-  - 255
-  - 1545
-  - 300
+  - 500
+  - 315
+  - 1580
+  - 360
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
