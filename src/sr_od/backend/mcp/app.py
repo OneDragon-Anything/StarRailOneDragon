@@ -228,6 +228,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
 
         area_name 存在则整体更新,不存在则追加。pc_alt 是 screen 级属性
         (create_screen 设置),area 不单设。
+        写档互斥:已有写档请求进行中时本请求立即失败并提示等待重试(非排队),
+        收到拒绝就稍后重试,不要并发提交写档请求。
         """
         return AreaMutationOut.from_backend(backend.upsert_screen_area(
             screen_name, area_name, pc_rect, text, lcs_percent,
@@ -240,6 +242,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
         """按 area_name 删除指定 screen 的一个 area(写 yml + reload,不可逆)。操作类。
 
         下次 analyze_screen 即生效。
+        写档互斥:已有写档请求进行中时本请求立即失败并提示等待重试(非排队),
+        收到拒绝就稍后重试,不要并发提交写档请求。
         """
         return AreaMutationOut.from_backend(backend.delete_screen_area(screen_name, area_name))
 
@@ -253,6 +257,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
         """创建一个新画面(空 area_list;写 yml + reload)。操作类(改画面建档),无需游戏在线。
 
         screen_id 不与既有冲突,screen_name 唯一;创建后用 upsert_screen_area 加 area。
+        写档互斥:已有写档请求进行中时本请求立即失败并提示等待重试(非排队),
+        收到拒绝就稍后重试,不要并发提交写档请求。
         """
         return ScreenCreateOut.from_backend(backend.create_screen(screen_id, screen_name, app_id, pc_alt))
 

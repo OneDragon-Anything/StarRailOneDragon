@@ -18,7 +18,7 @@ import json
 import subprocess
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
@@ -83,6 +83,17 @@ class ScreenInfoError(Exception):
     模板不存在 / 画面或 area 未找到等)。
 
     失败走异常通道,不占成功返回结构。
+    """
+
+    pass
+
+
+class ScreenWriteBusyError(Exception):
+    """画面档案写档互斥拒绝:已有写档调用进行中时,新写档请求立即失败(fail-fast,非排队)。
+
+    用户裁定(2026-11-24):merged 画面缓存全量重写不支持并发,同 server 并发
+    写档互相覆盖(挂账板 §一.54);并发到达的后续写档请求快速失败并提示等待
+    重试,由调用方稍后自行重试。读类调用不受影响。
     """
 
     pass
@@ -626,6 +637,13 @@ class SrBackendContext:
         """
         self._ctx: SrContext = ctx
         self.run_slot: RunSlot = RunSlot(ctx)
+        # 画面档案写档互斥(fail-fast):同一时刻只放行一个写档调用,防并发写
+        # _od_merged.yml 全量重写互相覆盖。作用域=单次写档调用全程(校验→改内存
+        # →写分文件+merged 全量重写→reload),不只包 save 一步:save() 遍历共享
+        # 内存结构(_id_2_screen)写盘、reload 重建路由图,并发的改内存/插删画面
+        # 会让遍历炸迭代或写出交叠文件内容。MCP 与 HTTP 适配器共用同一 backend
+        # 实例,收敛层加锁两通道全覆盖;持锁方任何异常经 finally 释放,不留死锁。
+        self._screen_write_lock = threading.Lock()
         # 录屏状态(dev-only record_screen 用);observe 类,独立于单跑道,可与 bot run 并行。
         self._recorder_lock = threading.Lock()
         self._recorder_proc: subprocess.Popen | None = None
@@ -646,6 +664,27 @@ class SrBackendContext:
         """
         if not self._ctx.ready_for_application:
             raise BackendNotReadyError('SrContext 未就绪（ready_for_application=False）')
+
+    @contextlib.contextmanager
+    def _screen_write_mutex(self) -> Iterator[None]:
+        """画面档案写档互斥(非重入):同一时刻只放行一个写档调用。
+
+        acquire(blocking=False) 抢不到锁立即抛 ``ScreenWriteBusyError``
+        (fail-fast,非排队阻塞——用户裁定 2026-11-24,并发后续请求直接失败
+        提示等待重试);抢到后全程持锁,finally 必释放——写档中途任何异常
+        (校验 / IO)都不留死锁。
+
+        Raises:
+            ScreenWriteBusyError: 已有写档调用进行中。
+        """
+        if not self._screen_write_lock.acquire(blocking=False):
+            raise ScreenWriteBusyError(
+                '画面档案正在被修改(上一次写档调用尚未完成),请等待重试;'
+                '不要并发提交画面建档写操作')
+        try:
+            yield
+        finally:
+            self._screen_write_lock.release()
 
     def _refresh_runtime_config(self) -> None:
         """刷新外部 GUI 可能已经写入 YAML 的运行配置。
@@ -996,6 +1035,7 @@ class SrBackendContext:
 
         area_name 已存在 → 整体更新;不存在 → 追加。写回 screen_info yml 并重载,
         下次 analyze_screen 即生效。无需游戏窗口在线。
+        写档互斥:已有写档调用进行中时本调用立即失败(等待重试)。
 
         Args:
             screen_name: 目标画面名(中文,对齐 get_screen / analyze 返回)。
@@ -1016,41 +1056,45 @@ class SrBackendContext:
         Raises:
             ScreenInfoError: 校验失败(area_name 空 / pc_rect 非法 / 模板不存在 /
                 goto_list 目标画面不存在 / 画面名未找到)。
+            ScreenWriteBusyError: 已有写档调用进行中(等待重试)。
         """
-        if not area_name:
-            raise ScreenInfoError('area_name 不能为空')
-        rect_msg = _validate_pc_rect(pc_rect)
-        if rect_msg is not None:
-            raise ScreenInfoError(rect_msg)
-        if template_id and self._ctx.template_loader.load_template(template_sub_dir, template_id) is None:
-            raise ScreenInfoError(f'模板不存在: {template_sub_dir}/{template_id}')
-        # goto_list 是画面路由图的边(填错要到运行时 round_by_goto_screen 才 log.error),
-        # 建档时就在这里拦下,并列出既有画面名供修正。
-        known_screen_names = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
-        bad_goto = [g for g in (goto_list or []) if g not in known_screen_names]
-        if bad_goto:
-            sample = '、'.join(sorted(known_screen_names)[:10])
-            raise ScreenInfoError(f'goto_list 目标画面不存在: {bad_goto}(画面名须与 screen_info 的 screen_name 完全一致;示例: {sample} …可用 list_screen_names 工具查全量)')
-        area = ScreenArea(
-            area_name=area_name,
-            pc_rect=Rect(int(pc_rect[0]), int(pc_rect[1]), int(pc_rect[2]), int(pc_rect[3])),
-            text=text, lcs_percent=lcs_percent,
-            template_id=template_id, template_sub_dir=template_sub_dir,
-            template_match_threshold=template_match_threshold,
-            color_range=color_range, goto_list=goto_list or [],
-            id_mark=id_mark, gamepad_key=gamepad_key,
-        )
-        try:
-            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
-        except Exception as e:
-            raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
-        action = screen_info.upsert_area(area)
-        self._ctx.screen_loader.save_screen(screen_info)
-        return AreaMutationResult(screen_name=screen_name, area_name=area_name,
-                                  action=action, area_count=len(screen_info.area_list))
+        with self._screen_write_mutex():
+            if not area_name:
+                raise ScreenInfoError('area_name 不能为空')
+            rect_msg = _validate_pc_rect(pc_rect)
+            if rect_msg is not None:
+                raise ScreenInfoError(rect_msg)
+            if template_id and self._ctx.template_loader.load_template(template_sub_dir, template_id) is None:
+                raise ScreenInfoError(f'模板不存在: {template_sub_dir}/{template_id}')
+            # goto_list 是画面路由图的边(填错要到运行时 round_by_goto_screen 才 log.error),
+            # 建档时就在这里拦下,并列出既有画面名供修正。
+            known_screen_names = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
+            bad_goto = [g for g in (goto_list or []) if g not in known_screen_names]
+            if bad_goto:
+                sample = '、'.join(sorted(known_screen_names)[:10])
+                raise ScreenInfoError(f'goto_list 目标画面不存在: {bad_goto}(画面名须与 screen_info 的 screen_name 完全一致;示例: {sample} …可用 list_screen_names 工具查全量)')
+            area = ScreenArea(
+                area_name=area_name,
+                pc_rect=Rect(int(pc_rect[0]), int(pc_rect[1]), int(pc_rect[2]), int(pc_rect[3])),
+                text=text, lcs_percent=lcs_percent,
+                template_id=template_id, template_sub_dir=template_sub_dir,
+                template_match_threshold=template_match_threshold,
+                color_range=color_range, goto_list=goto_list or [],
+                id_mark=id_mark, gamepad_key=gamepad_key,
+            )
+            try:
+                screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+            except Exception as e:
+                raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
+            action = screen_info.upsert_area(area)
+            self._ctx.screen_loader.save_screen(screen_info)
+            return AreaMutationResult(screen_name=screen_name, area_name=area_name,
+                                      action=action, area_count=len(screen_info.area_list))
 
     def delete_screen_area(self, screen_name: str, area_name: str) -> AreaMutationResult:
         """按 area_name 删除指定 screen 的一个 area(写 yml + reload)。操作类。
+
+        写档互斥:已有写档调用进行中时本调用立即失败(等待重试)。
 
         Args:
             screen_name: 目标画面名。
@@ -1061,24 +1105,27 @@ class SrBackendContext:
 
         Raises:
             ScreenInfoError: area_name 为空 / area 未找到 / 画面名未找到。
+            ScreenWriteBusyError: 已有写档调用进行中(等待重试)。
         """
-        if not area_name:
-            raise ScreenInfoError('area_name 不能为空')
-        try:
-            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
-        except Exception as e:
-            raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
-        if not screen_info.remove_area_by_name(area_name):
-            raise ScreenInfoError(f'未找到 area: {area_name}')
-        self._ctx.screen_loader.save_screen(screen_info)
-        return AreaMutationResult(screen_name=screen_name, area_name=area_name,
-                                  action='deleted', area_count=len(screen_info.area_list))
+        with self._screen_write_mutex():
+            if not area_name:
+                raise ScreenInfoError('area_name 不能为空')
+            try:
+                screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+            except Exception as e:
+                raise _screen_not_found_error(self._ctx.screen_loader, screen_name, e) from e
+            if not screen_info.remove_area_by_name(area_name):
+                raise ScreenInfoError(f'未找到 area: {area_name}')
+            self._ctx.screen_loader.save_screen(screen_info)
+            return AreaMutationResult(screen_name=screen_name, area_name=area_name,
+                                      action='deleted', area_count=len(screen_info.area_list))
 
     def create_screen(self, screen_id: str, screen_name: str, app_id: str = '', pc_alt: bool = False) -> ScreenCreateResult:
         """创建一个新画面(空 area_list;写 yml + reload)。操作类。
 
         screen_id 不与既有冲突、screen_name 唯一。创建后用 ``upsert_screen_area`` 加 area。
         无需游戏在线。
+        写档互斥:已有写档调用进行中时本调用立即失败(等待重试)。
 
         Args:
             screen_id: 画面 ID(英文 snake_case,作 yml 文件名;如 currency_war_lobby)。
@@ -1091,20 +1138,22 @@ class SrBackendContext:
 
         Raises:
             ScreenInfoError: screen_id / screen_name 为空或已存在。
+            ScreenWriteBusyError: 已有写档调用进行中(等待重试)。
         """
-        if not screen_id or not screen_name:
-            raise ScreenInfoError('screen_id / screen_name 不能为空')
-        loader = self._ctx.screen_loader
-        if screen_id in loader._id_2_screen:
-            raise ScreenInfoError(f'screen_id 已存在: {screen_id}')
-        if screen_name in loader.screen_info_map:
-            raise ScreenInfoError(f'screen_name 已存在: {screen_name}')
-        screen_info = ScreenInfo({
-            'screen_id': screen_id, 'screen_name': screen_name,
-            'app_id': app_id, 'pc_alt': pc_alt, 'area_list': [],
-        })
-        loader.save_screen(screen_info)
-        return ScreenCreateResult(screen_id=screen_id, screen_name=screen_name)
+        with self._screen_write_mutex():
+            if not screen_id or not screen_name:
+                raise ScreenInfoError('screen_id / screen_name 不能为空')
+            loader = self._ctx.screen_loader
+            if screen_id in loader._id_2_screen:
+                raise ScreenInfoError(f'screen_id 已存在: {screen_id}')
+            if screen_name in loader.screen_info_map:
+                raise ScreenInfoError(f'screen_name 已存在: {screen_name}')
+            screen_info = ScreenInfo({
+                'screen_id': screen_id, 'screen_name': screen_name,
+                'app_id': app_id, 'pc_alt': pc_alt, 'area_list': [],
+            })
+            loader.save_screen(screen_info)
+            return ScreenCreateResult(screen_id=screen_id, screen_name=screen_name)
 
     def list_screen_names(self) -> list[str]:
         """列出全部画面名(排序后,只读,无副作用)。
