@@ -39,7 +39,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 _BAG_SCREEN: str = '背包-遗器'
 _FILTER_SCREEN: str = '背包-遗器-筛选'
-_RULE_SCREEN: str = '背包-遗器-筛选规则'
+_RULE_SCREEN: str = '遗器筛选弹窗'
 
 # 网格几何:8 列 5 行,首列/首行中心相对列表区 rect 偏移 + 等间距
 # (实机 2026-11-11 摸底实测列中心 210/330/…/1050、行中心 260/425/…/920;

@@ -19,9 +19,9 @@ game coach 流程档。
   设新排序前先点「全部清除」清残留，否则产出混合优先级；确认后列表 =
   基础排序 + 属性排序静态重排（F14）；左下按钮条文本 = 排序摘要读区
   （F15），OCR 实读逗号为全角「，」，全等校验前归一标点。
-- 与背包侧「筛选规则」弹窗为同一游戏组件、像素级同构——弹窗内操作一律
-  用屏名取 area + 区域级锚，不依赖全局画面判定（明细见画面 doc
-  遗器-替换-筛选规则.md §2）。
+- 「筛选规则」弹窗与背包侧同为一游戏组件（像素级同构，已合并单档建档
+  「遗器筛选弹窗」）——弹窗内操作一律用屏名取 area + 区域级锚，明细见
+  画面 doc 遗器筛选弹窗.md §2。
 
 排序前置子链（开弹窗 → 关建议排序 → 选等级 → 不确认）与 ``equip_relic.py``
 同源复制并在此注明出处——域内节点复制为既有惯例；与 equip_relic 版本的
@@ -49,7 +49,7 @@ from sr_od.operations.sr_operation import SrOperation
 _RELIC_TAB_SCREEN: str = '角色-遗器'
 _REPLACE_SCREEN: str = '遗器-替换'
 _FILTER_SCREEN: str = '遗器-替换-筛选'
-_FILTER_RULE_SCREEN: str = '遗器-替换-筛选规则'
+_FILTER_RULE_SCREEN: str = '遗器筛选弹窗'
 _SORT_RULE_SCREEN: str = '遗器-排序规则'
 _ENTRY_SCREENS: list[str] = [_RELIC_TAB_SCREEN, _REPLACE_SCREEN, _FILTER_SCREEN]
 
