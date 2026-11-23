@@ -5,8 +5,10 @@
 TrainShopPanelRecognizer` 与后续画面 op 共用本模块,单一实现)。结构仿金币商店
 ``read_shop_cards`` 同构:定长槽数组 + {kind, card} 元素,差异面:
 
-- 槽带 = 定长 4 槽(槽 1 固定「全部刷新」钮 + 槽 2-4 商品混合池,2026-11-21
-  第十一局实测池结构;金币商店为 5 牌);
+- 槽带 = 定长 4 槽商品混合池;「全部刷新」钮**轮转占位**——可占 1-4 任一槽
+  (槽 1 = 第十一局实测;槽 4 = 第二十四局 2-4 实拍「1 力/次」),也可不在场
+  (1-6 实拍四槽全商品;金币商店 5 牌无此形态);刷新钮按名行文本识别其槽位,
+  不按固定槽位锚定;
 - 身份双源:SIFT 立绘识别(角色卡)优先,名行文字 OCR 兜底(属性加成卡无立绘,
   只走 OCR——金币商店纯 SIFT,本面板卡面有属性文字卡故双源);
 - 费用 = 名行行尾数字 OCR(开拓力标价;金币商店的费用徽章两级管线不适用,
@@ -16,17 +18,23 @@ TrainShopPanelRecognizer` 与后续画面 op 共用本模块,单一实现)。结
   零命中——列车商店未见试用形态,字段保留)。
 
 **模式二态**(面板有两种呈现形态,fixture = sr-od-test/screens/货币战争-备战-开拓商店/
-panel_slots_a_r13、panel_showcase_r13):
+panel_slots_{a,b,c}_r13、panel_slots_{d,e}_r15、panel_showcase_r13、
+panel_showcase_deadlock_r13):
 
-- ``slots``(常规槽带态):「全部刷新」锚(商品名行-1 OCR)命中;槽 2-4 可读;
-- ``showcase``(中央展示卡态):锚缺席 + 展示卡(商品卡-展示)OCR 有名行。
-  实测两帧(2026-11-21 第十一局首开帧 013105 与第十三局恢复态死锁帧 122630)
-  画面同构——本态 = 玩家卡「首开空池软锁态」(银轨首次开张自动弹面板)或
-  恢复态死锁(游戏侧缺陷已登记),读层无法也不必区分二者,如实产出展示卡
-  读数与点击坐标,处置语义归调用方(玩家卡操作节:解锁 = 点中央展示卡)。
-  锚单信号不稳(动画帧可能漏检),showcase 判定要求锚缺席**且**展示卡有名行
-  **且**槽 1 亮度落暗带(实测槽带态槽 1 含刷新金环图标 70.7-74.5,showcase
-  态同区暗底 40.8-40.9,阈 55 居中)——三信号齐才判 showcase,否则 unknown 不猜。
+- ``slots``(常规槽带态):详情按钮锚命中 ≥ 2(每槽卡底「详情」钮,实测恒 4/4);
+  槽 1-4 逐槽读,刷新钮所在槽(名行「全部刷新」锚)kind=refresh,其余商品;
+- ``showcase``(中央展示卡态):**四信号齐才判**——详情命中 ≤ 1(展示卡自带
+  「详情」钮落「按钮-详情-3」区,实测恒 1)+ 展示卡有名行 + 槽 1 亮度落暗带
+  + 名行 1/2/4 全空,缺一 unknown 不猜。实测两帧(第十一局首开帧 013105 与
+  第十三局恢复态死锁帧 122630)画面同构——本态 = 玩家卡「首开空池软锁态」
+  (银轨首次开张自动弹面板)或恢复态死锁(游戏侧缺陷已登记),读层无法也不必
+  区分二者,如实产出展示卡读数与点击坐标,处置语义归调用方(玩家卡操作节:
+  解锁 = 点中央展示卡)。
+  旧判定(「槽 1 名行 = 全部刷新」单锚 + 展示卡有名行 + 槽 1 暗三信号)对
+  四槽全商品形态失效,已实测双重误触发:商品卡槽 1 亮度 50.6/40.7 落暗带
+  (< 55),展示卡 rect(940-1150)与商品卡-3 rect(933-1153)近同位读到商品
+  文字——单锚架构整体退役,详情按钮锚与槽位无关,是两态间唯一实测稳定的
+  区分信号(证据帧 = cw-live-r15 game24-r15b_railshop_*.png,第二十四局)。
 
 帕姆王进度 = 「读区-帕姆王进度」OCR「N/500」(N = 本局累计消费,满 500 送帕姆王,
 每局从 0 重起);分母恒 500 实测,非 500 判误读返 None(保守不猜)。注意:首开
@@ -65,16 +73,26 @@ if TYPE_CHECKING:
 # 画面档 area 名(单一真相源 = currency_war_battle_prep_pioneer_shop.yml)
 A_TS_CARD_PREFIX: str = '商品卡-'          # 商品卡-1..4(槽带)+ 商品卡-展示(展示卡)
 A_TS_NAME_PREFIX: str = '商品名行-'        # 商品名行-1..4(卡底名行 OCR 带)
+A_TS_DETAIL_PREFIX: str = '按钮-详情-'      # 按钮-详情-1..4(槽带态锚;showcase 态
+#                                           仅展示卡自带「详情」钮落按钮-详情-3)
 A_TS_REFRESH_COST: str = '读区-刷新费用'    # 槽 1 名行行尾「1」窄窗(宽带 det 漏检,先裁路径可读)
 A_TS_BALANCE: str = '读区-星穹列车币'       # 顶部开拓力余额(area 名沿用建档旧称,货币名 = 开拓力)
 A_TS_PAM: str = '读区-帕姆王进度'          # 右侧帕姆王进度环数字
 A_TS_SHOWCASE_CARD: str = '商品卡-展示'     # 中央展示卡(showcase 态唯一卡)
 
-#: 「全部刷新」锚文本(商品名行-1 的 text 同值;op 守卫与读层共用)
+#: 「全部刷新」锚文本(刷新钮名行 text;op 守卫与读层共用)
 REFRESH_ANCHOR_TEXT: str = '全部刷新'
+#: 详情按钮锚文本(槽带态判定;与画面档 area text 同值)
+DETAIL_ANCHOR_TEXT: str = '详情'
 
-#: showcase 态判定的槽 1 亮度阈(实测槽带态 70.7-74.5 / showcase 态 40.8-40.9,
-#: 阈 55 居中带双向余量;fixture 见模块 docstring)
+#: 槽带态判定阈:详情按钮 OCR 命中数 ≥ 2。槽带态每槽卡底一枚「详情」钮,
+#: 实测恒 4/4(1-6 两帧 + r13 三 slots 帧);showcase 态仅展示卡自带一枚落
+#: 「按钮-详情-3」,实测恒 1——阈 2 取两组样本间隔中点(fixture 见模块 docstring)。
+#: 公开常量:买/刷 op 守卫同源消费(判据单一源,禁 op 侧复刻)。
+PANEL_DETAIL_HIT_MIN: int = 2
+#: showcase 态判定的槽 1 亮度阈(showcase 态同区暗底 40.8-40.9;阈 55。
+#: 注意:商品卡槽 1 亮度 40.7-50.6 同落暗带——本阈只作 showcase 四信号之一,
+#: 不可单独作槽带态判定)
 _SHOWCASE_SLOT1_BRIGHT_MAX: float = 55.0
 _BALANCE_MAX: int = 99999
 #: 帕姆王解锁阈值(分母真值;实测 0/500、15/500、60/500、136/500;非 500 = 误读)
@@ -161,9 +179,9 @@ class TrainShopCard:
 class TrainShopSlot:
     """单槽三态:{kind, card}(仿金币商店 ShopSlot)。
 
-    kind:refresh = 槽 1 刷新钮 / content = 商品卡 / unknown = 应有内容但
-    识别失败(决策一律跳过);槽带态槽位常满(买一补一),未观测到空槽形态,
-    不设 empty 态(出现即 unknown 留证)。
+    kind:refresh = 「全部刷新」钮(轮转占位,可在 1-4 任一槽,按名行锚识别)/
+    content = 商品卡 / unknown = 应有内容但识别失败(决策一律跳过);槽带态
+    槽位常满(买一补一),未观测到空槽形态,不设 empty 态(出现即 unknown 留证)。
     """
 
     kind: str
@@ -196,6 +214,38 @@ def read_pam_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None
                            _ocr(ctx, screen, rect, crop_first=True)])
 
 
+def _refresh_cost_from_entries(entries: list[tuple[str, int]]) -> int | None:
+    """刷新钮名行条目 → 标价(纯函数):按 x 序首个含数字条目取首个数字串。
+
+    「1 力/次」混合条目(OCR 不拆货币字)与纯数字条目同判;纯文字条目跳过。
+    无任何数字 → None(不猜)。
+    """
+    for text, _x in sorted(entries, key=lambda t: t[1]):
+        m = re.search(r'\d+', text or '')
+        if m is not None:
+            return int(m.group())
+    return None
+
+
+def _count_detail_hits(ctx: SrContext, screen: MatLike) -> int:
+    """四「按钮-详情-N」area OCR「详情」锚命中数(lcs 0.5 与画面档同域)。
+
+    area 缺失(建档漂移)按未命中计——命中数不足自然落 showcase/unknown
+    分支,不猜。
+    """
+    hits = 0
+    for idx in range(1, 5):
+        rect = _area_rect(ctx, f'{A_TS_DETAIL_PREFIX}{idx}',
+                          PIONEER_SHOP_SCREEN_NAME)
+        if rect is None:
+            continue
+        if any(str_utils.find_by_lcs(DETAIL_ANCHOR_TEXT, r.data or '',
+                                     percent=0.5)
+               for r in _ocr(ctx, screen, rect, crop_first=True)):
+            hits += 1
+    return hits
+
+
 def _read_showcase(ctx: SrContext, screen: MatLike) -> dict | None:
     """中央展示卡读数 → {name, cost, cx, cy} | None(展示卡有名行才产出)。"""
     rect = _area_rect(ctx, A_TS_SHOWCASE_CARD, PIONEER_SHOP_SCREEN_NAME)
@@ -215,7 +265,12 @@ def _read_showcase(ctx: SrContext, screen: MatLike) -> dict | None:
 
 def _read_slot(ctx: SrContext, screen: MatLike, idx: int,
                templates) -> TrainShopSlot:
-    """读单槽(idx 1-4):锚/名行/SIFT 三源判 kind,身份 SIFT 优先 OCR 兜底。"""
+    """读单槽(idx 1-4):刷新钮/名行/SIFT 三源判 kind,身份 SIFT 优先 OCR 兜底。
+
+    刷新钮按名行「全部刷新」锚识别(轮转占位,任意槽位):费用 = 名行条目
+    数字提取(「1 力/次」形态);名行无数字且槽 1 时走「读区-刷新费用」窄窗
+    fallback(r13 形态单字符「1」宽带 det 漏检,先裁路径可读)。
+    """
     rect = _area_rect(ctx, f'{A_TS_CARD_PREFIX}{idx}', PIONEER_SHOP_SCREEN_NAME)
     band_rect = _area_rect(ctx, f'{A_TS_NAME_PREFIX}{idx}', PIONEER_SHOP_SCREEN_NAME)
     if rect is None or band_rect is None:
@@ -224,17 +279,18 @@ def _read_slot(ctx: SrContext, screen: MatLike, idx: int,
     entries = [(r.data or '', r.center.x)
                for r in _ocr(ctx, screen, band_rect, crop_first=True)]
     name_raw, cost = split_name_cost(entries)
-    if idx == 1 and is_refresh_anchor([t for t, _ in entries]):
-        rc_rect = _area_rect(ctx, A_TS_REFRESH_COST, PIONEER_SHOP_SCREEN_NAME)
-        refresh_cost = None
-        if rc_rect is not None:
-            for r in _ocr(ctx, screen, rc_rect, crop_first=True):
-                m = re.search(r'\d+', r.data or '')
-                if m is not None:
-                    refresh_cost = int(m.group())
-                    break
+    if is_refresh_anchor([t for t, _ in entries]):
+        refresh_cost = _refresh_cost_from_entries(entries)
+        if refresh_cost is None and idx == 1:
+            rc_rect = _area_rect(ctx, A_TS_REFRESH_COST, PIONEER_SHOP_SCREEN_NAME)
+            if rc_rect is not None:
+                for r in _ocr(ctx, screen, rc_rect, crop_first=True):
+                    m = re.search(r'\d+', r.data or '')
+                    if m is not None:
+                        refresh_cost = int(m.group())
+                        break
         return TrainShopSlot(kind='refresh', card=TrainShopCard(
-            slot=1, x=(rect.x1 + rect.x2) // 2, name=REFRESH_ANCHOR_TEXT,
+            slot=idx, x=(rect.x1 + rect.x2) // 2, name=REFRESH_ANCHOR_TEXT,
             faction='?', cost=refresh_cost, star=None, trial=False,
             item_type='other'))
     avatar_id, _inliers = (identify_character(crop, templates)
@@ -258,39 +314,80 @@ def _read_slot(ctx: SrContext, screen: MatLike, idx: int,
         item_type=item_type))
 
 
-def read_trainshop_panel(ctx: SrContext, screen: MatLike) -> dict:
-    """面板全量读数 → {mode, shop_cards, showcase_card}(识别器 extras 主体)。
+def _side_name_lines_empty(ctx: SrContext, screen: MatLike) -> bool:
+    """名行 1/2/4 全空判定(showcase 第四信号):三 rect 任一 OCR 有内容 → False。
 
-    - mode='slots':shop_cards = 定长 4 槽(下标 0-3 ↔ 物理槽 1-4);
+    槽带态名行实测恒可读(黑底白字稳),showcase 态 1/2/4 实测全空(仅名行-3
+    落展示卡名)——防槽带 OCR 抖动帧(详情锚偶发低命中)误入 showcase。
+    area 缺失(建档漂移)→ False(四信号不齐,判 unknown 不猜)。
+    """
+    for idx in (1, 2, 4):
+        band_rect = _area_rect(ctx, f'{A_TS_NAME_PREFIX}{idx}',
+                               PIONEER_SHOP_SCREEN_NAME)
+        if band_rect is None:
+            return False
+        if any((r.data or '').strip()
+               for r in _ocr(ctx, screen, band_rect, crop_first=True)):
+            return False
+    return True
+
+
+def read_trainshop_panel(ctx: SrContext, screen: MatLike) -> dict:
+    """面板全量读数 → {mode, shop_cards, refresh_slot, showcase_card}
+    (识别器 extras 主体)。
+
+    - mode='slots':shop_cards = 定长 4 槽(下标 0-3 ↔ 物理槽 1-4,刷新钮
+      所在槽 kind='refresh');refresh_slot = 刷新钮物理槽号(不在场 None);
       showcase_card=None;
-    - mode='showcase':槽带不在场(shop_cards=None),showcase_card =
-      中央展示卡读数(解锁点击点 cx/cy);
-    - mode='unknown':两键 None(三信号不全,不猜)。
+    - mode='showcase':槽带不在场(shop_cards/refresh_slot=None),showcase_card
+      = 中央展示卡读数(解锁点击点 cx/cy);
+    - mode='unknown':三键 None(四信号不全,不猜)。
     立绘模板经 ``ensure_portrait_templates`` 幂等加载(缺失 → 槽身份只走
     OCR 名行,角色卡降级 item_type=other,不中断)。
     """
-    anchor_rect = _area_rect(ctx, f'{A_TS_NAME_PREFIX}1', PIONEER_SHOP_SCREEN_NAME)
-    anchor_hit = False
-    if anchor_rect is not None:
-        anchor_hit = is_refresh_anchor(
-            [r.data or '' for r in
-             _ocr(ctx, screen, anchor_rect, crop_first=True)])
-    if anchor_hit:
+    if _count_detail_hits(ctx, screen) >= PANEL_DETAIL_HIT_MIN:
         templates = ensure_portrait_templates(ctx)
-        return {'mode': 'slots',
-                'shop_cards': [_slot_to_json(_read_slot(ctx, screen, i, templates))
-                               for i in range(1, 5)],
-                'showcase_card': None}
-    # 锚缺席:showcase 三信号判定(展示卡有名行 + 槽 1 暗带),缺一 unknown。
+        slots = [_slot_to_json(_read_slot(ctx, screen, i, templates))
+                 for i in range(1, 5)]
+        refresh_slot = next((s['card']['slot'] for s in slots
+                             if s['kind'] == 'refresh'
+                             and s['card'] is not None), None)
+        return {'mode': 'slots', 'shop_cards': slots,
+                'refresh_slot': refresh_slot, 'showcase_card': None}
+    # 详情锚 ≤1:showcase 四信号判定(展示卡有名行 + 槽 1 暗带 + 名行 1/2/4
+    # 全空),缺一 unknown。
     showcase = _read_showcase(ctx, screen)
     slot1_rect = _area_rect(ctx, f'{A_TS_CARD_PREFIX}1', PIONEER_SHOP_SCREEN_NAME)
     slot1_dark = False
     if slot1_rect is not None:
         crop = screen[slot1_rect.y1:slot1_rect.y2, slot1_rect.x1:slot1_rect.x2]
-        slot1_dark = (crop.size > 0 and float(crop.mean()) < _SHOWCASE_SLOT1_BRIGHT_MAX)
-    if showcase is not None and slot1_dark:
-        return {'mode': 'showcase', 'shop_cards': None, 'showcase_card': showcase}
-    return {'mode': 'unknown', 'shop_cards': None, 'showcase_card': None}
+        slot1_dark = (crop.size > 0
+                      and float(crop.mean()) < _SHOWCASE_SLOT1_BRIGHT_MAX)
+    if (showcase is not None and slot1_dark
+            and _side_name_lines_empty(ctx, screen)):
+        return {'mode': 'showcase', 'shop_cards': None, 'refresh_slot': None,
+                'showcase_card': showcase}
+    return {'mode': 'unknown', 'shop_cards': None, 'refresh_slot': None,
+            'showcase_card': None}
+
+
+def find_refresh_slot(ctx: SrContext, screen: MatLike) -> int | None:
+    """逐槽名行找「全部刷新」钮 → 物理槽号 1-4;不在场 → None(常态可不在场)。
+
+    单一消费源 = 刷新 op 守卫定位(轮转占位,点击随槽位)——禁止在 op 内散写
+    逐槽扫描。刷新钮费用等完整读数走 :func:`read_trainshop_panel` 的
+    shop_cards refresh 槽。
+    """
+    for idx in range(1, 5):
+        band_rect = _area_rect(ctx, f'{A_TS_NAME_PREFIX}{idx}',
+                               PIONEER_SHOP_SCREEN_NAME)
+        if band_rect is None:
+            continue
+        if is_refresh_anchor([r.data or ''
+                              for r in _ocr(ctx, screen, band_rect,
+                                            crop_first=True)]):
+            return idx
+    return None
 
 
 def read_trainshop_slot_line(ctx: SrContext, screen: MatLike,

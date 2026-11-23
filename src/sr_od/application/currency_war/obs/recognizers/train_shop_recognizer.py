@@ -37,17 +37,24 @@ class TrainShopPanelRecognizer(ScreenRecognizer):
 
     extras_doc: dict[str, str] = {
         'balance': '开拓力余额(int|None;读区-星穹列车币先裁后 OCR,读不到→None)',
-        'mode': "面板呈现形态:'slots'=常规四槽带(槽1刷新钮+槽2-4商品)/"
-                "'showcase'=中央展示卡态(四槽带不在场;= 首开空池软锁态或恢复态"
+        'mode': "面板呈现形态:'slots'=常规四槽带(详情按钮锚命中≥2;刷新钮轮转"
+                '占位可不在场)/'
+                "'showcase'=中央展示卡态(四信号齐判:详情锚≤1+展示卡有名行+"
+                '槽1暗带+名行1/2/4全空;= 首开空池软锁态或恢复态'
                 '死锁,画面同构读层不区分,解锁=点中央展示卡,坐标见 showcase_card)/'
-                "'unknown'=形态判不出(三信号不全,两键 None,不猜)",
+                "'unknown'=形态判不出(信号不全,各键 None,不猜)",
+        'refresh_slot': "「全部刷新」钮物理槽号(int 1-4|None):轮转占位可在任意槽"
+                        '(槽1/槽4实测),常态可不在场→None;showcase/unknown 恒 None;'
+                        '刷新走 CwRefreshTrainShop(op 自动定位),买槽先对照本字段'
+                        '避开占用槽',
         'shop_cards': "四槽 list(定长 4,下标 0-3 ↔ 物理槽 1-4;槽带态才产出,"
                       'showcase/unknown→None);元素 {kind: refresh/content/unknown,'
                       'card: {slot: 物理槽号1基, x: 槽中心x(点击用), name, faction,'
                       'cost: 开拓力标价(int|None,OCR 名行行尾), star: 恒 null'
                       '(卡面无星级未建模), trial, item_type: char/other} | null}。'
-                      '槽1=「全部刷新」钮(kind=refresh,标价=读区-刷新费用窄窗 OCR,'
-                      '实测恒 1);角色卡身份=SIFT 立绘识别(faction=注册表首阵营;'
+                      '「全部刷新」钮所在槽 kind=refresh(按名行锚识别,标价=名行'
+                      '数字,「1力/次」形态兼容);角色卡身份=SIFT 立绘识别'
+                      '(faction=注册表首阵营;'
                       '卡面显示玩家昵称「Momojie」的开拓者变体读规范名「开拓者」,'
                       '换季改名归一表口径,同备战席读数),'
                       '属性/改件卡=名行 OCR(item_type=other,faction="?");'

@@ -1,11 +1,11 @@
-"""刷新开拓商店商品池 op(槽 1「全部刷新」钮,1 开拓力/次;MCP 面向原语)。
+"""刷新开拓商店商品池 op(「全部刷新」钮,1 开拓力/次;MCP 面向原语)。
 与 ``cw_op/`` 域耦合动作 op 的分界见包 ``__init__`` docstring。
 
 **包纪律申报**:与 ``cw_buy_train_shop_card`` 同申报——带刷新生效验证
 (余额扣减 / 槽带变化 / 帕姆推进任一),任务规格(挂账 ㊱)显式要求;
 不重试不重点,未变化显式 fail 交还调用方。消费面 = MCP agent(实机),
 sim 未建模开拓商店(识别/点击走 screen_utils 直连,同 ``cw_toggle_shop_panel``
-边界申报)。
+的 sim 边界申报)。
 """
 from __future__ import annotations
 
@@ -19,7 +19,10 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
 )
 from sr_od.application.currency_war.obs.cw_trainshop_obs import (
     A_TS_CARD_PREFIX,
+    A_TS_DETAIL_PREFIX,
     A_TS_SHOWCASE_CARD,
+    PANEL_DETAIL_HIT_MIN,
+    find_refresh_slot,
     read_pam_progress,
     read_trainshop_balance,
     read_trainshop_slot_line,
@@ -40,6 +43,9 @@ class CwRefreshTrainShop(CwOperation):
 
     面板态守卫与 ``CwBuyTrainShopCard`` 同源:中央展示卡态(四槽带不在场)
     显式失败——该态无刷新钮可点(守卫判据同帧同构,申报见该 op docstring)。
+    刷新钮**轮转占位**(1-4 任一槽,槽 1/槽 4 实测;常态可不在场):守卫经
+    extras 同源读链 ``find_refresh_slot`` 逐槽名行定位,点击随槽位;不在场
+    显式 fail(候刷新钮出现帧再刷),不再误报中央展示卡态。
 
     :param expect_note: 语义备注(可选,仅进日志,不参与定位与校验)。
     """
@@ -48,6 +54,8 @@ class CwRefreshTrainShop(CwOperation):
         CwOperation.__init__(self, ctx, op_name='CW刷新开拓商店',
                              need_check_game_win=False)
         self.expect_note: str | None = expect_note
+        # 刷新钮物理槽号(守卫节点定位,点击节点消费;机械执行细节)
+        self._refresh_slot: int | None = None
         self._pre_balance: int | None = None
         self._pre_lines: list[tuple[str, int | None]] = []
         self._pre_pam: tuple[int, int] | None = None
@@ -62,24 +70,41 @@ class CwRefreshTrainShop(CwOperation):
         if current != PIONEER_SHOP_SCREEN_NAME:
             return self.round_fail(
                 status=f'不在开拓商店面板(当前画面: {current or "未识别"})')
+        # 四槽带在场守卫:详情按钮锚命中 ≥2(与买卡 op 同源判据,读层常量)。
         si = self.ctx.screen_loader.get_screen(PIONEER_SHOP_SCREEN_NAME)
-        anchor = next((a for a in si.area_list if a.area_name == '商品名行-1'),
-                      None) if si is not None else None
-        if anchor is None:
-            return self.round_fail(
-                status='area 缺失:商品名行-1(货币战争-备战-开拓商店)')
-        r = screen_utils.find_area_in_screen(
-            self.ctx, screen, anchor,
-            screen_name=PIONEER_SHOP_SCREEN_NAME)
-        if r == FindAreaResultEnum.AREA_NO_CONFIG:
-            return self.round_fail(
-                status='area 配置异常:商品名行-1(非文本区?)')
-        if r != FindAreaResultEnum.TRUE:
+        hits = 0
+        for idx in range(1, 5):
+            area = (next((a for a in si.area_list
+                          if a.area_name == f'{A_TS_DETAIL_PREFIX}{idx}'), None)
+                    if si is not None else None)
+            if area is None:
+                return self.round_fail(
+                    status=f'area 缺失:{A_TS_DETAIL_PREFIX}{idx}'
+                           '(货币战争-备战-开拓商店)')
+            r = screen_utils.find_area_in_screen(
+                self.ctx, screen, area,
+                screen_name=PIONEER_SHOP_SCREEN_NAME)
+            if r == FindAreaResultEnum.AREA_NO_CONFIG:
+                return self.round_fail(
+                    status=f'area 配置异常:{A_TS_DETAIL_PREFIX}{idx}'
+                           '(非文本区?)')
+            if r == FindAreaResultEnum.TRUE:
+                hits += 1
+        if hits < PANEL_DETAIL_HIT_MIN:
             return self.round_fail(
                 status='面板处中央展示卡态(首开空池软锁或恢复态死锁,画面同构):'
                        '无刷新钮可点,不执行刷新;解锁 = 点中央展示卡'
                        f'(坐标经 extras {A_TS_SHOWCASE_CARD} 读数 cx/cy)')
-        return self.round_success(status='槽带态确认(全部刷新锚在场)', wait=0.3)
+        # 刷新钮定位(轮转占位):extras 同源读链逐槽名行锚;不在场显式 fail。
+        self._refresh_slot = find_refresh_slot(self.ctx, screen)
+        if self._refresh_slot is None:
+            return self.round_fail(
+                status='刷新钮不在场(常态可不在场,四槽全商品实拍):'
+                       '候刷新钮出现帧再刷(对照 extras.refresh_slot)')
+        return self.round_success(
+            status=f'槽带态确认(详情锚命中 {hits}/4),'
+                   f'刷新钮在槽{self._refresh_slot}',
+            wait=0.3)
 
     @node_from(from_name='面板态守卫')
     @operation_node(name='读点击前快照')
@@ -99,20 +124,24 @@ class CwRefreshTrainShop(CwOperation):
     @node_from(from_name='读点击前快照')
     @operation_node(name='点击全部刷新')
     def click_refresh(self) -> OperationRoundResult:
+        slot = self._refresh_slot
+        if slot is None:
+            return self.round_fail(
+                status='刷新钮槽位缺失(守卫未定位,流程状态异常)')
         si = self.ctx.screen_loader.get_screen(PIONEER_SHOP_SCREEN_NAME)
         area = None
         if si is not None:
             area = next((a for a in si.area_list
-                         if a.area_name == f'{A_TS_CARD_PREFIX}1'), None)
+                         if a.area_name == f'{A_TS_CARD_PREFIX}{slot}'), None)
         if area is None or area.pc_rect is None:
             return self.round_fail(
-                status='商品卡-1 area 缺失(screen_info 建档漂移)')
+                status=f'商品卡-{slot} area 缺失(screen_info 建档漂移)')
         pt = area.pc_rect.center
         self.ctx.controller.click(pt)
         return self.round_success(
-            status='已点击全部刷新(1 开拓力发出,待生效验证)'
+            status=f'已点击槽{slot}「全部刷新」(1 开拓力发出,待生效验证)'
                    f'{"" if self.expect_note is None else f"({self.expect_note})"}',
-            data={'x': pt.x, 'y': pt.y},
+            data={'slot': slot, 'x': pt.x, 'y': pt.y},
             wait=_CLICK_SETTLE_WAIT_S)
 
     @node_from(from_name='点击全部刷新')
