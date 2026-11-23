@@ -10,9 +10,9 @@
 - ``Character``:单角色(费用/站位/分类标签/阵营/流派/独立羁绊/专家/隐藏标记)。
 - ``CHARACTERS``:官方镜像 tuple(63 条)——角色规范名单一真相源;键唯一性不成立
   (星神★阿哈 4/5/7 三档同名),按名查一律走 ``get_char``(多档返起始档,可指名取档)。
-- ``SYSTEM_UNITS``:系统单位 dict(5 条,键=name)——游戏系统赠送的非购买单位,
+- ``SYSTEM_UNITS``:系统单位 dict(6 条,键=name)——游戏系统赠送的非购买单位,
   与纯角色分型(命名依据见 SYSTEM_UNITS 段注)。
-- ``ALL_UNITS`` / ``ALL_UNIT_NAMES``:虚拟并集(实例 63+5=68;名字集合 66 名
+- ``ALL_UNITS`` / ``ALL_UNIT_NAMES``:虚拟并集(实例 63+6=69;名字集合 67 名
   ——多档同名在名字侧去重)——遍历全部单位与反扫词表等消费点统一走它,
   零拼接。
 
@@ -175,6 +175,12 @@ class SystemUnit:
     """
     name: str    # 规范名 = 模板目录名 = SYSTEM_UNIT_ROSTER 成员名
     source: str  # 溯源(live:<策略/环境名>,实机采集;登记保留采集时原文)
+    #: 恒最右布局旗(参与 check_system_unit_layout 布局自检的成员过滤):
+    #: 投资/策略召唤族(佩佩/狸猫系)实机恒占布局最右格,自检据此判「选错档」;
+    #: 奇遇伙伴不恒最右(实拍:伙伴居扩展档倒数第二格、右邻格留空待后续到场)
+    #: → False 免自检(其右格中心比对会对伙伴误报布局冲突)。仅影响布局
+    #: 自检参与面,不改卖出资格/后台固定等其余系统单位语义。
+    rightmost: bool = True
 
 
 # 人工维护段(实机采集溯源,生成器不产);dict 键 = name(构造约定保证一致)。
@@ -194,6 +200,13 @@ SYSTEM_UNITS: dict[str, SystemUnit] = {
     # 「姵姵」→ 在册但识别不可达(SIFT 永不命中)为已知缺口,待实机现场采集
     # 模板(佩佩先例 = 实拍)。
     '姵姵': SystemUnit(name='姵姵', source='实机(live):孪生姵姵302501'),
+    # 杨叔:奇遇伙伴(每局随机一名同行;本员奇遇 =「机械支援计划」,局内效果
+    # 「我标注了一批机械支援的抵达节点,它们会接序到场」)。plaza API 不列
+    # 奇遇伙伴 → 无官方 art,模板 = 现场采集实拍(狸职狸狸同规格净艺术区+掩码)。
+    # 奇遇伙伴共享系统单位行为面(恒后台/占部署位/无羁绊);布局不恒最右
+    # (rightmost=False,见字段注)。
+    '杨叔': SystemUnit(name='杨叔', source='live:奇遇伙伴·机械支援计划',
+                       rightmost=False),
 }
 
 # ===== 派生集合(模块加载时派生;遍历/词表消费点统一走虚拟集合,零拼接) =====
@@ -210,7 +223,7 @@ SYSTEM_UNIT_ROSTER: frozenset[str] = frozenset(SYSTEM_UNITS)
 #: 反扫守卫等含系统单位的词表统一走它)。
 ALL_UNIT_NAMES: frozenset[str] = CHARACTER_ROSTER | SYSTEM_UNIT_ROSTER
 
-#: 全部单位实例虚拟并集(63 角色 + 5 系统单位 = 68;遍历全部单位处统一走它)。
+#: 全部单位实例虚拟并集(63 角色 + 6 系统单位 = 69;遍历全部单位处统一走它)。
 #: 角色在前、系统单位在后,顺序无语义。
 ALL_UNITS: tuple[Character | SystemUnit, ...] = (*CHARACTERS, *SYSTEM_UNITS.values())
 

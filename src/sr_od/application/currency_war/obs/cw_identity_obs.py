@@ -40,6 +40,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTER_ROSTER,
     SYSTEM_UNIT_ROSTER,
+    SYSTEM_UNITS,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BENCH_CAPACITY_DEFAULT,
@@ -746,7 +747,9 @@ def check_system_unit_layout(
 
     与空槽签名法交叉实证过(三触发帧狸猫@1329/1467 只与 8 格自洽)。纯读
     best-effort,失败不抛。姵姵暂无模板条目(SYSTEM_UNITS 在册、识别不可达
-    已知缺口)→ 现覆盖有模板成员。
+    已知缺口)→ 现覆盖有模板成员。恒最右假定只对 ``SystemUnit.rightmost``
+    为 True 的成员成立(奇遇伙伴不恒最右,右邻格可留空)→ 非 rightmost
+    成员不进本自检,防对伙伴误报布局冲突。
     ``back_hits`` = 后排命中对(``(槽号, Unit)``;只消费 char_id,槽位不覆盖)。
     """
     import time as _time
@@ -754,8 +757,11 @@ def check_system_unit_layout(
     try:
         sys_units = []
         for _s, c in (back_hits or []):
-            if c.char_id and c.char_id in SYSTEM_UNIT_ROSTER:
-                sys_units.append(c.char_id)
+            if not c.char_id or c.char_id not in SYSTEM_UNIT_ROSTER:
+                continue
+            if not SYSTEM_UNITS[c.char_id].rightmost:
+                continue   # 非 rightmost 成员(奇遇伙伴族)免恒最右自检
+            sys_units.append(c.char_id)
         if not sys_units:
             return
         band = cv2.cvtColor(screen[_SYS_CHECK_Y1:_SYS_CHECK_Y2,
