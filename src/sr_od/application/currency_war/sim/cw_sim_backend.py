@@ -16,7 +16,7 @@ supply/encounter/box/晶矿面板)→ 状态容器各 opts 槽(经 ``cw_screen_r
 1. **动作后果声明**(声明化迭代主通道):动作 op 经
    ``cw_sim_ports.declare_world`` 喂入 :meth:`advance`,按
    ``decl.trigger`` 分派(键集单一源 = :data:`ADVANCE_TRIGGER_KINDS`,
-   3.3 起 18 转移动作全量在表)——node_advance → 节点推进、
+   3.3 起 19 转移动作全量在表)——node_advance → 节点推进、
    battle_resolve → 战斗结算、选卡族/箱 → 各状态过程、``''`` → 纯
    画面转移;推进后按 ``decl.next_screen`` 等值对账画面档
    (:meth:`_reconcile_next_screen`)。
@@ -1592,7 +1592,7 @@ class PlaneIntelPresentation:
 #: advance 分派表键集(``trigger`` 封闭集代码单一源;权威表 = 详设
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
-#: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;
+#: 过程 + 纯转移全量收齐,19 转移动作声明驱动全覆盖;
 #: ``spy_shop_refresh``(商业间谍升级值变更回调状态副本侧分支:上报
 #: 声明触发 + advance 尾统一排空段消费,非转移动作——next_screen 恒
 #: 备战档,零画面转移);
@@ -1602,12 +1602,16 @@ class PlaneIntelPresentation:
 #: 回备战并自动弹店,遭遇战改由出战触发——旧「选档落地即结算」随呈现
 #: 改造废止;``battle_resolve`` 现役唯一来源 = 出战声明);免战牌建模批
 #: 增 ``battle_skip``(免战跳过声明,来源 = 出战上报跳过子态分支,
-#: kernel ``_SKIP_DECL_TRIGGER`` 同批)。
+#: kernel ``_SKIP_DECL_TRIGGER`` 同批);
+#: ``open_tome``(开典籍声明触发:开件拍代清席分支——sim 无星徽弹窗呈现面、
+#: 选卡拍不存在,典籍离席为后端专属过程;实机侧清席归选卡上报,两域时点
+#: 分歧申报见 :meth:`SimBackend._on_open_tome`)。
 ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
     '', 'node_advance', 'battle_resolve', 'battle_skip', 'open_box',
     'pick_box_card', 'pick_megastar', 'pick_planner', 'pick_supply',
     'pick_invest_env', 'pick_invest_strategy', 'spy_shop_refresh',
     'pick_encounter', 'refresh_invest_env', 'refresh_invest_strategy',
+    'open_tome',
 })
 
 #: 对账豁免场景键(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
@@ -1622,6 +1626,24 @@ ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
 #: 对账漂移保留证据的 disclosures 键(声明与状态机画面漂移早期警报;值 =
 #: 漂移明细串列表,缺陷保留证据不停机)。
 DECL_SCREEN_DRIFT: str = 'decl_screen_drift'
+
+#: 开件拍代清席(典籍)披露键族(触发 = ``open_tome`` 声明;sim 无星徽弹窗
+#: 呈现面、选卡拍不存在,典籍离席为后端开件拍代清——与 live「选卡拍清槽」
+#: 的分歧显式申报非静默;未来 sim 接入星徽弹窗呈现时分歧消解、本分支清席步
+#: 随之退役):
+#: - :data:`OPEN_TOME_TIMING_DIVERGENCE` = 时点分歧(sim 清席 = 开件拍 /
+#:   live 清席 = 选卡拍);
+#: - :data:`OPEN_TOME_SCOPE_NOTE` = 范围口径结论(decl.slots 限单槽,与 live
+#:   一致无范围分歧——防后续误改全清);
+#: - :data:`OPEN_TOME_OVERFLOW_MODEL` = 溢出归位模型(sim = 仅卖出腾槽归位、
+#:   上阵/点开免费腾槽不归位 as-built;live 侧点开归位未实证——sim 无观察
+#:   通道必须定模,取证证实归位后两免费路径同批接入吸收分支);
+#: - :data:`OPEN_TOME_CLEAR_SKIPPED` = 清席步未落(decl.slots 空/越界/kind
+#:   不符帧——决策陈旧/错槽帧:不清 + 披露,禁全 kind 清;值 = 原因串)。
+OPEN_TOME_TIMING_DIVERGENCE: str = 'open_tome_timing_divergence_sim_open_live_pick'
+OPEN_TOME_SCOPE_NOTE: str = 'open_tome_scope_single_slot_no_divergence'
+OPEN_TOME_OVERFLOW_MODEL: str = 'open_tome_overflow_no_return_on_open_as_built'
+OPEN_TOME_CLEAR_SKIPPED: str = 'open_tome_clear_skipped'
 
 
 @dataclass
@@ -2362,11 +2384,13 @@ class SimBackend:
         :data:`ADVANCE_TRIGGER_KINDS`,集外值 ValueError 响亮——
         构造点漂移 = 调用点接错禁静默),完成后
         :meth:`_reconcile_next_screen` 等值对账画面档。状态副本推进唯一
-        驱动 = 本方法(单动作单轨;18 转移动作全量在表);
+        驱动 = 本方法(单动作单轨;19 转移动作全量在表);
         ``trigger=''`` = 纯画面转移,
         零专属过程——专家邀请函档 = ``_present_modal`` 呈现(open_bookcard
         腾席写端在其上报,本层只呈现),其余 = ``_dismiss_modal`` 幂等
-        返回(节点窗让路恢复位语义保留)。入口先消费
+        返回(节点窗让路恢复位语义保留);``open_tome`` = 无选卡呈现面
+        kind 的开件拍代清席分支(星徽弹窗 sim 无呈现面,选卡拍不存在,
+        :meth:`_on_open_tome`)。入口先消费
         :attr:`_pending_reconcile`(豁免场景延后的对账在稳态补验)。
         """
         if self.done:
@@ -2402,6 +2426,9 @@ class SimBackend:
             self._on_open_box()
         elif decl.trigger == 'pick_box_card':
             self._on_box_picked()
+        elif decl.trigger == 'open_tome':
+            # 开件拍代清席分支(sim 无星徽弹窗呈现面;分歧申报在 handler)。
+            self._on_open_tome(decl.slots)
         elif decl.trigger == 'pick_megastar':
             self._on_overlay_picked('megastar')
         elif decl.trigger == 'pick_planner':
@@ -2443,7 +2470,7 @@ class SimBackend:
         # 窗口分支/选卡/首购等全部非买经验源跨级产生的 spy 声明)。
         self._drain_pending_levelup_decls()
         # overlay 呈现检查(3.4):**仅纯转移分支**——声明改底层屏后
-        # open_bookcard/open_tome 的弹窗呈现入口(battle_resolve/
+        # open_bookcard 的弹窗呈现入口(battle_resolve/
         # node_advance 等其余分派保留原呈现时机 = 各自过程内/节点窗
         # 起点检查,不在 advance 尾提前:overlay 让路序「窗起点 overlay
         # 先于 offer」是旧引擎收尾检查序的锁定语义)。
@@ -3109,6 +3136,70 @@ class SimBackend:
             self.disclosures.setdefault(BOX_POOL_PENDING_U24,
                                         'pick_card_unrecorded')
         self._dismiss_modal()
+
+    def _on_open_tome(self, slots: Sequence[int]) -> None:
+        """开典籍动作落地 → sim bench 被点开槽清席 + star_tome 登记消费
+        (后端开件拍代清;零新增游戏语义)。
+
+        sim 无星徽弹窗呈现面(``_present_pending_overlay`` 对 star_tome =
+        无呈现面族消费 + 披露),选卡拍在 sim 不存在——共享选卡上报清槽对
+        典籍不可达,本分支 = 典籍离席的 sim 唯一清席点。三步:
+        1. **清席**(``slots`` 首元 = 被点开备战栏物理槽 1 基 → 下标 -1 定位;
+           ``WorldDecl.slots`` 索引定义):该槽存在且 ``kind=='tome'`` 才清——
+           置 empty,**不触 overflow 两字段**(sim 溢出模型 as-built = 仅卖出
+           腾槽归位,上阵/点开两免费腾槽路径不归位——live 侧点开归位未实证,
+           sim 无 bench 观察通道必须定模,取最保守口径);整视图 observe 写
+           (引擎真值 → obs 渠道 sim 证据前缀;现值若为 logic 源且失配走 sim
+           抑制面静默采新,写形照 spy_steal 先例)。``slots`` 空/越界/该槽
+           None/kind 不符(决策陈旧/错槽帧)= **不清 + 披露**,禁全 kind 清
+           (多典籍同席合法,只清被点开的一枚);指向合法空槽 = 幂等零写;
+        2. ``_present_pending_overlay``:消费 star_tome 登记(无呈现面路径 =
+           消费 + 披露 ``star_tome_options_unmodeled``)。登记队列 FIFO:前导
+           可呈现条目在场或当前已在模态屏时,本调用呈现该模态后返回,
+           star_tome 延后至后续呈现检查消费——延后为预期形态,清席步在其前
+           已落地;
+        3. 披露键申报 sim 建模分歧(键义见 :data:`OPEN_TOME_TIMING_DIVERGENCE`
+           注):时点分歧 + 范围口径(无范围分歧)+ 溢出归位模型。分歧显式
+           申报非静默;未来 sim 接入星徽弹窗呈现时分歧消解、本分支清席步
+           随之退役(清席归共享选卡上报)。
+        """
+        self.disclosures.setdefault(
+            OPEN_TOME_TIMING_DIVERGENCE, 'sim_clear_at_open/live_clear_at_pick')
+        self.disclosures.setdefault(
+            OPEN_TOME_SCOPE_NOTE, 'decl_slots_single_slot_same_as_live')
+        self.disclosures.setdefault(
+            OPEN_TOME_OVERFLOW_MODEL, 'sell_only_return_as_built')
+        if not slots:
+            self.disclosures.setdefault(OPEN_TOME_CLEAR_SKIPPED, 'slots_empty')
+        else:
+            idx = int(slots[0]) - 1
+            view = self.gs.bench.value
+            cur = (view.slots[idx]
+                   if view is not None and 0 <= idx < len(view.slots) else None)
+            if view is None:
+                self.disclosures.setdefault(OPEN_TOME_CLEAR_SKIPPED,
+                                            'bench_unobserved')
+            elif not (0 <= idx < len(view.slots)) or view.slots[idx] is None:
+                self.disclosures.setdefault(OPEN_TOME_CLEAR_SKIPPED,
+                                            'slot_out_of_range')
+            elif cur.kind == 'empty':
+                pass   # 指向合法空槽 = 幂等零写
+            elif cur.kind != 'tome':
+                self.disclosures.setdefault(OPEN_TOME_CLEAR_SKIPPED,
+                                            'slot_kind_mismatch')
+            else:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    BenchSlot,
+                    BenchView,
+                )
+                new_slots = list(view.slots)
+                new_slots[idx] = BenchSlot(kind='empty')
+                self.gs.observe(
+                    self.gs.bench,
+                    BenchView(slots=new_slots, capacity=view.capacity),
+                    evidence=sim_evidence('open_tome:bench_clear'),
+                    sig=obs_sig(group_id='sim:open_tome'))
+        self._present_pending_overlay()
 
     def _on_overlay_picked(self, kind: str) -> None:
         """overlay 选定落地(模态返回 + 呈现检查):效果分支归各自上报/
@@ -5307,25 +5398,35 @@ def install_backend(backend: SimBackend) -> None:
     ``cw_action_report.set_action_rng_provider`` 拿流键 rng——键形
     ``action/<tool>/<序号>``,序号 = 本装配内调用序(动作序列确定性
     ⟹ 采样链确定性);实机缺省 None = 未播种口径零变化。
+
+    溢出在场选卡清槽解析槽注入:``cw_action_report.set_overflow_pick_resolver``
+    装 ``BenchSlot(kind='empty')``(sim 口径 = 被腾槽写 empty,as-built 不归位
+    模型——sim 无 bench 观察通道,不写即占席件永不离席 → 重发活锁;实机
+    缺省 None = 不写让下一 heavy 实读承接),与 rng 提供槽同生命周期。
     """
     import itertools
 
     from sr_od.application.currency_war.kernel.cw_action_report import (
         set_action_rng_provider,
+        set_overflow_pick_resolver,
     )
+    from sr_od.application.currency_war.kernel.cw_game_state import BenchSlot
 
     seq = itertools.count()
     set_action_rng_provider(
         lambda tool: stream_rng(backend.seed, f'action/{tool}/{next(seq)}'))
+    set_overflow_pick_resolver(lambda _gs: BenchSlot(kind='empty'))
     cw_sim_ports.install_sim_backend(backend)
 
 
 def uninstall_backend() -> None:
-    """卸载 sim 后端(端口槽 + 动作分支 rng 提供槽复位;
-    幂等)。"""
+    """卸载 sim 后端(端口槽 + 动作分支 rng 提供槽 + 溢出在场选卡清槽解析槽
+    复位;幂等)。"""
     from sr_od.application.currency_war.kernel.cw_action_report import (
         set_action_rng_provider,
+        set_overflow_pick_resolver,
     )
 
     set_action_rng_provider(None)
+    set_overflow_pick_resolver(None)
     cw_sim_ports.uninstall_sim_backend()

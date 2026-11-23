@@ -39,7 +39,9 @@ class CwActionPickBoxCardOp(CwOperation):
     op-layer.md §1.1 :35,动作 op 自取,缺席/越界 = 守卫断言)→ overlay
     动画固定等待(``_OVERLAY_ANIM_WAIT_S``,与开箱结束本次访问等待同源)。
     选卡即终结 = 画面 op 派发后 round_success 结束本次访问(落地归下一帧观察);
-    本 op 零 chosen 写端,零状态容器写。"""
+    本 op 零 chosen 写端;机械面零状态容器写,自上报 = 选卡即离席清槽(消费
+    box_card 登记取被点开槽 logic 清;溢出告警在场实机口径不写让实读承接、
+    sim 口径写 empty)。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -78,10 +80,11 @@ class CwActionPickBoxCardOp(CwOperation):
         # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         # 固定动画等待(来源写死 = 现役 overlay 动画等待常量)。
         time.sleep(_OVERLAY_ANIM_WAIT_S)
-        # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
-        # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
-        # = no-op,sim 装配后驱动后端 pick_box_card 入栏+结束本次访问);round
-        # data 携带声明(journal 记账面)。
+        # 自上报(机械链发出后;上报选卡即离席清槽——消费登记槽 logic 清
+        # 被点开槽,溢出告警在场实机口径不写让实读承接、sim 口径写 empty)。
+        # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2 契约 3;
+        # 实机端口未装 = no-op,sim 装配后驱动后端 pick_box_card 入栏+结束
+        # 本次访问);round data 携带声明(journal 记账面)。
         world_decl = None
         if gs is not None:
             outcome = report_action_pick_box_card_param(

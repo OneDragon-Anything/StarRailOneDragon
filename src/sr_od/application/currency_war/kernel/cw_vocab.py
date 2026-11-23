@@ -573,7 +573,8 @@ class CwActionCollectOreParam:
 
 @dataclass
 class CwActionOpenBoxParam:
-    """开简易武装箱(点「武装箱开启位-N」开启钮 → 弹武装箱四选一;开箱即腾席)。
+    """开简易武装箱(点「武装箱开启位-N」开启钮 → 弹武装箱四选一;弹窗期
+    箱仍占席,选完才离席)。
 
     选卡决策不在本执行链——点完开启本动作即终结返回主循环,武装箱选择
     画面由外循环按 box_card 登记分发 ``CwScreenBoxPick`` 选卡。终结动作
@@ -588,15 +589,16 @@ class CwActionOpenBoxParam:
 
     [记账路径总契约第八适用者](契约正文 = skills/sr-od-dev-currency-war/
     references/flow/action-op.md「记账路径总契约」条款):**零写占位形态**
-    ——状态容器零写 + box_card 登记 + ``_decl_bottom(gs,'open_box')``
-    转移声明,腾位归下一入口 heavy 实读整表重建(与前两件 OpenTome/
-    OpenBookcard 的腾位直址写不同构:零键域零反查,总契约三条在本域
-    整族退化);零拒单出口(零写族无 slot 校验,错槽开空由外循环按实读
-    重派);名称字段零新增(宪法③空集——参数面零名称字段 + 记账面零
-    param 消费)。MCP 直调传参双口径任一:①当帧 extras ``bench.slots``
-    中 kind='supply_box' 槽的下标 + 1(与发出点同源口径);②当帧 extras
-    ``armory_boxes`` 元素的 ``slot`` 字段直接传(无需 +1——``_ctx_slots``
-    1 基实证,与口径①同一物理槽位号语义等价)。
+    ——状态容器零写 + box_card 登记携开件槽(``param.slot`` 透传登记载体
+    与声明载体,非键域反查)+ ``_decl_bottom(gs,'open_box',slots=(slot,))``
+    转移声明;离席归 ``pick_box_card`` 选卡上报清槽(选卡即离席;溢出告警
+    在场实机口径不写让实读承接);与 OpenTome 同构(零键域零反查,总契约
+    三条在本域整族退化);零拒单出口(零写族无 slot 校验,错槽开空由外循环
+    按实读重派);名称字段零新增(宪法③空集——参数面零名称字段)。MCP 直调
+    传参双口径任一:①当帧 extras ``bench.slots`` 中 kind='supply_box' 槽的
+    下标 + 1(与发出点同源口径);②当帧 extras ``armory_boxes`` 元素的
+    ``slot`` 字段直接传(无需 +1——``_ctx_slots`` 1 基实证,与口径①同一
+    物理槽位号语义等价)。
 
     ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
     ``cw_vocab.action_param_from_dict``)。
@@ -614,7 +616,7 @@ class CwActionOpenBoxParam:
 
 @dataclass
 class CwActionOpenTomeParam:
-    """开秘密典籍(点槽一次即开:单击即弹星徽四选一〔用户确认 2026-09-25 游戏实际口径〕;开典籍即腾席+外循环分发 CwScreenBookcard 接管选卡)。
+    """开秘密典籍(点槽一次即开:单击即弹星徽四选一〔用户确认 2026-09-25 游戏实际口径〕;弹窗期典籍仍占席,选完才离席;外循环分发 CwScreenBookcard 接管选卡)。
 
     建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
     选卡决策在 CwScreenBookcard(板上阵营匹配),本动作只负责把典籍点开。
@@ -629,13 +631,16 @@ class CwActionOpenTomeParam:
     TypeError;显式传 null = op 守卫 AssertionError(文案指向参数契约)。
 
     [记账路径总契约第七适用者](契约正文 = skills/sr-od-dev-currency-war/
-    references/flow/action-op.md「记账路径总契约」条款):记账键 = 槽位
-    下标,腾位 = 直址写(kind 'tome' → empty)零身份反查——无回金/
-    无装备回收/无 sold 内容,槽位键域退化形态;名称字段零新增(宪法③
-    空集);零转移声明(本动作非转移动作,上报零 WorldDecl 构造,星徽
-    四选一画面的出现事实由上报内 star_tome 登记承载)。MCP 直调传参 =
-    当帧 extras ``bench.slots`` 中 kind='tome' 槽的下标 + 1(与发出点
-    同源口径;注意与 OpenBox 的 kind='supply_box' 不同串)。
+    references/flow/action-op.md「记账路径总契约」条款):**零写占位形态**
+    ——状态容器零写(弹窗期典籍在席)+ star_tome 登记携开件槽(``param.slot``
+    透传登记载体与声明载体,非键域反查)+ 后果声明
+    ``WorldDecl(trigger='open_tome', slots=(slot,))``(星徽四选一画面的出现
+    事实由登记承载;声明 = sim 后端无星徽弹窗呈现面时开件拍代清席的喂入
+    通道);离席归 ``pick_star_tome`` 选卡上报清槽(选卡即离席;溢出告警在场
+    实机口径不写让实读承接);与 OpenBox 同构;零拒单出口(错槽真值归
+    heavy 实读对账);名称字段零新增(宪法③空集)。MCP 直调传参 = 当帧
+    extras ``bench.slots`` 中 kind='tome' 槽的下标 + 1(与发出点同源口径;
+    注意与 OpenBox 的 kind='supply_box' 不同串)。
 
     ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
     ``cw_vocab.action_param_from_dict``)。

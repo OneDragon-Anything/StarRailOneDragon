@@ -17,13 +17,14 @@ env 消费)。缺 slot 键 = from_dict 构造面 TypeError;显式传 null = op
 守卫 AssertionError(文案指向参数契约)。
 
 [记账路径总契约第八适用者](契约正文 = flow/action-op.md L32「记账路径
-总契约」条款):**零写占位形态**——状态容器零写 + box_card 登记 +
-``_decl_bottom(gs,'open_box')`` 转移声明,腾位归下一入口 heavy 实读
-整表重建。与 OpenTome/OpenBookcard 的「腾位直址写零身份反查」不同构:
-本件零键域零反查(上报函数零 param 字段消费、零状态容器写端),总契约
-三条(反查时序/陈旧窗口/反查唯一性)在本域整族退化——陈旧窗口由终结
-转移结构性消除(上报后 op 立即经终结口交回主循环,武装箱选择模态压住
-备战画面期间决策环不再消费 bench 槽位表)。**零拒单出口**(零写族恒
+总契约」条款):**零写占位形态**——状态容器零写(弹窗期箱在席,选完才
+离席)+ box_card 登记携被点开槽 + ``_decl_bottom(gs,'open_box',
+slots=(slot,))`` 转移声明;离席归 ``pick_box_card`` 选卡上报清槽(选卡
+即离席;溢出告警在场实机口径不写让实读承接)。与 OpenTome 同构(零键域
+零反查,上报函数 ``param.slot`` 读入登记载体与声明载体,零状态容器写端),
+总契约三条(反查时序/陈旧窗口/反查唯一性)在本域整族退化——陈旧窗口由
+终结转移结构性消除(上报后 op 立即经终结口交回主循环,武装箱选择模态
+压住备战画面期间决策环不再消费 bench 槽位表)。**零拒单出口**(零写族恒
 applied=True,无 slot 校验):直调错传 slot 的后果 = 点错槽开启失败,
 外循环按实读重派,非静默错账。
 
@@ -144,15 +145,15 @@ class CwActionOpenBoxOp(CwOperation):
             )
             time.sleep(_OVERLAY_ANIM_WAIT_S)
         # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
-        detail = (f'开箱槽{slot} ✓(发出即上报:零写族+登记+声明,'
-                  '落地归下一入口heavy实读)')
+        detail = (f'开箱槽{slot} ✓(发出即上报:零写族+登记携槽+声明携槽,'
+                  '落地归观察对账)')
         # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):零写族
-        # ——box_card 登记 + 底层屏声明(trigger='open_box'),状态容器
-        # 零写,腾位归下一入口 heavy 实读。上报后一行声明喂入(实机端口
-        # 未装 = no-op,sim 装配后驱动后端 open_box 分派);round data 携
-        # 声明(journal 记账面)。gs 缺席 = 无处记账跳过(零上报零声明零
-        # 异常,既有行为保留)。零拒单段(零写族恒 applied=True,无 slot
-        # 校验出口)。
+        # ——box_card 登记携被点开槽 + 底层屏声明(trigger='open_box',slots
+        # 携槽),状态容器零写(弹窗期箱在席,离席归选卡上报清槽)。上报后
+        # 一行声明喂入(实机端口未装 = no-op,sim 装配后驱动后端 open_box
+        # 分派);round data 携声明(journal 记账面)。gs 缺席 = 无处记账
+        # 跳过(零上报零声明零异常,既有行为保留)。零拒单段(零写族恒
+        # applied=True,无 slot 校验出口)。
         world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:

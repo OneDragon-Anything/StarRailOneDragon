@@ -3,11 +3,14 @@
 
 规约:词表类 ``CwActionXxxParam`` 恰有一个具名上报函数
 ``report_action_<snake>_param``(snake = 去前缀/后缀转下划线,
-机械可推导;完备测试 = sr-od-test test_action_report,
-经包级属性解析)。文件布局:
+机械可推导;包级 ``__getattr__`` 按此规约 lazy 解析——命名规约**无专项
+完备测试**,现役锁 = 动作 op 注册表测试 ``test_action_registry``,不走包
+属性解析;消费面 = op 组装期直 import 具名函数,漏函数 = 导入期
+ImportError 响亮)。文件布局:
 - 有字段写语义的动作 = 一动作一文件(文件名 = snake);
 - 工具原子七类 = ``tool_use``(机械半同构一族一文件,字段写形态);
-- 零写动作族 = ``zero_writes``(策略统一,不逐类开文件);
+- 零写动作族 = ``zero_writes``(策略统一,不逐类开文件;占席件选卡上报
+  的前置清槽步为该文件唯一非零写例外);
 - 刷新上报 = refresh_shop(计数分支:付费/全量两计数经效果账本
   ``record_refresh`` 唯一入口,免费分支 = 状态容器字段 free_refresh_left 判定扣减,
   payload 随机态 = kernel 采样器 write_logic_rand)。
@@ -22,7 +25,8 @@
 # ============================================================ 动作上报接口(每动作一个具名函数)
 #
 # 命名规约 = ``report_action_<snake>_param``:词表类 ``CwActionXxxParam`` 去前后缀
-# 转 snake,机械可推导(完备测试遍历 CW_ACTION_TYPES 逐类断言函数在场)。
+# 转 snake,机械可推导(无专项完备测试逐类断言函数在场;消费面 = op 组装期
+# 直 import,漏函数 = 导入期 ImportError 响亮)。
 # 消费面 = 实机动作 op(组装时已知自身类型,直调本函数)与商店序列驱动器
 # (回放/既有序列测试消费面)直调。**禁新增按类型聚合的转移函数**——语义
 # 全部住本函数族,现无任何聚合分派点。
@@ -39,9 +43,18 @@
 #   live 调用方可忽略出参,零行为)。
 # 域级跳写纪律不变:gold/xp/level 未读(None)该域跳写,值留观察覆盖。
 
+from __future__ import annotations
+
 import importlib
 import random
 from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        GameState,
+    )
 
 _ZERO_WRITE_MODULE = 'zero_writes'
 _TOOL_USE_MODULE = 'tool_use'
@@ -89,6 +102,39 @@ def action_sampling_rng(tool: str, rng: random.Random | None,
     if injected is not None:
         return injected
     return _fallback if _fallback is not None else random.Random()
+
+
+# ============================================================ 溢出告警在场时占席件选卡拍的被腾槽终态解析槽
+# (占席件「开件零写 + 选卡清槽」两拍契约的溢出在场子分支:「点开消耗品 →
+#  溢出件归位」仓内未实证(机制实证仅覆盖卖出路径),实机口径选卡拍**不写**
+#  被腾槽与 overflow 两字段、留原源由下一 heavy 实读承接真实终态;sim 无
+#  bench 观察通道必须定模,取 as-built 不归位模型写 empty——经本槽区分两域
+#  口径。先例 = 动作分支采样 rng 提供槽同款「模块级槽 + 缺省关 + 装配点
+#  显式接通」;装配点唯一 = sim 后端 install_backend/uninstall_backend
+#  (kernel 不 import sim,sim 向 kernel 槽注入 = 驱动反转)。)
+
+_OVERFLOW_PICK_RESOLVER: Callable[[GameState], BenchSlot | None] | None = None
+
+
+def set_overflow_pick_resolver(
+        fn: Callable[[GameState], BenchSlot | None] | None) -> None:
+    """注入溢出告警在场时占席件选卡拍的被腾槽终态解析器(注入槽模式,
+    None = 关,缺省态 = 实机口径不写)。
+
+    ``fn(gs) -> BenchSlot | None``:返回槽件 = 被腾槽写该槽件(sim 装配方
+    注入 ``BenchSlot(kind='empty')``,as-built 不归位模型);返回 None =
+    不写 bench、不写 overflow 两字段(实机缺省,让下一 heavy 实读承接)。
+    消费口 = :func:`overflow_pick_resolver`(``zero_writes._clear_opened_slot``
+    函数内懒导入);teardown 必卸(模块槽进程全局)。
+    """
+    global _OVERFLOW_PICK_RESOLVER
+    _OVERFLOW_PICK_RESOLVER = fn
+
+
+def overflow_pick_resolver(gs: GameState) -> BenchSlot | None:
+    """取被腾槽终态槽件(未装配 = None = 实机口径不写)。"""
+    return None if _OVERFLOW_PICK_RESOLVER is None \
+        else _OVERFLOW_PICK_RESOLVER(gs)
 
 
 

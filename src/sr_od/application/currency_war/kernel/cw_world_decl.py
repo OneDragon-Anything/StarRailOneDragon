@@ -23,9 +23,17 @@ class WorldDecl:
     next_screen: str
     #: 推进分派类别(advance 分派表);'' = 无。
     trigger: str
-    #: 动作参数槽位载荷(缺省空 = 无载荷)。坐标系 = 动作参数类 slots 同源
-    #: (投资逐卡刷新 = 投资界面卡槽物理排位 0 基,CwActionRefreshInvestCardsParam
-    #: 同款);取值时机 = 生成期快照(上报函数自 param 透传,状态副本消费端现读)。
-    #: 写入端 = 上报函数(报告 param.slots 原样)。仅参数化动作携带,
-    #: 转移类动作缺省空(消费端按 trigger 判载荷必要性)。
+    #: 动作参数槽位载荷(缺省空 = 无载荷)。坐标系按**动作**分档,消费端
+    #: 按动作判载荷(连同上报函数归属判——trigger 单独不足:多动作共用
+    #: trigger=''):
+    #: - refresh_invest_strategy / refresh_invest_env = 投资界面卡槽物理
+    #:   排位 0 基(CwActionRefreshInvestCardsParam.slots 同款;env 整组
+    #:   刷新为哨兵,不逐槽消费);
+    #: - open_tome / open_box = 备战栏物理槽 **1 基单元素**(被点开槽,与
+    #:   CwActionOpenTomeParam/CwActionOpenBoxParam.slot 同坐标系,开件上报
+    #:   透传 param.slot;sim 后端按 slots[0]-1 定位 bench 槽表);
+    #: - 其余动作恒空(转移类动作缺省空,消费端按动作判载荷必要性)。
+    #: 取值时机 = 生成期快照(上报函数自 param 透传,状态副本消费端现读)。
+    #: 写入端 = 上报函数(报告 param.slots 原样;占席件开件上报透传
+    #: param.slot)。
     slots: tuple[int, ...] = ()

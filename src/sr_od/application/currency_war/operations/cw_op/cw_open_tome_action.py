@@ -15,16 +15,16 @@ slot 键 = from_dict 构造面 TypeError;显式传 null = op 守卫
 AssertionError(文案指向参数契约)。
 
 [记账路径总契约第七适用者](契约正文 = flow/action-op.md L32「记账路径
-总契约」条款):记账键 = 槽位下标,腾位 = 直址写(kind 'tome' →
-empty)零身份反查退化形态。记账拒单帧(``tome_slot_missing`` =
-目标槽非 tome kind,决策陈旧帧/直调错传可达)如实进 round
-detail——拒单 = 腾位账未落但点击已发生,**禁补点**(补点会重复开典籍),
-处置 = 交还决策循环重读板面按新状态重派。
+总契约」条款):**零写占位形态**——状态容器零写(弹窗期典籍在席,选卡后
+才离席)+ star_tome 登记携被点开槽 + 后果声明 ``WorldDecl(trigger=
+'open_tome', slots=(slot,))``;离席归 ``pick_star_tome`` 选卡上报清槽
+(选卡即离席;溢出告警在场实机口径不写让实读承接)。零拒单出口(零写族
+恒 applied=True,无 slot/kind 校验——错槽真值归 heavy 实读对账)。
 
-零转移声明:本动作 = 非转移动作(action-op.md 转移动作终表无 OpenTome
-行),上报零 ``WorldDecl`` 构造、round 结果零 data(无声明喂入行)——
-星徽四选一画面的出现事实由上报内 star_tome 登记承载,与纯转移声明的
-OpenBookcard 不同构,两边各自正确。
+后果声明喂入:自上报后紧跟一行 ``cw_sim_ports.declare_world``(实机端口
+未装 = no-op;sim 装配后驱动后端 open_tome 分支——sim 无星徽弹窗呈现面、
+选卡拍不存在,后端据声明 slots 在开件拍代清席);round data 携声明
+(journal 记账面)。星徽四选一画面的出现事实由登记承载。
 
 非终结:单击开典籍后星徽四选一 overlay 弹出,交接走 director 环
 overlay-pending 通用路径交回外循环,选卡由外循环按画面分发
@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.open_tome import (
+from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_open_tome_param,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -138,21 +138,22 @@ class CwActionOpenTomeOp(CwOperation):
             )
             time.sleep(_OVERLAY_ANIM_WAIT_S)
         # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
-        detail = f'开典籍槽{slot} ✓(发出即记账,落地归观察对账)'
-        # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):开典籍
-        # 腾位 + star_tome 登记。零声明喂入行(非转移动作,round 结果零
-        # data);gs 缺席 = 无处记账跳过(零上报零异常,既有行为保留)。
+        detail = f'开典籍槽{slot} ✓(发出即上报:零写族+登记携槽+声明携槽,落地归观察对账)'
+        # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):零写族
+        # ——star_tome 登记携被点开槽 + 后果声明(trigger='open_tome',slots
+        # 携槽),状态容器零写(弹窗期典籍在席,离席归选卡上报清槽)。上报后
+        # 一行声明喂入(实机端口未装 = no-op,sim 装配后驱动后端 open_tome
+        # 分支代清席);round data 携声明(journal 记账面)。gs 缺席 = 无处
+        # 记账跳过(零上报零声明零异常,既有行为保留)。零拒单段(零写族恒
+        # applied=True,无 slot/kind 校验出口)。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             outcome = report_action_open_tome_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-            if not outcome.applied:
-                # 记账拒单如实进 round detail(直调方经 round 结果感知
-                # 拒单;机械成功语义不变——点击确实已发生;禁补点:拒单 =
-                # 腾位账未落,补点会重复开典籍,处置 = 重读板面按新状态
-                # 重派)。
-                detail += f'；记账拒单:{outcome.reason}(点击已发生,账未落)'
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
         log.info(f'[cw][tome] {detail}')
-        return self.round_success(detail)
+        return self.round_success(detail, data=world_decl)

@@ -1,10 +1,13 @@
 """货币战争 overlay 登记簿记(design.md 契约 C-登记/C-簿记;详设 overlay 生命周期契约)。
 
 三个登记入口(固定位置参数,用户裁定):
-- ``register_screen_change(gs, kind, screen_name, source)``:登记一条
-  待处理弹窗(pending FIFO,同 kind 已登记去重);
+- ``register_screen_change(gs, kind, screen_name, source, *, slot=None)``:
+  登记一条待处理弹窗(pending FIFO,同 kind 已登记去重);``slot`` 为
+  keyword-only 可选形参,仅占席件开件上报(OpenTome/OpenBox)透传被点开的
+  备战栏物理槽号,其余登记调用不传(三个固定位置参数契约不变);
 - ``consume_screen_change(gs, kind)``:按 kind 匹配移除(与顺序无关——
-  弹出顺序不可枚举,用户裁定不强断言);
+  弹出顺序不可枚举,用户裁定不强断言),**回传被消费条目**(未登记 =
+  None)——占席件选卡上报据此取被点开槽号清席,其余消费方忽略返回值;
 - ``clear_screen_changes(gs)``:整列清空(识别回备战底屏的兜底清)。
 
 存处 = ``GameState.screen_changes`` 状态容器簿记 sidecar(overlay 生命周期契约
@@ -67,6 +70,15 @@ class PendingScreen:
     kind: str
     screen_name: str
     source: str
+    #: [索引定义] 被点开的备战栏**物理槽位,1 基**(与
+    #: CwActionOpenTomeParam/CwActionOpenBoxParam 的 slot 同坐标系,透传
+    #: 不换算;消费端按 slots[idx-1] 定位 bench 槽表)。None = 非占席件
+    #: 开件登记(其余 kind 恒 None)。[取值时机] 开件上报生成期快照
+    #: (开件拍写入、选卡拍消费,期间该槽未变)。[写入端] 仅占席件开件
+    #: 上报经 ``register_screen_change`` 的 ``slot`` 形参写入(OpenTome/
+    #: OpenBox 无条件);消费端 = 选卡上报清槽助手
+    #: (``zero_writes._clear_opened_slot``),登记缺位/槽 None = 不清+披露。
+    slot: int | None = None
 
 
 @dataclass
@@ -88,10 +100,14 @@ class ScreenChanges:
 
 
 def register_screen_change(gs, kind: str, screen_name: str,
-                           source: str) -> None:
+                           source: str, *,
+                           slot: int | None = None) -> None:
     """登记一条待处理弹窗(同 kind 已登记不重复)。
 
-    kind 集外 = 编程错误,响亮炸出(词表封闭集纪律)。
+    kind 集外 = 编程错误,响亮炸出(词表封闭集纪律)。``slot`` 仅占席件
+    开件上报传入(被点开的备战栏物理槽 1 基快照,索引定义见
+    :class:`PendingScreen`);其余登记调用不传,恒 None。同 kind 去重语义
+    不变:去重命中丢弃后来条目。
     """
     if kind not in SCREEN_CHANGE_KINDS:
         raise ValueError(
@@ -101,13 +117,20 @@ def register_screen_change(gs, kind: str, screen_name: str,
     if any(p.kind == kind for p in sc.pending):
         return   # 同 kind 去重(多判据同帧命中同屏)
     sc.pending.append(PendingScreen(kind=kind, screen_name=screen_name,
-                                    source=source))
+                                    source=source, slot=slot))
 
 
-def consume_screen_change(gs, kind: str) -> None:
-    """消费:按 kind 匹配移除(与顺序无关;不已登记 = no-op)。"""
+def consume_screen_change(gs, kind: str) -> PendingScreen | None:
+    """消费:按 kind 匹配移除(与顺序无关;不已登记 = no-op)。
+
+    回传被消费的条目(未登记 = None):占席件选卡上报据此取被点开槽号
+    清席(条目 ``slot`` 索引定义见 :class:`PendingScreen`);其余消费方
+    忽略返回值。同 kind 去重保证至多一条,回传即该条。
+    """
     sc = gs.screen_changes
+    consumed = next((p for p in sc.pending if p.kind == kind), None)
     sc.pending = [p for p in sc.pending if p.kind != kind]
+    return consumed
 
 
 def clear_screen_changes(gs) -> None:
