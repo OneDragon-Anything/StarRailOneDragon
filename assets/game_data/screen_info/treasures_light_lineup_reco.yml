@@ -1,5 +1,5 @@
-screen_id: treasures_light_as_reco
-screen_name: 末日幻影-通关阵容
+screen_id: treasures_light_lineup_reco
+screen_name: 逐光捡金-通关阵容推荐
 pc_alt: false
 area_list:
 - area_name: 标题-推荐阵容
@@ -73,6 +73,7 @@ area_list:
   color_range: null
   goto_list:
   - 末日幻影-编队
+  - 忘却之庭-编队
 - area_name: 行-节点一
   id_mark: false
   pc_rect:
