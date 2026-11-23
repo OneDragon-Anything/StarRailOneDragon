@@ -70,6 +70,19 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 #    帧两读一致即采新」的同值单帧假确认。合成特效窗内读数物理不可信:
 #    保旧且不登记候选、不确认(冻结非清零,帧态维,与时间维
 #    两帧门正交)。
+# 3. **辖区 = 对 logic_rand 以外的基线保旧**:比较基线取主域 Field 现值,
+#    其来源决定门是否行使 —— observation / carried / logic 基线走上述两
+#    层;logic_rand 基线(采样落位 / 开局未锚定期链写 / 采晶矿「未变标记」,
+#    值 = 可能局面快照,见 cw_game_state.write_logic_rand docstring)门让路:
+#    星差不保旧、不登记候选、读星直采并落披露行(verdict 前缀 =
+#    STAR_ADOPT_RAND_BASELINE_PREFIX)。依据 = 随机态通道契约「观察覆盖
+#    差异 = 随机效果落地,预期内非 bug」(observe 随机态分支):门保旧即
+#    截胡该契约 —— 保旧副本经观察写回把猜测星洗成观察态,其后确定写落
+#    观察态基座不再升格,第二次实读判真失配停机(run_20261124_030405)。
+#    边界:抖动过滤在随机态基线帧暂停,单帧星读抖动 / 合成特效窗漏检帧
+#    旧星读 / 星读缺星会直接以观察态入账,后续按观察态两帧门采回;代价
+#    量测键 = 上述披露行前缀(journal obs_event field=star 行按前缀计数),
+#    判读脚本 = skills/sr-od-dev-currency-war/scripts/cw_star_gate_monitor.py。
 # 候选态宿主 = 按局身份 session 的旁表(WeakKeyDictionary 主路,同
 # game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
 # 本体是 eq-dataclass 不可哈希,故不以其为键;不可弱引用桩面回退 id 键
@@ -78,6 +91,15 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # 新构造),其后的纠漂快照与写回消费门后副本——单帧抖动不进 drift 判定
 # (不产「对账纠漂」噪声行),同帧状态容器席位视图观察写端(备战帧 director
 # 消费门后副本)同得保旧值。
+#: 门披露行 verdict 前缀三键 = 代码 ↔ 监控脚本的契约键(判读脚本
+#: skills/sr-od-dev-currency-war/scripts/cw_star_gate_monitor.py 按前缀
+#: 筛选 journal obs_event field=star 行,任一侧改措辞即监控静默失配):
+#: 随机态基线直采行 / 两帧门保旧行 / 特效窗保旧行。三个 verdict 全文由
+#: 前缀 + 括注拼接,保旧两行输出字面量与前缀提常量之前逐字相同。
+STAR_ADOPT_RAND_BASELINE_PREFIX: str = '采新-随机态基线'
+STAR_HOLD_JITTER_PREFIX: str = '保旧-星级抖动门'
+STAR_HOLD_WINDOW_PREFIX: str = '保旧-合成特效窗'
+
 _STAR_GATES: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 #: 桩面兜底第二级:不可弱引用 session 的 id 键旁表(驻留上限见下)。
 _STAR_GATES_BY_ID: dict[int, dict] = {}
@@ -173,6 +195,11 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
                       source: str) -> tuple:
     """星级抖动门本体(语义与出处见上方门注释块)。
 
+    辖区 = logic_rand 以外的基线(observation / carried / logic)保旧;基线
+    来源为 logic_rand 时门让路 —— 星差不保旧、不登记候选,读星直采并落
+    披露行(verdict 前缀 = :data:`STAR_ADOPT_RAND_BASELINE_PREFIX`),星差
+    交 observe 随机态分支收尾(门注释块第 3 层)。
+
     P6 载体适配:读对象为 frozen 状态容器形状(BenchView/Unit 行),不可就地
     改写 star —— 保旧写账改经 **replace 副本** 承载(返回门后副本),语义
     与旧「就地改写读对象 star」等价:单帧抖动不进 drift 判定与写回,同帧
@@ -193,12 +220,16 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     # 停用,基线从 tracked 表改主域派生视图,基准 = (子表,下标);对账时点
     # 在 director 观察写之前,主域现值即上一帧账面,与旧 tracked 基线
     # 同源同时点)。
-    for domain, reads, account in (
-            ('bench', bench, gs.bench.value),
-            ('deployed', deployed, gs.deployed.value)):
+    for domain, reads, acct_field in (
+            ('bench', bench, gs.bench),
+            ('deployed', deployed, gs.deployed)):
         if reads is None:
             out[domain] = reads
             continue   # 读失败侧无读数无证据:候选态保持,不覆盖
+        # 基线取主域 Field(值 + 来源):acct_is_rand = 对账时点(observe 之前)
+        # 主域账面来源为 logic_rand,门对该基线让路(门注释块第 3 层)。
+        account = acct_field.value
+        acct_is_rand = acct_field.source == 'logic_rand'
         entries = (_bench_read_entries(reads) if domain == 'bench'
                    else _deployed_read_entries(reads))
         # 基线条目同构(anchor 由下标派生,身份取内嵌 Unit)。
@@ -235,6 +266,20 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
                 pending.pop(anchor + (cid,), None)
                 continue
             key = anchor + (cid,)
+            if acct_is_rand and not frozen:
+                # 随机态基线门让路:读星保持(不进 holds,门后副本该槽 = 本帧
+                # 读星)、清该基准候选(候选只在两帧追踪中存活,陈旧候选会在
+                # 基座日后回到已验证态时造成单帧假确认)、披露行、不登记不
+                # 保旧不走两帧确认;特效窗 frozen 优先于本判定(窗内读数物理
+                # 不可信,仍走下方保旧)。
+                pending.pop(key, None)
+                _conflict('star', _old_star, star, screen,
+                          verdict=(f'{STAR_ADOPT_RAND_BASELINE_PREFIX}'
+                                   f'(门不保旧:字段来源 logic_rand,星差按读采;'
+                                   f'source={source})'),
+                          source=source, char=cid,
+                          slot=anchor[1], domain=anchor[0])
+                continue
             if not frozen and pending.get(key) == star:
                 pending.pop(key, None)   # 连续两帧同值 → 采新(读星保持)
                 continue
@@ -243,9 +288,9 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             if unit is not None:
                 holds[id(unit)] = _old_star   # 保旧写账:门后副本换星
             _conflict('star', _old_star, star, screen,
-                      verdict=('保旧-合成特效窗(窗内星读不可信,不计两帧;'
+                      verdict=(f'{STAR_HOLD_WINDOW_PREFIX}(窗内星读不可信,不计两帧;'
                                f'source={source})' if frozen else
-                               '保旧-星级抖动门(单帧差弃读,两帧一致才采新;'
+                               f'{STAR_HOLD_JITTER_PREFIX}(单帧差弃读,两帧一致才采新;'
                                f'source={source})'),
                       source=source, char=cid,
                       slot=anchor[1], domain=anchor[0])
@@ -255,7 +300,8 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
 
 #: 星级稳定性口径 = 「槽位锚定 + 两帧一致才采新」(
 #: 门本体 = :func:`_gate_star_jitter`,与本门特效窗判别正交合并:
-#: 时间维两帧一致 + 帧态维窗内冻结)。口径依据 = 2026-09-15 局深检
+#: 时间维两帧一致 + 帧态维窗内冻结;辖区 = 对 logic_rand 以外的基线,
+#: 随机态基线直采 —— 门注释块第 3 层)。口径依据 = 2026-09-15 局深检
 #: .debug/currency_war/deep_review/run_20260915_054718.md §5 三次 episode
 #: 实证(「连续 2 帧」防抖被抖动 episode 骗过)。
 
@@ -364,7 +410,9 @@ def reconcile_tracking(session, bench: BenchView | None,
         source: 证据行来源标记(deploy_bench/director)
         ctx: SrContext(兼容形参;star 回退停机钩子已停用,不再消费)
         星级抖动门(槽位锚定 + 两帧一致才采新,单帧差保旧写账 + surface=
-        'star' 台账行);合成特效窗内星读不可信(冻结,不计两帧)——窗判别
+        'star' 台账行;辖区 = logic_rand 以外的基线,随机态基线星差直采
+        并落披露行 —— 门注释块第 3 层);合成特效窗内星读不可信(冻结,
+        不计两帧)——窗判别
         实现经模块级 ``set_merge_effect_gate`` 注入(分包矩阵禁 kernel→obs
         直依),缺省关 = 无窗(纯两帧时间维门)。
 

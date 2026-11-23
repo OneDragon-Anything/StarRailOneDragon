@@ -76,6 +76,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # 星级读数 = 席位单元属性(非独立状态容器字段),其识别层单帧抖动的吸收
     # 规则 = star_two_frame_gate(kernel/cw_reconcile 槽位锚定 + 两帧一致
     # 才采新),随席位三域写路径一并申报(出处 run_20260915_054718 §5)。
+    # 星级抖动门对 logic_rand 以外的基线(observation / carried / logic)生效
+    # (logic_rand 基线直采,星差归 observe 随机态分支收尾)。
     'deployed': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='deploy/sell/swap 投影写端(单字段视图整值替换,'
@@ -83,13 +85,17 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' + 行内纯重排采新'
               '(deploy_slot_reorder,20260918-reconcile 第5例收尾;'
               '吸收口径 = 子表内单元级多重集相等,换排不吸收)'
-              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
+              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'
+              ';星级抖动门对 logic_rand 以外的基线(observation / carried /'
+              ' logic)生效(logic_rand 基线直采)'),
     'bench': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/deploy/swap 投影写端 + 星级抖动门采新'
               '(star_two_frame_gate,槽位锚定+两帧一致)。已知缺口:投资卡'
               '随机授予现无写端无吸收(申报表族 2026-09-19 拆除待重设计),'
-              '命中照真失配停'),
+              '命中照真失配停'
+              ';星级抖动门对 logic_rand 以外的基线(observation / carried /'
+              ' logic)生效(logic_rand 基线直采)'),
     'back_layout': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='识别口径真值(三信号裁决 = cw_back_layout,观察侧写),'
