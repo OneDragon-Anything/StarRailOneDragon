@@ -73,18 +73,12 @@ from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.obs.cw_aura_cursor import (
     read_front_aura_slot,
 )
-from sr_od.application.currency_war.obs.cw_faction_obs import (
-    compare_factions,
-    read_displayed_factions,
-    report_faction_reconcile,
-)
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     find_giftbox_sight,
     read_ore_sights,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
-    board_from_deployed,
     build_prep_node_chain,
     read_deploy_cap,
     read_deployed_count,
@@ -172,23 +166,6 @@ SELECT_HERO_SUBSTATE_STATUS: str = '选择主角子态,直达选择主角处置'
 #: ——外环连续 fail 重派上限兜底,重派后观察 node 重判变体钮仍在场即再
 #: 处置,整体有界)。取值沿 partner 脉冲先例 ≤3。
 SELECT_HERO_CLICK_MAX: int = 3
-
-
-def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
-                                  suspects: list[str],
-                                  computed_missing_count: int) -> str:
-    """羁绊显示对账 ok 分支的 debug 行(纯函数,零决策)。
-
-    疑截断行名非空时随行附列——纯计数留不下「哪几行被疑」,mismatch=0
-    的稳定态行名不可考(复盘 g_20260903_232823 §4:恒 4 行疑截断无档)。
-    只在非空时附带,空列表保持旧行形(计数后无括号段)。
-    """
-    return (f'[cw][director] faction_display reconcile: '
-            f'ok({row_count}行) '
-            f'ocr_skip={ocr_skip_count} '
-            f'trunc_suspect={len(suspects)}'
-            + (f'({",".join(suspects)})' if suspects else '')
-            + f' computed_missing={computed_missing_count}')
 
 
 class CwScreenPrep(CwOperation):
@@ -639,15 +616,6 @@ class CwScreenPrep(CwOperation):
                                           '(cw_observation.arbitrate_deployed_count);'
                                           '单次按噪声忽略,同局 ≥3 次排期修)'),
                                  source='director_heavy')
-                    # 不一致率分键(防静默;裁决事件层,与上方证据层行分键)
-                    try:
-                        from sr_od.application.currency_war.telemetry.defects import (
-                            record_deployed_count_2src_divergence,
-                        )
-                        record_deployed_count_2src_divergence(
-                            dep_n, _cv_occ, 'director_heavy')
-                    except Exception:   # noqa: BLE001  遥测 best-effort
-                        pass
         return obs
 
     def reobserve_in_visit(self) -> PrepObservation:
@@ -697,80 +665,6 @@ class CwScreenPrep(CwOperation):
             bench if bench is not None else BenchView(),
             deployed if deployed is not None else DeployedView(),
             screen, source='director', ctx=self.ctx)
-
-    def _reconcile_faction_display(self, obs: PrepObservation) -> None:
-        """备战稳定帧羁绊显示对账(cw_faction_obs 接入调用;零决策:不一致仅落
-        缺陷台账,不纠漂不重读——羁绊状态以计算侧为主源,显示只作对账票)。
-
-        computed 侧 = ``board_from_deployed``(主域 deployed 派生工作表,
-        全集主源;None=含未知身份算不出 → 宁缺勿造跳过);显示侧 = 左侧羁绊面板
-        OCR(cw_faction_obs.read_displayed_factions,只读可视条目)。截断/
-        OCR 失读/残名按 cw_faction_obs 口径不评不判错,仅计数随 refs 披露;
-        ``computed_missing`` 形态(compare 第四态)同为保留证据不判错,
-        report_faction_reconcile 只转发 mismatch 行。节奏 = heavy 定型帧
-        消费,全程 best-effort。
-        """
-        try:
-            session = self._session()
-            if session is None:
-                return
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                deployed_indexed_of_view,
-                gs_of_ctx,
-            )
-            computed = board_from_deployed(
-                deployed_indexed_of_view(
-                    gs_of_ctx(getattr(self, 'ctx', None),
-                              session).deployed.value))
-            if computed is None:
-                return
-            frame = getattr(self, 'last_screenshot', None)
-            if frame is None:
-                return
-            reading = read_displayed_factions(self.ctx, frame)
-            result = compare_factions(computed, reading.entries,
-                                      reading.unreadable)
-            # 台账行 plane/round = 状态容器读口。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                plane_of,
-                round_num_of,
-            )
-            _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
-            plane = int(plane_of(_gs))
-            round_num = int(round_num_of(_gs))
-            if result.mismatch_count <= 0:
-                # 不一致为零也留一条 debug(含不评口径计数),频率统计靠台账
-                # 数据说话,不在此落账;行名并入见 faction_display_ok_debug_line
-                log.debug(faction_display_ok_debug_line(
-                    len(result.rows), len(result.ocr_skipped),
-                    list(result.truncation_suspects),
-                    sum(1 for r in result.rows
-                        if r.verdict == "computed_missing")))
-                return
-            refs = [
-                {'field': 'ocr_skipped', 'value': ','.join(result.ocr_skipped)},
-                {'field': 'unmatched', 'value': ','.join(reading.unmatched)},
-                {'field': 'truncated', 'value': str(reading.truncated)},
-                {'field': 'truncation_suspects',
-                 'value': ','.join(result.truncation_suspects)},
-                {'field': 'computed_missing',
-                 'value': ','.join(r.faction for r in result.rows
-                                   if r.verdict == 'computed_missing')},
-            ]
-            n = report_faction_reconcile(
-                result, plane=plane, round_num=round_num,
-                gap_large=True,
-                verdict=('留证-羁绊面板显示计数与计算侧不一致(计算侧= tracked '
-                         '全集主源,显示只作对账票;零决策记账不纠漂。已知不评:'
-                         '面板底部截断/OCR 失读/残名/computed_missing 均只计数'
-                         '不判错;单次与复现同级 L1,复现计数见台账行)'),
-                refs=refs,
-                reader_source='faction_display_reconcile',
-            )
-            log.debug(f'[cw-director] faction_display reconcile: '
-                      f'{result.mismatch_count} mismatch → {n} 行台账')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] faction_display reconcile skip: {e}')
 
     def _session(self) -> StrategySession | None:
         match = getattr(self.ctx, 'cw_match', None)
@@ -976,16 +870,12 @@ class CwScreenPrep(CwOperation):
         _tk = self._delegate_plane_intel_if_needed(session)
         if _tk is not None:
             return _tk
-        # —— 对账段:本轮入口 heavy 观察 = 纯观察审计族消费点
-        #      (羁绊显示;零决策)。
-        #      「入口观察即对账」时点存续,per-action
-        #      heavy 重读契约已灭。动作上报的对账归一 = 逻辑态直写
+        # —— 对账段:动作上报的对账归一 = 逻辑态直写
         #      (op 自上报)+ 观察边界 cw_reconcile 兜底;
         #      错卖类不可逆损害窗口的收窄手段 = 执行侧
         #      tracked 账随动,同商店线双账口径。
-        #      审计链留在观察 node(观察处理,不进 report——依赖读帧的
-        #      识别域载荷不迁 kernel)。
-        self._v2_post_frame_accounting(obs, session)
+        #      (纯观察审计族已随缺陷台账废弃拆除——其唯一通道
+        #      羁绊显示对账的产出 = 缺陷台账行,机制废弃后无出口。)
         #      模态恢复路径由三既有防线承接:①部署放行判定(前置谓词:
         #      bench_free>0 才发席耗动作,模态源头收敛);②环入口清场
         #      (_clear_entry_overlays,残留模态一键关);③外循环无进展
@@ -1547,19 +1437,6 @@ class CwScreenPrep(CwOperation):
             if _rr.result == OperationRoundResultEnum.WAIT:
                 continue   # 非终结动作:round_wait 续循环(帧不消费)
             return False, f'商店访问未完成({_rr.status})'
-
-    def _v2_post_frame_accounting(self, obs: PrepObservation,
-                                  session: StrategySession) -> None:
-        """新环 heavy 定型帧上的纯观察审计族(零决策)。
-
-        输入 = 本帧 obs;每通道内部 best-effort,异常不阻塞环。覆盖:
-        羁绊显示。动作期望账通道(paddle 审计/
-        drag_expect/买牌期望/经验/装备期望)不属本口——动作上报的对账
-        归一 = 逻辑态直写(op 自上报)+ 观察边界
-        cw_reconcile 兜底。
-        """
-        with contextlib.suppress(Exception):
-            self._reconcile_faction_display(obs)
 
 
 # ===== 节点行观察消费位(归位:识别零新增,写点自商店域迁入)=====

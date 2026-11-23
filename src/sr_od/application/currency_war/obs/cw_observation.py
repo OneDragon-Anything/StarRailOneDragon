@@ -619,11 +619,11 @@ def _node_label_in_roi(ctx: SrContext, screen: MatLike,
 
 
 def node_vote_verdict(table_type: str, votes: dict[str, str | None]) -> str:
-    """三票裁决(纯函数可测):'ok' = 无反对;'noise' = 单票异议(不落账);
-    'defect' = ≥2 非弃权票一致反对表值(落缺陷台账)。
+    """三票裁决(纯函数可测):'ok' = 无反对;'noise' = 单票异议(不告警);
+    'defect' = ≥2 非弃权票一致反对表值(告警)。
 
-    噪声纪律:单票反对(如高亮 Hu 对渲染态敏感、ROI OCR 漏读邻字)不落账,
-    防逐帧台账刷屏;≥2 张**独立通道**票一致才构成识别错误候选。
+    噪声纪律:单票反对(如高亮 Hu 对渲染态敏感、ROI OCR 漏读邻字)不告警,
+    防逐帧刷屏;≥2 张**独立通道**票一致才构成识别错误候选。
     """
     cast = [v for v in votes.values() if v is not None]
     against = [v for v in cast if v != table_type]
@@ -637,19 +637,19 @@ def node_vote_verdict(table_type: str, votes: dict[str, str | None]) -> str:
 
 def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                            plane: int | None, round_num: int | None) -> None:
-    """当前节点类型三票校验(**纯记账,零行为**)。
+    """当前节点类型三票校验(**纯日志告警,零行为**)。
 
-    查表值(session 台账,权威)vs 三张独立票:
+    查表值(session 节点序列表,权威)vs 三张独立票:
     - 票A 动态 ROI 文本 OCR:当前槽圆心 ±60px 小窗(``_node_label_in_roi``);
     - 票B 序列位置推断:已过槽数 p → 表序列第 p 位(应 = 查表值);
       未来图标 Hu 类型对表不符位数一并记进 observed(佐证);
     - 票C 当前槽高亮态图标 Hu 对模板(``cw_node_reader.current_slot_hu_type``)。
 
-    ≥2 张非弃权票一致反对表值 → 落缺陷台账(``cw_telemetry.record_defect``,
-    中相关面;复现由台账行复现计数暴露)。**投资环境变异窗豁免**
+    ≥2 张非弃权票一致反对表值 → warning 告警行(识别错误候选,主日志可
+    grep;缺陷台账落账面已随缺陷台账废弃拆除)。**投资环境变异窗豁免**
     (``ledger.env_grace_until``):窗内节点行合法变异中,不一致是预期而非
-    识别错误,不落。同一 (plane, round) 只落一行(逐帧校验每帧跑,去重防刷屏)。
-    任何前置不满足(无表值 / 非 clean 帧 / 无当前槽)→ 静默跳过。
+    识别错误,不告警。同一 (plane, round) 只告警一行(逐帧校验每帧跑,去重
+    防刷屏)。任何前置不满足(无表值 / 非 clean 帧 / 无当前槽)→ 静默跳过。
     """
     _match = getattr(ctx, 'cw_match', None)
     _sess = getattr(_match, 'session', None)
@@ -693,35 +693,10 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
     if _verdict == 'defect' and _key not in ledger.defect_seen:
         ledger.defect_seen.add(_key)
         log.warning('[cw!][node_votes] 查表=%s vs 三票=%s(past=%d hu_dist=%.2f 未来对表不符=%d)'
-                    ' → 落缺陷台账(识别错误候选,由复现计数体现)', table_t, votes,
-                    past_n, hu_dist, _future_bad)
-        try:
-            #落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                journal_refs,
-                record_defect,
-            )
-            record_defect(
-                'node_type', 'perception_conflict',
-                expected=f'台账序列[{int(round_num) - 1}]={table_t}(source='
-                         f'{ledger.seq_source.get(int(plane or 0))})',
-                observed=f'三票={votes}(past_n={past_n}, 高亮Hu距={hu_dist:.2f},'
-                         f' 未来图标对表不符位={_future_bad})',
-                plane=int(plane or 0), round_num=int(round_num or 0),
-                verdict=('留证-≥2 独立票一致反对权威表值(投资环境窗外)=识别错误候选;'
-                         '复现由台账行复现计数体现'),
-                reader_source='node_ledger_three_vote',
-                gap_large=False,
-                # refs 旧插入位置清理(refs 迁移):decisions 流已停用,
-                # 改指 journal (run_id,v) 基准(plane/round 已在行参内联)。
-                refs=journal_refs(),
-                note='节点类型台账制:表=权威(位面详情采集+投资环境后重读两写点,'
-                     '证据=journal 行内嵌 state),'
-                     '逐帧三票降为校验;boss 轮次门等语义门不变')
-        except Exception:   # noqa: BLE001  观测 best-effort,不阻塞对局
-            pass
+                    ' → 识别错误候选(单票异议不告警,复现面 = 主日志本行)',
+                    table_t, votes, past_n, hu_dist, _future_bad)
     elif _verdict == 'noise':
-        log.info('[cw][node_votes] 单票异议不落账(噪声纪律):表=%s 票=%s past=%d',
+        log.info('[cw][node_votes] 单票异议不告警(噪声纪律):表=%s 票=%s past=%d',
                  table_t, votes, past_n)
 
 
@@ -1453,16 +1428,14 @@ def arbitrate_deployed_count(paddle_n: int | None,
        单调规则不依赖任何人为定的分界。
     2. 分歧告警带沿用既有保留证据判据 |paddle−cv|>1(spread≤1 属两源合法
        读数差:CV 采样边沿/动画残影,单帧 ±1 不行动);>1 = 结构性分歧,
-       调用方须保留证据 + 记 ``telemetry.defects.DEFECT_KIND_DEPLOYED_COUNT_2SRC``
-       分键(防静默;不一致率按该 kind 计数)。
+       调用方须保留证据(obs_conflict 行)。
 
     **单源缺席(显式申报的退化语义;注意与主方向相反)**:
     一源缺失时无仲裁语义,返另一源——**paddle 缺席时退化 = 按 CV 行动 =
     向「板满」侧 fail**(与 min 的廉价方向相反;两害相权:此帧改「放行」
     会把「真板满 ∧ OCR 抖动」变成白拖耗环)。调用方契约:paddle 缺席帧
     **必须**先重读一帧(stylized 数字 det 单帧间歇漏在案)仍失读才接受
-    退化,且**必须**记 ``DEPLOYED_COUNT_2SRC`` 分键申报(不得静默)。
-    双缺席 → (None, False)。
+    退化(不得静默)。双缺席 → (None, False)。
 
     **注册面迁移(15 号稿本批)**:裁决内核已迁
     ``cw_arbitration.combine_deployed_count``(注册键 ``deployed_count``,
@@ -1980,15 +1953,14 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
 
     返回 None = 店未开(收起识别标志 miss;调用方漏斗不写 payload)——旧紧缩
     ``[]`` 混载「店未开/买空/失读」三事实的问题在此根治:买光 =
-    ``[empty×5]`` 是合法真值;unknown = 应为内容但识别失败(缺陷台账
-    保留证据,决策一律跳过)。
+    ``[empty×5]`` 是合法真值;unknown = 应为内容但识别失败(决策一律跳过)。
 
-    逐槽判定表(详设 shop-slot-model §2):rect 缺失 = unknown+缺陷
+    逐槽判定表(详设 shop-slot-model §2):rect 缺失 = unknown
     (建档漂移,旧 continue 静默跳过是病灶根);亮度均值 <50 = empty
     (确定性占位带,实测真卡 min 67.4 vs 空槽 19.5);50-60 灰带 =
     先查试用形态标签(红「试用」标签 TM,``_trial_badge_hit_in_crop``):
     命中 = 试用卡放行 SIFT 并标 ``trial=True``(试用卡灰暗化渲染致亮度
-    落带,身份识别实测不受影响);无标签 = unknown+缺陷(灰带不猜,
+    落带,身份识别实测不受影响);无标签 = unknown(灰带不猜,
     防线不放松);≥60 进 SIFT:命中 = content(识别链原样:x=faction/
     name/cost/badge 费用星级),miss = unknown+读空缺陷(置信度面)。
 
@@ -2043,9 +2015,6 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                 return None
 
     def _read_once(scr: MatLike) -> list[ShopSlot]:
-        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-            record_defect,
-        )
         # 当前费用档读口(银狼LV.999 升费后商店费用除数):局外/无 match
         # = None → 调用点回退注册表起始费(读口唯一 = cw_economy.
         # effective_cost)。
@@ -2055,15 +2024,6 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
             rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}',
                               SHOP_SCREEN_NAME)
             if rect is None:
-                try:  # noqa: SIM105  遥测 best-effort
-                    record_defect(
-                        'confidence', 'perception_conflict',
-                        expected=f'商店牌{i} rect 在 screen_info',
-                        observed='area 缺失(建档漂移)',
-                        reader_source='read_shop_cards', confidence=0.0,
-                        note='定长槽位 rect 缺失=unknown(不猜)')
-                except Exception:   # noqa: BLE001  遥测 best-effort
-                    pass
                 out.append(ShopSlot(kind='unknown'))
                 continue
             crop = scr[rect.y1:rect.y2, rect.x1:rect.x2]
@@ -2081,33 +2041,12 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
             if _mean < 60 and not _is_trial:
                 # 灰带无标签 = 维持 unknown 不猜(防线不放松:灰带放行仅限
                 # 标签确证的试用形态,SIFT 阈值不变)。
-                try:  # noqa: SIM105  遥测 best-effort
-                    record_defect(
-                        'confidence', 'perception_conflict',
-                        expected=f'商店牌{i} 亮度≥60(真卡)或 <50(空槽)',
-                        observed=f'均值{_mean:.1f}(灰带,疑暗卡)',
-                        reader_source='read_shop_cards', confidence=_mean,
-                        note='灰带无试用标签不猜=unknown')
-                except Exception:   # noqa: BLE001  遥测 best-effort
-                    pass
                 out.append(ShopSlot(kind='unknown'))
                 continue
             avatar_id, _inliers = (identify_character(crop, templates)
                                    if templates is not None else (None, 0))
-            # 非空槽 SIFT 仍 miss → unknown + 读空事件落台账(置信度分布
-            # 监控源;读空率环比翻倍 = 系统性识别退化最早信号)。
+            # 非空槽 SIFT 仍 miss → unknown(防线不猜)。
             if avatar_id is None:
-                if templates is not None:
-                    try:  # noqa: SIM105  遥测 best-effort
-                        record_defect(
-                            'confidence', 'perception_conflict',
-                            expected=f'商店牌{i} SIFT 识别出身份',
-                            observed=f'miss(inliers={_inliers})',
-                            reader_source='read_shop_cards',
-                            confidence=float(_inliers),
-                            note='读空事件(置信度分布监控源;非即时告警)')
-                    except Exception:   # noqa: BLE001  遥测 best-effort
-                        pass
                 out.append(ShopSlot(kind='unknown'))
                 continue
             name = resolve_char_name(avatar_id) if avatar_id else ''
@@ -2163,27 +2102,14 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
         return slots
     # 终判稳定门:易误判判定(全 empty/含 unknown)强制重观察一次——
     # 防淡入帧亮度<50 被误判 empty → 买光店假象 → 误关店。不一致 =
-    # 过渡帧,以第二次为准保留证据;上限一次,不构成等待环。
+    # 过渡帧,以第二次为准;上限一次,不构成等待环。
     import time as _time
 
-    from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-        record_defect,
-    )
     _time.sleep(0.8)
     # controller.screenshot 返回 (时间戳,帧|None) 元组(非帧本体),须解包;
     # 帧缺席(截取失败)= 无法重观察,保首读不猜。
     _ts2, _frame2 = ctx.controller.screenshot()
     slots2 = _read_once(_frame2) if _frame2 is not None else slots
-    if slots2 != slots:
-        try:  # noqa: SIM105  遥测 best-effort
-            record_defect(
-                'confidence', 'perception_conflict',
-                expected=f'两帧逐槽一致(首帧={[s.kind for s in slots]})',
-                observed=f'过渡帧不一致(次帧={[s.kind for s in slots2]})',
-                reader_source='read_shop_cards', confidence=0.0,
-                note='稳定门:以第二次观察为准(重观察上限一次)')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
     return slots2
 
 
@@ -2461,8 +2387,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 投资环境后重读;权威依据 = 用户口述「位面内节点类型与数量只有投资环境
     # 选择能改变」)。表缺/该位次未识别 → 退逐帧标签 OCR(旧链,boss 轮次门
     # 等语义门不变);表值与逐帧读**同词汇表**,值语义零变更。
-    # 三票校验(纯记账):表可查时逐帧识别降级为校验票,≥2 独立票一致反对
-    # 表值才落缺陷台账(投资环境变异窗豁免),不改行为。
+    # 三票校验(纯日志告警):表可查时逐帧识别降级为校验票,≥2 独立票一致反对
+    # 表值才告警(投资环境变异窗豁免),不改行为。
     _ledger_session = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     # spec 无 node_type 的阶段(prep_shop_open 节点行被遮恒 None——shop.py
     # session 拷贝是唯一真源;battle_or_transit 无消费)跳过标签 OCR 与三票。
@@ -2670,34 +2596,6 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             else _gso_mirror(_match.session)
         active_strategies_val = list(_gs_m.active_strategies.value or [])
         active_env_val = str(_gs_m.active_env.value or '')
-        # `w512_obs_surfaces/`(观测自检设计 §2.9/,策略激活态事件级交叉核对,消费侧):
-        # 「声明选中名」暂存槽在此消费——写链已先于暂存发生(handler 先
-        # append session 再暂存),故本时点声明名应已在持卡列表;不在 = 写链
-        # 断或选择落空 → 台账保留证据(中相关面,默认 L2;离线按复现分级)。
-        # 消费即清,不串轮;无暂存(非投资轮)零开销。handler/策略决策零
-        # 改动(纯旁路)。(注:生产端 strategy_offer 暂存,后续并入重接;
-        # 槽与消费面保留。)
-        try:
-            #策略暂存槽迁 kernel/cw_observe、落账经 kernel/cw_telemetry_exit
-            # 出口钩子位(零直依 telemetry)
-            from sr_od.application.currency_war.kernel.cw_observe import (
-                consume_pending_strategy_pick,
-            )
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                record_defect,
-            )
-            _pick = consume_pending_strategy_pick()
-            if _pick and _pick not in active_strategies_val:
-                record_defect(
-                    'strategy', 'invariant_break',
-                    expected=f"选中的策略 {_pick!r} 进入 active_strategies",
-                    observed=f"active_strategies={active_strategies_val}",
-                    plane=int(plane or 0),
-                    round_num=int(round_num or 0),
-                    reader_source='invest_pick_vs_session',
-                    note='投资选择事件 vs 持卡终态不一致(写链断/选择落空)')
-        except Exception:   # noqa: BLE001  观测 best-effort
-            pass
         # r358d(遥测全面性审计接入调用,缺口清单):观察了但
         # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
         # 词缀/巨星/伙伴/连胜)与决策(线分词缀/boss 分量/

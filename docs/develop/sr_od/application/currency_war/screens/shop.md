@@ -85,7 +85,7 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
 |---|---|
 | **RefreshShop 访问终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本访问结束返回主循环——重进 = 全新访问入口观察重建期望态(真结束本次访问,零额外动作;节点行观察归备战观察域,商店域零探针) |
 | **CloseShop 访问终结** | 策略器主动选关店(全函数「无动作可做」的表达)= 恒可用终结;执行位真点击收起,返回主循环。唯一常规离店条件 |
-| 未观察跳过熔断 | tracked 未观察 → 策略恒可用终结 CloseShop = 零动作跳过(缺陷台账留痕);连续 `SHOP_UNOBSERVED_SKIP_LIMIT` 次 = round_fail 交兜底链 |
+| 未观察跳过熔断 | tracked 未观察 → 策略恒可用终结 CloseShop = 零动作跳过(log.warning 留痕;缺陷台账留证面随缺陷台账废弃拆除);连续 `SHOP_UNOBSERVED_SKIP_LIMIT` 次 = round_fail 交兜底链 |
 | 全 unknown 窗 | 牌面含 unknown 槽(整帧 OCR/SIFT 失读窗)→ **入口观察即停**(见下行;决策入口前置门仅返回 CloseShop 为纵深第二线) |
 | 刷新无硬墙 | 刷新无次数上限(用户裁定:无限刷新环 = 策略实现 bug,框架不兜底);每刷一次 = 一次完整「商店开画面」分支重分发与全新访问 |
 | 未识别卡停机 | 入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图保留证据 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;细则 = [../flow/guards.md](../flow/guards.md) §3) |

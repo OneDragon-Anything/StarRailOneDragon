@@ -54,7 +54,6 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_aura_select i
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_battle_wait import (
     CwScreenBattleWait,
     SettlementState,
-    count_settlement_obs_coverage_miss,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_bookcard import (
     CwScreenBookcard,
@@ -1581,12 +1580,6 @@ class CwLoop(CwOperation):
                 if self._settle.saw_settlement:
                     self._battle_ts = None
                 self._battle_wait_active = False
-                # 结算观测覆盖度守卫:战窗 exit 归一点查「本窗零结算
-                # 观测行」,命中落缺陷台账 L1 行(只计数留存证据,不新增停机;
-                # 判定本体与出口集 = battle_wait.count_settlement_obs_
-                # coverage_miss,bail 出口不计的边界见彼处 docstring)。
-                count_settlement_obs_coverage_miss(
-                    self._settle, getattr(res, 'status', '') or '')
                 log.info('[cw-loop] 战斗等待返回(success=%s status=%s)→ 交回顶层分发'
                          '(下轮全分支重判)', ok,
                          getattr(res, 'status', '') or '')

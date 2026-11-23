@@ -55,7 +55,6 @@
 | `cw_identity_obs.py` | 备战屏视觉身份观测(SIFT;bench/deployed 槽位身份) |
 | `currency_war_char_id.py` | 角色识别 SIFT 模板匹配(立绘模板库) |
 | `currency_war_cv.py` | 备战阶段传统 CV 检测工具 |
-| `cw_faction_obs.py` | 羁绊面板显示侧识别 + 与计算侧计数对账 |
 | `cw_back_layout.py` | 后排槽位布局(公式 + CV 实测双通道) |
 | `cw_equipment.py` | 装备视觉识别 |
 | `cw_node_obs.py` | 节点选项观测(遭遇/补给/伙伴 → 类型化 Option) |

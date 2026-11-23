@@ -57,7 +57,6 @@ from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
 from sr_od.application.currency_war.sim import cw_sim_ports
-from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -173,7 +172,7 @@ def apply_action_outcome(
     同源,消除落地门计数分叉;刷新侧计数与免费分支扣减 = 刷新 op 自上报
     经上报函数唯一入口,见 cw_action_report/refresh_shop。)
 
-    ``_cur`` = 入口观察回执(defects 留存证据行 plane/round 基准;载体 =
+    ``_cur`` = 入口观察回执(plane/round 基准载体 =
     :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -283,11 +282,11 @@ def _note_shop_skip_unobserved(op: SrOperation,
     """未观察态商店访问跳过的留痕与熔断( ④;CwActionCloseShopParam 出口消费)。
 
     触发形态:策略未观察门(strategies/impl/flow.py decide_shop_action)
-    返回恒可用终结 CwActionCloseShopParam → 本 visit 零动作收工。每次跳过 = 缺陷台账
-    分键 ``shop_skipped_unobserved`` 留一行(防静默)+ 连续计数 +1;计数达
+    返回恒可用终结 CwActionCloseShopParam → 本 visit 零动作收工。每次跳过 =
+    连续计数 +1(防静默留痕 = log.warning 行);计数达
     ``SHOP_UNOBSERVED_SKIP_LIMIT`` = 锚定失败显式出口(round_fail 交兜底
-    链,禁无限静默重试)。载体缺席(非 mandate 生产形态)= 只留痕不计数
-    不熔断(无停机语义可落,保守端与缺省口径一致)。
+    链,禁无限静默重试)。载体缺席(非 mandate 生产形态)= 只留日志
+    不计数不熔断(无停机语义可落,保守端与缺省口径一致)。
 
     Returns:
         None = 留痕完成,调用方照常收工;OperationRoundResult = 熔断停机
@@ -298,35 +297,11 @@ def _note_shop_skip_unobserved(op: SrOperation,
     if isinstance(_ct, dict):
         _streak = _ct.get(CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK, 0) + 1
         _ct[CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK] = _streak
-    with contextlib.suppress(Exception):
-        defects.record_defect(
-            'bench', 'shop_skipped_unobserved',
-            expected='商店访问时 tracked 主账已按屏幕真值锚定(observed)',
-            observed=('tracked 未观察(接管/失效后备战 heavy 观察未完成'
-                      '锚定)→ 本 visit 零动作跳过'),
-            verdict=('留证-未观察商店访问跳过(策略关店交回外循环,备战环'
-                     'heavy 观察锚定后再进店;连续跳过查 '
-                     'shop_skipped_unobserved_streak 计数,达上限熔断停)'),
-            reader_source='decide_shop_action_unobserved_gate',
-            gap_large=False,
-            note='分键登记 = 本写点注释(内联 kind,先例 = seed_divergence 族)')
     log.warning('[cw!][shop] tracked 未观察 → 商店访问跳过(策略关店,'
                 '连续 %s/%s)', _streak, SHOP_UNOBSERVED_SKIP_LIMIT)
     if isinstance(_ct, dict) and _streak >= SHOP_UNOBSERVED_SKIP_LIMIT:
         with contextlib.suppress(Exception):
             op.save_screenshot(prefix='shop_skip_unobserved_stop')
-        with contextlib.suppress(Exception):
-            defects.record_defect(
-                'bench', 'shop_skipped_unobserved_stop',
-                expected=(f'关店→备战 heavy 观察→再进店链在 '
-                          f'{SHOP_UNOBSERVED_SKIP_LIMIT} 次内完成锚定'),
-                observed=f'连续 {_streak} 次商店访问仍未观察(锚定失败)',
-                verdict=('停机-未观察连续跳过熔断(锚定失败显式出口;'
-                         '判读查 heavy 观察链:portrait 模板加载/'
-                         'observe_full bench 读数/reconcile 健康门)'),
-                reader_source='decide_shop_action_unobserved_gate',
-                gap_large=True,
-                note='分键登记 = 本写点注释(同跳过分键口径)')
         log.error('[cw!] 未观察商店访问连续 %s 次(上限 %s)→ 锚定失败'
                   '显式出口,round_fail 交兜底链', _streak,
                   SHOP_UNOBSERVED_SKIP_LIMIT)
@@ -377,9 +352,9 @@ class CwScreenShop(CwOperation):
         # 由薄壳映射为 None,消费面以 is_success 判定为准)。类型 =
         # ShopVisitLedger(operations/cw_op/cw_shop_action_ops)。
         self.ledger = ShopVisitLedger()
-        # 观察 node 产物:入口回执镜像(obs,决策侧/测试消费面)、入口
-        # 回执本体(落地门 defects 留存证据基准)与每访问一次的装配
-        # (config/点击点位/升级钮/刷新钮/动作累积),决策动作 node 消费。
+        # 观察 node 产物:入口回执镜像(obs,决策侧/测试消费面)与每访问
+        # 一次的装配(config/点击点位/升级钮/刷新钮/动作累积),决策动作
+        # node 消费。
         # (改道后两载合一:obs 与回执位同为 CwScreenShopObs
         #  ——入口回执同面镜像,字段名逐位同源。)
         self._obs: CwScreenShopObs | None = None

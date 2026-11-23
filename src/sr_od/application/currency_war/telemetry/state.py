@@ -1,12 +1,12 @@
 """telemetry 模块级可变单例态簇(自 cw_telemetry 前置收敛)。
 
-本模块是全部模块级可变单例(run_id/recorder/失配告警 handler/缺陷复现位)的
-唯一拥有者:其他段(schema/recorder/defects/query/cli)一律以
+本模块是全部模块级可变单例(run_id/recorder/失配告警 handler)的
+唯一拥有者:其他段(schema/recorder/query/cli)一律以
 ``state.X`` 属性访问读取,赋值只发生在本模块内(含 global 声明的变更器
 函数),防 import 绑定快照读到过期值。
 
 旧流写入端直迁收拢后,本模块只剩「run 生命周期 + 落盘根
-槽 + 缺陷台账辅助态」:旧流的所有暂存槽(supply pick/单元金收尾/
+槽」:旧流的所有暂存槽(supply pick/单元金收尾/
 执行事实/简报局间缓冲)与 runs 收尾写行已停用;run 收尾位
 保留(close_run——run_id 段归属供给 journal run_id provider,收尾位驱动
 跨局重铸,语义见该函数注)。
@@ -34,7 +34,7 @@ log = log_utils.log
 # (入口链/loop 兜底/商店防御三漏斗内,先于任何开局遥测行);入口链
 # 简报/投资环境/投资策略三分支 ensure 与 loop __init__ ensure 均 = 纯认领。
 # run_id 的现役消费方 = journal 行归属(kernel
-# run_id provider 注入面)与缺陷台账行归属。
+# run_id provider 注入面)与冲突行/结算行的局归属。
 # 默认 enabled=True(用户要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
 
@@ -76,8 +76,9 @@ def get_recorder() -> TelemetryRecorder:
 
     落盘根 = :func:`set_recorder_replay_dir` 接通的装配槽值;槽缺省 None
     时走生产缺省根(kernel/cw_observe.DEFAULT_REPLAY_DIR)——两者互斥,
-    槽只改根不改 enabled 等其余构造面。停用后现役写入面 = 缺陷台账
-    (record_defect);本单例同时是档案装配/计数快照的 replay_dir 供给口。
+    槽只改根不改 enabled 等其余构造面。本单例是档案装配/计数快照的
+    replay_dir 供给口(缺陷台账流写入面已随缺陷台账废弃拆除,
+    recorder 不再承载任何流写入)。
     """
     global _RECORDER
     if _RECORDER is None:
@@ -233,24 +234,3 @@ def close_run(result: str = "", plane_reached: int = 0,
     log.info('[cw][telemetry] run 收尾:%s p%s-r%s hp=%s (%s)',
              result or '-', plane_reached, rounds_survived, final_hp,
              notes or '-')
-
-
-# —— 复现计数(分级判据③;进程内状态,按 run 切换清空)——
-# key=(surface, kind, expected 特征前 80 字符);第 2 次起算复现(判3:
-# 同特征连续 2 次/2 帧,所有 L0 都过防抖,单帧永不直接停机)。
-_defect_seen: dict[tuple[str, str, str], int] = {}
-
-_defect_seen_run: str = ''
-
-
-def _mark_defect_reproduced(surface: str, kind: str, feature: str,
-                            run_id: str) -> bool:
-    """登记一次缺陷特征并返回「是否复现」(进程内防抖计数,best-effort)。"""
-    global _defect_seen, _defect_seen_run
-    if run_id != _defect_seen_run:
-        _defect_seen = {}
-        _defect_seen_run = run_id
-    key = (surface, kind, feature[:80])
-    n = _defect_seen.get(key, 0)
-    _defect_seen[key] = n + 1
-    return n >= 1

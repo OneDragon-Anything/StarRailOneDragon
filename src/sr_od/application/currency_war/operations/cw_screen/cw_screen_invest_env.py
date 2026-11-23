@@ -96,7 +96,8 @@ class CwScreenInvestEnv(CwOperation):
     # ——单帧证据不足判文本漂移形态,固定 area 不可行;遭遇屏/策略屏同款)。
     # 偏移实测收尾(归档帧 sr-od-test/screens/货币战争-投资环境/default.webp
     # 亮像素簇质心:钮心 x≈671、计数文本中心 x≈772,y 同带 ≈983)→ dx ≈ −101。
-    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果只落缺陷台账留存证据;
+    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果由重入观察覆盖 +
+    # 状态容器 env_refresh_left 对账暴露,不另设留证重读;
     # 重进后计数未扣、预算仍在 → 再次刷新,每圈耗 1 次外环重进,能力退化
     # 非事故,复测即修。
     _REFRESH_BTN_DX: ClassVar[int] = -101
@@ -119,12 +120,6 @@ class CwScreenInvestEnv(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-投资环境')
-        # 刷新零效果留存证据证据(刷新分支只读不比,读数原样携带——
-        # 元组 = (刷前计数,刷前名集,刷后计数,刷后名集);
-        # 消费点 = 刷新分支结束本次访问出口 ``_reconcile_refresh_no_effect``
-        # 对账,消费即清;None = 无待评证据)。
-        self._refresh_evidence: tuple[int, list[str],
-                                      list, list[tuple[str, int]]] | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费)。
         self._obs: CwScreenInvestEnvObs | None = None
 
@@ -187,38 +182,6 @@ class CwScreenInvestEnv(CwOperation):
         """局状态容器单例读口(读缺 = None,调用方按无授权失败安全处理)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         return getattr(_match, 'gs', None) if _match is not None else None
-
-    def _reconcile_refresh_no_effect(self) -> None:
-        """刷新零效果留存证据对账(消费点 = 刷新分支结束本次访问出口):携带证据
-        (刷前计数/名集 + 刷后帧机械重读)在此评「计数未扣 ∧ 名集未变」→
-        落缺陷台账(零决策零改道);任一侧读缺 = 过渡帧不可判,不猜。
-        消费即清(每次刷新恰评一次)。缺陷的实际触发形态 = 刷新未生效而
-        overlay 残留——证据为当次刷新的机械重读快照,评点住结束本次访问出口
-        与该形态覆盖面等价(每笔证据恰评一次)。"""
-        _ev = self._refresh_evidence
-        if _ev is None:
-            return
-        self._refresh_evidence = None
-        _c, _pre_names, _counts2, _opts2 = _ev
-        if not (bool(_counts2) and _counts2[0][0] >= _c
-                and [n for n, _ in _opts2] == _pre_names):
-            return
-        try:
-            from sr_od.application.currency_war.telemetry import (
-                defects as cw_defects,
-            )
-            cw_defects.record_defect(
-                'invest_env', 'refresh_no_effect',
-                expected=f'计数<{_c} 或名集变化',
-                observed=f'计数={_counts2[0][0]},名集未变',
-                verdict='留证-刷新零效果(零决策)',
-                reader_source='cw_screen_invest_env',
-                note='执行侧判效已拆(判效归一),仅机械留证;'
-                     '比对宿主 = 刷新臂终结交回出口对账,消费即清',
-                gap_large=False,
-                severity=cw_defects.SEVERITY_L2_RECORD)
-        except Exception:   # noqa: BLE001  留存证据不阻塞结束本次访问
-            pass
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
@@ -347,22 +310,14 @@ class CwScreenInvestEnv(CwOperation):
                 # 刷新动作自上报(2026-10-19 用户裁定「sim 与实机一致提供
                 # 刷新次数」批):状态容器零写(真值归重入观察覆盖),取状态副本
                 # 声明喂入 sim——实机端口未装 = no-op,装配后驱动整组重掷
-                # 状态副本侧分支;声明随留存证据外另行返回(round data 记账面)。
+                # 状态副本侧分支;声明另行返回(round data 记账面)。
                 _decl = self._report_refresh_action(act)
-                # 刷后帧机械重读(零比对零判效——读数原样携带进留存证据证据,
-                # 「计数未扣 ∧ 名集未变」的零效果判定经对账评点落缺陷台账;
-                # 判效权归对账)。
-                _after = self.screenshot()
-                _counts2 = read_invest_refresh_counts(self.ctx, _after, 'env')
-                _opts2 = self._read_options(_after)
-                self._refresh_evidence = (
-                    _budget, [n for n, _ in opts], _counts2, _opts2)
-                log.info(f'[cw-env] 环境刷新终结交回:计数 {_budget}→'
-                         f'{_counts2[0][0] if _counts2 else "读缺"},'
+                log.info(f'[cw-env] 环境刷新终结交回(刷前计数 {_budget}),'
                          f'重进后重观察重分类')
-                # 零效果留存证据对账(消费即清)→ 结束本次访问:选卡/确认均不在
-                # 本访问;外循环重进 = 入口重建。
-                self._reconcile_refresh_no_effect()
+                # 结束本次访问:选卡/确认均不在本访问;外循环重进 = 入口重建。
+                # (刷后帧机械重读与零效果证据对账已随缺陷台账废弃拆除——
+                # 刷新生效性现役由重入观察覆盖 + 状态容器 env_refresh_left
+                # 对账承载,不另设留证重读。)
                 return self.round_success('投资环境刷新终结交回(重进重观察重分类)',
                                           wait=1, data=_decl)
             # 闸全败(建议帧但计数无授权)→ 同访问重调落选卡:策略侧同帧
@@ -392,9 +347,9 @@ class CwScreenInvestEnv(CwOperation):
             return self.round_fail('area 缺失:区域-卡牌描述行(货币战争-投资环境)')
         target = Point(choose_x, _sel.y)
 
-        # 台账:确认前开「投资环境变异窗」豁免——环境选择是位面节点序列唯一
-        # 变异源(用户口述),确认到节点行重读刷新之间查表与逐帧校验的不一致
-        # 是合法变异,三票校验不得落缺陷台账。重读成功后关窗(置 0)。
+        # 台账(节点序列表):确认前开「投资环境变异窗」豁免——环境选择是
+        # 位面节点序列唯一变异源(用户口述),确认到节点行重读刷新之间查表
+        # 与逐帧校验的不一致是合法变异,三票校验不得告警。重读成功后关窗(置 0)。
         try:
             from sr_od.application.currency_war.kernel.cw_exec_state import (
                 get_node_ledger,

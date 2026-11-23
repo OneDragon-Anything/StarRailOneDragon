@@ -3,12 +3,13 @@
 设计出处 = ``skills/sr-od-dev-currency-war/references/strategy/15_observation_multisource_arbitration.md``
 (量纲分类与泛化规则)(统一注册面)。病灶 = 家族内六处成型仲裁各自
 私写裁决规则/分歧带/保留证据键,判读侧要拼多文件才能回答「这个量现在怎么裁」;
-本模块把「裁决规则 + 分歧带 + 分键」收敛为声明式注册表,证据通道**不新建**
-——原始证据行仍走 ``kernel.cw_observe.obs_conflict``,不一致率分键仍走
-``telemetry.defects``,注册面只统一「谁在什么键下调用它们」。
+本模块把「裁决规则 + 分歧带」收敛为声明式注册表,证据通道**不新建**
+——原始证据行仍走 ``kernel.cw_observe.obs_conflict``,注册面只统一
+「谁在什么键下调用它们」。(不一致率分键面已随缺陷台账废弃拆除——
+注册表 defect_kind 字段退役;分歧证据现役归宿 = obs_conflict 证据行。)
 
 **本批严格零行为变更**:迁移语义不变性由交叉核对测试(注册面语义/迁移
-交叉核对:deployed 全格交叉核对 + board 分歧帧×帧态矩阵)钉死;裁决值/schema/分键
+交叉核对:deployed 全格交叉核对 + board 分歧帧×帧态矩阵)钉死;裁决值/schema
 锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,交叉核对不校验)。
 
 量纲四类:count(计数,朝声明方向取值或弃权)/nominal(标称,优先级+
@@ -45,7 +46,6 @@ class ArbitrationRule:
     - ``combine``:类内泛化规则的量实例(纯函数,``**readings`` 按源名传参),
       返回 ``(采信值, 是否真分歧)``;
     - ``band``:分歧带,带内 = 合法读数差(噪声,不行动不保留证据);
-    - ``defect_kind``:不一致率分键(defects 台账 kind);
     - ``obs_field``:证据层 obs_conflict 的 field 键;
     - ``fail_closed_side``:计数/布局类必填的「廉价侧/弃权语义」声明 + 依据
       (防后人照抄 min;A14:弃权也是合法方向,如 cap 失读=拒信 None 门失效)。
@@ -55,7 +55,6 @@ class ArbitrationRule:
     sources: list[str]
     combine: Callable[..., tuple[Any, bool]]
     band: float = 0
-    defect_kind: str = ''
     obs_field: str = ''
     fail_closed_side: str = ''
 
@@ -126,7 +125,6 @@ register(ArbitrationRule(
     sources=['paddle_x', 'cv_occupied'],
     combine=combine_deployed_count,
     band=1,
-    defect_kind='deployed_count_2src_divergence',
     obs_field='deployed_count_2src',
     fail_closed_side=('取低值 min:paddle=游戏计数器真值,CV 占用为像素推断;'
                       '高估→「板满」假判合法化 no-op 死锁(贵,实机停机局实证);'
@@ -141,7 +139,6 @@ register(ArbitrationRule(
     combine=lambda badge_ocr, computed, prep_like, board_honest:
         _board_rule_combine(badge_ocr, computed, prep_like, board_honest),
     band=0,
-    defect_kind='board_divergence',
     obs_field='board',
     fail_closed_side=('非备战帧/动画帧双源弃权,保 computed 基础值(帧态门;'
                       'W285 overlay 干扰 2/6 实证);备战帧徽标覆写'
@@ -167,7 +164,7 @@ def arbitrate(key: str, readings: dict[str, Any],
     """按注册规则裁决 → ``(采信值, verdict, 是否真分歧)``。
 
     - verdict 语义:双源齐且一致=ok;带内分歧=noise(调用方不行动不保留证据);
-      带外分歧=arbitrated(调用方按键保留证据+分键);缺席源=rejected(单源
+      带外分歧=arbitrated(调用方按键保留证据);缺席源=rejected(单源
       可用,弃权声明生效);全源缺席=unknown(布局未知态等,后续批主消费)。
     - ``ctx`` 预留(证据发出的帧上下文);本批证据发出仍在各消费点
       (行数/分键逐字节不变是验收第一判据),注册面统一发出点随后续批收尾。

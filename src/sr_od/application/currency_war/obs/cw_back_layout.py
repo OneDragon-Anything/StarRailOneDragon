@@ -635,25 +635,6 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                  _unknown_streak, UNKNOWN_FREEZE_FRAMES,
                  ',写类冻结' if _frozen else '')
         try:
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
-                record_defect,
-            )
-            record_defect(
-                'back_layout', DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
-                expected='formula=abstain(level_trusted=False)',
-                observed=f'cv=None streak={_unknown_streak}',
-                gap_large=False, auto_resolved=False,
-                verdict=('留证-布局未知态(§3.2④):单帧未知=跳过后排依赖'
-                         '操作;连续 3 帧=读类退 6 档基线+写类冻结止损;'
-                         '任一已知帧解冻'),
-                refs=[{'stream': 'arbitration',
-                       'key': 'source=resolve_back_layout'}],
-                reader_source='resolve_back_slots',
-                note='布局未知态分键(每帧,不节流)')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
-        try:
             from sr_od.application.currency_war.kernel.cw_observe import (
                 obs_conflict,
             )
@@ -666,13 +647,6 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                 frozen=_frozen)
         except Exception:   # noqa: BLE001
             pass
-        try:
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                record_back_layout_unknown,
-            )
-            record_back_layout_unknown('resolve_back_slots')
-        except Exception:   # noqa: BLE001
-            pass
         return {'formula_raw': None, 'formula_n': None, 'cv_n': None,
                 'cv_readings': None, 'arb_n': None, 'n_raw': None,
                 'n': None, 'prefix': '', 'cap': cap, 'level': level,
@@ -683,21 +657,12 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         # 公式弃权 ∧ CV 单源可用:采 CV 实测(布局类「实测>推导」,;
         # 占用态门三态探针已给结构判据,不存在「采信启发式」问题)。
         # 防护对齐(审查C2):未建档读数与双通道路径同过 三读门
-        #(防单源幻影高档当帧生效);未确认 → CV 弃权进未知态;分键保留证据。
+        #(防单源幻影高档当帧生效);未确认 → CV 弃权进未知态。
         if cv_n not in _LAYOUT_PREFIX:
             cv_readings = _cv_confirm_readings(ctx, screen, cv_n, formula_n)
             if not (len(cv_readings) == 3
                     and all(r == cv_n for r in cv_readings)):
                 cv_n = None   # 防抖未过 → CV 弃权(与公式双弃权 → 未知态)
-        if cv_n is not None and cv_n not in _LAYOUT_PREFIX:
-            try:
-                from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                    record_back_layout_divergence,
-                )
-                record_back_layout_divergence(-1, cv_n,
-                                              'cv_single_source_unarchived')
-            except Exception:   # noqa: BLE001  遥测 best-effort
-                pass
         n_raw = cv_n
         n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 未建档 → 8 格超集
         from one_dragon.utils.log_utils import log
@@ -707,16 +672,6 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         # 对账不一致:CV 实测优先(画面事实>推导)+ 保留证据两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
-        # 分键(15 号稿):记录函数单一源 = kernel.cw_telemetry_exit
-        #(审查C3:telemetry.defects 副本已删,reader_source 对齐)
-        try:
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                record_back_layout_divergence,
-            )
-            record_back_layout_divergence(formula_n, cv_n,
-                                          'resolve_back_slots')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
         if cv_n not in _LAYOUT_PREFIX:
             # 防抖:新格数读数(会触发 7 格采集/停机)单帧不行动——
             # 重读 2 次三次一致才采;任一不一致 = 瞬态自愈退公式 + 保留证据序列

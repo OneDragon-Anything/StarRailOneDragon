@@ -54,10 +54,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     area_center,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-    SEVERITY_L1_ALERT,
-    journal_refs,
-)
 from sr_od.application.currency_war.obs.cw_observation import read_phase_round
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
     estimate_node_interest,
@@ -72,7 +68,6 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
     settle_page1_progress_sign,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
-from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -134,57 +129,6 @@ def _write_settlement_observation(session: StrategySession,
     session.performance.record(obs)
 
 
-#: 战斗窗覆盖度守卫的窗口单元出口集(bail 不计:帧基准可重入续同窗,计则
-#: 假阳——同一 battle_ts 的后续窗观测落地后基准即匹配;bail 形态自有
-#: op 截图留存证据(prefix=battle_wait_bail)+ 未知兜底链留存证据暴露,不依赖本守卫)。
-_COVERAGE_EXIT_STATUSES: frozenset[str] = frozenset(
-    {'back_to_loop', 'terminal_lobby'})
-
-
-def count_settlement_obs_coverage_miss(st: SettlementState,
-                                       exit_status: str) -> bool:
-    """战斗窗 exit 结算观测覆盖度守卫(战斗链收尾守卫面)。
-
-    调用方 = cw_loop ``_on_battle_wait`` 出口归一点(旧路径/五段路径共用
-    同一收尾);本函数只判不抛,异常面由 record_defect 自身 best-effort 承担。
-
-    背景:长战斗形态曾已实测确认整窗零「结算观测」行(主战扣血链零观测,
-    复盘断节不可知),需求 = 覆盖度可观测防复发。形态 = 只计数留存证据(缺陷台账 L1 行),不新增停机(失配告警停线已停用,
-    停机处置归框架 stop_running)。
-
-    判定:窗口单元 success 出口(白名单命中 back_to_loop / 团灭终局
-    terminal_lobby)+ 出战开窗在(battle_ts 非 None = RunLoop 出战开窗点
-    注入)+ 本窗零结算观测行(settled_battle_ts ≠ battle_ts,同源
-    monotonic 基准比较)→ 落一行 L1 台账行。
-
-    边界:中断恢复的对局/残留屏经帧基准入窗无出战识别标志(battle_ts=None)不计——无窗
-    开基准不成窗,该形态由残留屏判据与未知兜底链自证;telemetry-only 败局
-    补录行同样刷新窗基准(结算观测行含败局链,覆盖率口径与判读一致)。
-
-    Returns:
-        是否落了覆盖度缺失行(测试断言面;生产消费 = 台账行本身)。
-    """
-    if exit_status not in _COVERAGE_EXIT_STATUSES:
-        return False
-    if st.battle_ts is None or st.settled_battle_ts == st.battle_ts:
-        return False
-    defects.record_defect(
-        'settlement', 'settle_obs_coverage_miss',
-        expected='战斗窗全程 ≥1 条「结算观测」行(胜负/扣血真值链在案)',
-        observed='战窗 exit 零结算观测行(胜负与扣血零观测,伤害链断节'
-                 '复盘不可知)',
-        verdict=('留证-结算观测覆盖度缺失(只计数不停机;处理:按窗识别标志'
-                 ' battle_ts 对 journal/op 行定位漏读窗,结算识别失准走'
-                 '识别优化批)'),
-        refs=journal_refs(),
-        reader_source='battle_wait_exit',
-        gap_large=True,
-        severity=SEVERITY_L1_ALERT,
-        note='覆盖度检测 = 战窗 exit 守卫面;正常结算/败局补录行恒刷新'
-             '窗识别标志,本行 = 真缺失(非识别噪声)')
-    return True
-
-
 @dataclass
 class SettlementState:
     """战斗/结算链跨迭代状态机。
@@ -211,13 +155,7 @@ class SettlementState:
       design §2.6);
     - battle_ts = 出战时刻(RunLoop 战斗窗口开窗点注入;op 据此
       判「战斗进行中合法静止」宽限);
-    - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限);
-    - settled_battle_ts = 结算观测窗基准:最近一次「结算观测」行落点时点的
-      battle_ts 快照(坐标系 = battle_ts 同源 monotonic 时钟;取值时机 =
-      _record_round_outcome 行写点写入,含 telemetry-only 败局补录行)。
-      战斗窗 exit 覆盖度守卫据此判「本窗(出战开窗)全程零结算观测行」:
-      ≠ 当前 battle_ts 即本窗未写过行(battle_ts None 时本字段无比较语义,
-      守卫不触发)。
+    - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限)。
     """
     last_outcome_hp: int | None = None
     saw_defeat_settlement: bool = False
@@ -236,7 +174,6 @@ class SettlementState:
     is_new_match: bool = True
     battle_ts: float | None = None
     saw_settlement: bool = False
-    settled_battle_ts: float | None = None
     # 利息入账节点一次性标志位(T-27 来源 A/B 唯一计数刻守卫):最近一次利息
     # 入账的 (位面, 轮)。取值时机 = 入账成功刻写入(_record_round_outcome
     # 来源 A/B 块);同节点结算重处理(确认失败重入/同败局多帧指纹)与
@@ -413,37 +350,11 @@ class CwScreenBattleWait(CwOperation):
                             log.info('[cw-bwait] plane/round 结算屏真值「%s-%s」覆盖 '
                                      'last-known「%s-%s」', _scr[0], _scr[1],
                                      _plane, _round)
-                            defects.record_defect(
-                                'phase_round', 'perception_conflict',
-                                expected=f'备战缓存 {_plane}-{_round}',
-                                observed=f'结算屏 {_scr[0]}-{_scr[1]}',
-                                plane=_plane, round_num=_round,
-                                verdict='留证-结算屏真值覆盖 last-known',
-                                reader_source='settlement_vs_prep_round',
-                                gap_large=False, auto_resolved=True,
-                                # refs = journal (run_id,v) 对账基准(outcomes
-                                # 流已停用,不挂流式 refs)。
-                                refs=journal_refs(),
-                                note='观测自检框架设计 §2.7:同轮双读不等留证;'
-                                     '残留屏豁免')
                         _plane, _round = _scr
                     else:
                         log.warning('[cw-bwait] 结算屏「%s-%s」落后 last-known「%s-%s」'
                                     '= OCR 假阳 → 单调门拒',
                                     _scr[0], _scr[1], _plane, _round)
-                        defects.record_defect(
-                            'phase_round', 'perception_conflict',
-                            expected=f'备战缓存 {_plane}-{_round}',
-                            observed=(f'结算屏 {_scr[0]}-{_scr[1]}(落后 last-known'
-                                      '=OCR 假阳,单调门拒)'),
-                            plane=_plane, round_num=_round,
-                            verdict='留证-结算屏读数落后 last-known 判 OCR 假阳拒',
-                            reader_source='settlement_vs_prep_round',
-                            gap_large=False, auto_resolved=True,
-                            # refs = journal (run_id,v) 对账基准(outcomes
-                            # 流已停用,不挂流式 refs)。
-                            refs=journal_refs(),
-                            note='观测自检框架设计 §2.7;残留屏豁免')
             # 披露面防御 getattr(strategy_state_of None 契约,B4 划分线):
             # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)
             _tc = getattr(strategy_state_of(_session), 'target_comp', None)
@@ -557,7 +468,7 @@ class CwScreenBattleWait(CwOperation):
                 # 结算屏真值覆盖(纯观察直写:hp/gold/streak/level 全可信):
                 # hp 真值链走结算观察直写→last_outcome_hp(上);gold/level/
                 # 经验经 apply_settlement_cover 直写状态容器(状态容器半为唯一宿主)。
-                # best-effort,失败不阻塞;失配 = 推算 bug,缺陷台账留存证据,
+                # best-effort,失败不阻塞;失配 = 推算 bug(下一帧观察覆盖纠偏),
                 # 无登记的待办环节。
                 try:
                     from sr_od.application.currency_war.obs.cw_settlement_obs import (
@@ -743,10 +654,6 @@ class CwScreenBattleWait(CwOperation):
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 拷贝仪参与结算插入位置失败'
                                 '(不阻塞): %s', e)
-            # 结算观测窗基准刷新(覆盖度守卫的「本窗已观测」凭据;含
-            # telemetry-only 败局补录行——行写点即基准,异常中断路径不刷新,
-            # exit 守卫按真缺失计):
-            _st.settled_battle_ts = _st.battle_ts
             log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
                      'comp=%s node=%s%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag,

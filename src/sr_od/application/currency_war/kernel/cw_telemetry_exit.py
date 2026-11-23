@@ -3,112 +3,47 @@
 kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块的钩子位,
 三桶零直依 telemetry(分包目标矩阵 §3.2;单一测量源=scan_v3):
 
-- 落账出口:``record_defect`` / ``bypass_obs_conflict_to_defect``
-  (缺陷台账 = 保留专用流;exogenous/exec_events 旧流写入口已停用——
-  ``record_exogenous`` 留 no-op 桩只护在飞挂起面调用方,见其注);
 - run_id 归属键:``current_run_id`` provider(冲突行/结算行/影子文件名的局归属);
 - obs_event 并入制 provider:``obs_event_board``(观察冲突证据归宿 = 统一
   state 账本行型 2;GameState 单例供给由装配段注入,kernel 禁自寻会话)。
 
+缺陷台账落账出口(record_defect/bypass_obs_conflict_to_defect)已随缺陷
+台账废弃拆除(用户裁定 2026-11-24);观察冲突证据行的现役归宿 =
+journal obs_event 行(经 obs_event_board 供给的账本写点,见 kernel/
+cw_observe 汇点),不再另落索引流。
+
 注入纪律(与框架「副作用缺省关 + 启动点显式接通」一致):
 
-- 生产装配接入点 = ``CurrencyWarApp.__init__`` 调 ``telemetry.install_exit_hooks()``
-  (幂等)——telemetry 侧把真实现写进本模块槽位;
-- 缺省(未注入)= run_id 返空串、落账 no-op;
-  测试需要真实落账时显式调 ``install_exit_hooks``(或 monkeypatch 本模块槽位)。
-
-缺陷台账分级常量(SEVERITY_*)的单一源也在本模块:判级函数(telemetry.judge_severity)
-与 obs 显式判级调用点同取此源。
+- 生产装配接入点 = ``CurrencyWarApp.__init__`` 调 ``install_exit_hooks()``
+  (幂等)——注入 run_id provider;
+- 缺省(未注入)= run_id 返空串;
+  测试需要真实归属键时显式调 ``install_exit_hooks``(或 monkeypatch 本模块槽位)。
 """
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
 
-# ===== 缺陷台账分级常量(单一源;值语义见 telemetry.judge_severity 判据链) =====
-
-SEVERITY_L1_ALERT: str = 'L1_alert'
-SEVERITY_L2_RECORD: str = 'L2_record'
-
-# ===== 仲裁分键常量(布局档;15 号稿。obs 布局面经本出口上行,
-# 缺陷台账/出口双侧同引此处=字符串单一源;互不混流测试钉值)=====
-
-#: 布局双通道分歧(公式 vs CV 占用态门,三信号梯裁决)。
-DEFECT_KIND_BACK_LAYOUT_DIVERGENCE: str = 'back_layout_divergence'
-#: 布局未知态(公式/CV 双弃权,读写分级+冻结止损事件面)。
-DEFECT_KIND_BACK_LAYOUT_UNKNOWN: str = 'back_layout_unknown'
-
 # ===== 钩子槽(注入式; None=缺省关) =====
 
 _run_id_provider: Callable[[], str] | None = None
-_record_defect: Callable[..., None] | None = None
-_bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None] | None = None
 _obs_event_board_provider: Callable[[], Any] | None = None
 
 
-def install_exit_hooks(*, run_id_provider: Callable[[], str],
-                       record_defect: Callable[..., None],
-                       bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None]) -> None:
-    """注入全部出口实现(显式逐槽,幂等;生产调用方=telemetry.install_exit_hooks)。
+def install_exit_hooks(*, run_id_provider: Callable[[], str]) -> None:
+    """注入出口实现(显式逐槽,幂等;生产调用方=currency_war_app 装配段)。
 
-    exogenous/exec_events 实现槽已停用()——
-    两流的出口访问器或为 no-op 桩、或已移除,不再接受注入。"""
-    global _run_id_provider, _record_defect
-    global _bypass_obs_conflict_to_defect
+    缺陷台账落账出口实现槽已随缺陷台账废弃拆除,不再接受注入。"""
+    global _run_id_provider
     _run_id_provider = run_id_provider
-    _record_defect = record_defect
-    _bypass_obs_conflict_to_defect = bypass_obs_conflict_to_defect
 
 
-# ===== 出口访问器(签名与 telemetry 真实现逐参一致;缺省 no-op / 空串) =====
+# ===== 出口访问器(缺省 no-op / 空串) =====
 
 def current_run_id() -> str:
     """run_id 归属键(空串=局外/未注入;消费端按真值判断,不写假键)。"""
     provider = _run_id_provider
     return provider() if provider is not None else ''
-
-
-def record_defect(surface: str, kind: str, expected: str, observed: str, *,
-                  gap: float | None = None, plane: int = 0, round_num: int = 0,
-                  unit_seq: int | None = None, verdict: str = '',
-                  shot: str | None = None,
-                  refs: list[dict[str, str]] | None = None,
-                  reader_source: str = '', note: str = '',
-                  gap_large: bool = False, auto_resolved: bool = False,
-                  severity: str = '', confidence: float | None = None) -> None:
-    """缺陷台账落账出口(判级/复现计数/run_id 门控语义在 telemetry 真实现)。"""
-    fn = _record_defect
-    if fn is None:
-        return
-    # 逐参关键字转发:保持调用形状与直依形态一致(测试桩按 kwargs 断言字段)
-    fn(surface=surface, kind=kind, expected=expected, observed=observed,
-       gap=gap, plane=plane, round_num=round_num, unit_seq=unit_seq,
-       verdict=verdict, shot=shot, refs=refs, reader_source=reader_source,
-       note=note, gap_large=gap_large, auto_resolved=auto_resolved,
-       severity=severity, confidence=confidence)
-
-
-def record_exogenous(round_num: int, kind: str, detail: str = '',
-                     state: Any = None,
-                     choice: dict[str, Any] | None = None) -> None:
-    """旧 exogenous 流出口(已停用 no-op 桩)。
-
-    保留原因:观测登记机制(kernel/cw_anchor.py,已入库惰性未接入调用,本文件
-    此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号——本桩恒
-    no-op,既不断在飞调用方,也零旧流产出。若裁「路由停用」时随其
-    调用点整段删除,本桩同步消失。
-    """
-    return
-
-
-def bypass_obs_conflict_to_defect(rec: dict[str, Any]) -> None:
-    """观察冲突行 → 缺陷台账旁路出口(口径映射在 telemetry 真实现;
-    缺陷台账 = 保留专用流,本旁路照常供给,证据 refs 指 journal (run_id,v)
-    版本行(journal_refs 单一源构造,无账本媒体诚实省略)。"""
-    fn = _bypass_obs_conflict_to_defect
-    if fn is None:
-        return
-    fn(rec)
 
 
 def set_obs_event_board_provider(fn: Callable[[], Any] | None) -> None:
@@ -129,69 +64,14 @@ def obs_event_board() -> Any:
         return None
 
 
-def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
-    """缺陷台账 refs 的 journal ``(run_id,v)`` 版本定位构造(保留流 refs 迁移单一源)。
+def record_exogenous(round_num: int, kind: str, detail: str = '',
+                     state: Any = None,
+                     choice: dict[str, Any] | None = None) -> None:
+    """旧 exogenous 流出口(已停用 no-op 桩)。
 
-    refs 指旧流(decisions/outcomes/obs_conflicts,写面已停用)的行 = 下钻扑空;journal 行行自足(每行内嵌当时完整 state 快照),
-    ``(run_id, v)`` 唯一定位一行。定位取缺陷记录时刻现版 ``current_version()``
-    (读口不占版本)= 最近一行,其内嵌 state 供下钻对账;bypass 场景该值
-    恰为刚写入的 obs_event 证据行版本。
-
-    定位缺媒体(无 GameState 供给/局外/零版本)时省略,refs 允许空(诚实
-    缺失);extra = 调用方语义键(arbitration 族 provenance 标签等),None 项
-    过滤。本函数在 kernel 出口模块 = 四域(obs/kernel/operations/telemetry)
-    调用点共一形态,禁散写第二套键格式。
+    保留原因:观测登记机制(kernel/cw_anchor.py,已入库惰性未接入调用,本文件
+    此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号——本桩恒
+    no-op,既不断在飞调用方,也零旧流产出。若裁「路由停用」时随其
+    调用点整段删除,本桩同步消失。
     """
-    gs = obs_event_board()
-    version = int(gs.current_version()) if gs is not None else 0
-    rid = current_run_id()
-    out: list[dict[str, str]] = []
-    if rid and version > 0:
-        out.append({'stream': 'journal',
-                    'key': f'run_id={rid}|v={version}'})
-    out.extend(e for e in extra if e)
-    return out
-
-
-# ===== 布局档分键记录函数(记录单一源在本出口模块:
-# obs 布局面只依 kernel 出口,telemetry.defects 不留副本)=====
-
-def record_back_layout_divergence(formula_n: int, cv_n: int,
-                                  source: str = 'resolve_back_slots') -> None:
-    """布局双通道分歧分键行(best-effort;run_id 缺省 no-op,恒 L2
-    auto_resolved——裁决已按三信号梯完成,行面只承担不一致率统计)。"""
-    if not current_run_id():
-        return
-    record_defect(
-        'back_layout', DEFECT_KIND_BACK_LAYOUT_DIVERGENCE,
-        expected=f'formula={int(formula_n)}', observed=f'cv={int(cv_n)}',
-        gap=float(int(cv_n) - int(formula_n)),
-        gap_large=abs(int(cv_n) - int(formula_n)) > 1,
-        auto_resolved=True,
-        verdict=('留证-布局双通道分歧,已按三信号梯裁决;'
-                 '本键计数=不一致率,复现帧对拍 cv_back_slots'),
-        refs=journal_refs({'stream': 'arbitration',
-                           'key': f'source={source}'}),
-        reader_source=str(source),
-        note='布局档双通道仲裁分键(证据层 = journal obs_event arbitrate 行,'
-             'field=back_layout_channel_conflict 对账)')
-
-
-def record_back_layout_unknown(source: str = 'resolve_back_slots') -> None:
-    """布局未知态分键行(best-effort;run_id 缺省 no-op,恒 L2
-    auto_resolved——未知态按读写分级+冻结止损处置,频度=验收基准点)。"""
-    if not current_run_id():
-        return
-    record_defect(
-        'back_layout', DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
-        expected='公式/CV 至少一源可判',
-        observed='双弃权(布局未知态)',
-        gap=None, gap_large=False,
-        auto_resolved=True,
-        verdict=('留证-布局未知态(读类退 6 档基线,写类冻结止损;'
-                 '频度基准=15号稿 §7 批 B/C 验收)'),
-        refs=journal_refs({'stream': 'arbitration',
-                           'key': f'source={source}'}),
-        reader_source=str(source),
-        note='布局未知态分键(证据层 = journal obs_event arbitrate 行,'
-             'field=back_layout_unknown 对账)')
+    return

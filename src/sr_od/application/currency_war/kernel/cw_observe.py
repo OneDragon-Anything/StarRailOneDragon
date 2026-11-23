@@ -191,7 +191,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             rec['shot'] = shot
         # 证据归宿 = 账本行型 2(obs_event;占版本内嵌当时 state)。供给槽
         # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
-        # 一致;旁路缺陷台账行不受此门照常供给。渠道签名(①类属):
+        # 一致。渠道签名(①类属):
         # actor = 本仲裁汇点,行内身份可对账(签名必填纪律)。
         _gs = cw_telemetry_exit.obs_event_board()
         if _gs is not None:
@@ -221,34 +221,10 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             if _gap is not None and _gap > GOLD_DELTA_ALARM_GAP:
                 _log.warning('[cw!][alarm][gold_delta] gap=%s old=%s new=%s '
                              'verdict=%s %s', _gap, old, new, verdict, ctx)
-        # 统一缺陷台账旁路(纯观测):同一冲突归一落 defect_ledger.jsonl
-        #(缺陷台账 = 保留专用流;台账行 refs 指 state journal (run_id,v) 版本行
-        #(构造单一源 = cw_telemetry_exit.journal_refs,无账本媒体时诚实省略),
-        # 不复制数据;调用方零改动)。外层 try/except 已兜底,旁路失败不影响证据行。
-        # 落账经 kernel/cw_telemetry_exit 钩子位(缺省关,生产在
-        # CurrencyWarApp.__init__ 注入真实现)。
-        cw_telemetry_exit.bypass_obs_conflict_to_defect(rec)
     except Exception:  # noqa: BLE001  hook best-effort
         pass
 
 
-# ===== 策略激活交叉核对暂存槽(消费者=obs.cw_observation 构建 state 读
-# session.active_strategies 处(obs→kernel 合法向)——槽模式与 _OBS_PHASE
-# 同族:生产→消费紧邻、消费即清。原生产者(投资策略卡采集遥测)已停用删除;
-# 槽与消费
-# 面保留,待 strategy_offer 并入批重接生产端)=====
-_PENDING_STRATEGY_PICK: str | None = None
-
-
-def stage_pending_strategy_pick(name: str) -> None:
-    """生产者:暂存「声明选中策略名」(识别失败/非策略类不暂存,写入端判)。"""
-    global _PENDING_STRATEGY_PICK
-    _PENDING_STRATEGY_PICK = name
-
-
-def consume_pending_strategy_pick() -> str | None:
-    """消费者:取走暂存的声明选中策略名并清槽(无暂存 → None)。"""
-    global _PENDING_STRATEGY_PICK
-    pick = _PENDING_STRATEGY_PICK
-    _PENDING_STRATEGY_PICK = None
-    return pick
+# ===== 策略激活交叉核对暂存槽——已随缺陷台账废弃拆除 =====
+# (原语义:声明选中策略名的暂存/消费对,消费点唯一行为 = 落缺陷台账
+# invariant_break 行;生产者已先期停用,台账废弃后消费面整体退役。)

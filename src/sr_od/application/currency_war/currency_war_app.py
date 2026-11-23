@@ -31,14 +31,15 @@ from sr_od.application.currency_war.operations.cw_loop import (
     STATUS_LOBBY_DONE,
     CwLoop,
 )
-from sr_od.application.currency_war.telemetry import defects, state
+from sr_od.application.currency_war.telemetry import state
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 
 # [停机钩子·常驻兜底;设计 = 统一观察对账迭代设计 §2.4]
 # 触发:GameState.observe() 观察覆盖 logic 值失配(逻辑态被实读证伪),
 # 未命中豁免注册表 → stop_running(框架截图保留证据 + [stop] 日志行)。
-# flag 文件与每局标志停用:事实载体 = 日志 + 缺陷台账行;stop_running 幂等
+# flag 文件与每局标志停用:事实载体 = 日志 + gs 缺陷行(buffer/sink 面,
+# kernel _emit_defect);stop_running 幂等
 # + was_live 截图门天然防重复,闭包不再需要自维护标志。
 
 
@@ -47,7 +48,7 @@ def _build_reconcile_andon(ctx: SrContext) -> Callable[[dict], None]:
 
     处置壳 = stop_running 一行:截图保留证据由框架
     ``stop_running(save_screenshot=True)`` 承担,事实载体 = [stop] 日志行 +
-    缺陷台账行(kernel 侧 _emit_defect 已落)。真失配 = 逻辑态被实读证伪
+    gs 缺陷行(kernel 侧 _emit_defect 已落 buffer/sink)。真失配 = 逻辑态被实读证伪
     = bug,停机现场修推算代码(处置协议归 guards.md / game_state README)。
     """
     def _andon(row: dict) -> None:
@@ -110,9 +111,12 @@ class CurrencyWarApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         # 出口钩子武装(幂等):kernel/obs/decision 三桶的 telemetry
-        # 上行出口(落账/run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
-        # 转发,缺省关;生产在此接通。
-        defects.install_exit_hooks()
+        # 上行出口(run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
+        # 转发,缺省关;生产在此接通。(缺陷台账落账出口已随缺陷台账
+        # 废弃拆除——现役注入面只剩 run_id provider;观察冲突证据归宿 =
+        # journal obs_event 行,不依赖本注入。)
+        from sr_od.application.currency_war.kernel import cw_telemetry_exit
+        cw_telemetry_exit.install_exit_hooks(run_id_provider=state.current_run_id)
         # obs 读口注入(幂等):decision/kernel 层禁直依 obs,新局弃置
         # 残留状态容器时的 obs last-known-good 缓存清理与对账合成特效帧态门
         # (kernel/cw_reconcile)经 decision_assembly 装配点接通
@@ -133,7 +137,6 @@ class CurrencyWarApp(SrApplication):
         set_reconcile_andon_hook(_build_reconcile_andon(ctx))
         # obs_event 并入 GameState 供给(kernel 禁自寻会话;观察冲突证据
         # 行型 2 的宿主供给,与 run_id provider 同点注入)。
-        from sr_od.application.currency_war.kernel import cw_telemetry_exit
         from sr_od.application.currency_war.kernel.cw_game_state import (
             game_state_of,
         )

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -359,14 +357,6 @@ def apply_action_reason(item: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
-def append_jsonl(path: Path | str, payload: dict[str, Any]) -> None:
-    """append 一行 JSON 到指定 .jsonl 文件(兜底回填/常规写共用,不依赖 recorder 单例)。"""
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with p.open('a', encoding='utf-8') as f:
-        f.write(json.dumps(payload, ensure_ascii=False) + '\n')
-
-
 
 # ===== trace 数据结构(schema 稳定)=====
 
@@ -696,9 +686,8 @@ class ExecEvent:
     """执行事件 schema(停用流的保留槽)。
 
     exec_events 流写入端已停用——发出语义下动作 op 无成败知识,动作失败
-    可见性归 journal 与缺陷台账(停用申报住地:telemetry/defects.py 文件
-    尾注、telemetry/recorder.py 模块头注)。字段表保留供后续恢复写入端时
-    复用,现役零生产者。
+    可见性归 journal(停用申报住地:telemetry/recorder.py 模块头注)。
+    字段表保留供后续恢复写入端时复用,现役零生产者。
     """
     ts: str = ""
     run_id: str = ""
@@ -778,46 +767,6 @@ class SpendUnitRecord:
     # proc 通道停用,函数本体 refresh_board_changed_of 已删(退役申报
     # grep 定夺);字段保留读存量行。
     refresh_board_changed: bool | None = None
-
-
-
-@dataclass
-class DefectRecord:
-    """统一缺陷台账行(defect_ledger.jsonl;纯观测索引层)。
-
-    把散在三处(obs_conflicts=感知冲突 / exec_events=执行失败 /
-    spend_ledger·gold_detail=真值采集)的缺陷口径归一:每行通过
-    ``evidence.refs`` 指回原流行(单一源,不复制数据)——审计先查台账,
-    下钻再回原流。旧三流是原始证据层,保持原样不扩 schema。
-
-    surface 值域:gold/bench/deployed/level_xp/hp/shop_refresh/phase_round/
-    equip/strategy/confidence/node_seq/streak(未映射的新冲突字段原样落,
-    消费端按字符串聚合,枚举外值不炸)。kind:perception_conflict /
-    exec_fail / invariant_break。severity 为写入端初判,离线可用同一
-    纯函数(judge_severity)按演进后的规则重判,不重写历史。
-    """
-    schema_version: int = SCHEMA_VERSION
-    ts: str = ""
-    run_id: str = ""                                # join key 主键(旧 obs_conflicts 缺,台账补齐)
-    plane: int = 0
-    round_num: int = 0
-    unit_seq: int | None = None                     # 购买单元序(可空;spend 面专用)
-    surface: str = ""                               # 缺陷所在观测面(见类注值域)
-    kind: str = ""                                  # 三类=既有流口径归一
-    expected: str = ""                              # 期望值/不变量描述
-    observed: str = ""                              # 观测值
-    gap: float | None = None                        # 数值化差(可空;文本面用 expected/observed 表达)
-    severity: str = ""                              # L0_andon/L1_alert/L2_record(初判)
-    verdict: str = ""                               # 沿用 obs_conflict verdict 语义(保旧/采新/拒信/待研)
-    evidence: dict[str, Any] = field(default_factory=dict)   # {shot?, refs:[{stream,key}]}
-    reader_source: str = ""                         # 沿用既有 source 词表
-    note: str = ""                                  # 处理提示,一行
-    # `w512_obs_surfaces/`(观测自检设计 §2.10):识别置信度快照,末尾追加可选字段
-    #(旧记录缺省 None 兼容)。语义 = 缺陷发生时点的 reader 分数(SIFT 内点数
-    # 等数值面;读空=0),不设即时告警,离线做分布监控——某 reader 读空率
-    # 环比翻倍是系统性退化的最早信号(`w501_gold_read_fix/` 金读数窄区裁切类缺陷先于大额漂移
-    # 在分布上暴露)。None = 该缺陷面无置信度语义。
-    confidence: float | None = None
 
 
 
