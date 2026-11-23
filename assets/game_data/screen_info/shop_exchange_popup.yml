@@ -47,28 +47,28 @@ area_list:
 - area_name: 按钮-加号
   id_mark: false
   pc_rect:
-  - 1352
-  - 612
-  - 1408
-  - 652
+  - 1330
+  - 565
+  - 1430
+  - 665
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
+  template_sub_dir: store
+  template_id: store_buy_add
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
 - area_name: 按钮-拉满
   id_mark: false
   pc_rect:
-  - 1412
-  - 612
-  - 1462
-  - 652
+  - 1400
+  - 565
+  - 1500
+  - 665
   text: ''
   lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
+  template_sub_dir: store
+  template_id: store_buy_max
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
@@ -150,6 +150,48 @@ area_list:
   - 1110
   - 692
   text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-弹窗状态横条-已售罄
+  id_mark: false
+  pc_rect:
+  - 830
+  - 659
+  - 1110
+  - 692
+  text: 已售罄
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-弹窗状态横条-兑换材料不足
+  id_mark: false
+  pc_rect:
+  - 830
+  - 659
+  - 1110
+  - 692
+  text: 兑换材料不足
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 点击空白处关闭
+  id_mark: false
+  pc_rect:
+  - 866
+  - 760
+  - 1062
+  - 800
+  text: 点击空白处关闭
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

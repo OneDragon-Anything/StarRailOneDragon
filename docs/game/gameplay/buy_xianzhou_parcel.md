@@ -1,9 +1,9 @@
 ---
 gameplay_name: 仙舟过期邮包
 app_id: buy_xianzhou_parcel
-last_updated: 2026-08-29
+last_updated: 2026-11-23
 source: `application/buy_xianzhou_parcel/` + `config/custom_combine_op/buy_xianzhou_parcel.yml` + `operations/store/buy_store_item.py`
-involves_screens: [大世界, 对话, 商店]
+involves_screens: [大世界, 对话, 商店, 商店-兑换弹窗]
 ---
 
 # 仙舟过期邮包(buy_xianzhou_parcel)
@@ -24,10 +24,11 @@ involves_screens: [大世界, 对话, 商店]
 
 - 大世界:传送落地 + 走位 + NPC 交互提示(`移动交互-单行`,F 对话)。
 - 对话:talk 选项「我想买个过期邮包试试手气」。
-- 商店:NPC 杂货摊与菜单商店共用 `商店` 画面档的购买弹窗 area(商品列表/购买最大值/确认/取消/已售罄;见 [screens/商店](../screens/store.md))。
+- 商店:NPC 杂货摊与菜单商店共用 `商店` 画面档的 `商品列表` area(选商品);数量弹窗与兑换弹窗是同一游戏组件,area 在 `商店-兑换弹窗` 档(拉满/确认/取消/状态横条;见 [screens/商店](../screens/store.md) §6.7)。
 
 ## 备注 / 待查
 
-- **售罄是常态分支**:`BuyStoreItem` 检测 `购买-已售罄` / `购买-兑换材料不足` → 主动点取消退出;`allow_fail=true` 让整个组合指令不因本周已购而失败。
+- **售罄是常态分支**:`BuyStoreItem` 检测弹窗状态横条「已售罄」/「兑换材料不足」(`文本-弹窗状态横条-已售罄` / `文本-弹窗状态横条-兑换材料不足`)→ 主动点取消退出;`allow_fail=true` 让整个组合指令不因本周已购而失败。
+- **弹窗形态待实机核验**:茂贞杂货摊的购买弹窗无实拍帧,数量标签是否同为「兑换数量」未证(购买链不依赖该锚,不影响流程);下次跑周常时开弹窗后点取消取证,补档到 `商店-兑换弹窗`。
 - **跑周常时序**:每周一刷新后跑收益最大;一周内重复跑会走售罄分支(仍算成功)。
 - 该 app 是 CustomCombineOp 配置驱动模式的样板(传送+走位+对话+购买拼装),同类「跑分支购买」玩法可照抄此模式。

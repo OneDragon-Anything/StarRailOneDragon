@@ -12,8 +12,20 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.operations.store.store_const import StoreItem
 
-_BUY_DIALOG_SCREEN: str = '商店-购买弹窗'
-"""购买弹窗独立建档:弹窗蒙层把背景高斯模糊,商店屏 tab 锚不可读,无法作父屏子态识别(2026-11-12 实拍)"""
+_POPUP_SCREEN: str = '商店-兑换弹窗'
+"""购买数量弹窗与兑换弹窗是同一游戏组件(数量滑条 + 取消/确认),共用兑换弹窗档案
+(docs/game/screens/store.md §8)。本 op 只按「画面名 + 区域名」取坐标,不做画面级
+识别:弹窗锚文案「兑换数量」在各商店形态下是否恒可见未实证,购买链不得依赖它。"""
+
+_AREA_STATUS_SOLD_OUT: str = '文本-弹窗状态横条-已售罄'
+_AREA_STATUS_INSUFFICIENT: str = '文本-弹窗状态横条-兑换材料不足'
+"""弹窗状态横条的两种不可购态(与兑换侧 :class:`ExchangeShopBuyGoods` 读同一横条)"""
+_AREA_MAX: str = '按钮-拉满'
+"""滑条上限钮(模板 ``store_buy_max``,滑条行随弹窗形态上下浮动时模板仍能定位)"""
+_AREA_CONFIRM: str = '按钮-确认'
+_AREA_CANCEL: str = '按钮-取消'
+_AREA_CLOSE_HINT: str = '点击空白处关闭'
+"""购买成功后「获得物品」弹窗底部提示文字;本 op 作为关闭点击点(非弹窗本体元素)"""
 
 
 class BuyStoreItem(SrOperation):
@@ -77,10 +89,10 @@ class BuyStoreItem(SrOperation):
         """
         screen = self.last_screenshot
         # 售罄 / 兑换材料不足时弹窗无「购买最大值」按钮,直接进确认节点(会点取消),避免空找按钮重试到超时
-        if self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-已售罄').is_success \
-                or self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-兑换材料不足').is_success:
+        if self.round_by_find_area(screen, _POPUP_SCREEN, _AREA_STATUS_SOLD_OUT).is_success \
+                or self.round_by_find_area(screen, _POPUP_SCREEN, _AREA_STATUS_INSUFFICIENT).is_success:
             return self.round_success(wait=0.5)
-        return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '按钮-购买最大值',
+        return self.round_by_find_and_click_area(screen, _POPUP_SCREEN, _AREA_MAX,
                                                  success_wait=0.5, retry_wait=1)
 
     @node_from(from_name='选择数量')
@@ -92,17 +104,19 @@ class BuyStoreItem(SrOperation):
         """
         screen = self.last_screenshot
 
-        result1 = self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-已售罄')
-        result2 = self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-兑换材料不足')
+        result1 = self.round_by_find_area(screen, _POPUP_SCREEN, _AREA_STATUS_SOLD_OUT)
+        result2 = self.round_by_find_area(screen, _POPUP_SCREEN, _AREA_STATUS_INSUFFICIENT)
 
         if result1.is_success or result2.is_success:
-            return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '按钮-购买取消',
+            return self.round_by_find_and_click_area(screen, _POPUP_SCREEN, _AREA_CANCEL,
                                                      success_wait=2, retry_wait=1)
         else:
-            return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '按钮-购买确认',
+            return self.round_by_find_and_click_area(screen, _POPUP_SCREEN, _AREA_CONFIRM,
                                                      success_wait=2, retry_wait=1)
 
-    @node_from(from_name='确认购买', status='按钮-购买确认')
+    # round_by_find_and_click_area 成功时 status = 区域名;本边只接「点了确认」,
+    # 售罄/材料不足分支点取消后 status 为取消区域名、无出边 → op 正常结束
+    @node_from(from_name='确认购买', status=_AREA_CONFIRM)
     @operation_node(name='点击空白处关闭')
     def click_empty(self) -> OperationRoundResult:
         """
@@ -110,5 +124,5 @@ class BuyStoreItem(SrOperation):
         :return:
         """
         screen = self.last_screenshot
-        return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '点击空白处关闭',
+        return self.round_by_find_and_click_area(screen, _POPUP_SCREEN, _AREA_CLOSE_HINT,
                                                  success_wait=1, retry_wait=1)
