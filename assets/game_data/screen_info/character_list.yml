@@ -10,7 +10,7 @@ area_list:
   - 355
   - 112
   text: 角色列表
-  lcs_percent: 0.5
+  lcs_percent: 0.75
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
