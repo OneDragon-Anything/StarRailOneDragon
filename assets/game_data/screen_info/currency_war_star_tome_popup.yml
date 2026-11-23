@@ -5,10 +5,10 @@ area_list:
 - area_name: 标识-星徽秘典
   id_mark: true
   pc_rect:
-  - 1020
-  - 32
-  - 1180
-  - 82
+  - 950
+  - 28
+  - 1105
+  - 88
   text: 星徽秘典
   lcs_percent: 0.9
   template_sub_dir: ''
@@ -33,10 +33,10 @@ area_list:
 - area_name: 提示-请选择1个
   id_mark: false
   pc_rect:
-  - 1030
-  - 76
-  - 1170
-  - 118
+  - 954
+  - 70
+  - 1100
+  - 120
   text: 请选择1个
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -47,9 +47,9 @@ area_list:
 - area_name: 星徽卡-1
   id_mark: false
   pc_rect:
-  - 560
+  - 488
   - 200
-  - 770
+  - 698
   - 500
   text: ''
   lcs_percent: 0.5
@@ -61,9 +61,9 @@ area_list:
 - area_name: 星徽卡-2
   id_mark: false
   pc_rect:
-  - 850
+  - 778
   - 200
-  - 1060
+  - 988
   - 500
   text: ''
   lcs_percent: 0.5
@@ -75,9 +75,9 @@ area_list:
 - area_name: 星徽卡-3
   id_mark: false
   pc_rect:
-  - 1140
+  - 1068
   - 200
-  - 1350
+  - 1278
   - 500
   text: ''
   lcs_percent: 0.5
@@ -89,9 +89,9 @@ area_list:
 - area_name: 星徽卡-4
   id_mark: false
   pc_rect:
-  - 1430
+  - 1360
   - 200
-  - 1640
+  - 1570
   - 500
   text: ''
   lcs_percent: 0.5
