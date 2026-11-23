@@ -47,7 +47,7 @@ uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed
 - 复盘按 match-review 协议吃档案(渲染器 `--journal <批目录>/state/journal.jsonl`,或已装配局 `--match <game_id>`);判读边界同「先知道边界」——本形态档案
   的 `rounds`/`loss_nodes` 等派生视图为空(单一 journal 源直装),判读走
   journal 切片,商店访问计数 = 渲染器「画面-商店」章计数(边界=渲染器产物,
-  复盘者不重建,见 match-review 阶段 2)。
+  复盘者不重建,见 match-review 第 2 步)。
 - 批量/统计仍缺位:`cw_batch_stats` 吃旧流 `decisions.jsonl`,对本形态不
   适用;批跑工具候补与 A/B 挂起状态不变(见「先知道边界」末条)。
 
