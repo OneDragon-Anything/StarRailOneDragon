@@ -1,0 +1,8 @@
+sub_dir: cw_changelog_close
+template_id: cw_changelog_close
+template_name: 更新内容弹窗关闭钮
+template_shape: rectangle
+auto_mask: true
+point_list:
+- 1440, 254
+- 1478, 291
