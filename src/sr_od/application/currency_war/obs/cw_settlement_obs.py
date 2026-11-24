@@ -457,12 +457,43 @@ def parse_settlement_progress(ocr_texts: list[str]) -> int | None:
     return None
 
 
+#: 结算屏胜负标识三态(``parse_settlement_verdict`` 返回值;analyze_screen extras ``verdict`` 键同值)。
+#: 三词为结算屏标题区互斥形态:胜利 / 本轮战败或平局式结束(对局未终,仍有「继续挑战」)/ 团灭终局。
+SETTLE_VERDICT_WIN: str = 'win'
+SETTLE_VERDICT_ENDED: str = 'ended'
+SETTLE_VERDICT_FAILED: str = 'failed'
+
+
+def parse_settlement_verdict(ocr_texts: list[str]) -> str | None:
+    """结算屏标题词 → 胜负标识三态(纯函数):「挑战成功」→ win;「挑战失败」→ failed(团灭);
+    「挑战结束」→ ended(本轮战败/平局式结束,对局未终);三者皆无 → None(不冒认)。
+
+    标题词判定只用子串包含、不走 LCS 相似:三个词两两共享 2 字前缀「挑战」,
+    相似匹配在 4 字词默认阈值下会放行兄弟词(画面档标题 area 以收紧 lcs 拒兄弟词,
+    识别器侧以全等子串拒兄弟词——两侧口径一致:1 字误读 → None,绝不反向)。
+    判序 win → failed → ended 与 ``parse_settlement_won`` 一致;三词屏上互斥,序不影响结果。
+    """
+    if any('挑战成功' in (t or '') for t in ocr_texts):
+        return SETTLE_VERDICT_WIN
+    if any('挑战失败' in (t or '') for t in ocr_texts):
+        return SETTLE_VERDICT_FAILED
+    if any('挑战结束' in (t or '') for t in ocr_texts):
+        return SETTLE_VERDICT_ENDED
+    return None
+
+
 def parse_settlement_won(ocr_texts: list[str]) -> bool | None:
-    """结算屏胜负真值(纯函数):「挑战成功」→ 赢;「挑战进度」负 → 输;
-    其余(无法判定)→ None。输轮结算屏形态 = 「挑战结束」+ 前往结算(无「挑战成功」)。"""
-    if any('挑战成功' in t for t in ocr_texts):
+    """结算屏胜负真值(纯函数):「挑战成功」→ 赢;「挑战进度」正 → 赢 / 负 → 输;
+    其余(无法判定)→ None。输轮结算屏形态 = 「挑战结束」+ 前往结算(无「挑战成功」)。
+
+    标题词分支委托 ``parse_settlement_verdict``(标题词→语义映射单一源):
+    win → True;failed(团灭终局)→ False;ended 不在此处判输——「挑战结束」含平局式结束,
+    ``killed`` 单一语义 = 「挑战成功」胜利标志,ended 落 None 交进度符号分支。
+    """
+    verdict = parse_settlement_verdict(ocr_texts)
+    if verdict == SETTLE_VERDICT_WIN:
         return True
-    if any('挑战失败' in t for t in ocr_texts):
+    if verdict == SETTLE_VERDICT_FAILED:
         return False   # 团灭终局
     if parse_settlement_progress(ocr_texts) is not None:
         return parse_settlement_progress(ocr_texts) > 0
