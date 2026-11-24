@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,决策轮复用实例载体;恒两元素 0=左卡/1=右卡)。卡面读取 = 单次全图 OCR,文本归属 = **中心点落入建档两卡 rect**(`骇入选项-左卡/右卡`,坐标单一真相源回 yml;判定语义先例 = `_anchor_hit_full_ocr` 中心点同式;卡位 area 缺失 = observe round_fail 返回主循环重新识别画面,禁兜底 rect;捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内文本全属该卡语义,classify 关键词匹配面不变)join 为 `PlannerOption(idx, text)`。观察 payload = `CwScreenPlannerObs`(`on_screen`/`options`/`screen`,位于 `kernel/cw_screen_report/planner.py`);report = `report_screen_planner_obs` 候选写状态容器 `planner_opts` 槽(恒写,空桶照写)。
+观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,决策轮复用实例载体;恒两元素 0=左卡/1=右卡)。卡面读取 = 单次全图 OCR,文本归属 = **中心点落入建档两卡 rect**(`骇入选项-左卡/右卡`,坐标单一真相源回 yml;判定语义先例 = `_anchor_hit_full_ocr` 中心点同式;卡位 area 缺失 = observe round_fail 返回主循环重新识别画面,禁兜底 rect;捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内文本全属该卡语义,classify 关键词匹配面不变)join 为 `PlannerOption(idx, text)`。观察 payload = `CwScreenPlannerObs`(`on_screen`/`options`/`screen`,位于 `kernel/cw_screen_report/planner.py`);report = `report_screen_planner_obs` 候选写状态容器 `planner_opts` 槽(恒写,空桶照写)。sim 分支:观察走金路径生成器 `sim/cw_sim_obs_gen.py::gen_planner` 回读 `planner_opts` 槽;候选由 sim 后端呈现本屏模态时合成写入(`sim/cw_sim_backend.py::SimBackend._present_planner_options`,与模态呈现成对——同族 = 巨星):现费用档 < 5 = 升费卡(含「提升费用」+ 目标档 = 现档 + 1)+ 非升费卡;档 ≥ 5 = 两卡皆非升费(费用封顶)。
 
 ## 4. 动作面
 
@@ -26,7 +26,10 @@
 决策动作 node 选卡+确认链(点卡+确认+即时自上报整体经动作工厂 `cw_pick_planner_action.py::CwActionPickPlannerOp`,派发 param 携真实选中 idx;决策半留在画面 op 侧):
 
 ```
-options = 观察轮 obs 载体 → decide_planner()(零参;候选读状态容器 planner_opts 槽)
+options = 观察轮 obs 载体(恒两卡;候选空 = 守卫① 具名 round_fail 零盲发)
+→ decide_planner()(零参;候选读状态容器 planner_opts 槽)
+→ 守卫② 返回动作类型清单外/None = 具名 round_fail(含原值);
+  守卫③ pick.idx 越界 = 守卫断言 AssertionError(禁钳位;守卫均在取点与派发前)
 target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对几何推导
   = 中心 x + 71% 高度(卡下半部选中),详情钮避让 clamp(底缘上移 11% 比例);
   area 缺失 = act round_fail 零派发零点击返回主循环重新识别画面(禁兜底坐标)
@@ -60,6 +63,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 ## 8. 守卫与防线
 
+- 决策出口守卫(选卡族守卫序,合同 = [op-layer.md](op-layer.md) §1.1 出口③ / §1.3;三守卫均在取点与派发前、零点击):① 候选空 = 具名 round_fail,不发出无依据的动作;② `decide_planner` 返回动作类型清单外的值/None = 具名 round_fail(消息含策略器原值 repr);③ pick.idx 越界 = 守卫断言 AssertionError(禁钳位;`_card_point` 的卡位索引与决策日志行同索引,同受其保护)。
 - 选中点 = area rect 相对几何(SELECT_Y_RATIO / DETAIL_MARGIN_RATIO 两比例,rect 单一源 = 建档;布局再漂移只更 yml)。
 - press_time 加固(点卡与确认同参数;短按下不被采样的输入管线形态)。
 - 详情面板检测分支已拆除(症状侧补丁已停用;根治理 = 选中点几何)。
@@ -68,7 +72,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 ## 9. 遥测与测试面
 
 - journal op 名 =「策划事件」;op 内日志 tag = `[cw-planner]`(决策 reason/左右卡)。
-- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报状态容器/入口门 miss fail/状态容器零参决策 + round_wait)。代码注引的 planner 策略接入调用测试/基建测试(test_cw_planner_strategy_wiring / test_cw_infra_locks)已不已登记(开放设计注)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/operations/cw_screen/test_cw_screen_yinlang.py`(决策出口守卫:候选空 / 词表外 None 具名 fail 零派发、idx 越界断言、合法 pick 派发携分支类型与日志卡文案);sim 呈现侧候选合成 = `sr-od-test/test/sr_od/application/currency_war/sim/cw_sim_backend/test__present_planner_options.py`。代码注引的 planner 策略接入调用测试/基建测试(test_cw_planner_strategy_wiring / test_cw_infra_locks)未登记(开放设计注)。
 - game 侧知识:事件机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md) 银狼策划事件节;建档 = `assets/game_data/screen_info/cw_yinlang_star_up.yml`,字段语义 = cw_game_state 字段注释。
 
 ## 开放设计注
