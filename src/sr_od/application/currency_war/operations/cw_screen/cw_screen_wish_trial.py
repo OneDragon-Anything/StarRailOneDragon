@@ -15,8 +15,10 @@
 → obs 挂实例属性进决策 node。决策动作 node = 落地复查顶部(确认已发 →
 标识不在 = overlay 已关 → 此刻才写 chosen_wish + success 返回主循环;在 = 确认未
 落地 → 清标志重走)→ 决策出口守卫:无 match 局外不设早退支(用户裁决
-2026-09-22 全族删门);返回 None/词表外 = 具名 round_fail 零盲发;idx 越界 = 守卫断言
-AssertionError;策略异常自然传播——守卫均在派发前、零点击 → 决策从状态容器
+2026-09-22 全族删门);选卡族三守卫(同构样板 ``cw_screen_yinlang.py::act``)
+= ① 候选空 → 具名 round_fail 零盲发(调策略器前)/ ② 返回 None/词表外 →
+具名 round_fail / ③ idx 越界 → 守卫断言 AssertionError;策略异常自然传播
+——守卫均在派发前、零点击 → 决策从状态容器
 零参读 → 选卡+确认链经 ``CwActionPickWishTrialOp`` 派发(pick-op-unify 批
 机械链迁入动作 op,env 仅携 op;点击坐标 = 动作 op 自状态容器
 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35)→ round_wait 循环
@@ -121,10 +123,11 @@ class CwScreenWishTrial(CwOperation):
         确认未落地 → 清标志重走(重读重选)。
 
         决策出口守卫(op-layer.md §1.1/§1.3):无 match 局外不设早退支
-        (用户裁决 2026-09-22 全族删门);返回 None/词表外 = 具名
-        round_fail 零盲发(出口③);idx 越界 =
-        守卫断言 AssertionError;策略异常自然传播(离屏失约 ValueError 不
-        再被吞)——守卫均在派发前、零点击。派发 = 策略产实例直发,env 仅
+        (用户裁决 2026-09-22 全族删门);选卡族三守卫——① 候选空 =
+        具名 round_fail 零盲发(调策略器前;出口③);② 返回 None/词表外 =
+        具名 round_fail(出口③);③ idx 越界 = 守卫断言 AssertionError;
+        策略异常自然传播(离屏失约 ValueError 不再被吞)——守卫均在
+        派发前、零点击。派发 = 策略产实例直发,env 仅
         携 op(点击坐标 = 动作 op 自状态容器 ``wish_trial_opts_xy`` 按 idx 取,
         坐标单一真相源 = 观察上报,op-layer.md §1.1 :35)。"""
         if self._confirm_pending is not None:
@@ -137,24 +140,33 @@ class CwScreenWishTrial(CwOperation):
                 return self.round_success('祈愿试炼选卡已确认(重入观察裁决)',
                                           wait=2)
         objs = self._obs.options if self._obs is not None else []
-        # 决策出口守卫(次序:先输入、后返回契约、再值域;均在任何点击
-        # 之前——派发即发出不可逆点击链,必须派发前拦):返回 None/词表外
-        # = 具名 fail 零盲发(op-layer.md §1.1 出口③);idx 越界 = 守卫
-        # 断言(op-layer.md §1.3);策略异常自然传播(离屏失约 ValueError
-        # 不再被吞)。OCR 空桶(候选文本为空串)= 合法候选,选哪桶由策略器
-        # 自定(可返回 idx=0),非流程侧兜底;候选数为 0(obs 载体缺席)
-        # = 落值域守卫断言。
+        # 决策出口守卫(次序 = 先输入、后返回契约、再值域;均在任何点击
+        # 之前——派发即发出不可逆点击链,必须派发前拦;族规 op-layer.md
+        # §1.1 出口③ / §1.3,同构样板 cw_screen_yinlang.py::act)。
+        # 守卫① 决策输入:候选空 = 具名 fail 零盲发——空候选不进策略器
+        # (策略器对空候选回落 idx=0,放进去 = 盲选派发)。OCR 空桶(候选
+        # 文本为空串)≠ 候选空:空桶照持仍是合法候选,选哪桶由策略器
+        # 自定,非流程侧兜底;本守卫只拦候选数为 0(obs 载体缺席 / 读链
+        # 产空)。现役读链恒 CARD_XS 三桶,本守卫属潜伏防线(读链候选数
+        # 一变仍拦得住)。
+        if not objs:
+            return self.round_fail(
+                '[cw-wish] 决策无有效输出零盲发(候选空 options=0)')
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
         #;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
+        # 守卫② 返回契约:词表外/None = 具名 fail 含原值留存证据(注解的
+        # 运行期执行;策略异常自然传播,离屏失约 ValueError 不再被吞)。
         pick = _match.strategy.decide_wish_trial()
         if not isinstance(pick, CwActionPickWishTrialParam):
             return self.round_fail(
                 f'decide_wish_trial 决策无有效输出(词表外/None): {pick!r}')
-        # 值域守卫界 = obs 候选数(下方日志行 objs[pick.idx] 与动作 op 按 idx
-        # 取 wish_trial_opts_xy 的真实索引对象;两者同次观察同序等长写。
-        # 守卫取候选数而非固定槽数 CARD_XS:读链产出的候选数一变仍拦得住)。
+        # 守卫③ 值域:越界 = 断言恒炸禁钳位(op-layer.md §1.3;断言分支经
+        # 框架异常路径计节点预算)。守卫界 = obs 候选数(下方日志行
+        # objs[pick.idx] 与动作 op 按 idx 取 wish_trial_opts_xy 的真实
+        # 索引对象;两者同次观察同序等长写。取候选数而非固定槽数 CARD_XS:
+        # 读链产出的候选数一变仍拦得住)。
         if not (0 <= pick.idx < len(objs)):
             raise AssertionError(
                 f'[cw-wish] pick idx 越界(策略器 bug,禁钳位): '
