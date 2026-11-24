@@ -78,5 +78,8 @@ pick = decide_wish_trial()(零参;候选读状态容器 wish_trial_opts 槽)
 ## 9. 遥测与测试面
 
 - journal op 名 =「祈愿试炼」;op 内日志 tag = `[cw-wish]`(决策描述/点击点)。
-- 测试:`sr-od-test/test/sr_od/application/currency_war/operations/cw_screen/test_cw_screen_wish_trial.py`(决策出口守卫:候选空 → 具名 round_fail 零派发且策略器零调用 / 动作类型清单外/None → 具名 round_fail 含原值零派发 / idx 越界 → AssertionError 零派发;边界 = OCR 空桶文本作合法候选照常派发)。
+- 测试(src 镜像,按被测面分三文件):
+  - 观察上报 `sr-od-test/test/sr_od/application/currency_war/kernel/cw_screen_report/test_wish_trial.py`(名字域/坐标域不同序等长 → 写前 AssertionError 且两域零写;空桶照持、两域同门原样写入);
+  - 动作 op `sr-od-test/test/sr_od/application/currency_war/operations/cw_op/test_cw_pick_wish_trial_action.py`(选卡点击点 = 状态容器 `wish_trial_opts_xy[idx]` 且 mouse_move 先于 click / 确认点击落「按钮-确认选择」area / 后果声明经 `declare_world` 喂入一次 / `chosen_wish` 不在动作 op 写;坐标域缺席或下标越界 → AssertionError 零点击零上报);
+  - 画面 op `sr-od-test/test/sr_od/application/currency_war/operations/cw_screen/test_cw_screen_wish_trial.py`(决策出口守卫:候选空 → 具名 round_fail 零派发且策略器零调用 / 动作类型清单外/None → 具名 round_fail 含原值零派发 / idx 越界 → AssertionError 零派发;边界 = OCR 空桶文本作合法候选照常派发。落地复查:标识不在 → 补写 `chosen_wish` 并 success 返回主循环 / 标识仍在 → 不写、清标志重走。写入口径:选中文本空不写、记录面失败不阻塞。观察节点:归档帧分桶读数(2 卡 + 中桶空)与两域上报)。
 - game 侧知识:画面与机制(节点级 quest、奖励形态) = [screens/货币战争-祈愿试炼.md](../../../../../../skills/sr-od-currency-war/references/screens/货币战争-祈愿试炼.md);决策规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E5。
