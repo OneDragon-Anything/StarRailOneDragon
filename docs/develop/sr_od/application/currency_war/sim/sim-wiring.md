@@ -94,15 +94,21 @@ readable/trusted 标记恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消�
 ## 六、装配与声明喂入
 
 装配（`sim/cw_sim_backend.py::install_backend`）= 端口槽 + 动作分支 rng
-提供槽两槽；卸载（`uninstall_backend`）幂等复位：
+提供槽 + 溢出在场选卡清槽解析槽三槽；卸载（`uninstall_backend`）幂等复位：
 
 - **端口槽**：`cw_sim_ports.install_sim_backend`（进程内单装配）。转移类
   动作后果不经订阅通道——转移动作 op 自上报出口一行
   `cw_sim_ports.declare_world(outcome.world_decl)` 直喂（未装配 = no-op，
   实机零行为变化），后端 `SimBackend.advance` 按 `decl.trigger` 分派状态副本
   过程/画面呈现并按 `decl.next_screen` 等值对账（契约权威版本 =
-  [sim-design.md](sim-design.md) §6.3；18 转移动作的声明终值 =
+  [sim-design.md](sim-design.md) §6.3；19 转移动作的声明终值 =
   [../flow/action_ops.md](../flow/action_ops.md) §4.8）。
+- **溢出在场选卡清槽解析槽**：`cw_action_report.set_overflow_pick_resolver`——
+  占席件选卡上报清槽在溢出告警在场时的被腾槽终态解析器；sim 装
+  `BenchSlot(kind='empty')`（as-built 不归位模型：仅卖出腾槽归位，上阵/点开两
+  免费腾槽路径不归位；实机缺省 None = 不写让下一 heavy 实读承接；契约权威
+  版本 = 开发 skill `references/game-state.md` §3.1），与 rng 提供槽同生命周期
+  （teardown 必卸，模块槽进程全局）。
 
 不引发画面转移的状态副本变化不经订阅通道：overlay 判据 = kernel 值回调
 （`kernel/cw_faction_callbacks.py`，deployed 逻辑写尾内联，sim/实机同源，
