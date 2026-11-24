@@ -36,6 +36,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _area_rect,
     _first_int,
 )
+from sr_od.application.currency_war.obs.cw_observation import _reread_frame
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -236,8 +237,9 @@ def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
             return None
         try:
             time.sleep(SETTLE_GOLD_INTERVAL_S)
-            v = _read_settle_gold_once(ctx, controller.screenshot())
-        except Exception:   # noqa: BLE001  补采帧不可得 → 维持读失败
+            frame = _reread_frame(ctx)
+            v = None if frame is None else _read_settle_gold_once(ctx, frame)
+        except Exception:   # noqa: BLE001  读链异常按补采不可得处理(截图异常已由 _reread_frame 归 None)
             return None
         if v is None:
             return None
@@ -250,8 +252,9 @@ def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
     for _ in range(SETTLE_GOLD_MAX_POLLS):
         try:
             time.sleep(SETTLE_GOLD_INTERVAL_S)
-            nxt = _read_settle_gold_once(ctx, controller.screenshot())
-        except Exception:   # noqa: BLE001  补采帧不可得 → 保留已读值
+            screen2 = _reread_frame(ctx)
+            nxt = None if screen2 is None else _read_settle_gold_once(ctx, screen2)
+        except Exception:   # noqa: BLE001  读链异常按补采不可得处理(截图异常已由 _reread_frame 归 None)
             break
         if nxt is None:
             break

@@ -168,8 +168,8 @@ def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
     修法(读链根因环,不做「读数再猜」):同读点补采新帧重读,两帧一致才采信;
     不一致(计数器在跳)→ 取**末帧**(新帧更接近当下;入账计数器单调向上,末帧
     ≥ 首帧即入账后真值)+ ``obs_conflict('gold', ...)` 保留证据 + warning(不静默:
-    采了哪个值、为何采,判读侧可见)。补采走 ``ctx.controller.screenshot()``
-    (同 ``read_deploy_cap_debounced`` 先例);控制器不可得(离线/单测)退单帧读,
+    采了哪个值、为何采,判读侧可见)。补采帧经 ``_reread_frame`` 取得(控制器截图口
+    返回 ``(时刻, 帧)`` 元组,取帧口径单一源);控制器不可得(离线/单测)退单帧读,
     行为与修前完全一致。
     """
     v = read_gold_opt(ctx, screen)
@@ -184,8 +184,9 @@ def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
     for _ in range(GOLD_SETTLE_MAX_POLLS):
         try:
             time.sleep(GOLD_SETTLE_INTERVAL_S)
-            nxt = read_gold_opt(ctx, controller.screenshot())
-        except Exception:   # noqa: BLE001  补采帧不可得 → 保留已读值
+            screen2 = _reread_frame(ctx)
+            nxt = None if screen2 is None else read_gold_opt(ctx, screen2)
+        except Exception:   # noqa: BLE001  读链异常按补采不可得处理(截图异常已由 _reread_frame 归 None)
             break
         if nxt is None:
             break
@@ -1377,8 +1378,9 @@ def _reread_frame(ctx: SrContext) -> MatLike | None:
     ``ctx.controller.screenshot()`` 返回 ``(时刻, 帧)`` 元组(帧失败时第二项为
     None),与观察层其余「裸帧」口径不同。取帧口径只住本函数:重读门各自解包会漏
     ——元组当帧传读链,切片异常被门的 ``except Exception`` 吞成「重读不可得」,
-    双帧确认静默退化成单帧且无报错。``_debounce_cap`` / ``_confirm_over_cap``
-    共用;新增重读门不得各自解包。
+    双帧确认静默退化成单帧且无报错。``_debounce_cap`` / ``_confirm_over_cap`` /
+    ``read_gold_settled`` / ``cw_settlement_obs._read_settle_gold_gated`` 共用;
+    新增重读门不得各自解包。
     """
     try:
         shot = ctx.controller.screenshot()
