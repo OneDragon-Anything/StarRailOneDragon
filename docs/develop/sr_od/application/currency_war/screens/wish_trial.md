@@ -21,7 +21,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickWishTrialParam` 实例(`OverlayPickExecEnv` 仅携 op;坐标由动作 op 自状态容器取[op-layer §1.1「选择坐标观察上报」条款];两守卫派发前,流程侧零值域改写) | 自上报 `report_action_pick_wish_trial_param`(零写族 = 上报不写状态容器、消费真值归观察的动作类,状态容器零写) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 返回主循环(见 §5) |
+| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickWishTrialParam` 实例(`OverlayPickExecEnv` 仅携 op;坐标由动作 op 自状态容器取[op-layer §1.1「选择坐标观察上报」条款];三守卫派发前,流程侧零值域改写) | 自上报 `report_action_pick_wish_trial_param`(零写族 = 上报不写状态容器、消费真值归观察的动作类,状态容器零写) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 返回主循环(见 §5) |
 | (无 match,无对局上下文,非动作) | — | — | 不设早退支(op-layer §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路自然失败,局内不达此态 |
 | (候选空/决策无有效输出/pick idx 越界,非动作) | — | — | 守卫 fail:候选空 = round_fail(调策略器前)、动作类型清单外/None = round_fail(含原值)、idx 越界 = AssertionError;零点击零派发,返回主循环 |
 
