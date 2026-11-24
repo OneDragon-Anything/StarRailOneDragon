@@ -3,6 +3,7 @@
 只依赖 screen_utils 基础原语,不依赖 CurrencyWarApp / Operation——
 供「返回普通大世界」等上层兜底 op 在不引入 app 依赖的前提下复用
 对局中画面判定单一源(与 ``CurrencyWarApp._in_match`` 第①层同源)。
+对局中名单(前缀 − 白名单)与大厅态白名单互补,两者各配一个画面匹配函数。
 """
 from typing import TYPE_CHECKING
 
@@ -81,4 +82,27 @@ def get_in_match_screen_name(ctx: 'SrContext', screen: MatLike) -> str | None:
         return get_match_screen_name(ctx, screen, screen_name_list=screen_name_list)
     except Exception:  # noqa: BLE001  画面匹配失败退回调用方兜底,不阻塞
         log.warning('[cw-screen-state] 对局中画面匹配异常,退回调用方兜底', exc_info=True)
+        return None
+
+
+def get_lobby_state_screen_name(ctx: 'SrContext', screen: MatLike) -> str | None:
+    """当前画面是否为大厅态白名单画面(对局前 / 非对局建档屏),是则返回其屏名,否则 None。
+
+    与 ``get_in_match_screen_name`` 互补:两名单互斥(对局中名单 = 前缀 − 白名单),
+    合起来覆盖带前缀的全部建档画面。消费场景 = 关键词启发式之前先问「是不是已知
+    的非对局屏」:白名单只过滤对局中名单,对 ``CurrencyWarApp._in_match`` 第②层
+    关键词兜底不可见——对局前建档页带「投资策略图鉴」字样即被关键词误判为对局中。
+    精确建档命中(任一方向)必须优先于关键词启发式,本函数即「非对局」方向的精确命中。
+
+    边界:白名单成员未建档时 ``get_match_screen_name`` 自然跳过;无 id_mark 的建档屏
+    结构性不可命中(精确匹配 = 全 id_mark AND)。匹配异常时 log.warning 后返回 None,
+    调用方不短路、退回既有兜底(有界失败,不阻塞);异常必须留日志,不静默。
+    """
+    try:
+        from one_dragon.base.screen.screen_utils import get_match_screen_name
+        return get_match_screen_name(ctx, screen,
+                                     screen_name_list=list(LOBBY_STATE_SCREENS))
+    except Exception:  # noqa: BLE001  画面匹配失败退回调用方兜底,不阻塞
+        log.warning('[cw-screen-state] 大厅态白名单画面匹配异常,退回调用方兜底',
+                    exc_info=True)
         return None

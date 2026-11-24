@@ -160,7 +160,10 @@ class CurrencyWarApp(SrApplication):
     def _in_match(self, screen) -> bool:
         """已在货币战争对局中(备战/事件/战斗/结算任一态)。
 
-        双层:①screen_info 画面匹配(治本,新屏建档即生效);②关键词 fallback(半开/过渡帧)。
+        三层:①screen_info 画面匹配(治本,新屏建档即生效);①b 大厅态白名单
+        精确命中短路(已知的非对局建档屏直接判否,不进关键词层);②关键词
+        fallback(半开/过渡帧)。判定序约定:精确建档命中(任一方向)优先于
+        关键词启发式。
         """
         # 大厅不是对局中态:防 _IN_MATCH_KEYWORDS 短词(如「出战」)round_by_ocr 默认 lcs 0.5
         # 误匹配大厅文字(「货币战争」含「战」→「出战」1/2=0.5 命中)→ _start_match 误判已在对局 →
@@ -177,6 +180,12 @@ class CurrencyWarApp(SrApplication):
                     return True
             except Exception:  # noqa: BLE001  画面匹配失败退关键词层,不阻塞启动
                 pass
+        # ①b 白名单短路:对局前建档屏(数据银行/图鉴族/难度确认等,LOBBY_STATE_SCREENS)对①层
+        # 不可见(①层名单 = 前缀 − 白名单),不短路即落②层——数据银行页带「投资策略图鉴」字样
+        # 被关键词命中误判对局中 → 单跑 app 跳过 start 交 loop,对局循环跑在图鉴页上。
+        # 上方 _at_lobby 是本层的大厅单例快路径,本层是其全白名单推广。
+        if cw_screen_state.get_lobby_state_screen_name(self.ctx, screen) is not None:
+            return False
         # ② 关键词 fallback(历史行为保留):真在对局时这些识别标志 OCR 干净 4/4 命中。
         return any(self.round_by_ocr(screen, kw, lcs_percent=0.8).is_success for kw in self._IN_MATCH_KEYWORDS)
 
