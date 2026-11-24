@@ -18,6 +18,8 @@ CwEntryStart.click_start(node_max_retry_times 缺省)
   模式选择/简报/继续进度/投资环境/投资策略/教程叠层)→ 兜底 retry
 ```
 
+- **新局确凿信号三屏(难度确认/模式选择/简报)= 弃置判定每链一次**:三屏只在无保存局的新局路径出现,是同一条路径上的三个备选「新局开始」信号;`_discard_stale_once` 的去重闩在首个信号处置位(无论当时有无残留可丢——要丢的只有进链前就在的上一局残留,首个信号一次判尽),后续信号的 `_establish_match_once` 对已在容器幂等直过。本链自建的容器不得被下一信号当成「上一局残留」弃掉重建:职级(难度确认屏读存、建容器时吸收进容器)会随被弃容器丢失,重建容器的开局种子行还会挂到被弃容器的 run 号下(一局双档案)。本局 run 在容器第一行写入之前铸好(段序与归属 token 见 [journal.md](../journal.md) §10)。
+
 ## 2. 弹窗守卫族(注册表 `ENTRY_POPUP_GUARDS` + 统一入口 `try_handle_entry_popups`,`cw_entry_start.py`)
 
 弹窗守卫在 5 个调用位置各插入一行调用(app `_enter_lobby`/app 交接节点 `_exit_cleanup`/`CwEntryEnter.wait_lobby`/`CwEntryStart.click_start`/`CwEntryStart.advance_to_prep`);识别→动作→具名 retry 的参数住在注册表数据行(`EntryPopupGuardSpec`),元组顺序 = 调用位置执行序(supply 在 detail 族前,领取优先;积分奖励殿后,触发场景是局末自动弹与入口链途中弹窗无同帧叠加路径;序位机械防线 = 测试仓守卫序位测试,元组重排即红)。守卫参数值(识别阈值/等待时长)见代码注册表行:
