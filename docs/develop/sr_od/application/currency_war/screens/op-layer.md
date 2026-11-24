@@ -113,7 +113,7 @@
 
 停用件 1:`CwScreenDeploy`(部署机画面 op)已停用删除——部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 机械执行 + `report_action_deploy_move_param` 自上报逻辑态),部署判定单一源驻 `kernel/cw_deploy_logic.py`,路径速查 = [deploy.md](deploy.md)。停用件 2:`CwOpCloseShop`(关店编排壳)已停用删除——关店 = 决策动作 `CwActionCloseShopParam` 经注册表由 `CwActionCloseShopOp` 执行体真机械执行(见 [shop.md](shop.md) §4)。停用件 3:`CwOpOpenShop`(推进型两 node 壳)已停用删除——开店 = 规范动作形态直调体 `operations/cw_op/cw_op_open_shop.py::open_shop`(单段机械执行 + 发出即记账恒 True;sim 机械 IO 关闭下点击经端口 click_answer 受理 = 状态副本(GameState)推进通道),幂等判定归流程层(见 [shop.md](shop.md) §2)。合计 12 + 7 + 11 + 1 + 1 + 2 = 34(cw_screen)+ 画面框 1 = 35。
 
-注(选卡动作统一迭代 + 投资两屏拆类):单选族 13 屏的选卡动作全集并入为 13 个 pick 动作 op 行(投资两屏拆类后 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指 `CwActionPickInvestOp`,全节点循环/全形态单选屏经注册表派发),op 内 = 选中 → 确认(或点卡即选)→ 自上报(**有字段写操作的投资两屏/补给/遭遇/策划/装备 = 点完即写完整结果**,两步写法/证据标志全域清零;其余屏 = 不写游戏状态的占位上报);刷新链由画面 op 内置动作执行,全域终结语义(§1.4)。
+注(选卡动作统一迭代 + 投资两屏拆类):单选族 13 屏的选卡动作全集并入为 13 个 pick 动作 op 行(投资两屏拆类后 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指 `CwActionPickInvestOp`,全节点循环/全形态单选屏经注册表派发),op 内 = 选中 → 确认(或点卡即选)→ 自上报(**有字段写操作的投资两屏/补给/遭遇/策划/装备 = 点完即写完整结果**,两步写法/证据标志全域清零;其余屏 = 不写游戏状态的占位上报,例外 = 星徽秘典/武装箱两屏选卡上报前置清槽步——消费登记槽 logic 清,溢出告警在场实机口径不写让实读承接;专家邀请函屏仍为占位上报——书册卡点开即离席,不同态件);刷新链由画面 op 内置动作执行,全域终结语义(§1.4)。
 
 ## §4 适用范围边界(本层不承载的机制)
 
