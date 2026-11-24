@@ -16,7 +16,7 @@
 | 2 | hp | ①原生 OCR;②3x 放大 OCR;③对账层 session.last_hp_real;④二值化第三级 | **双通道仲裁(采放大,标定记录在案)+对账层+trusted 位** —— 家族里最完整的先例 | `read_hp_opt`/`reconcile_hp`() |
 | 3 | level | ①OCR 直读(无兜底);②XP 分母反推;③`_expected_level` 启发式;④session 单调链 | **三源仲裁**(XP 主权/单调守卫/跳变守卫/authoritative 位;毒化防线=纯启发式不写回) | `_resolve_level`(cw_observation.py:1919) |
 | 4 | deploy_cap | ①paddle「X/Y」的 Y(直读);②level 估兜底;③域防抖双帧重读 | **域守卫(level≤cap≤level+2)+域外双帧一致采信+域外且重读不一致→拒信 None** | `_debounce_cap`() |
-| 5 | deployed 计数 | ①paddle X(游戏自带计数器);②CV 槽位占用实测 | **min 仲裁+spread>1 分歧保留证据+独立细分键**(7026c5db;板满门消费仲裁值) | `arbitrate_deployed_count` |
+| 5 | deployed 计数 | ①paddle X(游戏自带计数器,= 团队规模占用数);②CV 槽位占用实测 | **min 仲裁+spread>1 分歧保留证据+独立细分键**(7026c5db;板满门消费仲裁值);**超限例外**:cap 已知且 X > cap → 不取低值直接采 X(X 是规模占用数,CV 只数单位看不见规模,取低值会把光环持有者的额外占用压掉;cap 未知退回取低值;`cw_arbitration.py::combine_deployed_count`) | `arbitrate_deployed_count` |
 | 6 | deployed 槽位身份 | ①CV+SIFT 现读(read_deployed_chars);②(历史跟踪账,已停用);③paddle X 对齐(截断/补齐);④board 重建 | **对齐目标=paddle X;身份=SIFT 单源**(未知='?'显式;无第二身份源可裁) | read_game_state deployed 段 |
 | 7 | bench 名单/占用 | ①备战栏 9 格 CV 扫描;②(历史跟踪账,已停用;后播种 = heavy 读屏重建);③商店行卡片(空间归属应排除) | **无空间归属仲裁** —— r9 诊断报告 §2.1 记「bench 名单=商店 4 卡」;7026c5db 勘误经三证**否决**该归因(待裁决行在案)→ 病灶存疑待复现 | report §2.1 vs 7026c5db commit 注 |
 | 8 | board 阵营计数 | ①OCR 徽标(可视区);②computed(tracked 身份全集) | **双源仲裁:computed 基础数据+备战帧徽标覆写**(帧态门:非备战帧双不可信只保留证据;后经裁决翻转) | read_game_state board 段 |

@@ -23,7 +23,7 @@
 | 部署逻辑态 | `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench→deployed 槽位平移 + board 维护) |
 | 落地对账 | 备战环下一帧入口观察(以实际观察为准;星级抖动门/两态仲裁驻 `kernel/cw_reconcile.py`) |
 | 后排布局选档 | `obs/cw_back_layout.py::select_back_layout`(cap 差公式;未知态写类冻结) |
-| deployed 计数双源仲裁 | `obs/cw_observation.py::arbitrate_deployed_count`(取低值 fail-closed) |
+| deployed 计数双源仲裁 | `obs/cw_observation.py::arbitrate_deployed_count`(取低值 fail-closed;cap 已知且 X > cap 的超限态不取低值、直接采 X——X 是团队规模占用数,CV 只数单位看不见规模;cap 未知退回取低值;内核 `obs/cw_arbitration.py::combine_deployed_count`) |
 | 换人卖出分支(部署期换人时的卖上阵) | 动作发出面 mandate + `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`(判定单一源;转型域 = `swap_bond_gate_domain` 判别子分派的双门资格面);卖出动作 = `CwActionSellDeployedParam`(`cw_sell_deployed_action.py`) |
 
 ## 2. 历史交互模型索引(供考古)
