@@ -50,6 +50,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
 | 选卡确认链发出完成 | **画面终结** | round_success 返回主循环重新分发(点击发出后即结束本次访问;确认未生效 = overlay 残留由外循环重识别重派) |
+| (决策无有效输出 / pick idx 越界,非动作;见 §8 守卫①②③) | 守卫 fail(op FAIL)/ 守卫断言 | 候选空、`decide_planner` 返回动作类型清单外的值/None = 具名 round_fail;idx 越界 = AssertionError(框架异常路径,保留证据截图 + `node_max_retry_times=5` 预算)——均零点击零派发返回主循环;连续 fail 由外循环重派上限兜底(规则单一源 = `skills/sr-od-dev-currency-war/references/flow/guards.md` §1) |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6。
 
@@ -71,7 +72,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 ## 9. 遥测与测试面
 
-- journal op 名 =「策划事件」;op 内日志 tag = `[cw-planner]`(决策 reason/左右卡)。
+- journal op 名 =「策划事件」;op 内日志 tag = `[cw][planner]`(决策 reason/左右卡;守卫具名 fail 与断言文案同前缀)。
 - 测试:`sr-od-test/test/sr_od/application/currency_war/operations/cw_screen/test_cw_screen_yinlang.py`(决策出口守卫:候选空 / 词表外 None 具名 fail 零派发、idx 越界断言、合法 pick 派发携分支类型与日志卡文案);sim 呈现侧候选合成 = `sr-od-test/test/sr_od/application/currency_war/sim/cw_sim_backend/test__present_planner_options.py`。代码注引的 planner 策略接入调用测试/基建测试(test_cw_planner_strategy_wiring / test_cw_infra_locks)未登记(开放设计注)。
 - game 侧知识:事件机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md) 银狼策划事件节;建档 = `assets/game_data/screen_info/cw_yinlang_star_up.yml`,字段语义 = cw_game_state 字段注释。
 
