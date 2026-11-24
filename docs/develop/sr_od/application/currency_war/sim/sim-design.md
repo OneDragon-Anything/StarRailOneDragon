@@ -84,7 +84,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 3.2 转移源两类
 
-1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派状态副本过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_finish（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态结束本次访问/选卡状态副本过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
+1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派状态副本过程/画面呈现、完成后按 `decl.next_screen` 等值对账。19 转移动作全量声明驱动：settle_confirm/supply_finish（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；开典籍（`open_tome`）→ 后端开件拍代清席（sim 无星徽弹窗呈现面、选卡拍不存在，分歧申报见 §6.3）；pick 族 → 模态结束本次访问/选卡状态副本过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
 2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店、接管补采位面详情族（备战节点条点击 → 详情屏模态呈现 / 位面卡点击 → 选中位面联动 / 详情节点条点击 → boss 标签呈现 / 点 X → 回备战——词缀随机态转正委派链的呈现面）。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
 
 **商店牌面观察链**（点击源「开店」的观察写回语义）：牌面 = 节点级持久事实，发牌时定（节点窗口序列的商店自动全刷；实机不可观察，后端私有记录 `SimBackend._shop_record`）。开店呈现时把记录写回 `gs.shop`（模拟读屏，对偶实机「每次进店 live 漏斗重读屏写 payload」——sim 无识别面，以发牌期记录承载同一观察语义）；关店动作上报 `leave_screen` 清空 `gs.shop` 呈现不清记录；节点切换新发牌自然覆盖记录（整店锁跳过发牌 = 牌面跨节点保留，同语义）。记录跟随 = 全部驱动入口（`screen_identity`/`observe`/`visible`/`click_answer`/`advance`）懒同步在屏 payload 非空即跟随——覆盖发牌/刷新/买卡一切写点（写点与下次开店之间必经驱动入口：策略帧循环先观察后决策）。写回仅离屏态生效（在屏态保持现值零写）。
@@ -145,7 +145,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 4.2 目录
 
-- **开箱 / 专家邀请函 / 星徽四选一**：动作触发——`open_box` / `open_bookcard` / `open_tome` 上报内直登（kind = `box_card` / `expert_invite` / `star_tome`，成功分支才登）；开箱的候选生成走 `report_screen_box_pick_obs` 同名通道。
+- **开箱 / 专家邀请函 / 星徽四选一**：动作触发——`open_box` / `open_bookcard` / `open_tome` 上报内直登（kind = `box_card` / `expert_invite` / `star_tome`，成功分支才登；`open_box`/`open_tome` 登记携被点开槽 `PendingScreen.slot`，供选卡上报清槽定位——箱在 sim 经共享 `pick_box_card` 上报同一行清席，典籍在 sim 无选卡拍、由后端开件拍代清）；开箱的候选生成走 `report_screen_box_pick_obs` 同名通道。
 - **巨星（盛会之星）**：判据 = deployed 逻辑写尾的资格集上穿（**逐次上穿即弹,无簿记去重**——ScreenChanges 侧栏簿记仅 wish/planner/fortune 三族;阈值语义源 = `data/cw_factions.py` tiers），一局可多次。
 - **planner（银狼升星）**：判据 = deployed 逻辑写尾的银狼星级回调（每费用档一次，簿记 = `planner_tiers_fired`）。
 - **命运卜者（占卜屋强化）**：判据 = 占卜屋 settle_confirm 上报登记；**呈现门** = 底层备战才收尾（下一节点非备战时条目存活等待）。
@@ -202,16 +202,16 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 6.3 动作后果声明（WorldDecl）
 
-「转移动作」= 落地后世界画面/进程前进的动作（全集 18）。动作后果的出口通道 = **动作后果声明**（`kernel/cw_world_decl.py`）：转移动作的「动作落地 → 状态副本后果」由上报函数自产的数据承载。schema 两维：`next_screen` = 动作后确定的下一画面 screen_info 档名（`''` = 无画面，局终等未建模终态）；`trigger` = 推进分派类别（`''` = 纯画面转移，后端零专属过程）。载体 = `kernel/cw_game_state.py::LogicOutcome.world_decl`（构造义务：上报函数 `applied=True` 出口必构造；`applied=False` = None）。
+「转移动作」= 落地后世界画面/进程前进的动作（全集 19）。动作后果的出口通道 = **动作后果声明**（`kernel/cw_world_decl.py`）：转移动作的「动作落地 → 状态副本后果」由上报函数自产的数据承载。schema 两维：`next_screen` = 动作后确定的下一画面 screen_info 档名（`''` = 无画面，局终等未建模终态）；`trigger` = 推进分派类别（`''` = 纯画面转移，后端零专属过程）。载体 = `kernel/cw_game_state.py::LogicOutcome.world_decl`（构造义务：上报函数 `applied=True` 出口必构造；`applied=False` = None）。
 
 不引发画面转移的状态副本变化（板面组成/升星等）不走独立事件通道——由状态容器值回调（`kernel/cw_faction_callbacks.py`）在 deployed 逻辑写尾内联判定（§4.1 判据段），零模块级钩子槽。
 
 声明契约四条：
 
-1. **trigger 封闭集**：单一源 = `sim/cw_sim_backend.py::ADVANCE_TRIGGER_KINDS`（advance 分派表键集），过程类含：`node_advance`（节点推进）/ `battle_resolve`（战斗结算）/ `battle_skip`（免战跳过,免战牌建模批）/ `open_box` / `pick_box_card` / `pick_megastar` / `pick_planner` / `pick_supply` / `pick_invest_env` / `pick_invest_strategy` / `pick_encounter` / `spy_shop_refresh` / `refresh_invest_env` / `refresh_invest_strategy`。准入判据 = 写端归属：上报函数/获得链已写的后果（腾位/离屏/动作直接后果）不进 trigger；只有后端专属的过程（经济结算/队列出队/候选采样/排除集簿记——实机里「游戏自己算」的部分）才进；写端全在上报侧的动作（开书册卡/关店/五类零写选卡）= `''` 纯转移。值零新词，沿用动作名。
+1. **trigger 封闭集**：单一源 = `sim/cw_sim_backend.py::ADVANCE_TRIGGER_KINDS`（advance 分派表键集），过程类含：`node_advance`（节点推进）/ `battle_resolve`（战斗结算）/ `battle_skip`（免战跳过,免战牌建模批）/ `open_box` / `open_tome` / `pick_box_card` / `pick_megastar` / `pick_planner` / `pick_supply` / `pick_invest_env` / `pick_invest_strategy` / `pick_encounter` / `spy_shop_refresh` / `refresh_invest_env` / `refresh_invest_strategy`。准入判据 = 写端归属：上报函数/获得链已写的后果（腾位/离屏/动作直接后果）不进 trigger；只有后端专属的过程（经济结算/队列出队/候选采样/排除集簿记——实机里「游戏自己算」的部分）才进；写端全在上报侧的动作（开书册卡/关店/五类零写选卡〔星徽秘典选卡的清槽写亦在上报内〕）= `''` 纯转移。例外 `open_tome`：sim 无星徽弹窗呈现面、选卡拍不存在，占席件清席为后端专属过程（实机侧清席归选卡上报，两域时点分歧申报见 action-op.md §4 #19 行）；声明 `slots` 携被点开槽（`WorldDecl.slots` 按动作分档：`open_tome`/`open_box` = 备战栏物理槽 1 基单元素）。值零新词，沿用动作名。
 2. **`node_advance` 的 `next_screen` 推导**：权威源 = kernel 后继原语 `sequence_next`（`kernel/cw_node_schedule.py`，带场字段现值参）+ `effective_node_pos`（`kernel/cw_game_state.py`，推进落账后的生效序位）。规则序：`sequence_next` 无后继（超出建模域）→ 局终声明事件式 `''`（`reason='match_end'`，零写入零效果 tick）→ 位面切换轮优先（`货币战争-位面过渡`）→ 新节点窗稳态屏（`window_stable_screen_now` 族：battle/reward→开商店档、supply→补给、encounter→遭遇节点、boss→BOSS 简报、1-1→备战档）。禁读状态容器 `gs.node` 作推导口——它是观察镜像，不随推进变。
 3. **喂入契约**：转移动作 op 在自上报出口紧跟一行 `cw_sim_ports.declare_world(outcome.world_decl)`（一次动作多支上报 = 每支上报出口各自紧跟一行；round 结果 `data` 携带最后一份声明）；非转移动作 `world_decl` 恒 None，无喂入行。端口未装配 = no-op（实机零行为变化）；`decl is None` 端口层直返。
-4. **消费与对账**（`SimBackend.advance(decl)`）：按 `decl.trigger` 分派状态副本过程/画面呈现（18 转移动作全量在表；`''` = 纯画面转移，按 `next_screen` 推进）；完成后按 `decl.next_screen` 等值对账——断言对象 = 状态机**底层稳态画面**（让路恢复位消费完、overlay 弹完后的落点屏）；建模内失配豁免三类（overlay 登记已登记 pending / offer 呈现 / 节点窗让路）断言延后至稳态补验；`next_screen=''` 预测局终，断言载体 = `done` 为真 ∧ 呈现大厅屏（局终无下一画面，不走字面等值）。断言不等且不在豁免集 = `disclosures` 缺陷保留证据不停机（声明与状态机漂移的早期警报）。`trigger` 集外值 = ValueError 显式报错（构造点漂移 = 接入调用 bug，禁静默）。
+4. **消费与对账**（`SimBackend.advance(decl)`）：按 `decl.trigger` 分派状态副本过程/画面呈现（19 转移动作全量在表；`''` = 纯画面转移，按 `next_screen` 推进）；完成后按 `decl.next_screen` 等值对账——断言对象 = 状态机**底层稳态画面**（让路恢复位消费完、overlay 弹完后的落点屏）；建模内失配豁免三类（overlay 登记已登记 pending / offer 呈现 / 节点窗让路）断言延后至稳态补验；`next_screen=''` 预测局终，断言载体 = `done` 为真 ∧ 呈现大厅屏（局终无下一画面，不走字面等值）。断言不等且不在豁免集 = `disclosures` 缺陷保留证据不停机（声明与状态机漂移的早期警报）。`trigger` 集外值 = ValueError 显式报错（构造点漂移 = 接入调用 bug，禁静默）。
 5. **免战跳过过程**（`battle_skip`；免战牌建模批）：声明来源 = 出战上报跳过子态分支（`kernel/cw_action_report/start_battle.py`，`next_screen` = 跳过后下一节点窗稳态屏推导 `_skip_next_screen`——规则族 = `window_stable_screen_now` 对后继序位求值;后继 None = 局终事件式空串）。状态副本消费 = `SimBackend._skip_battle`：零战斗面（不掷点/不掉血/无结算收入落账/无连胜转移/无环境·策略战后发放/无难度记录/无结算环帧行/无败局待办），被跳节点经验照常入账 + 镜像 `_on_node_advance` 记账段（策略卡到级金/装备分支——跳过拍 = 跨级事件拍），状态副本直进下一节点窗（新窗全部分支经窗口幂等守卫自动继承）；重入幂等守卫 = `_settled_key`（skip 后同节点 battle_resolve 空转零双账），后到 `node_advance` 声明经序位守卫空转。uses 递减零写（单一写端 = 上报分支）。建模假设披露键：`cw_skip_scope_battle_only_assumption`（跳过辖域 = 仅普通战斗）、`cw_skip_settlement_semantics_pending`（结算语义族待实机比对）。
 
 ### 6.4 观察生成器
@@ -226,7 +226,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 6.6 装配点
 
-`sim/cw_sim_backend.install_backend(backend)`：端口槽装配 + kernel 事实事件 sink 订阅（转移后果不经订阅，走声明喂入 = §6.2 `declare_world`）+ 动作随机采样 rng 提供槽注入（§2.3）；`uninstall_backend()` 幂等复位三槽。装配点 = sim 运行器（测试仓 harness）；生产实跑入口当前不存在（§8.3）。
+`sim/cw_sim_backend.install_backend(backend)`：端口槽装配 + kernel 事实事件 sink 订阅（转移后果不经订阅，走声明喂入 = §6.2 `declare_world`）+ 动作随机采样 rng 提供槽注入（§2.3）+ 溢出在场选卡清槽解析槽注入（`cw_action_report.set_overflow_pick_resolver`，sim 口径 = 被腾槽写 empty，as-built 不归位模型——sim 无 bench 观察通道，不写即占席件永不离席；实机缺省 None = 不写让下一 heavy 实读承接）；`uninstall_backend()` 幂等复位四槽。装配点 = sim 运行器（测试仓 harness）；生产实跑入口当前不存在（§8.3）。
 
 ## 7. 随机性纪律
 
