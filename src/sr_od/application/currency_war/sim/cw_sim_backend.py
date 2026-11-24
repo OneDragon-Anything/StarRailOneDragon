@@ -72,6 +72,7 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
 from sr_od.application.currency_war.kernel.cw_economy import (
     LostNodeRef,
     RoundStartIncome,
+    effective_cost,
     round_start_income,
     world_shop_refresh_cost,
 )
@@ -89,6 +90,7 @@ from sr_od.application.currency_war.kernel.cw_env_grants import (
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     MegastarOption,
+    PlannerOption,
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
@@ -231,6 +233,10 @@ from sr_od.application.currency_war.kernel.cw_screen_report.invest_strategy impo
 from sr_od.application.currency_war.kernel.cw_screen_report.megastar import (
     CwScreenMegastarObs,
     report_screen_megastar_obs,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
+    CwScreenPlannerObs,
+    report_screen_planner_obs,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     CwScreenSupplyNodeObs,
@@ -1545,6 +1551,26 @@ _MODAL_SCREENS: frozenset[str] = frozenset({
 _UNPRESENTED_OVERLAY_ANCHORS: dict[str, frozenset[str]] = {
     SCREEN_PREP: frozenset({'标识-简易装备'}),
 }
+
+#: 银狼 LV.999 规范名(策划事件合成候选的费用档读键;cw_chars 规范名)。
+_LV999_ID: str = '银狼LV.999'
+
+#: planner 升费卡文案模板(``{tier}`` = 升费后目标费用档 = 现档 + 1)。卡面
+#: 字样「提升费用至 N 费」+ 结果「变为 1 星银狼LV.999」——机制单一源 =
+#: docs/game/currency_war/research/equipment_mechanics.md §7;「提升费用」
+#: 同时是决策词表(kernel ``cw_events.decide_planner``)与记账分类词表
+#: (``classify_planner_branch``)的升费关键词,文案改动须保该字面。
+_PLANNER_UPGRADE_CARD_TEXT: str = '提升费用至{tier}费,变为1星银狼LV.999'
+
+#: planner 非升费卡文案两则(事件二选一「其他」分支的代表文本;实机选项
+#: 内容随事件变——后续节点弱化 / 银狼专属装备,事件全景 =
+#: docs/game/gameplay/currency_war.md「银狼我来当策划事件」节):
+#: 左 = 实机 op 类注释登记的「扑满病毒」卡,右 = 玩法文档登记的
+#: 「破解芯片」卡。边界:①不含「提升费用」(决策词表,防与升费卡混选);
+#: ②记账分类 ``classify_planner_branch`` 的装备锚 = 银狼专属件门键集
+#: (``ITEM_WEAR_GATES``),该表在 v4.7 换赛季后为空 → 现役对两则恒落
+#: unknown 零记账,与实机 OCR 读到同文案同路径。
+_PLANNER_NON_UPGRADE_CARD_TEXTS: tuple[str, str] = ('扑满病毒', '破解芯片')
 
 
 @dataclass(frozen=True)
@@ -3339,6 +3365,7 @@ class SimBackend:
                 return
             if kind == 'planner':
                 self._present_modal(SCREEN_PLANNER)
+                self._present_planner_options()
                 return
             if kind in ('box_card', 'expert_invite'):
                 # open_* advance 分派已呈现(open_box 写候选/'' 纯转移
@@ -3367,6 +3394,34 @@ class SimBackend:
                         xy=((len(cands) + 1) * 10, 10)))
         report_screen_megastar_obs(self.gs, CwScreenMegastarObs(
             in_node=True, options=cands))
+
+    def _present_planner_options(self) -> None:
+        """planner 两卡候选写状态容器(呈现即写槽;写通道 =
+        ``report_screen_planner_obs``,与实机观察上报同一条——写通道铁律,
+        ``cw_sim_obs_gen`` 模块头)。
+
+        合成口径(机制单一源 = docs/game/currency_war/research/
+        equipment_mechanics.md §7;事件全景 = docs/game/gameplay/
+        currency_war.md「银狼我来当策划事件」节):现档 =
+        :func:`effective_cost`(银狼费用档唯一读口);档 < 5 →
+        [升费卡(目标档 = 现档 + 1), 非升费卡];档 ≥ 5 → 两卡皆非升费
+        (费用封顶,事件无升费选项)。卡位 = 画面物理位(0 左 / 1 右),
+        与实机 ``_observe_live`` 恒两卡同形。
+
+        为何呈现时写:观察生成器 ``gen_planner`` 只回读本槽——槽无写端
+        则恒空,画面 op 决策无候选(同族样板 = ``_present_megastar_options``:
+        模态呈现与候选合成成对)。
+        """
+        tier = effective_cost(self.gs, _LV999_ID)
+        if tier < 5:
+            texts = (_PLANNER_UPGRADE_CARD_TEXT.format(tier=tier + 1),
+                     _PLANNER_NON_UPGRADE_CARD_TEXTS[0])
+        else:
+            texts = _PLANNER_NON_UPGRADE_CARD_TEXTS
+        report_screen_planner_obs(self.gs, CwScreenPlannerObs(
+            on_screen=True,
+            options=[PlannerOption(idx=i, text=t)
+                     for i, t in enumerate(texts)]))
 
     def _node_pos(self) -> tuple[int, int]:
         """当前节点 (位面,轮)(gs.node 现值;未进窗 = (1, 1) 防御面)。"""
