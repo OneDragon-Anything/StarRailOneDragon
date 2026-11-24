@@ -224,6 +224,31 @@ class BackToNormalWorldPlus(SrOperation):
                 self.ctx.controller.click(close_area.center, pc_alt=True)
             return self.round_retry('货币战争-大厅', wait=2)
 
+        # 货币战争图鉴族(数据银行及其子页:装备/主角光环/竞争对手图鉴):对局前查询页,
+        # 整屏 UI,上方各分支对它全不可见,不停在此分支就只能落兜底——兜底点「菜单-
+        # 右上角返回」与图鉴返回箭头仅坐标巧合相邻(两控件不同档不同模板),不构成可
+        # 依赖的返回链。判定与下方挂起对局入口两屏分支同构:get_match_screen_name
+        # 屏名清单精确命中(全 id_mark AND,不走全库匹配),清单单一源 =
+        # cw_screen_state.CODEX_STATE_SCREENS(新图鉴页入清单即生效)。
+        # 动作与上方「货币战争-大厅」分支同构:直点「按钮-返回」area 中心(pc_alt=True,
+        # 锁光标恢复态下不带 Alt 的点击落空)+ round_retry 逐帧重识别(点击可能不落地,
+        # WAIT 不消耗 retry 会死循环)。五页返回箭头同位同模板,每轮点一下退一级:
+        # 子页 → 数据银行 → 大厅(上方大厅分支点关闭 X 接管)→ 大世界;数据银行自备战
+        # 打开时返回落备战,由下方对局中委托分支接管。各级去向的画面档依据见
+        # skills/sr-od-currency-war/references/screens/货币战争-数据银行.md「按钮-返回」行。
+        # 边界:点前验返回箭头模板可见——箭头被浮层盖住时不盲点右上角(可能点到浮层
+        # 上的未知控件),未命中则不接管、落回后续分支处置浮层。
+        codex_screen = get_match_screen_name(
+            self.ctx, screen,
+            screen_name_list=list(cw_screen_state.CODEX_STATE_SCREENS))
+        if codex_screen is not None and self.round_by_find_area(
+                screen, codex_screen, '按钮-返回').is_success:
+            log.info('[返回普通大世界] 命中货币战争图鉴页 %s → 点右上返回箭头退回上级', codex_screen)
+            back_area = self.ctx.screen_loader.get_area(codex_screen, '按钮-返回')
+            if back_area is not None:
+                self.ctx.controller.click(back_area.center, pc_alt=True)
+            return self.round_retry(codex_screen, wait=2)
+
         # 货币战争挂起对局入口两屏(模式选择-进行中/结束结算确认弹窗):上一
         # app 中途死在挂起入口画面时,本 op 起手在此处置而不是烧兜底预算。
         # 两屏在 cw_screen_state 大厅态白名单内(非对局中画面),对局中委托
