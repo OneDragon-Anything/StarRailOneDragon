@@ -21,7 +21,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickBoxCardOp`(`CwActionPickBoxCardParam`,点卡即选注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`(idx-only);点击坐标 = 状态容器 `box_card_names_xy[idx]`(观察期按 OCR x 中心 + 卡身 y 常量 290 解出上报),动作 op 按下标自取,缺席/越界 = 守卫断言) | 自上报 `report_action_pick_box_card_param`(不写游戏状态的占位上报;选择落地真值归下一帧观察覆盖) | **是(选卡即终结)**:点卡选中即确认(单步,无确认钮),动作 op 动画等待后旁路回传;画面 op 派发后 `round_success`(wait=`_OVERLAY_ANIM_WAIT_S`)即结束本次访问(动作 op 类属性 `terminal=False` 为执行模型标记,结束本次访问语义住画面 op) |
+| `CwActionPickBoxCardOp`(`CwActionPickBoxCardParam`,点卡即选注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`(idx-only);点击坐标 = 状态容器 `box_card_names_xy[idx]`(观察期按 OCR x 中心 + 卡身 y 常量 290 解出上报),动作 op 按下标自取,缺席/越界 = 守卫断言) | 自上报 `report_action_pick_box_card_param`(选卡即离席清槽:消费 box_card 登记槽 logic 清被点开槽;溢出告警在场实机口径不写让实读承接) | **是(选卡即终结)**:点卡选中即确认(单步,无确认钮),动作 op 动画等待后旁路回传;画面 op 派发后 `round_success`(wait=`_OVERLAY_ANIM_WAIT_S`)即结束本次访问(动作 op 类属性 `terminal=False` 为执行模型标记,结束本次访问语义住画面 op) |
 
 ```
 names = 观察轮 obs 载体(标准注册名,经装备注册表两段转换标准化)
@@ -59,7 +59,7 @@ idx = _decide_card_index(决策动作 node):
 
 ## 6. 状态上报面
 
-本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖;OpenBox 箱体消耗在选卡确认,显式不建模清单 = 各上报函数 docstring)。候选观察:`report_screen_box_pick_obs` 同门双写状态容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写)。字段语义 = cw_game_state box_card_names(_xy) 字段注释(选择坐标观察上报 = op-layer.md §1.1)。
+本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖;OpenBox 箱体离席归 `pick_box_card` 上报清槽——开件拍零写、弹窗期箱仍占席,选卡拍消费登记槽 logic 清,契约 = 开发 skill `references/game-state.md` §3.1)。候选观察:`report_screen_box_pick_obs` 同门双写状态容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写)。字段语义 = cw_game_state box_card_names(_xy) 字段注释(选择坐标观察上报 = op-layer.md §1.1)。
 
 ## 7. 子态与 overlay
 
