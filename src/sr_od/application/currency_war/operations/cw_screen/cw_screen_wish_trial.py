@@ -141,7 +141,9 @@ class CwScreenWishTrial(CwOperation):
         # 之前——派发即发出不可逆点击链,必须派发前拦):返回 None/词表外
         # = 具名 fail 零盲发(op-layer.md §1.1 出口③);idx 越界 = 守卫
         # 断言(op-layer.md §1.3);策略异常自然传播(离屏失约 ValueError
-        # 不再被吞);空候选 = 策略侧自主决策(策略器返回 idx=0),非兜底。
+        # 不再被吞)。OCR 空桶(候选文本为空串)= 合法候选,选哪桶由策略器
+        # 自定(可返回 idx=0),非流程侧兜底;候选数为 0(obs 载体缺席)
+        # = 落值域守卫断言。
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
         #;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路

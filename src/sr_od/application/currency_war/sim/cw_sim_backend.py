@@ -3323,7 +3323,9 @@ class SimBackend:
 
         - megastar:模态 + 候选写状态容器(场上盛会之星资格成员,含持徽
           贡献——候选语义 = 判据资格集同源);
-        - planner:模态(选项桶实机 OCR 写点,sim 生成器批接入);
+        - planner:模态 + 候选写状态容器(按现费用档合成两卡,
+          ``_present_planner_options``;实机选项桶 = OCR 写点,sim 经
+          生成器 ``gen_planner`` 回读同槽);
         - box_card/expert_invite:open_box/open_bookcard 的 advance 分派
           已呈现对应模态(候选写入在各自过程),本检查幂等守卫;
         - fortune:**逐 kind 呈现门**——仅底层 = 备战时收尾消费

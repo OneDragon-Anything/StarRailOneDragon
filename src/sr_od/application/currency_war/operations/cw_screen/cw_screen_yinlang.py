@@ -28,9 +28,12 @@
 (``flow/action_ops.md`` §1 与 §4.5 PickPlanner 行:动作 op 确认
 点击后立即上报完整效果分支,零落地复查、零落地补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
-本屏 sim 分支 = 不适用(sim 无对应画面段,事件
-浮层族即时落定),等价判据主要支撑 = 实机已登记行为测试
-(test_screen_two_node_family 两 node 形态测试;接入调用/基建测试补档 =
+本屏 sim 分支 = 后端呈现本屏模态时合成两卡候选写槽
+(sim/cw_sim_backend.py::SimBackend._present_planner_options,按现费用档
+定升费卡与非升费卡),观察经生成器 ``gen_planner`` 回读同槽。决策出口 =
+选卡族三守卫(候选空具名 fail / 返回契约 / 越界断言,op-layer.md §1.1
+出口③ / §1.3),等价判据 = test_cw_screen_yinlang(守卫剧本)+
+test__present_planner_options(候选合成与升费链);接入调用/基建测试补档 =
 开放设计注,见 screens/planner.md §9)。
 """
 from typing import ClassVar

@@ -304,8 +304,9 @@ def gen_megastar(backend: SimBackend) -> CwScreenMegastarObs:
 
 
 def gen_planner(backend: SimBackend) -> CwScreenPlannerObs:
-    """planner 档生成器(两卡选项自状态容器;呈现写点缺位 = 空桶照写,
-    与实机「恒写两卡 OCR 桶」空桶语义同形)。"""
+    """planner 档生成器(两卡选项自状态容器呈现写点回读——
+    ``SimBackend._present_planner_options`` 呈现模态时按现费用档合成写槽;
+    写点缺席 = 空桶照写,与实机「恒写两卡 OCR 桶」空桶语义同形)。"""
     return CwScreenPlannerObs(
         on_screen=True,
         options=list(backend.gs.planner_opts.value or []),
