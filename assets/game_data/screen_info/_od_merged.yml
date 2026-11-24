@@ -8269,9 +8269,9 @@
   - area_name: 文本-当前档位
     id_mark: false
     pc_rect:
-    - 240
+    - 190
     - 350
-    - 340
+    - 360
     - 500
     text: ''
     lcs_percent: 0.5
