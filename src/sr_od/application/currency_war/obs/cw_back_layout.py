@@ -465,7 +465,12 @@ def _expected_back_population(ctx: SrContext, screen: MatLike,
     唯一的非 CV 项;②仲裁只在公式/CV 冲突帧触发且需 paddle 可读,单帧
     偏置不落盘(下帧重判);③错判的下游有暴露(身份漏读 → deployed_align
     保留证据 / deployed_count_2src 分键);④15 号稿布局三信号(如身份反哺
-    布局)实现后应以更强信号替代本判别器(见移交笔记)。"""
+    布局)实现后应以更强信号替代本判别器(见移交笔记)。
+    **超限态偏置边界**:paddle X 是团队规模占用数,带「占用 2」主角光环且
+    持有者在上场时 = 单位数 + 1,本式把额外占用算进期望后排(偏置 +1)。该
+    路径只在公式/CV 通道冲突帧触发、单帧、并列即弃权退旧梯(best-effort),
+    不改;超限态本身由 flow 层出战守卫(读链
+    cw_observation.read_paddle_pair_confirmed)独立把守。"""
     try:
         from sr_od.application.currency_war.obs.currency_war_cv import (
             slot_occupied,

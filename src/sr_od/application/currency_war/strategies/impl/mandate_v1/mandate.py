@@ -155,6 +155,9 @@ class MandateFrame:
     封顶 = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕,
     与 shop 侧同链单源;双源漂移修复——旧观察
     复合 ``obs.deploy_vacancy+len(deployed)`` 已废),state 缺读=None。
+    ``team_size_used`` = 上阵规模占用数(状态容器派生读口
+    ``cw_game_state.team_size_used_of``:单位数 + 主角光环持有者额外占用;
+    sim 无光环呈现面恒 = len(deployed))。
     """
 
     gold: int
@@ -165,6 +168,12 @@ class MandateFrame:
     node_type: str | None
     stop_flag: bool
     k_members: tuple[str, ...]
+    # 上阵规模占用数(占用之和口径;两装配点 entry.emit / snapshot_frame 自状态
+    # 容器派生读口现读)。空位 = 上限 − 本值(非上限 − 单位数):带「占用 2」
+    # 主角光环且板满时占用 > 上限 = 超限态(出战被游戏静默拒绝),按单位数算
+    # 会把它当「板满合法」识别不出。必填(两装配点都传;漏传 = 构造期报错,
+    # 不设缺省——缺省 0 会让空位虚高成整上限)。
+    team_size_used: int
     round_num: int = 1      # 位面内轮次(M5 开局板适用范围=开局帧;状态容器 node 读口)
     # 装备域 owned 件名池快照(P4 观察接入调用):装配点 = entry.emit
     # 从状态容器 gs.equips 现读拷贝(全量含工具口径)。None =
@@ -185,10 +194,19 @@ class MandateFrame:
     @property
     def deploy_vacancy(self) -> int:
         """板面空位(cap 缺读=0 保守侧:R4 单一真值源改造后 cap 可 None,
-        缺读不虚构空位——空位按 0 收紧部署候选,不向部署面放行幻影位)。"""
+        缺读不虚构空位——空位按 0 收紧部署候选,不向部署面放行幻影位)。
+        占用按 ``team_size_used``(占用之和,含光环持有者额外占用)非单位数:
+        超限态下本值恒 0,不向部署面放行。"""
         if self.deploy_cap is None:
             return 0
-        return max(0, self.deploy_cap - len(self.deployed))
+        return max(0, self.deploy_cap - self.team_size_used)
+
+    @property
+    def team_size_over_cap(self) -> bool:
+        """团队规模超限(占用之和 > 上限;cap 缺读 = 不判超限)。消费面 =
+        策略侧解限动作的输入位(撤谁 / 卖谁 / 是否升上限归策略面,现役
+        无解限动作;出战前流程侧另有规模超限守卫不发点击)。"""
+        return self.deploy_cap is not None and self.team_size_used > self.deploy_cap
 
     @property
     def bench_names(self) -> list[str]:
@@ -1239,6 +1257,7 @@ def snapshot_frame(gs: GameState) -> MandateFrame:
         max_units_of,
         node_kind_of,
         round_num_of,
+        team_size_used_of,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
         sell_line_membership,
@@ -1250,6 +1269,7 @@ def snapshot_frame(gs: GameState) -> MandateFrame:
         bench=list(bench_entries_of(gs)),
         deployed=[d for d in (*front, *back) if d is not None],
         deploy_cap=max_units_of(gs),
+        team_size_used=team_size_used_of(gs),
         node_type=node_kind_of(gs),
         stop_flag=False,
         # k_members 读口 = 统一线内名单(单一准入 §2.1:候选 ∪ 配方 ∪

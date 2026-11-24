@@ -28,9 +28,13 @@ CwSelectProtagonist),做完锚定回备战,交回主循环。
   语义 = 优先同卡换点、跨卡取下一候选点如实申报——落位主角随重试漂移,
   v1 固定决策仅约束首发;功能无害:非适配角色放置无阻拦),超限
   round_fail 交外环(CwScreenPartner 脉冲形态:确认是否落地由下一轮
-  验证)。判效双锚过 = 选择落地:按末次抓点槽写 ``aura_slot``
-  (动作上报 ``report_action_aura_select_param`` 单一写函数,与备战帧
+  验证)。判效双锚过 = 选择落地:按末次抓点槽写 ``aura_slot`` + 按点选的
+  光环卡序号写 ``chosen_aura``(选中光环标准名;动作上报
+  ``report_action_aura_select_param`` 单一写函数,与备战帧
   光标观察同字段互证;抓点落后排越值域跳写交观察收尾)。
+  **固定选左卡 + 板已满 + 左卡是「占用 2 团队规模」光环 = 超限态**(出战
+  被游戏静默拒绝;备战帧读出 X > Y 由出战前规模超限守卫拦下,解除动作归
+  策略侧)——光环代价进状态容器后此形态可算,选哪张卡的决策升级位同上。
   **不消费「按钮-返回备战界面」**(放弃 = 主角未选 = 堵主线
   持续,fail 交外环如实暴露)。
 """
@@ -83,6 +87,11 @@ _AURA_NAMES: list[str] = [x.name for x in SPOT_LIGHTS]
 #: 注册表 4-6 字名为主,1 字误读 4 字名恰过阈)。
 _LCS_THRESHOLD: float = 0.75
 _LCS_AMBIGUITY_MARGIN: float = 0.15
+#: 光环卡侧 → ``aura_select_opts`` 序号(画面物理序:左 = idx 0,右 = idx 1;
+#: 选择记账按序号取名,上报层零名字转换)。
+_AURA_SIDE_IDX: dict[str, int] = {'left': 0, 'right': 1}
+#: 决策固定规则 v1 的光环卡侧(常量化;策略钩子升级位声明见模块头)。
+_AURA_SIDE_V1: str = 'left'
 
 
 class CwScreenAuraSelect(CwOperation):
@@ -251,9 +260,9 @@ class CwScreenAuraSelect(CwOperation):
         重试 2+ = 跨卡下一候选点——落位主角随重试漂移如实申报)。
         坐标伴随域缺席/越界 = 守卫断言显式报错(禁钳位禁回退)。"""
         grab = self._grab_point_for(self._attempt)
-        log.info('[cw-aura] 三步链 attempt=%s 拖拽源=%s(v1 固定 left+前排第一)',
-                 self._attempt, grab)
-        CwSelectProtagonist(self.ctx, 'left', int(grab.x),
+        log.info('[cw-aura] 三步链 attempt=%s 拖拽源=%s(v1 固定 %s+前排第一)',
+                 self._attempt, grab, _AURA_SIDE_V1)
+        CwSelectProtagonist(self.ctx, _AURA_SIDE_V1, int(grab.x),
                             int(grab.y)).execute()
         self._attempt += 1
         return self.round_success('三步链已发,交判效', wait=0.3)
@@ -281,11 +290,15 @@ class CwScreenAuraSelect(CwOperation):
         return Point(int(x) + extra, int(y))
 
     def _report_aura_slot(self) -> None:
-        """选择记账:判效双锚过后光环归属槽写 logic(动作上报单一函数
-        ``report_action_aura_select_param``;落点 = 末次抓点槽——换抓点
-        重试漂移如实记账,与备战帧光标观察同字段同语义互证)。
+        """选择记账:判效双锚过后光环归属槽 + 选中光环名同拍写 logic(动作上报
+        单一函数 ``report_action_aura_select_param``;落点 = 末次抓点槽——换抓点
+        重试漂移如实记账,与备战帧光标观察同字段同语义互证;光环卡 = 动作
+        node 固定点 ``'left'`` = ``aura_select_opts`` idx 0,名字由名单按序号
+        单一源提供)。``chosen_aura`` 的消费点 = 上阵规模占用派生(占 2 光环
+        → 超限可算),不记则超限态算不出来。
         抓点落后排 = 越前排查值域跳写交观察收尾(现役重试预算内不可达,
-        防御面如实申报);局外(gs 缺席)= 零写,同观察上报口径。"""
+        防御面如实申报;该形态 ``chosen_aura`` 同步缺记——无观察写端补采);
+        局外(gs 缺席)= 零写,同观察上报口径。"""
         gs = game_state_from_ctx(self.ctx)
         if gs is None or self._last_grab_idx is None:
             return
@@ -294,7 +307,7 @@ class CwScreenAuraSelect(CwOperation):
                      '值域跳写(交下一备战帧观察收尾)', self._last_grab_idx)
             return
         report_action_aura_select_param(
-            gs, self._last_grab_idx + 1,
+            gs, self._last_grab_idx + 1, aura_idx=_AURA_SIDE_IDX[_AURA_SIDE_V1],
             sig=ChannelSig(family='logic_action', actor='CwScreenAuraSelect',
                            screen=_SCREEN, mode='compute'))
 

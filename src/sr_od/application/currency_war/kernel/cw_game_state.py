@@ -239,10 +239,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'aura_select_opts': 1,     # 主角光环卡名固定二槽(str;左=idx 0;观察标准化门适用,cw_spot_lights 注册表)
     'aura_select_opts_xy': 1,  # 主角光环卡中心坐标伴随域(选择坐标观察上报,op-layer.md §1.1)
     'aura_select_preview_xy': 1,  # 主角光环预览卡拖拽源点伴随域(行主序;选择坐标观察上报,op-layer.md §1.1)
-    'aura': 1,                 # 主角光环归属标记槽位(aura_slot;备战前排蓝色
-                               # 光标观察 + 光环选择记账双写端。持久局面事实
-                               # 非画面附加载荷,不入 _PAYLOAD_DOMAINS——光环
-                               # 跨帧存续,离屏清值语义不适用)
+    'aura': 2,                 # (域版本 2 = 新增 chosen_aura 选中光环标准名,与 aura_slot
+                                # 同属主角光环归属事实、选择记账同拍写;版本 1 = 仅
+                                # aura_slot 归属槽。持久局面事实非画面附加载荷,
+                                # 不入 _PAYLOAD_DOMAINS——光环跨帧存续)
+    'team_size': 1,            # team_size_used 团队规模占用数观察值(「X/Y」的 X;
+                                # 派生值 team_size_used_of 为计算函数不入字段)
     'expert_invite': 2,        # 专家邀请函选卡载体(ExpertInvitePayload;域版本 2 =
                                # payload 扩选项坐标字段 card_points/cash_point
                                # (选择坐标观察上报,op-layer.md §1.1);版本 1 =
@@ -1487,6 +1489,11 @@ def note_action_receipt(gs: GameState, *, op: str,
         (观察-执行竞态,重派);
       * ``未执行:owned 网格未定位到<对象>``——tool/wear 现读落空
         (模板缺失或已消耗,重派)。
+      * ``未执行:团队规模超限(规模占用>上限)``——start_battle 出战单击前
+        规模超限守卫拦截(prep_actions.guard_team_size_over_cap_for_battle;
+        「X/Y」双帧确认 X > cap,发了必被游戏静默拒绝;extra 带
+        blocked='team_size_over_cap' + team_size_used/deploy_cap/chosen_aura
+        披露字段;解除归策略侧,重派)。
       已退役族(terminal-fail-status 批):``未生效:*``(弹窗收尾检查
         删除,直接使用自然异常)、``槽解析失败``/``槽号越界``(visit
         落地门整表退役)——参数违法类改 op 内守卫断言 AssertionError
@@ -2895,6 +2902,18 @@ class GameState:
     # 域外态(>9)back_layout 是 8 格超集,反推会把近似当真值,故不派生改双存。
     # 两域冲突走缺陷台账,不互改。
     deploy_cap: Field[int] = field(default_factory=Field)        # 开局初始值=与 level 种子一致(= level + 财富宝钻数,开局宝钻 0);识别真值观察覆盖
+    # [索引定义] team_size_used = 团队规模占用数观察值(舞台上方「X/Y」指示的 X)。
+    # 坐标系 = 各单位占用之和的人数口径(常规 = 上阵单位数;带「占用 2」主角光环
+    # 且持有者在上场 = 单位数 + 1),非「单位数」;取值时机 = 备战帧观察期快照,
+    # 与 deploy_cap 同一次 paddle 读(cap/X 两路径统一走 resolve_paddle_pair);
+    # 写端 = cw_observation.read_game_state spec 门 'deployed_count' 键(X 过
+    # 超限双帧确认门才写;None = 拒信 / 失读 / 超限未确认 → carry 沿用,同
+    # deploy_cap 纪律)。开局初值 None(未观察);sim 无画面识别恒 None。
+    # 与派生读口 team_size_used_of(状态容器推算:单位数 + 持有者额外占用)并存
+    # = 观察真值 vs 推算两口径,先例 = deploy_cap(识别源)/ back_layout(裁决)
+    # 双存;接管局 chosen_aura 未知时派生值退回单位数,本观察值仍是游戏计数器
+    # 真值——出战前规模超限守卫不依赖本字段(现读),本字段供策略 / 判读消费。
+    team_size_used: Field[int | None] = field(default_factory=Field)
 
     # —— 局级事实 ——
     selected_difficulty: Field[str] = field(default_factory=Field)   # 职级,开局写定恒稳
@@ -3635,6 +3654,18 @@ class GameState:
     # 值域守卫 = 动作上报函数校验 1..前排容量,域外显式报错禁静默;
     # sim 无画面识别不建模,恒 None。
     aura_slot: Field[int | None] = field(default_factory=Field)
+    # [索引定义] chosen_aura = 选中的主角光环标准名(aura_select_opts 同一注册表
+    # 名单:data/cw_spot_lights.py 标准名,观察标准化门产物)。
+    # 取值时机 = 选择落地事件驱动(非逐帧);None = 未选 / 未记(开局初值;
+    # sim 无光环选择呈现面恒 None;接管局 / 恢复局恒 None——备战屏无可识别的
+    # 光环名,左上角角落不建档系既有用户裁定,不建观察写端)。
+    # 写入端 = 唯一:动作上报 report_action_aura_select_param(主角光环选择
+    # 判效双锚过后,与 aura_slot 同拍;名字由 aura_select_opts 按序号单一源
+    # 提供,上报层零名字转换);位面重选覆盖写。光环被其他效果改主 / 重选
+    # (替罪羊 / 领猎人 / 意志传承)无写端 = 已知边界,值可能陈旧。
+    # 消费面 = 上阵规模占用派生 team_size_used_of(持有者额外占用按光环代价
+    # 计,knowledge/cw_aura_facts)+ 出战前规模超限守卫披露行。
+    chosen_aura: Field[str | None] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(事件选择:chosen_* 由选择 handler 单次逻辑写入)——
     # (遭遇例外,遭遇扩围批:chosen_encounter 写端 = 动作侧即时上报
@@ -5678,10 +5709,45 @@ def back_capacity_of(gs: GameState) -> int:
 
 
 def deployed_count_of(gs: GameState) -> int:
-    """上阵占用数读口(状态容器原生,占用数口径非 len):两行现值
-    单位计数(deployed_rows_of 缺行 = 空行缺省)。"""
+    """上阵**单位数**读口(状态容器原生;两行现值单位计数,deployed_rows_of
+    缺行 = 空行缺省)。团队规模占用数口径见 :func:`team_size_used_of`
+    (单位数 + 主角光环持有者额外占用)——席位 / 板满判定应用后者。"""
     front, back = deployed_rows_of(gs)
     return len(front) + len(back)
+
+
+def team_size_used_of(gs: GameState) -> int:
+    """上阵**规模占用数**读口(占用之和口径;「可算出来的不存储」派生值):
+
+    Σ 各单位占用 = 上阵单位数 + 主角光环持有者的额外占用。额外占用只在
+    「持有者在场上 ∧ 所选光环代价 > 1」时计入(``chosen_aura`` × ``aura_slot``
+    指向的前排槽非空)——对应官方原文「**上阵**该角色占用 N 团队规模」的触发
+    条件;持有者不在场 / 归属槽未知 / 无光环 / 代价 1 → 与 :func:`deployed_count_of`
+    逐位相同。光环代价事实单一源 = :func:`knowledge.cw_aura_facts.aura_team_size_cost`
+    (注册表效果原文派生)。sim 无光环选择呈现面,恒等于单位数。
+    板满 / 空位判定消费本读口(``max_units_of`` 为上限):占用 > 上限即超限态
+    (游戏红字告警、出战被静默拒绝),常规口径「上限 − 单位数」识别不出它。"""
+    from sr_od.application.currency_war.knowledge.cw_aura_facts import (
+        DEFAULT_TEAM_SIZE_PER_UNIT,
+        aura_team_size_cost,
+    )
+    size = deployed_count_of(gs)
+    cost = aura_team_size_cost(gs.chosen_aura.value)
+    if cost <= DEFAULT_TEAM_SIZE_PER_UNIT:
+        return size
+    slot = gs.aura_slot.value
+    view = gs.deployed.value
+    if slot is None or view is None:
+        return size
+    front = view.front_slots or []
+    if not (1 <= int(slot) <= len(front)) or front[int(slot) - 1] is None:
+        return size
+    return size + cost - DEFAULT_TEAM_SIZE_PER_UNIT
+
+
+def team_size_over_cap_of(gs: GameState) -> bool:
+    """团队规模超限判定(派生):占用之和 > 可上阵上限(``max_units_of``)。"""
+    return team_size_used_of(gs) > max_units_of(gs)
 
 
 def max_units_of(gs: GameState) -> int:

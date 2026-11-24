@@ -142,8 +142,9 @@ class _BattlePrepState:
     phase: tuple[int, int] | None   # (位面,轮次);读不到→None(不伪造)
     hp: int | None                   # 小队剩余血量(read_hp_opt,读不到→None;r317 同源 director)
     streak: int | None              # 连胜/连败 magnitude(read_streak,读不到→None)
-    deploy_count: int | None        # 已部署角色数(read_deployed_count,读不到→None)
+    deploy_count: int | None        # 团队规模占用数(read_deployed_count;常规=上阵单位数,占 2 光环持有者在场=单位数+1;读不到→None)
     deploy_cap: int | None          # deploy cap 真值(read_deploy_cap,读不到→None)
+    team_size_over_cap: bool | None  # 团队规模超限态(= deploy_count > deploy_cap;任一 None→None;单帧口径,双帧采信门在 flow 层读链/出战守卫)
     level: int                      # 团队规模等级(read_level,Lv.N;cap>level=钻石/宝钻加成)
     bench_overflow: bool            # 「备战席已满」告警横幅在场(OCR;True=有未安置单位,出战被游戏忽略——flow 层 overflow_warning 同源口径)
     board: dict[str, int]           # 羁绊面板可见行原文(read_board OCR 直读;v4.7 面板滚动+重排,只是可见子集,决策用 flow 层计算值)
@@ -342,11 +343,13 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
 
     Returns:
         dict(full_read=True 时键集 = ``PREP_EXTRAS_DOC``;开商店画面省略
-        front_line/back_line/deploy_count/deploy_cap/hp/reward_ores 六键,
+        front_line/back_line/deploy_count/deploy_cap/team_size_over_cap/
+        hp/reward_ores 等遮挡不可靠键,
         开商店识别器在此基础上叠加 shop_cards / refresh_probs)。
     """
     omit_keys = frozenset() if full_read else frozenset({
         'front_line', 'back_line', 'deploy_count', 'deploy_cap',
+        'team_size_over_cap',
         'hp', 'reward_ores', 'owned_equips', 'aura_slot',
     })
     # 装备(slot_idx → 装备名;先读,再注入 Unit.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
@@ -426,14 +429,22 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
             if '备战席已满' in (_r.data or ''):
                 bench_overflow = True
                 break
+    # 「X/Y」单读产两值(同一管线,省一次重复识别);超限键 = 占用数 > 上限
+    # (任一失读 → None 不猜;单帧口径——超限态是持续态,双帧采信门在 flow 层
+    # 读链 cw_observation.read_paddle_pair_confirmed / 出战守卫)。
+    _paddle_x, _paddle_cap = ((read_deployed_count(ctx, image),
+                               read_deploy_cap(ctx, image))
+                              if full_read else (None, None))
     state = _BattlePrepState(
         bench_overflow=bench_overflow,
         gold=read_gold(ctx, image),
         phase=phase,
         hp=(None if not full_read else read_hp_opt(ctx, image)),
         streak=read_streak(ctx, image),
-        deploy_count=None if not full_read else read_deployed_count(ctx, image),
-        deploy_cap=None if not full_read else read_deploy_cap(ctx, image),
+        deploy_count=_paddle_x,
+        deploy_cap=_paddle_cap,
+        team_size_over_cap=(None if _paddle_x is None or _paddle_cap is None
+                            else _paddle_x > _paddle_cap),
         level=level,
         board=read_board(ctx, image),
         front_line=front_line,
@@ -471,10 +482,15 @@ PREP_EXTRAS_DOC: dict[str, str] = {
     'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)。开商店画面整键省略(计数被商店牌行盖住,收店后用备战画面取)',
     'streak': '连胜/连败 magnitude(int;读不到→None)',
     'bench_overflow': '「备战席已满」告警横幅在场(bool,OCR 直读)。True = 有未安置单位,出战会被游戏忽略(锁定)——先卖角色腾位再出战;与 flow 层 overflow_warning 同源口径;横幅在商店态也可见,两态都返回',
-    'deploy_count': '已部署角色数(int;读不到→None)。开商店画面整键省略(遮挡不可靠,收店后用备战画面取)'
+    'deploy_count': '团队规模占用数(int;读不到→None):常规 = 上阵单位数;带「占用2团队规模」主角光环'
+                    '(如高傲巨人)且持有者在上场时 = 单位数 + 1。开商店画面整键省略(遮挡不可靠,收店后用备战画面取)'
                     '(商店牌行盖住计数,遮挡不可靠;完整读数收店后用备战画面取)',
     'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)。'
                   '开商店画面整键省略(遮挡不可靠,收店后用备战画面取)(同 deploy_count)',
+    'team_size_over_cap': '团队规模超限态(bool|None;= deploy_count > deploy_cap)。True = 游戏红色计数告警态:'
+                          '主角光环持有者额外占用把规模顶过上限(实机样本:选「高傲巨人」后 6/5,场上仍 5 个单位),'
+                          '此时点「出战」被游戏静默拒绝(无横幅无弹窗、按钮仍亮)——先让占用 ≤ 上限(撤/卖场上单位或升上限)再出战;'
+                          '卖备战席角色无效(备战席不计规模)。单帧口径;任一读数 None → None。开商店画面整键省略(同 deploy_count)',
     'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
     'board': '羁绊面板可见行原文 {羁绊名: 面板数字}(OCR 直读,快路径)。'
              '⚠️ v4.7 面板滚动+重排,本读数只是可见子集,不可当完整羁绊计数或'

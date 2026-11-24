@@ -149,6 +149,15 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'deploy_cap': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='识别口径真值(双帧一致采信门),零逻辑写端'),
+    'team_size_used': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='识别口径真值(「X/Y」的 X 团队规模占用数,超限读数双帧一致'
+              '采信门 read_paddle_pair_confirmed),零逻辑写端'),
+    'chosen_aura': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='主角光环选择记账 report_action_aura_select_param(判效双锚'
+              '过后 write_logic,位面重选覆盖);零观察读端(备战屏无光环名'
+              '识别)——观察覆盖逻辑态结构上不可达'),
     # —— 局级事实(开局写定恒稳族)——
     'selected_difficulty': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

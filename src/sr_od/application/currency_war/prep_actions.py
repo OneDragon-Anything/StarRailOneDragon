@@ -8,7 +8,10 @@ runner 包络)与出战发出链(``launch_battle_unified`` 统一执行器 +
 **防线边界申报**:执行前守卫现役 = drag 类浮层守卫(``prep_drag_overlay_gate``,
 拦截错误画面上的机械拖拽)+ 出战前置席满守卫(``guard_bench_overflow_for_battle``,
 告警横幅在场时先卖一个备战席角色腾位再放行出战——席满态出战会被游戏静默
-忽略),非动作后判效——动作落地判定仍归观察侧
+忽略)+ 出战前团队规模超限守卫(``guard_team_size_over_cap_for_battle``,
+「X/Y」双帧确认占用 > 上限时**不发点击**带受阻码交回外循环——超限态出战
+同样被游戏静默忽略;解除〔撤/卖场上单位或升上限〕归策略侧,守卫零策略
+语义),非动作后判效——动作落地判定仍归观察侧
 reconcile 对账,与「机械执行、不含玩法判断」申报不抵。出战链两道执行前
 防线(屏态复验/浮层闸门)已退役(2026-11-19 用户裁定)——
 错屏/浮层下的误发出由阶段一身份分发(每帧)+ drag 浮层守卫 + 调用方
@@ -119,6 +122,10 @@ _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     ('未执行:找不到按钮', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-出战', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-跳过', '未执行:定位缺失(按钮-跳过)'),
+    # —— 出战前团队规模超限守卫(guard_team_size_over_cap_for_battle;执行前
+    #     防 bug 守卫,动作没发出。词表登记 = cw_game_state.note_action_receipt
+    #     docstring 同名条)——
+    ('未执行:团队规模超限', '未执行:团队规模超限(规模占用>上限)'),
     # —— drag 类动作浮层守卫(prep_drag_overlay_gate;执行前输入契约
     #     拒绝,动作没发出。括号族 = 守卫检查清单两族并集,标识细节
     #     以原样 status 的「(标识)」段在日志里暴露)——
@@ -502,6 +509,15 @@ class PrepActionExecutor:
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
             log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
 
+    def note_blocked(self, action: CwAction, detail: str,
+                     extra: dict | None = None) -> None:
+        """执行前守卫拦截的披露行:动作未发出也落一条**受阻回执**
+        (reason = ``_prep_receipt_block_code(detail)`` 受阻码,detail/extra
+        透传)——「受阻动作也产行」契约对守卫拦截路径的同款兑现,让拦截
+        事实进 receipts 域(遥测 / 判读可数),不只剩日志行与 round_fail
+        status。现役调用方 = 出战前团队规模超限守卫。"""
+        self._note_action_receipt(action, False, detail, extra=extra)
+
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
         """动作分派(经注册表类级解析 + (ctx, param,
         env) 组装新壳 op ``CwActionXxxOp(SrOperation)``,执行取 round
@@ -715,6 +731,60 @@ def guard_bench_overflow_for_battle(op: SrOperation, ctx: SrContext,
     return True, f'席满腾位守卫:已卖备战栏{idx + 1}腾位'
 
 
+def guard_team_size_over_cap_for_battle(op: SrOperation, ctx: SrContext,
+                                        ex: PrepActionExecutor
+                                        ) -> tuple[bool, str]:
+    """出战前团队规模超限守卫(执行前防 bug 守卫;防线边界申报见模块头)。
+
+    游戏侧事实(实机核正):团队规模上限约束的是**各单位占用之和**;主角光环
+    可让持有者占 2 点(「上阵该角色占用2团队规模」),板满后再选即超限——
+    画面「X/Y」变红色 X > Y,此时点「出战」被游戏**静默拒绝**(无横幅无弹窗、
+    按钮仍亮),bot 侧点完即写逻辑态「已出战」假前进。守卫 = 该缺口的流程侧
+    兜底:现读「X/Y」(经 ``cw_observation.read_paddle_pair_confirmed``,超限
+    读数须双帧一致才采信——超限是持续态、误读是瞬态),占用 > 上限 →
+    ``(False, detail)`` 出战未发出 + 受阻回执行(披露行),交回外循环重观察
+    重决策(连续失败由外循环重派上限治理)。
+
+    - 不超限 / X 或 cap 任一不可读 → ``(True, '')`` 放行(不可判 ≠ 超限;
+      不因读链抖动拦合法出战);
+    - **零策略语义**:只回答「此刻能不能点」;撤谁 / 卖谁 / 是否升上限解限
+      = 「该做哪个动作」归策略层(铁律 §1.3 决策控制分层),守卫不发任何
+      解限动作——超限态在策略侧解限动作落地前表现为停在备战(每帧
+      round_fail 交回),如实申报;
+    - sim 零触及(机械 IO 门内才检查;sim 画面无「X/Y」计数,读即假拦)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        game_state_from_ctx,
+    )
+    from sr_od.application.currency_war.obs.cw_observation import (
+        read_paddle_pair_confirmed,
+    )
+    from sr_od.application.currency_war.sim import cw_sim_ports
+    if not cw_sim_ports.mechanical_io_allowed():
+        return True, ''
+    screen = op.screenshot()
+    if screen is None:
+        return True, ''   # 截图不可得 = 不可判,同失读放行
+    size_used, cap = read_paddle_pair_confirmed(ctx, screen)
+    if size_used is None or cap is None or size_used <= cap:
+        return True, ''
+    gs = game_state_from_ctx(ctx)
+    _aura = gs.chosen_aura.value if gs is not None else None
+    detail = (f'未执行:团队规模超限(规模占用 {size_used} > 上限 {cap};'
+              f'此时出战被游戏静默拒绝,须先让占用 ≤ 上限〔撤/卖场上单位或'
+              f'升上限,归策略侧〕)')
+    log.warning('[cw!][battle] 规模超限守卫:占用 %d > 上限 %d(双帧确认;'
+                '光环=%s)→ 出战未发出,交回外循环(解除归策略侧)',
+                size_used, cap, _aura)
+    ex.note_blocked(CwActionStartBattleParam(), detail, extra={
+        'blocked': 'team_size_over_cap',
+        'team_size_used': int(size_used),
+        'deploy_cap': int(cap),
+        'chosen_aura': _aura,
+    })
+    return False, detail
+
+
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     """出战底层动作发出核(C1 单一发出函数,skill strategy/14_p1_consume_arms.md §9.6):部署原子序 +
     CwActionStartBattleParam 的执行核,恢复局面与达标分支两调用面共用,禁各写一套
@@ -739,7 +809,8 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
 
     执行序 = 部署原子序 → 席满守卫(:func:`guard_bench_overflow_for_battle`,
-    两 face 共同生效;失败 = ``(False, detail)`` 零出战交回外循环)→ 出战单击。
+    两 face 共同生效;失败 = ``(False, detail)`` 零出战交回外循环)→ 团队
+    规模超限守卫(:func:`guard_team_size_over_cap_for_battle`,同上)→ 出战单击。
     """
     ex = PrepActionExecutor(op, ctx)
     try:
@@ -782,6 +853,14 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
                                                                    ex)
         if not _guard_ok:
             return False, _guard_detail
+        # —— 出战前团队规模超限守卫(同汇合点,席满守卫之后:两守卫互斥于
+        #      画面形态——席满横幅在场时先腾位;超限态无横幅,由「X/Y」
+        #      双帧确认判定):占用 > 上限 → 出战未发出(发了必被游戏静默
+        #      拒绝且逻辑态假前进)+ 受阻回执披露行,解除归策略侧。
+        _size_ok, _size_detail = guard_team_size_over_cap_for_battle(op, ctx,
+                                                                     ex)
+        if not _size_ok:
+            return False, _size_detail
         ex.execute(CwActionStartBattleParam())
     except StopBrakeShortCircuit as e:
         log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)

@@ -1207,10 +1207,19 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
 
 
 def _validate_paddle_xy(x: int, y: int, level: int | None) -> bool:
-    """「X/Y」语义约束验证器(玩法先验,用户口述权威):x≤y;1≤y≤13(前台 4+后台 9);
-    y≥level(cap=level+宝钻,宝钻只增不减;level 未提供时跳过该条)。
+    """「X/Y」语义约束验证器(玩法先验,用户口述权威 + 超限态实机核正):
+    0≤x≤13;1≤y≤13(前台 4+后台 9);y≥level(cap=level+宝钻,宝钻只增不减;
+    level 未提供时跳过该条)。
+
+    X = 团队**规模占用数**(各单位占用之和),不是单位数:常规态两者相等;
+    主角光环持有者可占 2 点(「上阵该角色占用2团队规模」),板满后再选即
+    X > Y——游戏以红色计数告警并静默拒绝出战,是合法读数不是误读(旧先验
+    x≤y 把它拒信 → 读数持续 null,机器人看不见超限态)。X 上界取板面物理
+    槽上界 13 而非 14:斜杠字形丢失时的枚举切分会把前缀幻影读成 (14, 5),
+    放行 14 等于把误读当超限;13 单位满板再选占 2 光环的真实 14 未见实例。
     """
-    return 0 <= x <= y and 1 <= y <= 13 and (level is None or y >= level)
+    return (0 <= x <= DEPLOY_CAP_ABS_MAX and 1 <= y <= DEPLOY_CAP_ABS_MAX
+            and (level is None or y >= level))
 
 
 def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None,
@@ -1243,8 +1252,10 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
     # level 先验修正通道(分诊 C 根修;帧证据 obs_conflict_deploy_paddle__d9f64136:
     # 画面 4/4、字形干净,level 先验 ≥5 时 y≥level 把唯一合法候选拒空)。level 来自
     # 三源解析(自身可误读/毒化),不该让间接先验一票否决直接几何读——全部候选仅
-    # 因 y≥level 被拒时,用绝对域(x≤y,1≤y≤13)重解析一次,采回 + 保留证据(cap 侧
+    # 因 y≥level 被拒时,用绝对域(0≤x≤13,1≤y≤13)重解析一次,采回 + 保留证据(cap 侧
     # 与 level 的一致性由 _debounce_cap 双帧通道终审,判据同上)。
+    # X > Y 的解析结果直接返回:超限态是合法读数,其采信门(双帧确认)与留证归
+    # 调用侧 _confirm_over_cap,解析层不重复留证(每帧多条 paddle 读)。
     if level is not None:
         x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, None,
                                              text_has_slash='/' in blob)
@@ -1265,7 +1276,10 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
 
 def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
                         level: int | None = None) -> tuple[int | None, int | None]:
-    """舞台上方中央「X/Y」指示 → (X 已部署角色数, Y deploy cap);读不到 → (None, None)。
+    """舞台上方中央「X/Y」指示 → (X 团队规模占用数, Y deploy cap);读不到 → (None, None)。
+
+    X 常规态 = 上阵单位数;主角光环持有者占 2 点规模时 = 单位数 + 持有者额外占用
+    (板满后选即 X > Y 的超限态,合法读数,采信门见 :func:`_confirm_over_cap`)。
 
     **两级管线 + 位置感知解析**(替换旧「整串拼接 + 正则」解析层;旧层死穴:
     "/" 被 OCR 读成数字时拼接串成纯数字正则全崩,及左侧人形图标被并入致 X 虚高
@@ -1275,7 +1289,7 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
     1. 原生 OCR 裁片(不放大,D-53 同旧)→ ``_parse_paddle_positional``:连通域
        字形按位置使用 —— h≥``_PADDLE_GLYPH_MIN_H`` 留数字/斜杠字形(剔逐帧漂移的
        人形图标),细长字形判斜杠,OCR 文本数字串按「斜杠前后」对齐,
-       ``_validate_paddle_xy`` 语义约束(x≤y、y≤13、y≥level)终审;
+       ``_validate_paddle_xy`` 语义约束(0≤x≤13、1≤y≤13、y≥level)终审;
     2. 一级无数字框/解析失败 → ``_paddle_glyph_strip`` 二值化抹图标后重 OCR 再解析
        (与 ``read_enemy_difficulty`` 两级形状一致;实拍斜杠变异 '717'=7/7、
        图标前缀 '10/3'=0/3 一级即可解,二级防原生 det 整体漏检)。
@@ -1313,7 +1327,9 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
 
 
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
-    """舞台上方中央「X/Y」指示 → X(已部署角色数);读不到 → None。
+    """舞台上方中央「X/Y」指示 → X(团队规模占用数;常规 = 上阵单位数,占 2 光环
+    持有者在场 = 单位数 + 1);读不到 → None。单帧读,超限态(X > Y)的采信门
+    不在此(双帧确认见 :func:`read_paddle_pair_confirmed`)。
 
     现役消费面 = 备战观察装配环(``cw_screen_prep.py`` cap 段)与后排
     布局选档(``obs/cw_back_layout.py``):d(cap_remaining)+ e(offset)
@@ -1411,13 +1427,76 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
     return _debounce_cap(ctx, screen, cap, level)
 
 
+def _confirm_over_cap(ctx: SrContext, screen: MatLike, x: int | None,
+                      cap: int | None, level: int | None = None,
+                      ) -> tuple[int | None, int | None]:
+    """超限读数双帧确认门(X > cap → 重读一帧;与 ``_debounce_cap`` 同一条
+    「域外读数跨帧一致才采信」纪律)→ ``(X, cap)`` 采信值。
+
+    判别依据:超限是持续态(选「占 2」光环后读数跨小时不变),误读是瞬态——
+    跨帧一致性是二者唯一判别。三分支:
+    - 首读不超限 / 任一不可读 → 原值透传,零重读零证据;
+    - 重读仍超限 → 采信重读值 + ``team_size_over_cap`` 证据行(verdict 明示
+      「超限-双帧一致」;截图按 (field, verdict) 节流,持续态每小时至多一例);
+    - 重读不超限 / 不可得 → 不按超限采信:前者采重读值(首读按误读),后者 X 置
+      None(cap 保留;失读走沿用纪律),均留「未确认」证据行(首读超限是判读要
+      看的形态,不冒充已确认超限)。
+    重读经 ``ctx.controller.screenshot()``(返回 ``(时刻, 帧)`` 元组,取帧);
+    异常按不可得处理。
+    """
+    if x is None or cap is None or x <= cap:
+        return x, cap
+    x2: int | None = None
+    cap2: int | None = None
+    try:
+        _shot = ctx.controller.screenshot()
+        screen2 = _shot[1] if isinstance(_shot, tuple) else _shot
+        if screen2 is not None:
+            x2, cap2 = _read_deploy_paddle(ctx, screen2, level)
+    except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
+        x2, cap2 = None, None
+    if x2 is not None and cap2 is not None and x2 > cap2:
+        obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
+                     verdict=('超限-双帧一致(团队规模占用数 > 上限:主角光环'
+                              '持有者额外占用;游戏红字告警态,出战被静默拒绝;'
+                              '解除〔撤/卖场上单位或升上限〕归策略侧)'),
+                     source='paddle_over_cap_debounce')
+        return x2, cap2
+    if x2 is not None and cap2 is not None:
+        obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
+                     verdict=('未确认-超限首读重读不超限(首读按误读,采重读值;'
+                              '复现 ≥3 次排查 paddle 读链)'),
+                     source='paddle_over_cap_debounce')
+        return x2, cap2
+    obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
+                 verdict=('未确认-超限首读重读不可得(X 不按超限采信置 None,'
+                          'cap 保留;复现 ≥3 次排查 paddle 读链/截图链)'),
+                 source='paddle_over_cap_debounce')
+    return None, cap
+
+
+def read_paddle_pair_confirmed(ctx: SrContext, screen: MatLike,
+                               level: int | None = None,
+                               ) -> tuple[int | None, int | None]:
+    """「X/Y」指示单读 + 超限双帧确认 → ``(团队规模占用数 X, deploy cap Y)``。
+
+    消费面 = :func:`resolve_paddle_pair`(观察写端路径)与出战前规模超限守卫
+    (``prep_actions.guard_team_size_over_cap_for_battle`` 现读);两处对「X > Y」
+    的采信判据由此单一源承载。"""
+    x, cap = _read_deploy_paddle(ctx, screen, level)
+    return _confirm_over_cap(ctx, screen, x, cap, level)
+
+
 def arbitrate_deployed_count(paddle_n: int | None,
-                             cv_n: int | None) -> tuple[int | None, bool]:
+                             cv_n: int | None,
+                             cap: int | None = None) -> tuple[int | None, bool]:
     """deployed 计数双源仲裁(纯函数)→ (采信值,是否结构性分歧)。
 
     两源:``paddle_n`` = 舞台上方「X/Y」指示的 X(``read_deployed_count``,
     游戏自带计数器,构造上即真值);``cv_n`` = CV 槽位占用实测
     (front+back ``slot_occupied`` 计数,像素推断,特效/布局档错位可虚高)。
+    ``cap`` = deploy cap 已知值(可选):超限态(X > cap)不取低值——X 是团队
+    规模占用数(含占 2 光环持有者的额外占用),CV 只数单位看不见规模。
 
     **规则(无新阈值;两条依据)**:
     1. 两源都可读 → **取低值 min**(fail-closed 向「板未满」侧)。依据 =
@@ -1445,7 +1524,8 @@ def arbitrate_deployed_count(paddle_n: int | None,
     from sr_od.application.currency_war.obs.cw_arbitration import (
         combine_deployed_count,
     )
-    return combine_deployed_count(paddle_x=paddle_n, cv_occupied=cv_n)
+    return combine_deployed_count(paddle_x=paddle_n, cv_occupied=cv_n,
+                                  cap=cap)
 
 
 def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
@@ -1455,10 +1535,10 @@ def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
     背景:read_game_state 现行链对同一指示跑两条完整 paddle
     管线(read_deploy_cap_debounced + read_deployed_count),fixture 实测
     42-182ms×2/帧;本函数一次解析产出两值,cap 过同一防抖核
-    (``_debounce_cap``),语义与逐个读等价(仅省一次重复识别)。
-    阶段 gate 路径用本函数;phase=None 全量路径保持两读不变(零行为变更基线)。
+    (``_debounce_cap``),语义与逐个读等价(仅省一次重复识别)。X 过超限双帧
+    确认门(``read_paddle_pair_confirmed``)——X > Y 的采信判据与出战守卫同源。
     """
-    x, cap = _read_deploy_paddle(ctx, screen, level)
+    x, cap = read_paddle_pair_confirmed(ctx, screen, level)
     return x, _debounce_cap(ctx, screen, cap, level)
 
 
@@ -2439,13 +2519,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # (迁移审计批 F1):cap 真值接入调用——防抖后采信(决策层 max_units
     # 优先读真值、level 兜底;读不到/域外拒信 → None 保持兜底语义,与旧恒
     # level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
-    # 阶段 gate 路径 cap 与 deployed_count 合并单读(resolve_paddle_pair);
-    # phase=None 全量路径保持单读防抖不变。
+    # 全量路径与阶段 gate 路径同走 resolve_paddle_pair(一次解析产 X/cap 两值,
+    # 语义与逐个读等价,仅省一次重复识别):X 供 team_size_used 写端。
     deploy_cap: int | None
-    if _spec is None:
-        deploy_cap = read_deploy_cap_debounced(ctx, screen, level)
-        _paddle_x = None
-    elif 'deploy_cap' in _spec or 'deployed_count' in _spec:
+    if _spec is None or 'deploy_cap' in _spec or 'deployed_count' in _spec:
         _paddle_x, deploy_cap = resolve_paddle_pair(ctx, screen, level)
     else:
         deploy_cap = None
@@ -2730,6 +2807,15 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                sig=_sig_read)
                 else:
                     gs.carry(gs.deploy_cap, frame=frame, sig=_sig_carry)
+            if _w('deployed_count'):
+                # team_size_used 观察写端(团队规模占用数 = 同一次「X/Y」读的 X,
+                # 超限读数已过双帧确认门):X 已得 → observe;None(拒信/失读/
+                # 超限未确认)→ carry 沿用(字段一旦有过值不得清 None,同 cap 纪律)。
+                if _paddle_x is not None:
+                    gs.observe(gs.team_size_used, int(_paddle_x),
+                               sig=_sig_read)
+                else:
+                    gs.carry(gs.team_size_used, frame=frame, sig=_sig_carry)
             if _w('streak') and streak_val is not None:
                 gs.carry(gs.streak, frame=frame,
                          sig=_sig_carry)   # 结算带符号真值的跨帧沿用

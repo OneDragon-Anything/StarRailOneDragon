@@ -70,16 +70,24 @@ def register(rule: ArbitrationRule) -> None:
 # ===== 裁决内核(由各私写实现原样迁入;迁移前后逐字节等价,交叉核对钉死)=====
 
 def combine_deployed_count(paddle_x: int | None,
-                           cv_occupied: int | None) -> tuple[int | None, bool]:
+                           cv_occupied: int | None,
+                           cap: int | None = None) -> tuple[int | None, bool]:
     """deployed 计数双源仲裁内核(计数类;原 ``cw_observation.
-    arbitrate_deployed_count`` 私写法原样迁入,规则依据见该函数 docstring
-    ——取低值 fail-closed + spread>1 告警带,零新阈值)。"""
+    arbitrate_deployed_count`` 私写法迁入,取低值 fail-closed + spread>1
+    告警带,零新阈值;规则依据见该函数 docstring)。
+
+    ``cap`` = deploy cap 已知值(裁决辅助输入,非第三源):X 是团队**规模占用数**
+    (主角光环持有者可占 2 点),CV 占用只数单位——超限态(X > cap)取低值会把
+    多出来的占用压掉(6 压回 5 = 机器人看不见超限态的一环),故该态直接采 X;
+    分歧告警带 |Δ|>1 判据不变。cap 未知(None)→ 无从分辨超限与误读,退回取低值。"""
     if paddle_x is None and cv_occupied is None:
         return None, False
     if paddle_x is None:
         return cv_occupied, False
     if cv_occupied is None:
         return paddle_x, False
+    if cap is not None and paddle_x > cap:
+        return paddle_x, abs(paddle_x - cv_occupied) > 1
     return min(paddle_x, cv_occupied), abs(paddle_x - cv_occupied) > 1
 
 
@@ -126,10 +134,12 @@ register(ArbitrationRule(
     combine=combine_deployed_count,
     band=1,
     obs_field='deployed_count_2src',
-    fail_closed_side=('取低值 min:paddle=游戏计数器真值,CV 占用为像素推断;'
+    fail_closed_side=('取低值 min:paddle=游戏计数器真值(团队规模占用数),CV 占用为像素推断;'
                       '高估→「板满」假判合法化 no-op 死锁(贵,实机停机局实证);'
                       '低估→多试一次拖拽被游戏拒(廉价)。分歧告警带 |Δ|>1 '
-                      '沿用既有留证判据(spread≤1=合法读数差)'),
+                      '沿用既有留证判据(spread≤1=合法读数差)。'
+                      '例外:超限态(paddle>cap)采 paddle——Δ=占 2 光环持有者的额外占用,'
+                      'CV 看不见规模;cap 未知退回取低值(cap 为辅助输入不入 sources)'),
 ))
 
 register(ArbitrationRule(

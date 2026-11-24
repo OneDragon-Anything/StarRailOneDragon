@@ -53,6 +53,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     node_kind_of,
     round_num_of,
     shop_randomized_pending_of,
+    team_size_used_of,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     ore_click_targets_of,
@@ -420,6 +421,7 @@ def emit(session: StrategySession,
         level=level_of(gs),
         bench=list(_bench), deployed=list(_deployed),
         deploy_cap=max_units_of(gs),
+        team_size_used=team_size_used_of(gs),
         node_type=node_kind_of(gs),
         stop_flag=False, k_members=k_members,
         round_num=_round_num,

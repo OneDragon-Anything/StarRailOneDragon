@@ -595,13 +595,14 @@ class CwScreenPrep(CwOperation):
                 # 注册键 deployed_count,
                 # 计数类取低值+spread>1 告警带):divergent 判定经注册面,
                 # 保留证据行/分键仍在此处按键发出——行数/field/新旧值/verdict
-                # 文本逐字节不变(零行为验收交叉核对)。
+                # 文本逐字节不变(零行为验收交叉核对)。cap 随读数传入 = 超限态
+                # (paddle X > cap,光环持有者额外占用)不取低值的裁决辅助输入。
                 from sr_od.application.currency_war.obs.cw_arbitration import (
                     arbitrate,
                 )
                 _value, _verdict, _divergent = arbitrate(
                     'deployed_count',
-                    {'paddle_x': dep_n, 'cv_occupied': _cv_occ})
+                    {'paddle_x': dep_n, 'cv_occupied': _cv_occ, 'cap': cap})
                 if _divergent:
                     from sr_od.application.currency_war.kernel.cw_observe import (
                         obs_conflict,
@@ -1165,7 +1166,8 @@ class CwScreenPrep(CwOperation):
                                                          face='armed')
             log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
             if not _ok_lbu:
-                # 出战未发出(席满腾位守卫失败/按钮定位缺失)→ 终结口失败
+                # 出战未发出(席满腾位守卫失败/团队规模超限守卫拦截/按钮
+                # 定位缺失)→ 终结口失败
                 # 透传语义(既有 QC 通道,见 _terminal_exit docstring):
                 # 失败如实转 round_fail 交回外循环重观察重判——伪装成功
                 # 交战斗分支会让外循环无界白等(战斗窗等不到)。
