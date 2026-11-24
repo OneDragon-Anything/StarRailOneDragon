@@ -1,15 +1,16 @@
-"""货币战争**备战变体画面**额外识别器(免战跳过态 / 选择主角态)。
+"""货币战争**备战变体画面**额外识别器(免战跳过态 / 选择主角态 / 茶歇预告态)。
 
-两个变体与备战画面同布局、同全量可读(出战钮文本不同是唯一差异),识别器 =
+三个变体与备战画面同布局、同全量可读(出战钮文本不同是唯一差异),识别器 =
 ``battle_prep_recognizer.read_prep_extras(full_read=True)`` 原样委托——变体 extras
 与备战画面完全一致,不叠加不省略。**画面名本身即状态说明**:analyze 精准命中
 「货币战争-备战-免战」= 出战钮当前为「跳过(N/N)」(免战牌激活,点击直接进战斗);
 命中「货币战争-备战-选择主角」= 出战钮当前为「选择主角」(位面末 BOSS 战前需
-重选主角,点击进主角光环选择流程)。
+重选主角,点击进主角光环选择流程);命中「货币战争-备战-茶歇预告」= 出战钮当前为
+「幕后茶歇」(下一节点是幕后茶歇奖励节点,点击进「货币战争-幕后茶歇」画面)。
 
-背景:此前两变体无识别器 → extras 恒 null(backend 仅精准命中产出),而这恰是
-需要全量读数做决策的状态(免战次数/BOSS 前阵容)。三张选择主角实机样例帧与
-免战 fixture 均已验证全量可读。
+backend 仅在画面精准命中时产出 extras,变体没有专属识别器时读数恒 null;三个变体
+正是需要全量读数的状态(免战次数 / BOSS 前阵容 / 茶歇节点前的阵容与血量),故各挂
+一个委托识别器。各变体归档帧均已验证全量可读。
 
 **并发安全**:与备战识别器同纪律——纯读(不写 self. / 模块全局 / session)。
 """
@@ -69,4 +70,25 @@ class BattlePrepSelectHeroRecognizer(ScreenRecognizer):
         screen_info: ScreenInfo,   # noqa: ARG002
     ) -> dict | None:
         """选择主角画面领域事实 → 备战全量 extras(原样委托,纯读)。"""
+        return read_prep_extras(ctx, image, full_read=True)
+
+
+class BattlePrepTeaNoticeRecognizer(ScreenRecognizer):
+    """货币战争备战-茶歇预告画面(下一节点为幕后茶歇,出战钮变「幕后茶歇」)额外识别器。"""
+
+    screen_name: str = '货币战争-备战-茶歇预告'
+
+    extras_doc: dict[str, str] = {
+        **PREP_EXTRAS_DOC,
+        'state_note': '本画面 = 备战全量 extras;出战钮形态为「幕后茶歇」(下一节点为幕后茶歇,'
+                      '点「按钮-幕后茶歇」进「货币战争-幕后茶歇」画面)。',
+    }
+
+    def recognize(
+        self,
+        ctx: SrContext,
+        image: MatLike,
+        screen_info: ScreenInfo,   # noqa: ARG002
+    ) -> dict | None:
+        """茶歇预告画面领域事实 → 备战全量 extras(原样委托,纯读)。"""
         return read_prep_extras(ctx, image, full_read=True)

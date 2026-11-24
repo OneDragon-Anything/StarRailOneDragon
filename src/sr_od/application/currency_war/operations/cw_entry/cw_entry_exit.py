@@ -19,7 +19,7 @@
 认出的画面必有去处,识别结果不丢弃(cw-exit-dispatch 迭代,治
 列车同行事故:表外画面无去处 → 落穿透式两识别标志同帧命中判定误判干净备战 → 原地空转):
 - 退出流程画面(ROUTE_BY_SCREEN)→ 逐节点建档点击走完 弹窗→挑战失败→结算页→大厅;
-- A 类备战态(含免战)→ 点门形「退出对局」图标(替代旧 ESC,误弹中断挑战史);
+- A 类备战态(含免战 / 茶歇预告两个出战钮形态变体)→ 点门形「退出对局」图标(替代旧 ESC,误弹中断挑战史);
 - 其余对局中画面 → 默认委托 CwLoop(stop_at_prep=True) 处理到可交还备战态
   (零特判:全部表外画面同一去处;敌人信息浮层等清理型浮层由 loop 阶段一
   身份分发派对应画面 op,终态形态见待跟进事项「敌人信息浮层建画面 op」条);
@@ -147,8 +147,9 @@ class CwEntryExit(CwOperation):
             self._miss_streak = 0
             return self.round_success(st)
 
-        # ③ A 类:可直接点门形图标退出的备战态(含免战;屏名白名单,
-        # 非识别标志判定——免战画面「出战」识别标志被「跳过」替换,识别标志判定恒 False)
+        # ③ A 类:可直接点门形图标退出的备战态(含出战钮形态变体;屏名白名单,
+        # 非识别标志判定——变体画面「出战」识别标志被「跳过」/「幕后茶歇」替换,
+        # 识别标志判定恒 False)
         if name in PREP_DIRECT_EXIT_SCREENS:
             self._miss_streak = 0
             return self.round_success(ST_PREP)
@@ -214,8 +215,8 @@ class CwEntryExit(CwOperation):
     @operation_node(name='备战退局发起', node_max_retry_times=10,
                     timeout_seconds=120)
     def prep_exit(self) -> OperationRoundResult:
-        # 备战档「按钮-退出对局」纯定位区对 A 类两屏共用:免战画面门形
-        # 图标同位同款(归档帧实证),无需独立 area。
+        # 备战档「按钮-退出对局」纯定位区对 A 类各屏共用:变体画面门形
+        # 图标同位同款(各变体归档帧实证),无需独立 area。
         return self.round_by_find_and_click_area(
             self.last_screenshot, self.PREP_SCREEN, '按钮-退出对局',
             until_find_all=[('货币战争-中断挑战弹窗', '标识-中断挑战')],
