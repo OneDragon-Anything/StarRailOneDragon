@@ -156,4 +156,5 @@ area_list:
   template_id: cw_adv_layout_back
   template_match_threshold: 0.8
   color_range: null
-  goto_list: []
+  goto_list:
+  - 货币战争-数据银行
