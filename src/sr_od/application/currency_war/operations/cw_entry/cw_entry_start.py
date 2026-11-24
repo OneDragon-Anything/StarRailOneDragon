@@ -254,7 +254,7 @@ class CwEntryStart(CwOperation):
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='开始货币战争对局')
         self._advance_steps: int = 0
-        # 残留状态容器弃置去重(同一次入口链只报一次)
+        # 新局弃置判定去重闩(本入口链只判一次;见 _discard_stale_once docstring)
         self._stale_discarded: bool = False
         # 大厅识别标志(「标识-玩法名」)连续命中轮数(残留大厅判定计数,执行期现读)
         self._lobby_anchor_rounds: int = 0
@@ -267,18 +267,28 @@ class CwEntryStart(CwOperation):
         self._disposed_pending_match: bool = False
 
     def _discard_stale_once(self, reason: str) -> None:
-        """新局确凿信号处弃置上一局残留 match 状态容器(GameState)。
+        """新局确凿信号处弃置上一局残留 match 状态容器(GameState);本链只判一次。
 
         难度确认/模式选择/简报三屏只在**无保存局的新局路径**出现(有保存局走
         「继续进度」直达,恢复的是同一物理对局 —— 此时旧状态容器合法续用,不弃)。
         见 ``cw_strategy.discard_stale_match_container`` docstring。
+
+        去重闩 = 「本入口链已做过一次新局弃置判定」即置位,**不取弃置函数的
+        返回值**:三屏是同一条新局路径上的三个备选信号,要丢的只有进链前就在
+        的上一局残留——它在首个信号处一次判尽。首个信号处无物可丢(返回
+        False)时闩若不置,下一个信号见到的 ``ctx.cw_match`` 正是本链几秒前
+        自建的容器,会被当成「上一局残留」弃掉重建:职级(难度确认屏读存、
+        建容器时已吸收进被弃容器)随之为空,重建容器的开局种子行还会挂到被弃
+        容器的 run 号下。闩置位后,后续信号的 ``_establish_match_once`` 对已在
+        容器幂等直过。
         """
         if self._stale_discarded:
             return
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             discard_stale_match_container,
         )
-        self._stale_discarded = discard_stale_match_container(self.ctx, reason)
+        discard_stale_match_container(self.ctx, reason)
+        self._stale_discarded = True
 
     def _establish_match_once(self) -> None:
         """新局确凿信号处建立本局 match 状态容器(GameState)(match 生命周期前置)。
@@ -444,7 +454,8 @@ class CwEntryStart(CwOperation):
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → 策略层填 state(3.5.1 接入调用)。
         # 难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
-        # 见屏即弃置上一局残留 match 状态容器。
+        # 见屏即做本链的新局弃置判定 + 建本局容器(run 在容器首行前铸好);
+        # 同链后续新局信号(模式选择/简报)幂等,不再弃置重建。
         # 难度读取段挪到 establish 之前(同节点相邻段,重整配套 = design
         # §2.4):establish 内 ensure 的 difficulty 实参取「难度确认屏读存的
         # 值」,旧铸段时点语义保持;难度读数参与下方入口意图判定,挪序后
@@ -501,9 +512,11 @@ class CwEntryStart(CwOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
-            # 简报识别标志 = 新局路径上第一个遥测生产分支,简报/开局选卡行
-            # 落盘前先铸造本局 run(行生而归本局;治冷启动首局零行 + 行盖上局
-            # 戳)。难度已在前序难度确认回合读存。幂等;loop 侧同状态容器认领。
+            # 简报识别标志 = 新局路径上第一个遥测生产分支。此处 ensure =
+            # 纯认领(本局 run 已在 establish 漏斗段1 铸好,先于开局种子行;
+            # 同 session 幂等直过);调用保留 = 容器不经漏斗的形态(重启后
+            # 中途进局直达本屏)下,简报行落盘前的兜底铸造。难度已在前序
+            # 难度确认回合读存。
             state.ensure_run_started(self.ctx.cw_match,
                                      self.ctx.cw_selected_difficulty or '')
             _log.info('[cw-entry] 到达简报屏 → CwScreenBriefing(读词缀/boss 写 session + 下一步)')
