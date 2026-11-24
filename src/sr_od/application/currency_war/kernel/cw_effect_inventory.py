@@ -213,7 +213,7 @@ SOURCE_AFFIX: str = 'affix'
 
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
 # 在用条目 = 全员晋升/大裁员(人力重组/降本增效/现金为王已随 v4.7 官方数据
-# 退场,退场卡的消费端与注释残留见 CW 跨迭代挂账板);写入归属单一源 =
+# 退场,退场卡的消费端与注释残留见 CW 待跟进事项);写入归属单一源 =
 # cw_investments 注册条目注释。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)

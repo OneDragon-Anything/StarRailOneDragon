@@ -1214,7 +1214,7 @@ def _validate_transition_combos(bonds: tuple[TransitionBond, ...],
 
 TRANSITION_LIBRARY: list[Comp] = _build_transition_combos()   # 恒 C(5,2)=10 条
 # 中间态放行⑤费段闸:v4.7 换赛季费用重排使 V4.4 过渡库点名件费段不再满足
-# 位面 1 可刷(藿藿 4 费/丹恒·饮月 5 费),库整体归策略适配批重审(挂账板
+# 位面 1 可刷(藿藿 4 费/丹恒·饮月 5 费),库整体归策略适配批重审(待跟进事项
 # v4.7 换赛季适配欠账族);①-④结构与改名哨照常。
 _validate_transition_combos(TRANSITION_BONDS, TRANSITION_COMBO_PARTS,
                             TRANSITION_LIBRARY,

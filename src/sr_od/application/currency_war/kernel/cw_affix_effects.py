@@ -481,7 +481,7 @@ def _validate_rewrite_scan_exactness() -> None:
     # [v4.7 待恢复] 装备注册表换季重灌(116 件,官方分类直落):改写扫描命中集
     # 变迁 = 新增改写件 3(明星苏乐达/翻飞之币/迷境烤红薯)待逐件申报写入归属,
     # 旧申报 20 件掉出待清表——申报建模归投资/效果域迁移批;装备面恰等闸暂
-    # 注释解锁收集期,申报缺口转挂账板跟踪(装备改写件运行期无写端=效果
+    # 注释解锁收集期,申报缺口转待跟进事项跟踪(装备改写件运行期无写端=效果
     # 静默缺失,已登记风险)。
     # equip_hits = set(scan_rewrite_equipments())
     # declared_eq = set(EQUIP_REWRITE_DECLARATIONS)
