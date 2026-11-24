@@ -20,7 +20,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickStarTomeOp`(`CwActionPickStarTomeParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickStarTomeParam` 实例(`OverlayPickExecEnv`:策略产值 idx;坐标由动作 op 自状态容器取[op-layer §1.1「选择坐标观察上报」];三守卫派发前置) | 自上报 `report_action_pick_star_tome_param`(不写游戏状态的占位上报) | 否(非终结):发出后 `round_wait` 循环推进;落地由落地复查判——「货币战争-星徽秘典弹窗.标识-星徽秘典」不在 = `_settle_picked_tome`(ConfirmTome 到账登记 + `chosen_tome` 写)+ success 返回主循环(见 §5) |
+| `CwActionPickStarTomeOp`(`CwActionPickStarTomeParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickStarTomeParam` 实例(`OverlayPickExecEnv`:策略产值 idx;坐标由动作 op 自状态容器取[op-layer §1.1「选择坐标观察上报」];三守卫派发前置) | 自上报 `report_action_pick_star_tome_param`(选卡即离席清槽:消费 star_tome 登记槽 logic 清被点开槽;溢出告警在场实机口径不写让实读承接) | 否(非终结):发出后 `round_wait` 循环推进;落地由落地复查判——「货币战争-星徽秘典弹窗.标识-星徽秘典」不在 = `_settle_picked_tome`(ConfirmTome 到账登记 + `chosen_tome` 写)+ success 返回主循环(见 §5) |
 
 决策动作 node 决策+机械部分完成即结束本次访问链(整体经动作工厂 `cw_pick_star_tome_action.py::CwActionPickStarTomeOp` 派发;机械链+自上报不写在动作 op 内,派发 param = 策略产实例直发):
 
