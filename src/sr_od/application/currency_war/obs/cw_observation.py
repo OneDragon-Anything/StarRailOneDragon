@@ -1371,20 +1371,38 @@ DEPLOY_CAP_MAX_DIFF: int = 2
 DEPLOY_CAP_ABS_MAX: int = 13
 
 
+def _reread_frame(ctx: SrContext) -> MatLike | None:
+    """双帧门的重读帧获取:截一帧并取裸帧;截图异常 / 帧为 None → None。
+
+    ``ctx.controller.screenshot()`` 返回 ``(时刻, 帧)`` 元组(帧失败时第二项为
+    None),与观察层其余「裸帧」口径不同。取帧口径只住本函数:重读门各自解包会漏
+    ——元组当帧传读链,切片异常被门的 ``except Exception`` 吞成「重读不可得」,
+    双帧确认静默退化成单帧且无报错。``_debounce_cap`` / ``_confirm_over_cap``
+    共用;新增重读门不得各自解包。
+    """
+    try:
+        shot = ctx.controller.screenshot()
+    except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
+        return None
+    return shot[1] if isinstance(shot, tuple) else shot
+
+
 def _debounce_cap(ctx: SrContext, screen: MatLike, cap: int | None,
                   level: int) -> int | None:
     """cap 真值防抖门核(/;首读值已得时复用,避免重跑整条
     paddle 管线——``read_deploy_cap_debounced`` 与 ``resolve_paddle_pair``
-    共用本核,防抖语义单一源)。域/守卫/保留证据语义与原实现逐行一致。"""
+    共用本核,防抖语义单一源)。域/守卫/保留证据语义与原实现逐行一致;
+    重读帧经 ``_reread_frame`` 取得(元组取帧单一源)。"""
     if cap is None or level <= 0:
         return cap
     if level <= cap <= level + DEPLOY_CAP_MAX_DIFF:
         return cap
     cap2 = None
     try:
-        screen2 = ctx.controller.screenshot()
-        cap2 = read_deploy_cap(ctx, screen2)
-    except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
+        screen2 = _reread_frame(ctx)
+        if screen2 is not None:
+            cap2 = read_deploy_cap(ctx, screen2)
+    except Exception:   # noqa: BLE001  读链异常按重读不可得处理(截图异常已由 _reread_frame 归 None)
         cap2 = None
     if cap2 is not None and level <= cap2 <= level + DEPLOY_CAP_MAX_DIFF:
         return cap2
@@ -1446,19 +1464,18 @@ def _confirm_over_cap(ctx: SrContext, screen: MatLike, x: int | None,
       守卫按「不可判 ≠ 超限」放行),留「未确认」证据行;
     - 重读不超限 → 首读按误读,采重读值,留「未确认」证据行;
     - 重读不可得 → X 置 None(cap 保留),留「未确认」证据行。
-    重读经 ``ctx.controller.screenshot()``(返回 ``(时刻, 帧)`` 元组,取帧);
-    异常按不可得处理。
+    重读帧经 ``_reread_frame`` 取得(控制器截图口 ``(时刻, 帧)`` 元组取帧的
+    单一源);截图 / 读链异常按不可得处理。
     """
     if x is None or cap is None or x <= cap:
         return x, cap
     x2: int | None = None
     cap2: int | None = None
     try:
-        _shot = ctx.controller.screenshot()
-        screen2 = _shot[1] if isinstance(_shot, tuple) else _shot
+        screen2 = _reread_frame(ctx)
         if screen2 is not None:
             x2, cap2 = _read_deploy_paddle(ctx, screen2, level)
-    except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
+    except Exception:   # noqa: BLE001  读链异常按重读不可得处理(截图异常已由 _reread_frame 归 None)
         x2, cap2 = None, None
     if x2 is None or cap2 is None:
         obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
