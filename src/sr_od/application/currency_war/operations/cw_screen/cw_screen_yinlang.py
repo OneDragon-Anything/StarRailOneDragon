@@ -48,6 +48,9 @@ from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     CwScreenPlannerObs,
     report_screen_planner_obs,
 )
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickPlannerParam,
+)
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
@@ -179,12 +182,32 @@ class CwScreenYinLang(CwOperation):
         裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
         当前画面重识别重派)。"""
         options = self._obs.options if self._obs is not None else []
+        # 守卫① 决策输入:候选空 = 具名 fail 零盲发(op-layer.md §1.1 出口③)。
+        # 守卫序 = 先输入、后返回契约、再值域(族规 op-layer.md §1.3;同族
+        # 样板 cw_screen_megastar.py::_do_action):空候选不进策略器——
+        # 策略器对空候选回落 idx=0,放进去 = 盲选派发。
+        if not options:
+            return self.round_fail(
+                '[cw][planner] 决策无有效输出零盲发(候选空 options=0)')
         # 策略层决策(唯一入口 = 策略对象,handler 禁 kernel 直调——决策
         # 控制分层铁律,flow/README.md §1;写槽已由 report 落状态容器 → 零参
         # 决策)。无 match 局外兜底决策支已删(用户裁决 全族
         # 删门,op-layer.md §1.1「画面 op 不支持局外单独调用」):单跑缺
         # 上下文沿正常链路失败即预期,禁回填此类兜底分支。
         pick = self.ctx.cw_match.strategy.decide_planner()
+        # 守卫② 返回契约:词表外/None = 具名 fail 含原值留存证据
+        #(注解的运行期执行;族规 = op-layer.md §1.3)。
+        if not isinstance(pick, CwActionPickPlannerParam):
+            return self.round_fail(
+                f'decide_planner 决策无有效输出(词表外/None): {pick!r}')
+        # 守卫③ 值域:越界 = 断言恒炸禁钳位(op-layer.md §1.3;越界放行会
+        # 确认错卡/索引崩,拦在取点与派发前——_card_point 内 CARD_AREAS[idx]
+        # 与下方 options[pick.idx] 同受本守卫保护;断言分支经框架异常路径计
+        # 节点预算)。
+        if not (0 <= pick.idx < len(options)):
+            raise AssertionError(
+                f'[cw][planner] pick idx 越界(策略器 bug,禁钳位): '
+                f'idx={pick.idx} len(options)={len(options)} pick={pick!r}')
         target = self._card_point(pick.idx)
         if target is None:
             # 点卡定位点不可派生 = 卡位建档漂移,显式失败返回主循环重读
@@ -194,13 +217,13 @@ class CwScreenYinLang(CwOperation):
                 f'({CwScreenYinLang.CARD_AREA_SCREEN}),禁兜底坐标交回重读')
         # 分支类型载荷:判定单源 = kernel
         # classify_planner_branch(装备域优先);随 env 透传给动作 op 上报
-        # (确认点击后立即写完整效果分支,单相即时上报)。
-        _opt_text = (options[pick.idx].text
-                     if 0 <= pick.idx < len(options) else '')
+        # (确认点击后立即写完整效果分支,单相即时上报)。idx 合法性已由
+        # 守卫③ 保证,此处直取(无静默回落——回落 = 禁钳位条款反例)。
+        _opt_text = options[pick.idx].text
         branch_type, norm_item = classify_planner_branch(_opt_text)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s) branch=%s/%s',
                  pick.reason, '左' if pick.idx == 0 else '右',
-                 options[pick.idx].text[:24], branch_type, norm_item or '-')
+                 _opt_text[:24], branch_type, norm_item or '-')
         # 点卡选中 → 确认链经注册表工厂 ``action_op_for`` 派发
         # ``CwActionPickPlannerOp``(替身函数的接缝(stub seam)= 工厂派发调用点,测试经
         # monkeypatch ``action_op_for`` 承接);

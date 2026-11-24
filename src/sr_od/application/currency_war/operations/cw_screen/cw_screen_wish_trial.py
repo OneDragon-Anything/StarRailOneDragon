@@ -50,7 +50,7 @@ class CwScreenWishTrial(CwOperation):
     # 坐标属观察上报的选项集构成数据,入坐标域;确认钮等静态控件识别标志维持
     # screen_info area 现取,确认按钮已 area 化)。以下卡位 = 观察侧解点
     # 识别标志(x = 桶识别标志、y = 卡身,观察期一次解析随 obs 上报
-    # ``wish_trial_opts_xy``)兼决策守卫槽数界来源,决策段零坐标消费。
+    # ``wish_trial_opts_xy``),决策段零坐标消费(值域守卫界 = obs 候选数)。
     CARD_Y: ClassVar[int] = 340
     # 卡 x 中心(实测左卡 660 命中;多卡间距 ~300;读 objective 后近邻分流)
     CARD_XS: ClassVar[tuple[int, ...]] = (660, 960, 1260)
@@ -150,10 +150,13 @@ class CwScreenWishTrial(CwOperation):
         if not isinstance(pick, CwActionPickWishTrialParam):
             return self.round_fail(
                 f'decide_wish_trial 决策无有效输出(词表外/None): {pick!r}')
-        if not (0 <= pick.idx < len(self.CARD_XS)):
+        # 值域守卫界 = obs 候选数(下方日志行 objs[pick.idx] 与动作 op 按 idx
+        # 取 wish_trial_opts_xy 的真实索引对象;两者同次观察同序等长写。
+        # 守卫取候选数而非固定槽数 CARD_XS:读链产出的候选数一变仍拦得住)。
+        if not (0 <= pick.idx < len(objs)):
             raise AssertionError(
                 f'[cw-wish] pick idx 越界(策略器 bug,禁钳位): '
-                f'idx={pick.idx} 槽数={len(self.CARD_XS)} pick={pick!r}')
+                f'idx={pick.idx} 候选数={len(objs)} pick={pick!r}')
         pick_desc = f'卡{pick.idx + 1}({objs[pick.idx][:20] or "OCR空"})'
         log.info('[cw-wish] 祈愿决策: %s → idx=%d', pick_desc, pick.idx)
         # 选卡+确认链经工厂直发(pick-op-unify 批:机械链迁入
