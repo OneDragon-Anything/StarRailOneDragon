@@ -12,7 +12,7 @@ game state 怎么设计字段、值怎么写入,见 [game-state.md](game-state.m
 ## 2. 一行记录从产生到消失(完整过程)
 
 1. **状态变化发生**:观察 / 动作逻辑 / 派生逻辑三个渠道之一调用唯一写入口(渠道概念见 game-state.md 写入规范)。
-2. **组行**:写入口在同一临界区内,先变更状态、后组装一行——分配版本号(本局段内自 1 连续递增)、嵌写入后完整快照、附渠道签名(§4)。
+2. **组行**:写入口在同一临界区内,先变更状态、后组装一行——分配版本号(本局段内自 1 连续递增)、嵌写入后完整快照、附渠道签名(§4);行内 `run_id` 取组行那一刻的进程当前号。
 3. **进内存缓冲**:行先进内存缓冲,不逐行写盘——同步关键路径零 open/write。
 4. **批量落盘**:缓冲满阈值(`DEFAULT_FLUSH_EVERY`,单一源 = kernel/cw_state_journal)写一次盘;局收尾时无论缓冲多少,收尾单点统一写盘(§7)。
 5. **被读取**:判读 / 装配 / 策略回溯按行直接读;跨行对照靠行间差分(§8)。
@@ -103,7 +103,7 @@ carried(失读沿用旧值)/ prior(先验预填)/ synthesized(sim 合成)是 obs
   1. app 装配段显式接通;
   2. 局 game state 单例建立点兜底——`game_state_of` 建立路径注入 run 归属读取函数并触发 kernel `ensure_journal_assembly`(幂等)。GameState 构造器零装配逻辑:画面解析草稿的 game state 直构路径,结构性不可能触发遥测。
 - **两路汇合的注入聚合入口** = `establish_new_match` game state 建立点——它是「CwEntryStart 进对局前移」与「CwLoop handle_init 兜底」两个生产调用方的公共入口。
-- **run 先于容器首行铸造(一容器一 run)**:`establish_new_match` 段序 = 铸/认领 run(`telemetry.ensure_run_started(owner=session)`)→ 建容器(构造即写开局种子行)→ 职级吸收 → 记 `created_run_id`。每行的 run 取「写的那一刻」进程当前号(§3),铸号若排在建容器之后,种子行与职级吸收行就挂进上一个 run(实机新局路径曾因此装出只有种子行的空壳档)。归属 token = session(kernel 局身份:一 session 一容器,容器建立前即存在):入口链三分支与 loop `__init__` 的 ensure 传 `ctx.cw_match` 归一到同一 session = 纯认领;`establish_new_match` 每建一个容器铸一段,loop `__init__` 在容器缺席时的预铸段恒为空段(继续进度 / 直跑 loop 的双段代价,`assign_games` 不可见)。
+- **run 先于容器首行铸造(一容器一 run)**:`establish_new_match` 段序 = 铸/认领 run(`telemetry.ensure_run_started(owner=session)`)→ 建容器(构造即写开局种子行)→ 职级吸收 → 记 `created_run_id`。行内 `run_id` 取组行那一刻的进程当前号(§2 第 2 步),铸号若排在建容器之后,种子行与职级吸收行就挂进上一个 run——同一容器的行被劈成两个 run 号。归属 token = session(kernel 局身份:一 session 一容器,容器建立前即存在):入口链三分支与 loop `__init__` 的 ensure 传 `ctx.cw_match` 归一到同一 session = 纯认领;`establish_new_match` 每建一个容器铸一段,loop `__init__` 在容器缺席时的预铸段恒为空段(继续进度 / 直跑 loop 的双段代价,`assign_games` 不可见)。
 - **装配归属**:遥测数据的保存是 game state 的职责;run 领取层 telemetry `ensure_run_started` 不负责装配。
 - **旁路覆盖**:`run_operation` 直调 CwLoop 的接管 / 续跑不经 app 装配段,由兜底路 ② 覆盖。写路径不因状态流水存在与否分支,行落盘以 sink 在场与 run_id 在场为准——缺实例 = 行不落,诚实缺失。
 
