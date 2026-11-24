@@ -1431,16 +1431,21 @@ def _confirm_over_cap(ctx: SrContext, screen: MatLike, x: int | None,
                       cap: int | None, level: int | None = None,
                       ) -> tuple[int | None, int | None]:
     """超限读数双帧确认门(X > cap → 重读一帧;与 ``_debounce_cap`` 同一条
-    「域外读数跨帧一致才采信」纪律)→ ``(X, cap)`` 采信值。
+    「域外读数跨帧一致才采信」纪律,同值口径同构)→ ``(X, cap)`` 采信值。
 
     判别依据:超限是持续态(选「占 2」光环后读数跨小时不变),误读是瞬态——
-    跨帧一致性是二者唯一判别。三分支:
+    跨帧一致(两帧**同值**)是二者唯一判别。只要求两帧各自超限不够:两次不同的
+    瞬态误读(首读 7/6、重读 5/4)也会都超限,放行即把误读当超限、拦下一次合法
+    出战;持续态下两次读数间隔百毫秒级,读数变化只可能来自误读或过场动画。
+    四分支:
     - 首读不超限 / 任一不可读 → 原值透传,零重读零证据;
-    - 重读仍超限 → 采信重读值 + ``team_size_over_cap`` 证据行(verdict 明示
-      「超限-双帧一致」;截图按 (field, verdict) 节流,持续态每小时至多一例);
-    - 重读不超限 / 不可得 → 不按超限采信:前者采重读值(首读按误读),后者 X 置
-      None(cap 保留;失读走沿用纪律),均留「未确认」证据行(首读超限是判读要
-      看的形态,不冒充已确认超限)。
+    - 重读与首读同值且仍超限 → 采信 + ``team_size_over_cap`` 证据行(verdict 明示
+      「超限-双帧一致」;截图按 (field, verdict) 节流——同键 300s 窗内至多一张,
+      持续态每小时至多约 12 张);
+    - 重读超限但不同值 → 不按超限采信:X 置 None(cap 保留;失读走沿用纪律,
+      守卫按「不可判 ≠ 超限」放行),留「未确认」证据行;
+    - 重读不超限 → 首读按误读,采重读值,留「未确认」证据行;
+    - 重读不可得 → X 置 None(cap 保留),留「未确认」证据行。
     重读经 ``ctx.controller.screenshot()``(返回 ``(时刻, 帧)`` 元组,取帧);
     异常按不可得处理。
     """
@@ -1455,24 +1460,30 @@ def _confirm_over_cap(ctx: SrContext, screen: MatLike, x: int | None,
             x2, cap2 = _read_deploy_paddle(ctx, screen2, level)
     except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
         x2, cap2 = None, None
-    if x2 is not None and cap2 is not None and x2 > cap2:
+    if x2 is None or cap2 is None:
         obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
-                     verdict=('超限-双帧一致(团队规模占用数 > 上限:主角光环'
-                              '持有者额外占用;游戏红字告警态,出战被静默拒绝;'
-                              '解除〔撤/卖场上单位或升上限〕归策略侧)'),
+                     verdict=('未确认-超限首读重读不可得(X 不按超限采信置 None,'
+                              'cap 保留;复现 ≥3 次排查 paddle 读链/截图链)'),
                      source='paddle_over_cap_debounce')
-        return x2, cap2
-    if x2 is not None and cap2 is not None:
+        return None, cap
+    if x2 > cap2:
+        if (x2, cap2) == (x, cap):
+            obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
+                         verdict=('超限-双帧一致(团队规模占用数 > 上限:主角光环'
+                                  '持有者额外占用;游戏红字告警态,出战被静默拒绝;'
+                                  '解除〔撤/卖场上单位或升上限〕归策略侧)'),
+                         source='paddle_over_cap_debounce')
+            return x2, cap2
         obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
-                     verdict=('未确认-超限首读重读不超限(首读按误读,采重读值;'
-                              '复现 ≥3 次排查 paddle 读链)'),
+                     verdict=('未确认-两帧超限读数不等(瞬态误读形态,X 不按超限'
+                              '采信置 None、cap 保留;复现 ≥3 次排查 paddle 读链)'),
                      source='paddle_over_cap_debounce')
-        return x2, cap2
+        return None, cap
     obs_conflict('team_size_over_cap', (x, cap), (x2, cap2), screen,
-                 verdict=('未确认-超限首读重读不可得(X 不按超限采信置 None,'
-                          'cap 保留;复现 ≥3 次排查 paddle 读链/截图链)'),
+                 verdict=('未确认-超限首读重读不超限(首读按误读,采重读值;'
+                          '复现 ≥3 次排查 paddle 读链)'),
                  source='paddle_over_cap_debounce')
-    return None, cap
+    return x2, cap2
 
 
 def read_paddle_pair_confirmed(ctx: SrContext, screen: MatLike,
