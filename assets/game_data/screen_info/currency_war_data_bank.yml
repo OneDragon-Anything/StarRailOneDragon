@@ -18,12 +18,12 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 入口-角色图鉴
-  id_mark: true
+  id_mark: false
   pc_rect:
-  - 930
-  - 405
-  - 1060
-  - 458
+  - 430
+  - 560
+  - 725
+  - 922
   text: 角色图鉴
   lcs_percent: 0.9
   template_sub_dir: ''
@@ -34,10 +34,10 @@ area_list:
 - area_name: 入口-羁绊图鉴
   id_mark: false
   pc_rect:
-  - 478
-  - 432
-  - 610
-  - 488
+  - 150
+  - 200
+  - 425
+  - 580
   text: 羁绊图鉴
   lcs_percent: 0.9
   template_sub_dir: ''
@@ -48,24 +48,25 @@ area_list:
 - area_name: 入口-装备图鉴
   id_mark: false
   pc_rect:
-  - 1388
-  - 435
-  - 1520
-  - 490
+  - 705
+  - 200
+  - 1005
+  - 585
   text: 装备图鉴
   lcs_percent: 0.9
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
   color_range: null
-  goto_list: []
+  goto_list:
+  - 货币战争-装备图鉴
 - area_name: 入口-投资环境图鉴
   id_mark: false
   pc_rect:
-  - 905
-  - 816
-  - 1085
-  - 868
+  - 1248
+  - 225
+  - 1548
+  - 585
   text: 投资环境图鉴
   lcs_percent: 0.9
   template_sub_dir: ''
@@ -76,10 +77,10 @@ area_list:
 - area_name: 入口-投资策略图鉴
   id_mark: false
   pc_rect:
-  - 450
-  - 873
-  - 630
-  - 925
+  - 975
+  - 560
+  - 1285
+  - 922
   text: 投资策略图鉴
   lcs_percent: 0.9
   template_sub_dir: ''
@@ -87,31 +88,60 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
-- area_name: 入口-竞争对手图鉴
+- area_name: 入口-主角光环图鉴
   id_mark: false
   pc_rect:
-  - 1366
-  - 866
-  - 1545
-  - 918
-  text: 竞争对手图鉴
+  - 1518
+  - 560
+  - 1835
+  - 922
+  text: 主角光环图鉴
   lcs_percent: 0.9
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
   color_range: null
-  goto_list: []
-- area_name: 区域-图鉴进度带
+  goto_list:
+  - 货币战争-主角光环图鉴
+- area_name: 入口-奇遇图鉴
   id_mark: false
   pc_rect:
-  - 440
-  - 450
-  - 1540
-  - 970
+  - 1798
+  - 225
+  - 1920
+  - 540
+  text: 奇遇图鉴
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-翻页右
+  id_mark: false
+  pc_rect:
+  - 1826
+  - 546
+  - 1884
+  - 610
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-返回
+  id_mark: false
+  pc_rect:
+  - 1826
+  - 34
+  - 1902
+  - 102
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: cw_adv_layout_back
+  template_id: cw_adv_layout_back
+  template_match_threshold: 0.8
   color_range: null
   goto_list: []
