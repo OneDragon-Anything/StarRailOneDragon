@@ -30,11 +30,11 @@ log = log_utils.log
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id。run_id 铸造
-# 单点 = ensure_run_started,生产调用点 = establish_new_match 三段式段3
-# (入口链/loop 兜底/商店防御三漏斗内,先于任何开局遥测行);入口链
-# 简报/投资环境/投资策略三分支 ensure 与 loop __init__ ensure 均 = 纯认领。
-# run_id 的现役消费方 = journal 行归属(kernel
-# run_id provider 注入面)与冲突行/结算行的局归属。
+# 单点 = ensure_run_started,生产调用点 = establish_new_match 段1(入口链/
+# loop 兜底/商店防御三漏斗内,先于状态容器第一行写入——开局种子行与职级
+# 吸收行因此落本容器自己的 run);入口链简报/投资环境/投资策略三分支与
+# loop __init__ 的 ensure 调用 = 纯认领。run_id 的现役消费方 = journal 行归属
+# (kernel run_id provider 注入面)与冲突行/结算行的局归属。
 # 默认 enabled=True(用户要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
 
@@ -42,11 +42,12 @@ _CURRENT_RUN_ID: str = ""
 
 _CURRENT_DIFFICULTY: str = ""
 
-#铸造时点的 match 状态容器(GameState)引用 token。ensure_run_started 用「is 比较」
-# 判当前 open run 是否属于这个物理对局(不用 id——规避对象复活后 id 复用;
-# 强引用滞留一个失效状态容器,内存代价可忽略)。None = 尚未铸造或铸造时无状态容器
-# (重启后中途进局,ctx.cw_match=None 直达投资屏的形态)。
-_RUN_MATCH: object | None = None
+# 铸造时点的对局身份 token(= StrategySession;kernel 局身份:一 session 一
+# 状态容器,容器建立前即存在)。ensure_run_started 用「is 比较」判当前 open
+# run 是否属于这个物理对局(不用 id——规避对象复活后 id 复用;强引用滞留
+# 一个失效 session,内存代价可忽略)。None = 尚未铸造,或铸造时容器缺席
+# (loop __init__ 预铸 / 重启后中途进局 ctx.cw_match=None 直达投资屏的形态)。
+_RUN_SESSION: object | None = None
 
 
 # ===== 落盘根装配槽 =====
@@ -117,31 +118,40 @@ def start_run(difficulty: str = "") -> str:
     return _CURRENT_RUN_ID
 
 
-def ensure_run_started(match: object, difficulty: str) -> str:
+def ensure_run_started(owner: object, difficulty: str) -> str:
     """幂等开局:写任何本局遥测行前确保有归属本局的 open run。
 
     门控三分支任一成立 → 经 start_run 铸新 run(本体零改动),并在其返回后
-    自赋 _RUN_MATCH token(token 赋值在 ensure 内不进 start_run——保
+    自赋 _RUN_SESSION token(token 赋值在 ensure 内不进 start_run——保
     start_run 签名/函数体原样,直调锁零波及);否则认领现有 open run
     原样返回(同一物理对局一段一 id)。三分支语义:
 
     - ``_CURRENT_RUN_ID`` 空:进程首局/重启后首铸造(治冷启动首局零行);
     - ``_RUN_CLOSED``:上局已收尾,正常开新局(跨 loop 执行必然已收尾,
       after_operation_done 全路径必达写 summary);
-    - ``_RUN_MATCH is not match``:悬空 open run 防护——入口铸造后入口链
+    - ``_RUN_SESSION is not token``:悬空 open run 防护——入口铸造后入口链
       FAIL 的 run 不收尾;新局确凿信号处状态容器被弃置重建(cw_entry_start
       ``_discard_stale_once`` + establish),新状态容器 ≠ 铸造时状态容器 → 强制
       重铸,防新局开局行盖进上次失败会话的悬空 run。
 
+    对局身份 token(owner 归一):传 ``CurrencyWarMatch`` 取其 ``session``,
+    传 session 本身原样,``None`` = 容器缺席的预铸。token 取 session 而非
+    容器 / match 包装:kernel 的局身份就是 session(一 session 一状态容器),
+    且它在容器建立**之前**就存在——铸号要先于容器首行(种子行在容器构造时
+    即写),token 就必须是建立前即有的身份;建立前铸、建立后各认领点
+    (入口链三分支 / loop __init__ 传 ctx.cw_match)归一到同一 session =
+    恒等认领,created_run_id 与 loop 时点的 run 不错位。
+
     「继续进度」恢复路径:入口不经 establish 漏斗 → loop __init__ ensure
     见 _RUN_CLOSED 铸新段,handle_init 兜底 establish 漏斗内 ensure 再铸
-    正段 = 续段语义(空段零 journal 行,双段代价申报 = 2026-11-19-resume-
-    rebuild design §2.4)。
+    正段 = 续段语义(预铸段零 journal 行,双段代价见 skill
+    sr-od-dev-currency-war references/journal.md §10)。
 
-    生产铸造唯一调用点 = 本函数,生产调用位置 = establish_new_match 三段式
-    段3(入口链/loop 兜底/商店防御三漏斗内);cw_entry_start 简报/投资环境/
-    投资策略三分支与 cw_loop __init__ 的 ensure 调用 = 纯认领(同容器 open
-    run 已在,幂等直过不重铸)。返回 open run_id。
+    生产铸造唯一调用点 = 本函数,生产调用位置 = establish_new_match 段1
+    (入口链/loop 兜底/商店防御三漏斗内,先于状态容器第一行写入);
+    cw_entry_start 简报/投资环境/投资策略三分支与 cw_loop __init__ 的
+    ensure 调用 = 纯认领(同 session 的 open run 已在,幂等直过不重铸)。
+    返回 open run_id。
 
     职责边界(用户裁定):本函数只覆盖 run 领取(铸造/认领);
     遥测数据的保存 = game state 职责,state 流水装配入口 =
@@ -149,10 +159,13 @@ def ensure_run_started(match: object, difficulty: str) -> str:
     该建立点;生产注入漏斗 =
     ``establish_new_match`` 状态容器建立点),run 领取层不覆盖装配。
     """
-    global _RUN_MATCH
-    if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_MATCH is not match):
+    global _RUN_SESSION
+    token = getattr(owner, 'session', None)
+    if token is None:
+        token = owner
+    if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_SESSION is not token):
         run_id = start_run(difficulty)
-        _RUN_MATCH = match
+        _RUN_SESSION = token
         return run_id
     return _CURRENT_RUN_ID
 
@@ -162,7 +175,7 @@ def current_run_id() -> str:
 
 
 def reset_run_state() -> None:
-    """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED
+    """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_SESSION/_RUN_CLOSED
     /_CURRENT_DIFFICULTY 四件。
 
     为什么收尾成单点(ensure 门消费簇 × 测试复位链缺口):三件套
@@ -189,10 +202,10 @@ def reset_run_state() -> None:
     零消费已停用,现役写根恒生产公式),
     teardown 按槽分立调用,职责不混。
     """
-    global _CURRENT_RUN_ID, _RUN_MATCH, _RUN_CLOSED
+    global _CURRENT_RUN_ID, _RUN_SESSION, _RUN_CLOSED
     global _CURRENT_DIFFICULTY
     _CURRENT_RUN_ID = ''
-    _RUN_MATCH = None
+    _RUN_SESSION = None
     _RUN_CLOSED = False
     _CURRENT_DIFFICULTY = ''
 

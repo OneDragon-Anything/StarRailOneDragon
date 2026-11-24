@@ -53,13 +53,16 @@ def establish_new_match(ctx: SrContext, config, opened_via: str) -> bool:
     ``discard_stale_match_container``(残留弃置)同址衔接:先弃置
     残留 match 对象,再建立本局 match 对象。
 
-    三段式顺序(判据 = 2026-11-19-resume-rebuild design §2.4,落法唯一):
-    先建容器 → 职级就地吸收 → ``ensure_run_started(match=新容器)`` → 记
-    ``created_run_id`` = 当前 run。ensure 插槽在吸收段之后、建容器之后
-    (禁前置:match=None 铸段后,入口链三分支 ensure 传容器会再铸段 →
-    created_run_id 与 handle_init 时点 run 错位 → 每局入口链首 execute
-    误判重建)。此后入口链三分支 ensure 与 loop ``__init__`` ensure 全部
-    认领同段,比对恒等。
+    三段式顺序(落法唯一;run 归属规范 = skill sr-od-dev-currency-war
+    references/journal.md §10「run 先于容器首行铸造」):先铸/认领 run
+    (owner=session)→ 建容器 → 职级就地吸收 → 记 ``created_run_id``。
+    run 必须先于容器第一行铸好:状态容器在 :func:`game_state_of` 构造时
+    即写开局种子行,每行的 run 取「写的那一刻」进程当前号——铸号若排在建
+    容器之后,种子行与职级吸收行就挂进上一个 run(同一容器的行被劈成两个
+    run 号)。token 取 session 而非容器 / match 包装:session 在容器建立前
+    即存在(kernel 局身份),建立后各认领点(入口链三分支 / loop __init__
+    传 ctx.cw_match)归一到同一 session → 恒等认领,``created_run_id`` 与
+    handle_init 时点的 run 不错位。
 
     - 已有 match 对象 → False 幂等直过(不覆盖;跨 run 残留容器的弃置
       归 loop handle_init 重建判据与本模块 discard 的调用点,不在本分支)。
@@ -97,6 +100,16 @@ def establish_new_match(ctx: SrContext, config, opened_via: str) -> bool:
         reset_layout_unknown_state()
     except Exception:   # noqa: BLE001  复位 best-effort,不阻 match 对象建立
         pass
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    from sr_od.application.currency_war.telemetry import state as _telemetry_state
+    # ===== 铸/认领 run(三段式段1,先于容器第一行)=====
+    # 新 session 恒 ≠ 上次铸造的 token → 本函数恒铸新段(一容器一 run);
+    # difficulty 实参在吸收段取走 ctx 前捕获。created_run_id 恒非 None
+    # (loop handle_init 重建判据的比对基准)。
+    _run_difficulty = getattr(ctx, 'cw_selected_difficulty', None) or ''
+    _created_run_id = _telemetry_state.ensure_run_started(
+        owner=_session, difficulty=_run_difficulty)
+    # ===== 建容器(三段式段2;种子行此刻落 _created_run_id)=====
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
     # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
     # game_state_of 局状态容器建立点,GameState 构造器零装配逻辑)。match 对象建立即
@@ -106,8 +119,6 @@ def establish_new_match(ctx: SrContext, config, opened_via: str) -> bool:
     # CwLoop handle_init 兜底 / 商店防御兜底);注入收拢本生产专用漏斗 =
     # sim/测试不经本函数(直建 session),
     # game_state_of 缺省 None=不装配口径不受影响。
-    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
-    from sr_od.application.currency_war.telemetry import state as _telemetry_state
     _gs = game_state_of(_session, run_id_provider=_telemetry_state.current_run_id)
     # 策略器构造注入(终态契约 §2.1):实例持 gs 只读引用,不跨局。
     _strategy = StrategyManager(
@@ -123,22 +134,13 @@ def establish_new_match(ctx: SrContext, config, opened_via: str) -> bool:
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,
                                     performance=getattr(_session, 'performance', None),
                                     opened_via=opened_via)
-    # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
-    # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
-    # game_state_of 局状态容器建立点,GameState 构造器零装配逻辑)。match 对象建立即
-    # 惰性新建局状态容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
-    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化状态容器首写前
-    # 装配已发生」,覆盖本函数三个生产调用方(CwEntryStart 进对局前移点 /
-    # CwLoop handle_init 兜底 / 商店防御兜底);注入收拢本生产专用漏斗 =
-    # sim/测试不经本函数(直建 session),
-    # game_state_of 缺省 None=不装配口径不受影响。
-    # ===== 职级就地吸收(三段式段2,现状序保持)=====
+    ctx.cw_match.created_run_id = _created_run_id
+    # ===== 职级就地吸收(三段式段3)=====
     # 难度确认屏先于本调用读存 ctx(入口链难度读取段已挪到 establish 之前,
-    # 同节点相邻段);ensure 的 difficulty 实参在吸收取走 ctx 前捕获——
-    # 旧铸段时点(简报/投资分支 ensure)的 difficulty 语义保持。
-    # 简报词缀/boss 读数在本调用之后才产生,由 run loop 统一吸收。
+    # 同节点相邻段);铸段的 difficulty 实参已在段1捕获。简报词缀/boss 读数
+    # 在本调用之后才产生,由 run loop 统一吸收;容器已建而难度未读的形态
+    # (首个新局信号早于难度确认屏)由 loop handle_init 兜底吸收。
     # 终态契约 §B:直写 gs.selected_difficulty(session 份已删除)。
-    _run_difficulty = getattr(ctx, 'cw_selected_difficulty', None) or ''
     if getattr(ctx, 'cw_selected_difficulty', None):
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
@@ -148,11 +150,6 @@ def establish_new_match(ctx: SrContext, config, opened_via: str) -> bool:
                         sig=ChannelSig(family='logic_action', actor='CwLoop',
                                        screen='', mode='compute'))
         ctx.cw_selected_difficulty = None
-    # ===== ensure_run_started + 记 created_run_id(三段式段3)=====
-    # 铸造/认领漏斗(幂等):新容器 → 铸本局段并记 created_run_id(恒非
-    # None,handle_init 重建判据的比对基准);已有 open run 认领原样返回。
-    ctx.cw_match.created_run_id = _telemetry_state.ensure_run_started(
-        ctx.cw_match, difficulty=_run_difficulty)
     log.info('[cw-entry] match 状态容器已建立(进对局前移点,strategy=%s,'
              'opened_via=%s,run=%s)', config.strategy_id, opened_via,
              ctx.cw_match.created_run_id)

@@ -457,16 +457,17 @@ class CwLoop(CwOperation):
         # B4:跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 本局遥测 run_id(现役消费 = journal 行归属)。
-        # 铸造单点 = establish_new_match 三段式段3(入口链/兜底/商店防御
-        # 漏斗内,先于任何开局遥测行)——此处与入口链三分支 ensure 均为
-        # 「认领」:同状态容器的 open run 已在,不重铸(一段一 id);
+        # 铸造单点 = establish_new_match 段1(入口链/兜底/商店防御漏斗内,
+        # 先于状态容器第一行)——此处与入口链三分支 ensure 均为「认领」:
+        # 同 session 的 open run 已在,不重铸(一段一 id;ensure 的 owner
+        # 经 match.session 归一,与本处预铸 / 漏斗正铸比对恒等);
         # 中断恢复的对局/run_operation/恢复路径上 run 已收尾(_RUN_CLOSED)
         # → 按 gate 重铸,等价旧「每次 loop 执行新 run_id」语义。重整后
         # 入口链容器经 establish 漏斗自带 created_run_id,本处认领恒等。
         # difficulty:认领路径不消费该实参,铸造已在 establish 漏斗内携带
         # 难度(吸收段取 ctx 前捕获);此处传值仅为签名兼容。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
-        state.ensure_run_started(match=self.ctx.cw_match,
+        state.ensure_run_started(owner=self.ctx.cw_match,
                                  difficulty=_diff_for_telemetry)
         # match 建立/重建块 + 每局缓存清空 + 流程态字段,在 handle_init——
         # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,
