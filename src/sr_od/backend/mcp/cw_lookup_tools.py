@@ -4,10 +4,11 @@
 ``cw_equipment_data``(装备)——本模块零 IO、零状态、无游戏依赖;注册表随
 版本重跑更新后本族工具自动跟上(无复制数据)。
 
-与 ``analyze_screen`` 分工:本族查**静态定义**(角色费用与羁绊所属、羁绊
+与 ``analyze_screen`` 分工:本族查**静态定义**(角色费用与羁绊所属、技能原文、羁绊
 档位效果、装备效果与配方);对局动态(商店在售、板面在场、装备栏持有)走
-``analyze_screen``。角色技能文本不在注册表(数据面现实)——技能细节需
-游戏内点角色卡查看;本族给到的是决策静态面(费用/羁绊/站位/定位标签)。
+``analyze_screen``。技能原文 = 官方攻略广场 config 的技能描述镜像(各星级段相同只给
+一份;只讲技能是干什么的,不含属性数值——属性数值看游戏内角色详情面板);本族给到
+的是决策静态面(费用/羁绊/站位/定位标签/技能原文)。
 
 匹配策略(三域一致,按优先级,命中即返回):
 1. 规范名精确(如「瓦尔特」「欢愉」「蓄能帆」);
@@ -29,6 +30,7 @@ from pydantic import BaseModel, Field
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
     SYSTEM_UNITS,
+    CharacterSkill,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS, Equipment
 from sr_od.application.currency_war.data.cw_traits_data import TRAITS, Trait
@@ -39,6 +41,16 @@ _TRAIT_KIND_CN: dict[int, str] = {0: '阵营', 1: '流派', 2: '独立'}
 
 
 # ===== Out 模型(返回体纯数据;status 为业务多态判别字段,失败走异常通道) =====
+
+class CwSkillInfo(BaseModel):
+    """货币战争角色单条技能(静态注册表口径)。"""
+    name: str = Field(description='技能名(双技能角色的前后台两技能常同名,靠 front_back 区分)')
+    front_back: str = Field(
+        description='front=前台技能(角色在前排时生效)/ back=后台技能(角色在后排时生效)')
+    category_tags: list[str] = Field(description='该技能的官方分类标签(输出/辅助/治疗/护盾,可多个)')
+    desc: str = Field(
+        description='技能效果原文(官方原文透传;各星级段相同只给一份;只讲技能是干什么的,不含属性数值)')
+
 
 class CwCharInfo(BaseModel):
     """货币战争角色条目(静态注册表口径)。"""
@@ -53,6 +65,7 @@ class CwCharInfo(BaseModel):
     is_expert: bool = Field(description='专家顾问:初始不在普通商店招募,需局内经投资策略/环境/邀请函解锁后加入')
     is_hide: bool = Field(description='隐藏单位:数据保留但不在玩家可见列表(如饮月绑定随从丹恒·腾荒)')
     system_note: str = Field(description='系统赠送单位的来源说明(投资策略/环境赠送,恒后台不可卖;普通角色为空字符串)')
+    skills: list[CwSkillInfo] = Field(description='技能列表(官方顺序;系统赠送单位为空列表)')
 
 
 class CwCharLookupOut(BaseModel):
@@ -104,8 +117,18 @@ class CwEquipLookupOut(BaseModel):
 
 # ===== 查询实现(模块级纯函数,测试直调) =====
 
+def _skill_infos(skills: tuple[CharacterSkill, ...]) -> list[CwSkillInfo]:
+    """注册表技能块 → 返回体技能条目(官方顺序;字段透传)。"""
+    return [CwSkillInfo(name=s.name, front_back=s.front_back,
+                        category_tags=list(s.category_tags), desc=s.desc) for s in skills]
+
+
 def _merge_char_entries(name: str) -> list[CwCharInfo]:
-    """按规范名合并同名多档条目(星神★阿哈 4/5/7 → costs=[4,5,7] 单条)。"""
+    """按规范名合并同名多档条目(星神★阿哈 4/5/7 → costs=[4,5,7] 单条)。
+
+    多档 skills 全同(生成器同名多档守卫保证),取首档;任一档 is_expert/is_hide
+    即置真(既有口径)。
+    """
     same_name = [c for c in CHARACTERS if c.name == name]
     if not same_name:
         return []
@@ -121,16 +144,17 @@ def _merge_char_entries(name: str) -> list[CwCharInfo]:
         is_expert=any(c.is_expert for c in same_name),
         is_hide=any(c.is_hide for c in same_name),
         system_note='',
+        skills=_skill_infos(first.skills),
     )]
 
 
 def _system_unit_info(name: str, note: str) -> CwCharInfo:
-    """系统赠送单位(投资策略/环境送的召唤物类)的条目形态(注册表常量语义)。"""
+    """系统赠送单位(投资策略/环境送的召唤物类)的条目形态(注册表常量语义;官方无技能数据)。"""
     return CwCharInfo(
         name=name, costs=[0], position='back',
         category_tags=[], factions=[], schools=[],
         independent='', is_expert=False, is_hide=False,
-        system_note=note,
+        system_note=note, skills=[],
     )
 
 
@@ -274,11 +298,13 @@ def register_cw_lookup_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
         list_all: Annotated[bool, Field(
             description='true=忽略 query,按 cost 过滤返回全量角色(如「4 费都有谁」);需提供 cost;默认 false')] = False,
     ) -> CwCharLookupOut:
-        """观察类(只读,零 IO 纯常量查询,不需要登录与游戏在线)。按名字查货币战争角色的静态定义——费用/站位/分类标签/所属羁绊(阵营+流派+独立)/专家顾问标记/隐藏标记。
+        """观察类(只读,零 IO 纯常量查询,不需要登录与游戏在线)。按名字查货币战争角色的静态定义——费用/站位/分类标签/所属羁绊(阵营+流派+独立)/专家顾问标记/隐藏标记/技能原文(技能名、前台后台、分类标签、效果原文)。
 
         决策用途:商店出牌时快速判断「这张牌是什么、进哪条线」(费用与羁绊所属)、
-        凑羁绊时确认候选成员。系统赠送单位(投资策略送的召唤物类)也在查询域
-        (costs=[0] 标记)。角色**技能文本不在数据面**——技能细节需游戏内点角色卡查看。
+        凑羁绊时确认候选成员、看到陌生角色时读技能原文了解它靠什么打(前后台两技能
+        分开给)。技能原文只讲技能是干什么的、不含属性数值——属性数值看游戏内角色
+        详情面板。系统赠送单位(投资策略送的召唤物类)也在查询域(costs=[0] 标记,
+        skills 为空)。
 
         与 ``cw_trait_lookup``/``cw_equip_lookup`` 分工:本工具查角色;查羁绊档位效果
         走 ``cw_trait_lookup``;查装备效果配方走 ``cw_equip_lookup``;查对局动态(商店

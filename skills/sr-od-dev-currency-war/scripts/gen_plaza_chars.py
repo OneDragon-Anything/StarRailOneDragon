@@ -1,33 +1,45 @@
-"""货币战争 · plaza 官方接口 → 角色数据产物生成器(自包含,版本更新重跑)。
+"""货币战争 · plaza 官方接口 → 角色数据产物生成器(版本更新重跑)。
 
-数据源:攻略广场 game/config API **直连**(免登录公开接口,无本地依赖):
-  GET https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg
-  (必需 header x-rpc-currencywar-tourn: tourn)
+数据源:攻略广场 game/config API(免登录公开接口,无本地依赖):
+   GET https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg
+   (必需 header x-rpc-currencywar-tourn: tourn)
+   默认直连拉取;`--config <快照>` 改读本地 config_v<版本>.json(plaza_fetch 落盘的
+   拉取缓存)离线重跑——数据面重跑(文档/片段)不应依赖网络,也不该因网络抖动换源。
 
 产出(只写 assets/docs 产物与 .debug 片段,**不写任何 src 文件**):
-  1. docs/game/currency_war/data/characters/<规范名>.md — 每角色一档(同名多档合并,
-     档位节列出全部官方 id 与费用;技能星级效果全文/trait 官方描述);
-  2. 官方立绘模板库 assets/template/cw_character_avatar/(立绘图源 =
-     plaza 接口 role_list[].big_icon 烘焙;**角色粒度单模板**——同名多档共用一目录,
-     官方多档 icon URL 全同视觉同图,底色取起始档 rarity);
-  3. 官方装备模板库 equip_plaza(混合:plaza 进阶 art + 手工简易/特权);
-  4. 注册表段片段 .debug/game_data/currency_war/plaza/registry_chars_v<版本>.py —
-     官方逐条 `_ch(...),` 调用文本(行尾逗号合法语句形态,与 cw_chars.py 官方段
-     现状一致;参数序 = cw_chars._ch 工厂签名),片段两侧标记注释与 cw_chars.py
-     官方段标记逐字一致——版本更新按标记整段替换直接接入,零人工补逗号;
-  5. 掉出名单 diff 报告 .debug/game_data/currency_war/plaza/dropped_v<版本>.md —
-     旧注册表名单 − 新官方名单,分「纯角色掉出(文档删除清单)」与「系统单位迁出
-     (SYSTEM_UNITS 注册段 − 新官方名单,非删除)」两类;**掉出方向的唯一出口**。
+   1. docs/game/currency_war/data/characters/<规范名>.md — 每角色一档(同名多档合并,
+      档位节列出全部官方 id 与费用;技能星级效果全文/trait 官方描述;技能标题带
+      【前台】/【后台】——双技能角色两技能常同名,无此标注无从分辨);
+   2. 官方立绘模板库 assets/template/cw_character_avatar/(立绘图源 =
+      plaza 接口 role_list[].big_icon 烘焙;**角色粒度单模板**——同名多档共用一目录,
+      官方多档 icon URL 全同视觉同图,底色取起始档 rarity);
+   3. 官方装备模板库 equip_plaza(混合:plaza 进阶 art + 手工简易/特权);
+   4. 注册表段片段 .debug/game_data/currency_war/plaza/registry_chars_v<版本>.py —
+      官方逐条 `_ch(...)` 调用文本(行尾逗号合法语句形态,与 cw_chars.py 官方段
+      现状一致;参数序 = cw_chars._ch 工厂签名;每条 skills=(...) 技能块,每技能一行
+      `_sk(name, front_back, category_tags, desc)`——各星级段原文相同只存一份),
+      片段两侧标记注释与 cw_chars.py 官方段标记逐字一致——版本更新按标记整段替换
+      直接接入,零人工补逗号;
+   5. 掉出名单 diff 报告 .debug/game_data/currency_war/plaza/dropped_v<版本>.md —
+      旧注册表名单 − 新官方名单,分「纯角色掉出(文档删除清单)」与「系统单位迁出
+      (SYSTEM_UNITS 注册段 − 新官方名单,非删除)」两类;**掉出方向的唯一出口**。
 
 名字归一口径:官方 name U+2022(•)统一为 U+00B7(·)——全仓规范名均为间隔号,
 canon() 为归一单一源;守卫加严:产出段名字含 • 直接报错(防归一被绕过)。
 
-对拍(--check-only):注册表段片段 vs config 快照逐字段对拍(63=63 归零才算过);
-main 默认产段**不跑对拍**(注册表重建落地前无对拍对象),对拍显式传参触发:
-  uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py --check-only
+富文本渲染:羁绊 desc 的 <property>/<color> 标签经同目录 gen_traits.render_rich
+映射为属性中文名(映射表 = config role_property_list;单一源在 gen_traits,本脚本
+不复制实现——删标签会丢「提供2%<property>和<property>」里的属性名);渲染警告汇总
+打印不静默。技能 desc 官方不带标签,原样透传。
 
-用法(项目根,一个命令全完成):
-  uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py
+对拍(--check-only):注册表段片段 vs config 快照逐字段对拍(63=63 归零才算过);
+main 默认产段**不跑对拍**(注册表重建落地前无对拍对象),对拍显式传参触发。
+
+用法(项目根):
+   uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py            # 版本更新:直连拉取 + 全部产物
+   uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py --config .debug/game_data/currency_war/plaza/config_v<版本>.json --skip-templates
+                                                                                # 数据面重跑:离线快照 + 只产文档/片段
+   uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py --check-only
 """
 from __future__ import annotations
 
@@ -42,6 +54,12 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))  # 供掉出 diff 报告 import 现役注册表(cw_chars)
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # 同目录生成器共享件(gen_traits 富文本渲染器)
+
+from gen_traits import load_prop_map, render_rich  # noqa: E402
+
+from sr_od.application.currency_war.data.cw_chars import CharacterSkill  # noqa: E402
+
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
 TPL_DIR = REPO / "assets/template/cw_character_avatar"  # 官方立绘模板库(替代手采库)
 EQUIP_TPL_DIR = REPO / "assets/template/currency_war/equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
@@ -56,6 +74,10 @@ HEADERS = {
 
 # plaza 站位 → 注册表站位(Character.position 词汇:front/back/common);未知值报错。
 POSITION_MAP = {"Front": "front", "Back": "back", "Common": "common"}
+
+# 技能级 front_back_type → CharacterSkill.front_back(技能级官方只给 Front/Back 两值,
+# 无 Common——Common 是角色级站位语义);未知值报错。
+SKILL_POSITION_MAP = {"Front": "front", "Back": "back"}
 
 # category_tags 首技能口径的已知多技能不一致例外(按官方 id):首技能 ('输出',)、
 # 另一技能 ('输出','辅助')——首技能口径与手写注册表值一致,放行并打印;其余不一致
@@ -103,6 +125,39 @@ def trait_map(cfg: dict) -> dict[str, tuple[int, str]]:
     return {t["trait_id"]: (int(t["trait_type"]), t["trait_name"]) for t in cfg["trait_info_list"]}
 
 
+def derive_skills(role: dict) -> tuple[CharacterSkill, ...]:
+    """官方 role_list[].skills → CharacterSkill 元组(官方顺序)。
+
+    守卫(报错即停,不产残数据):
+    - front_back_type 非 SKILL_POSITION_MAP 两值报错;
+    - skill_stars 空报错;
+    - 各星级段 desc 必须全等——「各星级原文相同只存一份」是注册表的存储契约
+      (CharacterSkill.desc 注释),段间分化即契约破坏,报错人工裁定(改存储形态);
+    - desc 去空白后为空报错(技能原文缺失)。
+    """
+    out: list[CharacterSkill] = []
+    for sk in role.get("skills") or []:
+        fb = SKILL_POSITION_MAP.get(sk.get("front_back_type"))
+        if fb is None:
+            raise RuntimeError(f"{role['id']} {role['name']}: 技能 {sk.get('name')!r} 未知 "
+                               f"front_back_type {sk.get('front_back_type')!r}")
+        descs = [ss.get("desc") or "" for ss in sk.get("skill_stars") or []]
+        if not descs:
+            raise RuntimeError(f"{role['id']} {role['name']}: 技能 {sk.get('name')!r} 无星级段")
+        if len(set(descs)) > 1:
+            raise RuntimeError(f"{role['id']} {role['name']}: 技能 {sk.get('name')!r} 各星级段原文"
+                               f"不一致,{len(set(descs))} 种——单份存储契约破坏,需人工裁定")
+        if not descs[0].strip():
+            raise RuntimeError(f"{role['id']} {role['name']}: 技能 {sk.get('name')!r} 原文为空")
+        out.append(CharacterSkill(
+            name=sk["name"],
+            front_back=fb,
+            category_tags=tuple(sk.get("category_tags") or []),
+            desc=descs[0],
+        ))
+    return tuple(out)
+
+
 def derive_fields(role: dict, tmap: dict[str, tuple[int, str]]) -> dict:
     """官方 role_list 条目 → 注册表段字段 dict(字段口径 = Character dataclass 字段表)。
 
@@ -111,6 +166,7 @@ def derive_fields(role: dict, tmap: dict[str, tuple[int, str]]) -> dict:
     - 站位映射:front_back_type 非 POSITION_MAP 三值报错;
     - category_tags:取首技能口径;多技能不一致时,已知例外(CATEGORY_TAG_EXCEPTIONS)
       放行并打印,其余报错人工裁定;
+    - 技能块:derive_skills 守卫(前后台值域/星级段原文全等/原文非空);
     - trait join:trait_details[].id join trait_info_list 按 trait_type 分拣——
       0→factions / 1→schools / 2→independent(多值报错,单值口径)/ 3→丢弃
       (主角光环专属效果,非牌池羁绊,注册表不承载);join 不命中或未知 type 报错。
@@ -167,6 +223,7 @@ def derive_fields(role: dict, tmap: dict[str, tuple[int, str]]) -> dict:
         "source": str(role["id"]),
         "is_expert": bool(role.get("is_expert")),
         "is_hide": bool(role.get("is_hide")),
+        "skills": derive_skills(role),
     }
 
 
@@ -174,7 +231,8 @@ def derive_all(roles: list, tmap: dict[str, tuple[int, str]]) -> list[dict]:
     """全量条目派生(逐条 derive_fields)+ 同名多档一致性守卫,按官方 id 排序。
 
     多档守卫:同名多档条目除 id/rarity 外字段须全同(官方多档 = 同角色升星升费,
-    现仅星神★阿哈 4/5/7 一组),不一致报错人工裁定。
+    现仅星神★阿哈 4/5/7 一组),不一致报错人工裁定;技能块同在守卫面——各档各带
+    一份 skills,合并查询取首档,多档不一致会使合并结果失真。
     """
     fields = [derive_fields(r, tmap) for r in roles]
     fields.sort(key=lambda f: int(f["source"]))
@@ -184,7 +242,7 @@ def derive_all(roles: list, tmap: dict[str, tuple[int, str]]) -> list[dict]:
 
     def _sig(f: dict) -> tuple:
         return (f["position"], f["category_tags"], f["factions"], f["schools"],
-                f["independent"], f["is_expert"], f["is_hide"])
+                f["independent"], f["is_expert"], f["is_hide"], f["skills"])
 
     for cname, group in by_name.items():
         if len(group) > 1 and len({_sig(f) for f in group}) > 1:
@@ -201,12 +259,20 @@ def _py_tuple(vals: tuple[str, ...]) -> str:
     return f"({inner},)" if len(vals) == 1 else f"({inner})"
 
 
+def _sk_line(s: CharacterSkill) -> str:
+    """单条技能行:_sk(位置参数 name/front_back/category_tags/desc),desc 走 repr 防注入。"""
+    return (f"_sk({s.name!r}, {s.front_back!r}, {_py_tuple(s.category_tags)}, "
+            f"{s.desc!r}),")
+
+
 def _ch_line(f: dict) -> str:
-    """单条注册表段行:_ch(位置参数 name/cost/position/category_tags, 关键字参数按签名序),
+    """单条注册表段条目:_ch(位置参数 name/cost/position/category_tags, 关键字参数按签名序),
     行尾逗号 = 合法语句形态(与 cw_chars.py 官方段现状一致,按标记重写可直贴零人工)。
 
     与默认值同形的实参省略(factions/schools 空、independent 空、is_expert/is_hide
     False);source 恒非空恒输出。is_hide=True 附行内注(HIDE_INLINE_NOTE)。
+    skills 块恒输出(官方条目技能非空由 derive_skills 守卫保证):首行以 `skills=(`
+    收尾,每技能一行 _sk,末行 `)),` 收口——一技能一行,改一技能 diff 一行。
     """
     parts = [repr(f["name"]), str(f["cost"]), repr(f["position"]), _py_tuple(f["category_tags"])]
     if f["factions"]:
@@ -220,18 +286,21 @@ def _ch_line(f: dict) -> str:
         parts.append("is_expert=True")
     if f["is_hide"]:
         parts.append("is_hide=True")
-    line = "_ch(" + ", ".join(parts) + "),"
+    lines = ["_ch(" + ", ".join(parts) + ", skills=("]
+    lines += ["    " + _sk_line(s) for s in f["skills"]]
+    lines.append(")),")
     if f["is_hide"]:
-        line += "  " + HIDE_INLINE_NOTE
-    return line
+        lines[-1] += "  " + HIDE_INLINE_NOTE
+    return "\n".join(lines)
 
 
 def gen_registry_fragment(fields: list[dict], version: str, n_bullet: int) -> Path:
-    """产物4:官方注册表段片段(registry_chars_v<版本>.py,每条一行 _ch 调用)。
+    """产物4:官方注册表段片段(registry_chars_v<版本>.py,每条 _ch 调用)。
 
     片段条目行尾带逗号(合法语句形态)、两侧标记注释与 cw_chars.py 官方段
     标记逐字一致——版本更新按标记整段替换直接接入,零人工补逗号;片段
-    自身仍可独立 exec 对拍(--check-only 往返解析,注释行不参与)。
+    自身仍可独立 exec 对拍(--check-only 往返解析,注释行不参与;exec 命名空间须同时
+    提供 _ch 与 _sk 两个工厂)。
     """
     PLAZA_DIR.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -239,8 +308,9 @@ def gen_registry_fragment(fields: list[dict], version: str, n_bullet: int) -> Pa
         f"# CW v{version} 官方注册表段片段(生成器产,勿手改)。重生成:",
         "#   uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py",
         f"# 数据源:攻略广场 game/config API role_list({len(fields)} 条);名字已归一"
-        f"(U+2022→U+00B7,{n_bullet} 名 bullet 角色);_ch 参数序 = cw_chars._ch 工厂签名;"
-        "is_hide 条目语义见行内注。",
+        f"(U+2022→U+00B7,{n_bullet} 名 bullet 角色);_ch 参数序 = cw_chars._ch 工厂签名;",
+        "# 每条 skills=(...) 技能块,每技能一行 _sk(name, front_back, category_tags, desc)",
+        "# (各星级段原文相同只存一份);is_hide 条目语义见行内注。",
         "# 标记注释与 cw_chars.py 官方段两侧标记逐字一致,按标记整段替换即接入。",
         "# === 官方段(生成器产,勿手改;重写入口 gen_plaza_chars.py) ===",
     ]
@@ -295,34 +365,41 @@ def gen_diff_report(roles: list, version: str) -> Path:
     return path
 
 
-def strip_rich(s: str) -> str:
-    """去富文本标签(<color>/<property>),保可读正文。"""
-    s = re.sub(r"<color=[^>]*>|</color>", "", s)
-    s = re.sub(r"<property[^>]*>|</property>", "", s)
-    return s.replace("\n", " ").strip()
+def skill_block(e: dict, prop_map: dict[str, str]) -> tuple[list[str], list[str]]:
+    """单条目技能/trait 文档行。返回 (行列表, 渲染警告列表)。
 
-
-def skill_block(e: dict) -> list[str]:
-    """单条目技能/trait 文档行。"""
+    羁绊行走 gen_traits.render_rich(<property> 映射属性中文名,<color> 删除,
+    display=icon 删除);渲染出的多段文本以单空格连接保持「一行一条」(官方 desc 的
+    字面 \\n 由 render_rich 还原为真换行,再在此压平)。技能标题带【前台】/【后台】。
+    星级段逐段列出(镜像官方结构,段间分化时文档仍正确)。
+    """
     out: list[str] = []
+    warns: list[str] = []
     for t in e.get("trait_details") or []:
-        out.append("- 羁绊【{}】:{}".format(t["name"], strip_rich(t.get("desc") or "")))
+        text, ws = render_rich(t.get("desc") or "", prop_map)
+        warns.extend(f"{e['name']} 羁绊 {t['name']}: {w}" for w in ws)
+        out.append("- 羁绊【{}】:{}".format(t["name"], " ".join(text.split())))
     for sk in e.get("skills") or []:
         tags = "、".join(sk.get("category_tags") or [])
+        side = {"Front": "前台", "Back": "后台"}.get(sk.get("front_back_type"), str(sk.get("front_back_type")))
         out.append("")
-        out.append("#### 技能 {}({})".format(sk["name"], tags))
+        out.append("#### 技能 {}【{}】({})".format(sk["name"], side, tags))
         out.append("")
         for ss in sk.get("skill_stars") or []:
-            out.append("- {} {}".format("★" * int(ss["star"]), strip_rich(ss.get("desc") or "")))
-    return out
+            out.append("- {} {}".format("★" * int(ss["star"]), ss.get("desc") or ""))
+    return out, warns
 
 
-def gen_docs(roles: list, version: str) -> int:
-    """产物1:每角色一档 markdown(同名多档按名合并,档位节列全部官方 id/费用)。"""
+def gen_docs(roles: list, version: str, prop_map: dict[str, str]) -> int:
+    """产物1:每角色一档 markdown(同名多档按名合并,档位节列全部官方 id/费用)。
+
+    渲染警告汇总打印(非致命,同 gen_traits 口径):未知标签/属性需补档,不静默。
+    """
     DOC_DIR.mkdir(parents=True, exist_ok=True)
     by_name: dict = {}
     for r in roles:
         by_name.setdefault(canon(r["name"]), []).append(r)
+    all_warns: list[str] = []
     for cname, entries in sorted(by_name.items()):
         ids = ", ".join(e["id"] for e in entries)
         costs = "/".join(e["rarity"] for e in entries)
@@ -346,18 +423,26 @@ def gen_docs(roles: list, version: str) -> int:
             lines.append("")
             lines.append("![icon]({})".format(e["icon"]))
             lines.append("")
-            lines.extend(skill_block(e))
+            block, ws = skill_block(e, prop_map)
+            all_warns.extend(ws)
+            lines.extend(block)
             lines.append("")
         (DOC_DIR / (f"{cname}.md")).write_text("\n".join(lines), encoding="utf-8")
+    if all_warns:
+        uniq = sorted(set(all_warns))
+        print(f"[render] 警告 {len(all_warns)} 处(去重 {len(uniq)} 种,未知标签/属性需补档):")
+        for w in uniq:
+            print(f"  - {w}")
     return len(by_name)
 
 
 def check_fragment_vs_config(config_path: Path) -> None:
     """对拍:注册表段片段 vs config 快照,逐字段(63=63 归零才算过,不一致非零退出)。
 
-    校验面:①片段文件往返解析完整(exec 收集 _ch 调用,防手改/截断);②片段与快照
+    校验面:①片段文件往返解析完整(exec 收集 _ch/_sk 调用,防手改/截断);②片段与快照
     逐字段一致(name〔归一口径〕/cost/position/category_tags/羁绊三字段〔join
-    trait_info_list,type-3 丢弃〕/is_hide/is_expert/source);③条数与 id 集合相等。
+    trait_info_list,type-3 丢弃〕/is_hide/is_expert/source/skills〔CharacterSkill 等值〕);
+    ③条数与 id 集合相等。
     由 --check-only 显式触发;main 默认产段不跑。
     """
     data = json.loads(config_path.read_text(encoding="utf-8-sig"))
@@ -371,15 +456,21 @@ def check_fragment_vs_config(config_path: Path) -> None:
     def _ch(name: str, cost: int, position: str, category_tags: tuple[str, ...],
             factions: tuple[str, ...] = (), schools: tuple[str, ...] = (),
             independent: str = "", source: str = "", is_expert: bool = False,
-            is_hide: bool = False) -> None:
+            is_hide: bool = False, skills: tuple[CharacterSkill, ...] = ()) -> None:
         records.append({
             "name": name, "cost": cost, "position": position,
             "category_tags": tuple(category_tags), "factions": tuple(factions),
             "schools": tuple(schools), "independent": independent, "source": source,
-            "is_expert": is_expert, "is_hide": is_hide,
+            "is_expert": is_expert, "is_hide": is_hide, "skills": tuple(skills),
         })
 
-    exec(compile(frag_path.read_text(encoding="utf-8"), str(frag_path), "exec"), {"_ch": _ch})
+    def _sk(name: str, front_back: str, category_tags: tuple[str, ...], desc: str) -> CharacterSkill:
+        return CharacterSkill(name=name, front_back=front_back,
+                              category_tags=tuple(category_tags), desc=desc)
+
+    # exec 命名空间 = 注册表段的两个工厂(_ch/_sk);片段内注释行不参与
+    exec(compile(frag_path.read_text(encoding="utf-8"), str(frag_path), "exec"),
+         {"_ch": _ch, "_sk": _sk})
     expected = derive_all(data["role_list"], trait_map(data))
     diffs: list[str] = []
     if len({r["source"] for r in records}) != len(records):
@@ -393,7 +484,7 @@ def check_fragment_vs_config(config_path: Path) -> None:
             diffs.append(f"{exp['source']} {exp['name']}: 片段缺此条")
             continue
         for k in ("name", "cost", "position", "category_tags", "factions", "schools",
-                  "independent", "source", "is_expert", "is_hide"):
+                  "independent", "source", "is_expert", "is_hide", "skills"):
             if rec[k] != exp[k]:
                 diffs.append(f"{exp['source']} {exp['name']}: {k} 片段={rec[k]!r} vs config={exp[k]!r}")
     for src in sorted(set(by_src) - {e["source"] for e in expected}):
@@ -579,23 +670,34 @@ def main() -> None:
     ap.add_argument("--check-only", action="store_true",
                     help="只跑「注册表段片段 vs config 快照」逐字段对拍,不产任何数据")
     ap.add_argument("--config", default="",
-                    help="对拍用 config 快照路径(默认 = plaza 缓存目录最新 config_v*.json)")
+                    help="config 快照路径(对拍默认 = plaza 缓存目录最新 config_v*.json;"
+                         "产段路径给了即读快照离线重跑,不给 = 直连拉取)")
+    ap.add_argument("--skip-templates", action="store_true",
+                    help="跳过立绘/装备模板两步(两步走网络并写 assets/template/;"
+                         "数据面重跑〔文档 + 片段〕用)")
     args = ap.parse_args()
     if args.check_only:
         cfg_path = Path(args.config) if args.config else latest_config_path()
         check_fragment_vs_config(cfg_path)
         return
-    cfg = fetch_config()
+    if args.config:
+        cfg = json.loads(Path(args.config).read_text(encoding="utf-8-sig"))
+        cfg = cfg.get("data", cfg)
+    else:
+        cfg = fetch_config()
     version = cfg.get("rpg_game_big_version", "?")
     roles = cfg["role_list"]
     fields = derive_all(roles, trait_map(cfg))
     n_bullet = sum(1 for r in roles if chr(0x2022) in r["name"])
-    n = gen_docs(roles, version)
+    n = gen_docs(roles, version, load_prop_map(cfg))
     print(f"[docs] {n} 角色 -> {DOC_DIR}")
-    gen_templates(roles)
-    print(f"[tpl] -> {TPL_DIR}")
-    gen_equip_templates(cfg)
-    print(f"[eqtpl] -> {EQUIP_TPL_DIR}")
+    if not args.skip_templates:
+        gen_templates(roles)
+        print(f"[tpl] -> {TPL_DIR}")
+        gen_equip_templates(cfg)
+        print(f"[eqtpl] -> {EQUIP_TPL_DIR}")
+    else:
+        print("[tpl] --skip-templates:跳过立绘/装备模板两步")
     gen_registry_fragment(fields, version, n_bullet)
     gen_diff_report(roles, version)
 
