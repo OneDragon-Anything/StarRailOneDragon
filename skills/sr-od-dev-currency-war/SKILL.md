@@ -194,10 +194,11 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_traits_data`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md) |
 | 版本更新后 CW 域要做哪些事(适配清单) | [references/version-update.md](references/version-update.md)(判型/各域明细/换赛季战役组织) |
-| 新版本实机探索局作业方法(实机局怎么跑/探索产出怎么变四层覆盖) | [references/version-update-live-exploration.md](references/version-update-live-exploration.md)(目标口径/开局与缺口矩阵/派发纪律/单局作业/局间循环;编排机制归 autonomous-loop,总流程归 version-update) |
+| 新版本实机探索局作业方法(实机局怎么跑/探索产出怎么变四层覆盖) | [references/version-update-live-exploration.md](references/version-update-live-exploration.md)(目标口径/开局与追踪文件/派发纪律/单局作业/局间循环;编排机制归 autonomous-loop,总流程归 version-update) |
+| 画面识别与动作 op 的追踪文件(按画面记识别核对的日期和结论、每个动作用的是哪个 op、该画面的缺口;长期保存,打到哪个画面查哪一章) | [references/screen-tracking.md](references/screen-tracking.md)(文件路径/格式/谁在什么时候写/什么不记在这里) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
 | 运行状态/焦点/待办 | 新迭代走 `.temp/changes/active/<迭代名>/`(迭代目录含 tasks.md 进度,规范见 od-dev-run-iteration);`.debug/progress/` 下的 CW 存量目录(dag.jsonl 与旧文法 `进度.md`)只读封存,新登记事项不再写入。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针 |
-| **跨迭代挂账**(货币战争专用的待办文件:等实机取证 / 等用户裁定的家族议题 / 等外部条件 / 欠账导航——寿命超过单个迭代的事项) | `.debug/progress/CW跨迭代挂账.md`(全域唯一文件;迭代内欠账留各迭代收尾清单,收口时转移进该文件) |
+| **待跟进事项**(货币战争专用的待办文件:等实机取证 / 等用户裁定的家族议题 / 等外部条件 / 欠账导航——寿命超过单个迭代的事项。原名「跨迭代挂账板」,别处按旧名字提到它的就是这一份) | `.temp/tracking/currency-war/待跟进事项.md`(全域唯一文件;迭代内欠账留各迭代收尾清单,收口时转移进该文件) |
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度追踪文件,一律不进共享文档。**
 
