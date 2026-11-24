@@ -351,6 +351,29 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=22,
         recovery_exit=RECOVERY_HANDLE,
     ),
+    # 备战-奇遇介绍浮层:进入备战时压在备战界面上的展示型浮层(本局奇遇的伙伴
+    # 与效果说明,点空白关闭,无选择分支)。备战两识别标志(购买经验/出战)不被
+    # 它盖住 → 外循环穿透判定照样派发备战决策环;本条不进分发、不设 handler,
+    # 只声明 closable:环入口清场段(cw_screen_prep._clear_entry_overlays)在
+    # heavy 观察前点「按钮-空白继续」拿干净备战帧。
+    # 不声明的后果 = 全量观察落在浮层帧上:浮层自身内容(左侧图形块/右侧说明文)
+    # 落进后排 y 带点亮 CV 槽位签名探针,后排布局误判,占用/装备/身份行连环
+    # 污染——读数链的识别标志位门拦不住(该门假设「遮挡 = 信号变弱」,本浮层是
+    # 加对比度的面板);清场是治本位,读数链不另设浮层清单。
+    # 识别标志 = 该屏唯一 id_mark;关闭区是纯定位区(text/template 皆空 = 恒点
+    # 区域中心),画面级前置判定由本条识别标志承担。误命中防线 = 画面身份语料
+    # 两向验证(test_id_mark 全量批:别家帧对本屏识别标志零碰撞)。
+    # semantic=display ⇒ 不进 bail 扫描集;关闭无损失(同「积分奖励」先例)。
+    # recovery_exit 为恢复链声明(该消费面未切注册表,现零运行时消费)。
+    OverlaySpec(
+        screen_name='货币战争-备战-奇遇介绍',
+        anchor_area='读区-奇遇标题',
+        semantic=SEMANTIC_DISPLAY,
+        closable=True,
+        close_area='按钮-空白继续',
+        dispatch_priority=23,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
     # ── 未激活条目(active=False,待实机建档)──
     # 道具详情弹窗(聘用书类 modal):现 cw_loop 0e3 裸 OCR 分支;建档后
     # screen_name/anchor_area 取建档终值(id_mark 用独有标题行),判定坍缩
