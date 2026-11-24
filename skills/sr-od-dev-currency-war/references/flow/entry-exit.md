@@ -68,7 +68,7 @@ BackToNormalWorldPlus(sr_od/operations/back_to_normal_world_plus.py)
 | ③ | 屏名 ∈ `PREP_DIRECT_EXIT_SCREENS`(={备战, 备战-免战}) | 备战退局发起(点门形图标;免战复用备战档纯定位区) |
 | ④ | 认「货币战争-大厅」白名单 | 大厅确认(op 成功终点) |
 | ④b | 认挂起对局入口两屏白名单(模式选择-进行中/结束结算确认;屏级显式点名,模块常量 `MODE_ONGOING_SCREEN`/`GIVEUP_CONFIRM_SCREEN`) | 处置路径:模式选择放弃挂起局 / 结束结算确认放弃(放弃不续跑,语义见 CwEntryExit docstring);下半段(挑战失败→详情→战报→大厅)复用既有节点零复制 |
-| ⑤ | 屏名非 None 且未命中②③④④b = **默认委托** | 委托对局循环(零特判;敌人信息浮层等清理型浮层由委托的 loop 经阶段一身份分发派对应画面 op——敌人信息浮层的独立 op = `CwScreenEnemyInfo`(1+N 无策略段),内联特判已清偿,义务登记见跨迭代挂账文件「敌人信息浮层建画面 op」条) |
+| ⑤ | 屏名非 None 且未命中②③④④b = **默认委托** | 委托对局循环(零特判;敌人信息浮层等清理型浮层由委托的 loop 经阶段一身份分发派对应画面 op——敌人信息浮层的独立 op = `CwScreenEnemyInfo`(1+N 无策略段),内联特判已清偿,义务登记见待跟进事项文件「敌人信息浮层建画面 op」条) |
 | ⑥ | 屏名 None(未建档/过渡帧) | 定时重试若干次 → 连续计数判定在战斗中 → 点右上角 X 兜底关闭(节点开头先检查画面是否静止:连续同帧逐像素不变则提前判失败,常量 `BATTLE_X_DEAD_CLICK_LIMIT`) |
 
 - ④b 与④同构:两屏在 `LOBBY_STATE_SCREENS` 白名单内(入口链可达非对局屏),对 `get_in_match_screen_name` 不可见,须屏级显式点名(`get_match_screen_name` = 全 id_mark AND 双锚);不进 `ROUTE_BY_SCREEN`(该表只收对局中屏)。三个消费点同防线:route ④b / `CwEntryStart.advance_to_prep` 挂起分支 / `BackToNormalWorldPlus.check_screen` 挂起分支——后两者命中即委托 CwEntryExit,处置回大厅由 CwEntryStart 的重入旗标短路(点开始重开,不走残留逃逸弯路)。
