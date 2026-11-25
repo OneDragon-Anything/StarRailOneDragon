@@ -23,7 +23,8 @@
 - 其余对局中画面 → 默认委托 CwLoop(stop_at_prep=True) 处理到可交还备战态
   (零特判:全部表外画面同一去处;敌人信息浮层等清理型浮层由 loop 阶段一
   身份分发派对应画面 op,终态形态见待跟进事项「敌人信息浮层建画面 op」条);
-- 认不出(未建档/过渡帧)→ 重试数拍后按连续计数判战斗中 → 右上 X → 撤退。
+- 认不出(未建档/过渡帧)→ 重试数拍后按连续计数判战斗中 → 右上 X → 撤退;
+  右上 X 节点每轮先认画面,认出非战斗自家画面即回路由重识别(误入时的回头路)。
 全链零 ESC、零全屏 OCR(识别走框架建档精准匹配,点击走框架建档原语)。
 """
 from typing import ClassVar
@@ -70,6 +71,26 @@ BATTLE_STREAK_ENTER: int = 4
 #: 足够排除「点击已落地但画面渲染慢」的转场帧(转场在 route ⑥ 已耗 4 拍)。
 BATTLE_X_DEAD_CLICK_LIMIT: int = 3
 
+#: 「战斗中点右上X」返回成功、状态为本值 = 认出了一个路由有去处的画面,不点、
+#: 回路由重识别(边匹配键)。
+ST_SCREEN_RECOGNIZED: str = '认出画面'
+
+#: 「战斗中点右上X」每轮先认画面时的豁免名单 = 「点 X → 弹出暂停」这条路自己
+#: 经过、且建档识别认得出的两个画面。认出它们按认不出处理(继续点 X):
+#: 战斗画面若回头,真战斗永远点不了 X;暂停画面是点 X 成功后的下一轮画面,
+#: 回头会改变点 X 之后的既有走法。也不计入重复认出计数(真战斗连续多轮认出
+#: 战斗画面是常态,计数会把正常战斗判成失败)。
+BATTLE_X_OWN_SCREENS: frozenset[str] = frozenset({
+    '货币战争-战斗', '货币战争-战斗暂停',
+})
+
+#: 「战斗中点右上X」不点就退出时,连续认出同一个画面名多少次即判失败。
+#: 新分支只认路由有去处的画面,正常不会路由处理不动;但路由判「战斗中」
+#: 返回的是成功,引擎对非重试结果清零节点重试与超时预算,路由↔点 X 两个节点
+#: 互踢没有任何一层预算会耗尽。第 1 次认出回路由是正常回头路,第 2 次同名
+#: = 路由没把它处理掉,失败比空转对。
+BATTLE_X_RECOGNIZED_REPEAT_LIMIT: int = 2
+
 #: 挂起对局入口两屏(白名单屏,不在对局中名单内):判定走 route ④b 显式
 #: 点名,不进 ROUTE_BY_SCREEN(该表只收 get_in_match_screen_name 可见的
 #: 对局中屏);处置链下半段(挑战失败→详情→战报→大厅)与既有节点完全同构。
@@ -111,6 +132,10 @@ class CwEntryExit(CwOperation):
         # 重入不销毁 self,跨轮承载):上一轮进入节点时的帧与连续无变化计数。
         self._battle_x_prev_frame: MatLike | None = None
         self._battle_x_static_rounds: int = 0
+        # 同上(仅 battle_x 读写,跨轮重入承载):本轮之前连续认出的画面名与次数;
+        # 认不出的那一轮清零。
+        self._battle_x_recognized_name: str | None = None
+        self._battle_x_recognized_times: int = 0
 
     # ---- 节点1:画面路由(循环;唯一识别中枢) ----
     # 出边骨架(星形):流程节点的 SUCCESS 均经兜底边回本节点重识别;
@@ -127,6 +152,7 @@ class CwEntryExit(CwOperation):
     @node_from('对局详情下一页')
     @node_from('战报返回大厅')
     @node_from('战斗中点右上X')
+    @node_from('战斗中点右上X', status=ST_SCREEN_RECOGNIZED)
     @node_from('战斗暂停撤退')
     @node_from('委托对局循环')
     @operation_node(name='画面路由', is_start_node=True, node_max_retry_times=40,
@@ -343,7 +369,38 @@ class CwEntryExit(CwOperation):
     @operation_node(name='战斗中点右上X', node_max_retry_times=15,
                     timeout_seconds=180)
     def battle_x(self) -> OperationRoundResult:
-        # 静态页哨(顶部,每轮重入先跑):「按钮-右上X」是纯定位区,对无 X
+        cur = self.last_screenshot
+
+        # ① 认画面(误入本节点时的回头路,每轮重入、点击之前先跑):本节点唯一
+        # 成功条件是「战斗暂停」出现,点击把画面点到别处(如备战的「数据统计」
+        # 钮与右上X区域重叠)后出不去,原路只能耗到节点超时。只认路由有去处
+        # 的画面——对局中画面名单(路由②③⑤全接)与大厅(路由④,同函数同参数);
+        # 大厅态白名单里的弹窗画面路由没有去处,认了就是两节点互踢空转,留给
+        # 下方点 X 老路顺手关掉。认不出 = 与改前一样走哨、点 X。
+        name = get_in_match_screen_name(self.ctx, cur)
+        if name is None:
+            name = get_match_screen_name(self.ctx, cur,
+                                         screen_name_list=[self.LOBBY_SCREEN])
+        if name in BATTLE_X_OWN_SCREENS:
+            name = None
+        if name is not None:
+            if name == self._battle_x_recognized_name:
+                self._battle_x_recognized_times += 1
+            else:
+                self._battle_x_recognized_name = name
+                self._battle_x_recognized_times = 1
+            if self._battle_x_recognized_times >= BATTLE_X_RECOGNIZED_REPEAT_LIMIT:
+                return self.round_fail(
+                    f'连续{self._battle_x_recognized_times}次认出同一画面「{name}」,路由无法处理')
+            # 哨的计数含义是「本次进入本节点后点了几轮画面都没变」;经路由再被
+            # 送回来是又一次进入,接着上次的计数会把同一张静态画面误判成点了没反应。
+            self._battle_x_prev_frame = None
+            self._battle_x_static_rounds = 0
+            return self.round_success(status=ST_SCREEN_RECOGNIZED)
+        self._battle_x_recognized_name = None
+        self._battle_x_recognized_times = 0
+
+        # ② 静态页哨(认画面之后、点击之前,每轮重入都跑):「按钮-右上X」是纯定位区,对无 X
         # 控件的页面恒点击恒成功、画面永不变化 → until 永不命中,原路径
         # 唯一硬边界是本节点 180s 超时(WAIT 不计 retry 且清零计数,retry
         # 网在此路径从不生效)。连续 BATTLE_X_DEAD_CLICK_LIMIT 轮与上一轮
@@ -351,7 +408,6 @@ class CwEntryExit(CwOperation):
         # np.array_equal 全等(静态页逐帧同图,事故连拍字节全等实证);
         # 上一帧为 None / shape 不符 / 比较异常一律按「帧变化」清零——
         # 截屏损坏帧真实存在(事故连拍含不可解码帧),不中断节点。
-        cur = self.last_screenshot
         prev = self._battle_x_prev_frame
         changed = True
         if prev is not None and prev.shape == cur.shape:
@@ -365,6 +421,7 @@ class CwEntryExit(CwOperation):
         if self._battle_x_static_rounds >= BATTLE_X_DEAD_CLICK_LIMIT:
             return self.round_fail(
                 f'右上X点击无效(连续{self._battle_x_static_rounds}轮画面无变化,疑无X页面)')
+        # ③ 点 X 并等「战斗暂停」出现
         return self.round_by_find_and_click_area(
             self.last_screenshot, '货币战争-战斗', '按钮-右上X',
             until_find_all=[('货币战争-战斗暂停', '标识-战斗暂停')],
