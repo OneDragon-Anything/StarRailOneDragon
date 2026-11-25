@@ -13,6 +13,10 @@
 (点选择主角钮切主角光环屏,经状态词条件边接入,独立于段3);决策动作
 node = 特殊流程三处置(先于段序号置位)+ 单动作决策循环(无防御上限,
 用户裁定:不收敛 = 策略实现 bug)。
+合成确认浮层(备战画面的子态,全局模态)优先于以上一切:观察 node 最顶部
+先探商店开态、再识别浮层并上报——在场即走零点击观察通道直达决策动作
+node,由其顶部的处置函数发出确认 / 取消动作、经终结口返回主循环;读不准
+的帧观察 node 直接失败。
 书册卡的开卡时机归策略实现管(用户裁定 2026-09-19):观察链产
 kind='bookcard' 槽位,策略器 entry ① 卡片分支发出终结动作,本画面 op
 不再代发。
@@ -67,6 +71,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionObsParam,
     CwActionOpenShopParam,
     CwActionStartBattleParam,
+    CwActionSynthesisCancelParam,
+    CwActionSynthesisConfirmParam,
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
@@ -89,6 +95,13 @@ from sr_od.application.currency_war.obs.cw_resume_lock import (
     locked_after_start_battle,
     probe_resolve,
 )
+from sr_od.application.currency_war.obs.cw_synthesis_overlay_obs import (
+    STATE_AMBIGUOUS,
+    STATE_PRESENT,
+    STATE_UNPAIRED,
+    SynthesisOverlayInputError,
+    read_synthesis_overlay_of,
+)
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
 )
@@ -106,6 +119,12 @@ from sr_od.application.currency_war.operations.cw_op.cw_open_shop_action import 
 )
 from sr_od.application.currency_war.operations.cw_op.cw_start_battle_action import (
     CwActionStartBattleOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_synthesis_cancel_action import (
+    CwActionSynthesisCancelOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_synthesis_confirm_action import (
+    CwActionSynthesisConfirmOp,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import (
@@ -167,6 +186,16 @@ SELECT_HERO_SUBSTATE_STATUS: str = '选择主角子态,直达选择主角处置'
 #: 处置,整体有界)。取值沿 partner 脉冲先例 ≤3。
 SELECT_HERO_CLICK_MAX: int = 3
 
+#: 合成确认浮层处置计数的载体键(策略器私有状态 ``cw4_counters``;寿命每局)。写点 =
+#: 备战画面 op 的浮层处置函数每执行一次 +1、观察 node 确认浮层不在场的帧清零;
+#: 消费点 = 处置函数的有界出口(先例 = 同一载体里的 ``back_to_strategy_symptom``)。
+CW4_KEY_SYNTHESIS_OVERLAY_CLICK: str = 'synthesis_overlay_click'
+
+#: 同一个浮层连续处置的次数上限:进入处置函数时计数已达此值 = 这么多次处置后浮层
+#: 仍在场(点击坐标对但游戏不收,或浮层被反复拖出),本次不再点击、直接失败,交外循环的
+#: 失败连击链。不设上限则每次处置都成功返回、外循环的失败计数永不增长,循环无界。
+SYNTHESIS_OVERLAY_CLICK_MAX: int = 3
+
 
 class CwScreenPrep(CwOperation):
     """备战决策环(两 node 形态):观察 node(环装配前置 + 清场 + heavy
@@ -183,6 +212,11 @@ class CwScreenPrep(CwOperation):
     处置 node(段1 第五查命中经状态词条件边直达,跨画面切屏 + until 判效,
     独立于段3);决策动作 node 段3 特殊流程三处置(先于段序号置位)。
     常规帧五查全否 → 既有全量路径零变化。
+
+    合成确认浮层优先分支(浮层是备战画面的子态,在场时一切点击都被它吞):
+    观察 node 最顶部识别并上报(商店开着的帧不识别),在场 = 零点击观察通道,
+    其余步骤全部让位;决策动作 node 顶部的处置函数只认本次访问的识别结果,
+    先于段3 发出确认 / 取消动作,经终结口返回主循环(连续未收起有界)。
     """
 
     def __init__(self, ctx: SrContext):
@@ -196,6 +230,11 @@ class CwScreenPrep(CwOperation):
         # 新建实例 → 载体结构性不跨访问存活(迭代 2026-11-18-prep-special-
         # flow §2.1)。
         self._prep_substate: str | None = None
+        # 本次访问观察到的合成确认浮层状态(观察 node 顶部识别 → 决策动作 node 的
+        # 处置函数消费):``STATE_PRESENT`` 在场 / ``STATE_ABSENT`` 不在场 / ``None``
+        # 未识别(商店开着的帧不识别)。同样不跨访问存活。处置函数只认它、不读状态
+        # 容器该字段:字段在商店开着与读不准的帧上不写,留着的是上一帧的值。
+        self._synthesis_overlay_state: str | None = None
         # 选择主角处置连等封顶计数(round_wait 无界红线:点击恒成功锚恒
         # 不出现 = 连等无界,框架 round_by_find_and_click_area docstring
         # 要求节点自设封顶;重入重跑整个 node 函数 → 计数挂实例,每 visit
@@ -705,6 +744,92 @@ class CwScreenPrep(CwOperation):
         except Exception as e:  # noqa: BLE001  失效写入不阻塞探针链
             log.debug(f'[cw-prep] 接管观察态失效写入跳过: {e}')
 
+    def _read_synthesis_overlay_at_entry(
+            self, match: CurrencyWarMatch | None) -> OperationRoundResult | None:
+        """观察 node 最顶部的合成确认浮层优先分支(先于子态五查)。
+
+        合成确认浮层是备战画面的子态、全局模态:在场时备战画面的识别标志照样全中,
+        而一切点击和拖拽都会被它吞掉,所以每次访问先处理它。
+
+        序列:
+        1. 探商店开态(只找不点;判据与下方 ``_try_collapse_open_shop`` 是同一个
+           识别标志「按钮-收起」,在画面右下角,浮层够不着它)。命中 = 商店开着的帧:
+           不识别浮层、不写该字段、处置计数不清零,按原路径走(商店由原路径里的收店
+           探针收起)——商店开着时不读右侧装备、不操作合成。外循环认出开商店画面的
+           帧本来就转交商店访问路径、进不到本节点;这道探测兜的是商店开合动画里被
+           认成备战的过渡帧。
+        2. 商店没开 → 识别浮层并立即上报(在场写读数结构,不在场写 ``'none'``)。本次
+           的识别状态记在 ``_synthesis_overlay_state`` 上,决策动作 node 的处置函数
+           只认它。
+        3. 按状态分流:
+           - 不在场:处置计数清零,原路径照走;
+           - 有按钮候选但配不成对 / 成对配对有歧义:不写该字段、直接失败交外循环
+             重读——字段留着的是上一帧的旧值,回不到「未观察」;按「不在场」继续的话
+             后面的步骤照跑(探针点击被吞、全量观察把失真的装备栏读数写进状态容器);
+           - 按钮模板或搜索矩形取不到:同样直接失败——判成不在场的话所有浮层帧都会
+             被当成干净备战帧走常规路径,点击全被丢弃且没有任何告警;
+           - 在场:零点击观察通道——只做上报、过 match 缺席门、构建执行器三件事,
+             然后进决策动作 node。子态五查、环入口清场、收店探针、接管补采委派、
+             全量观察一律跳过,各自的第一次点击或委派延到浮层收起后的下一访问:该帧
+             的装备栏读数已知失真,全量观察跑了就把失真值写进状态容器;停光标与帧代次
+             标注随全量观察一并不做(光标由两个动作 op 点击后自己移开;浮层处置不走
+             常规决策入口,不读帧代次)。
+
+        Args:
+            match: 观察节点入口取到的对局容器(可为 ``None``,局外)。
+
+        Returns:
+            ``None`` = 按原路径继续;其余 = 结束观察 node 的结果。
+        """
+        screen = self.last_screenshot
+        if self.round_by_find_area(
+                screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success:
+            self._synthesis_overlay_state = None
+            return None
+        try:
+            result = read_synthesis_overlay_of(self.ctx, screen)
+        except SynthesisOverlayInputError as e:
+            log.error('[cw!][prep] 合成确认浮层识别入参缺失: %s', e)
+            return self.round_fail(status=f'合成确认浮层识别入参缺失({e})')
+        if result.state in (STATE_UNPAIRED, STATE_AMBIGUOUS):
+            # 两种形态文案分开:排查时从日志就能分清是哪一种;候选明细随文案留证
+            _what = ('有按钮候选但配不成对' if result.state == STATE_UNPAIRED
+                     else '成对配对有歧义')
+            log.warning('[cw!][prep] 合成确认浮层%s,本帧读不准 → 交外循环重读(%s)',
+                        _what, result.candidates_detail())
+            return self.round_fail(
+                status=f'合成确认浮层{_what}({result.candidates_detail()})')
+        self._synthesis_overlay_state = result.state
+        present = result.state == STATE_PRESENT
+        session = match.session if match is not None else None
+        if session is not None:
+            # 上报写点(该状态容器字段只有观察上报一个写端):不在场写 'none' 时,字段
+            # 已是 'none' 则上报函数自己不重复写。
+            report_screen_prep_obs(
+                game_state_of(session),
+                CwScreenPrepObs(synthesis_overlay=(
+                    result.reading if present else 'none')))
+            if not present:
+                self._clear_synthesis_overlay_click_count(session)
+        if not present:
+            return None
+        # —— 在场:零点击观察通道(下方原路径的构建点在被跳过的路径上,执行器提前构建)——
+        if match is None or match.strategy is None:
+            return self.round_fail(status='无 cw_match(对局未初始化)')
+        self._executor = PrepActionExecutor(self, self.ctx)
+        return self.round_success('合成确认浮层在场,交决策动作节点处置', wait=0)
+
+    @staticmethod
+    def _clear_synthesis_overlay_click_count(session: StrategySession) -> None:
+        """确认浮层不在场的帧:处置计数清零(之后新出现的浮层重新从一数起)。
+
+        载体缺席或计数已是 0 时不写——每个干净帧都写,会让所有对局的计数表里都多出
+        一个恒为 0 的键。
+        """
+        counters = getattr(strategy_state_of(session), 'cw4_counters', None)
+        if isinstance(counters, dict) and counters.get(CW4_KEY_SYNTHESIS_OVERLAY_CLICK):
+            counters[CW4_KEY_SYNTHESIS_OVERLAY_CLICK] = 0
+
     # ===== 备战单轮 op(拆内环;两 node 形态)=====
     # 外循环(cw_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
     # 观察 node = 数据观察 + 对账;决策动作 node = 单动作决策循环
@@ -717,7 +842,9 @@ class CwScreenPrep(CwOperation):
     def observe(self) -> OperationRoundResult:
         """环装配前置 + 数据观察 + 对账(纯观察审计族留在本 node)。
 
-        序列:段1 子态识别五查(特殊流程,见下)→ 执行器构建 + 缓存复位 →
+        序列:合成确认浮层优先分支(最顶部,见
+        :meth:`_read_synthesis_overlay_at_entry`;浮层在场或读不准时本 node 即刻
+        结束)→ 段1 子态识别五查(特殊流程,见下)→ 执行器构建 + 缓存复位 →
         环入口清场(ENTRY_OVERLAY_CLOSE = 过渡相位表「可一键关闭」子集)→
         开商店收起探针 → heavy 观察 → CwScreenPrepObs 装配(可选域经
         :func:`report_screen_prep_obs` 在原写点位落状态容器:链域在 heavy
@@ -740,6 +867,11 @@ class CwScreenPrep(CwOperation):
         既有路径一步不动。b 查触发门 = opened_via=='takeover' ∧ 未探
         (去重标志一次写;判据 = 2026-11-19-resume-rebuild design §2.3)。"""
         match = self._match()
+        # ===== 合成确认浮层优先分支(先于子态五查):商店开着 / 不在场 → 原路径;
+        # 读不准 → 直接失败;在场 → 零点击观察通道,进决策动作 node 处置 =====
+        _overlay_rr = self._read_synthesis_overlay_at_entry(match)
+        if _overlay_rr is not None:
+            return _overlay_rr
         # ===== 段1 子态识别五查(特殊流程;变体态处置 = 独立 node,a/b/c
         # 处置在决策动作 node 段3)=====
         # Match 缺席(局外/桩):0/a/b/c 四查按否处理,落到下方 match
@@ -947,6 +1079,11 @@ class CwScreenPrep(CwOperation):
         fail-streak);c 补给未确认 → 点返回补给阶段交回(下轮进补给屏)。
         a/c 点击成败均交回(不落段4、不落 retry):下轮重识别自然重试
         (现状同语义)。
+
+        合成确认浮层处置(决策动作 node 顶部,先于段 3 与段序号置位):本次访问在
+        观察 node 认到浮层在场时,经策略器的浮层处置入口发出确认 / 取消动作,
+        终结返回主循环;不是浮层帧则原路径继续
+        (:meth:`_handle_synthesis_overlay`)。
         """
         match = self._match()
         # 缺席门:谓词判 session(非观察门的 strategy)——act 下游首消费 =
@@ -956,6 +1093,10 @@ class CwScreenPrep(CwOperation):
         if match is None or match.session is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
         session = match.session
+        # 合成确认浮层处置(优先特殊分支):单一调用点,先于段 3 三处置与段序号置位。
+        _overlay_rr = self._handle_synthesis_overlay(match)
+        if _overlay_rr is not None:
+            return _overlay_rr
         # ===== 段3 特殊流程三处置(先于段序号置位,子态帧不动 serial)=====
         if match.locked_resume:
             # b:锁定直出战(首战前备战同步步组合封装,证据位 =
@@ -1087,6 +1228,67 @@ class CwScreenPrep(CwOperation):
                 return self.round_success(
                     f'overlay 已登记 {_pending_n} 项,交回外循环分发', wait=0.8)
 
+    def _handle_synthesis_overlay(self, match: CurrencyWarMatch
+                                  ) -> OperationRoundResult | None:
+        """合成确认浮层处置(决策动作 node 顶部,单一调用点;先于段 3 三处置与段序号置位)。
+
+        触发条件 = 本次访问观察 node 的识别结果为在场。**不拿状态容器该字段是不是读数
+        结构当触发条件**:该字段留着上一帧的值,商店开着与读不准的帧上不写——上一帧
+        在场时它就是一组旧坐标,拿字段判触发会在这种帧上按旧坐标再点一次。
+
+        处置不是备战期动作:不动 ``cw4_segment_serial``、不写续段 token;锁定态下段 3
+        的锁定出战本次不执行(锁定字段不动,浮层收起后的下一访问照常走)。访问内不设
+        第二个调用点——决策环里的重观察不写该字段,在那里查也接不住;访问中途出现的
+        浮层由本次访问结束后的下一访问接住。
+
+        连续未收起的出口:处置计数每执行一次 +1,进入时已达上限则不再点击、直接失败。
+        执行异常 / 策略异常走与决策环相同的通道。
+
+        Args:
+            match: 决策动作 node 入口取到的对局容器(``session`` 非 ``None``)。
+
+        Returns:
+            ``None`` = 本次访问不是浮层帧,原路径继续;其余 = 结束本次访问的结果。
+        """
+        if self._synthesis_overlay_state != STATE_PRESENT:
+            return None
+        counters = getattr(strategy_state_of(match.session), 'cw4_counters', None)
+        if not isinstance(counters, dict):
+            # 计数载体缺席不静默:照「缺席即跳过」写的话计数永远不涨,下面的有界出口不存在。
+            return self.round_fail(status='合成确认浮层处置计数载体缺席')
+        clicked = counters.get(CW4_KEY_SYNTHESIS_OVERLAY_CLICK, 0)
+        if clicked >= SYNTHESIS_OVERLAY_CLICK_MAX:
+            log.error('[cw!][prep] 合成确认浮层连续 %d 次处置后仍在场 → '
+                      'round_fail 交外循环失败连击链', clicked)
+            return self.round_fail(
+                status=f'合成确认浮层连续 {SYNTHESIS_OVERLAY_CLICK_MAX} '
+                       f'次处置后仍在场')
+        try:
+            action = match.strategy.decide_synthesis_overlay()
+        except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
+            log.warning(f'[cw!][director] decide_synthesis_overlay 异常: {e}')
+            return self.round_fail(status=f'策略决策异常: {e}')
+        if not isinstance(action, (CwActionSynthesisConfirmParam,
+                                   CwActionSynthesisCancelParam)):
+            log.warning(f'[cw!][director] 策略输出非合成浮层动作: '
+                        f'{type(action).__name__}')
+            return self.round_fail(status='策略输出非合成浮层动作(F3)')
+        key = action_key(action)
+        try:
+            round_result = self._act_execute_default(action)
+        except StopBrakeShortCircuit as e:
+            # 停机刹车:停机标志已设、动作未发出 → 交回外循环(语义同决策环同名分支)
+            log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
+            return self.round_success(f'停机刹车({e}),动作未发出,交回外循环', wait=1.0)
+        except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail(同决策环)
+            log.warning(f'[cw!][director] 执行异常 {key}: {e}')
+            return self.round_fail(status=f'执行异常 {key}: {e}')
+        # 点击已发出才计数:没发出的那几次各有自己的失败通道,不计进来——计进来会让上面
+        # 的失败文案把「点击根本没发出去」说成「处置后仍在场」。
+        counters[CW4_KEY_SYNTHESIS_OVERLAY_CLICK] = clicked + 1
+        return self._terminal_exit(action, key, action_op_class_for(action),
+                                   round_result)
+
     # ===== 已锁语义的现役载体位置:bench 空集守卫/合成特效窗门在
     # _observe 识别链内,免战牌次数递减在出战上报路径(start_battle
     # 上报时 consume_use),同节点去重在 cw_loop 备战分支插入位置 =====
@@ -1138,6 +1340,11 @@ class CwScreenPrep(CwOperation):
             # 原画面 op 入口清场代返回通道撤销):弹专家邀请函 = 新事实 →
             # 本访问交回,外循环按画面分发 CwScreenExpertInvite 选卡(分发判定单一源 = flow/outer_loop.md §2.2)。
             return self.round_success(f'{key} ✓(交回:专家邀请函弹窗分发)',
+                                      wait=op_cls.terminal_wait)
+        if op_cls is CwActionSynthesisConfirmOp or op_cls is CwActionSynthesisCancelOp:
+            # 合成确认浮层处置(观察 node 认到浮层 → 决策动作 node 顶部发出):浮层收起
+            # 后的备战画面要全量重读,本访问交回主循环重新观察。
+            return self.round_success('合成确认浮层已处理(交回外循环重观察)',
                                       wait=op_cls.terminal_wait)
         raise AssertionError(
             f'[cw][director] 非终结动作进入终结出口:{type(action).__name__}'

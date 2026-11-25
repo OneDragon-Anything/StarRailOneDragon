@@ -9,6 +9,13 @@
 传入,本模块不 import operations 树(两消费方均可 import 本模块、无循环,判据单一源
 禁散写的前提)。
 
+**对识别模块的函数内导入**(首例 = :func:`is_prep_like_frame` 的合成确认浮层段):
+合成确认浮层的识别函数备料时要取本模块的 ``_area_rect``,那个识别模块已经导入本模块;
+本模块反过来要用它时只在函数体内导入、不写进模块头,否则两头互相导入。该段的识别
+结果按帧缓存在本模块级(缓存的键、上限与理由见 :data:`_SYNTHESIS_OVERLAY_CACHE_MAX`)——
+只给 :func:`is_prep_like_frame` 这条路径用;其余消费面(备战画面 op、备战识别器、退出链
+判定、装备读帧刷新原语)直接调识别函数、不经过它。
+
 **区域单一真相源 = screen_info**(用户 2026-08-03):备战 ``currency_war_battle_prep.yml``
 (screen「货币战争-备战」)、简报 ``currency_war_briefing.yml``。改区域改 yml 即可,不动代码。
 本模块经 ``ctx.screen_loader`` 读 area 的 pc_rect。
@@ -19,6 +26,7 @@ screen_info 为真相源。
 from __future__ import annotations
 
 import re
+from collections import OrderedDict
 
 from cv2.typing import MatLike
 
@@ -231,22 +239,61 @@ UPPER_SCREENS: tuple[str, ...] = (
 _GOLD_INFO_ANCHOR_AREA: str = '标识-金币说明'
 _GOLD_INFO_ANCHOR_TEXT: str = '金币说明'
 
+#: 合成确认浮层识别的按帧缓存上限(条)。条目数与文字识别缓存同值、同口径:一帧内
+#: 多个钩子各调一次判定,同一帧只算一次;不同帧之间不复用结果,所以必须有上限,否则
+#: 缓存随对局帧数一直长。
+_SYNTHESIS_OVERLAY_CACHE_MAX: int = 32
+
+#: 合成确认浮层识别的按帧缓存(只给 :func:`is_prep_like_frame` 用):键 = 帧对象的
+#: ``id``,值 = (帧引用, 识别状态)。条目必须持帧引用——帧被回收后它的编号可能被新帧
+#: 复用,只按编号查会把上一帧的结果回给新帧;被持有的帧不会被回收,编号就不会被复用。
+#: 末位插入、从最旧一条起淘汰(``OrderedDict`` 的单个方法调用在解释器锁下原子:这道门
+#: 在对局线程和 analyze_screen 线程上都可能被调到)。
+_SYNTHESIS_OVERLAY_CACHE: OrderedDict[int, tuple[MatLike, str]] = OrderedDict()
+
+
+def _synthesis_overlay_state_of(ctx: SrContext, screen: MatLike) -> str:
+    """这一帧上合成确认浮层的识别状态(四态之一),按帧缓存。
+
+    对识别模块的导入放函数内(理由见模块头)。按钮模板或搜索矩形取不到时识别函数抛
+    的异常照常上抛,由调用方 :func:`is_prep_like_frame` 的既有写法接住(异常 = 非备战帧)。
+    """
+    key = id(screen)
+    cached = _SYNTHESIS_OVERLAY_CACHE.get(key)
+    if cached is not None:
+        return cached[1]
+    from sr_od.application.currency_war.obs import cw_synthesis_overlay_obs
+    state = cw_synthesis_overlay_obs.read_synthesis_overlay_of(ctx, screen).state
+    _SYNTHESIS_OVERLAY_CACHE[key] = (screen, state)
+    while len(_SYNTHESIS_OVERLAY_CACHE) > _SYNTHESIS_OVERLAY_CACHE_MAX:
+        _SYNTHESIS_OVERLAY_CACHE.popitem(last=False)
+    return state
+
 
 def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
-    """帧态判据(两段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
+    """帧态判据(三段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
     get_match_screen_name,任一命中 → False(上层画面在场 = 非备战帧;
     上层不排除时曾发生选择伙伴帧被放行误拖已实测确认);**全部未命中后**再判
-    备战/开商店双屏(id_mark 体系,框架 screen_utils)→ True;过渡帧/结算/
+    备战/开商店双屏(id_mark 体系,框架 screen_utils);屏名是备战时再判
+    合成确认浮层——在场、成对配对有歧义、有按钮候选但配不成对,任一即 False,
+    只有不在场才 True;屏名是开商店时不识别浮层,直接 True。过渡帧/结算/
     事件/动画帧 → False。
+
+    第三段的理由:合成确认浮层是备战画面的子态,在场时备战的识别标志照样全中;
+    该帧的装备栏读数已知失真(产物预览格会被读成已入库),采集停机钩子与读数冲突
+    仲裁落在这一帧上,采到的、仲裁的都是失真读数。开商店的帧不读右侧装备栏
+    (商店开着时不识别、不处置合成确认浮层的同一条口径)。
 
     用途:**采集·停机钩子自检**——埋在 reader 深处的钩子
     (summon/bookcard/layout/star)任何调用路径下先过本判据,
     过渡帧不触发(防误采/误停;动画帧实证形态)。
     OCR 成本:上层判定与备战判定同帧复用全图 OCR 缓存(crop_first=False),
-    对抗报告已证成本可忽略。best-effort:识别异常 → False(保守,不触发钩子)。
+    对抗报告已证成本可忽略;浮层识别的模板匹配按帧缓存,同帧只算一次。
+    best-effort:识别异常 → False(保守,不触发钩子)。
     """
     try:
         from one_dragon.base.screen import screen_utils
+        from sr_od.application.currency_war.obs import cw_synthesis_overlay_obs
         for _upper in UPPER_SCREENS:
             if screen_utils.get_match_screen_name(
                     ctx=ctx, screen=screen,
@@ -257,7 +304,12 @@ def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
             ctx=ctx, screen=screen,
             screen_name_list=[SCREEN_NAME, SHOP_SCREEN_NAME],
             crop_first=False)
-        return name is not None
+        if name is None:
+            return False
+        # 「或」的短路即口径:屏名是开商店时后半句不求值,不识别浮层;屏名是备战时才识别,
+        # 且只有浮层不在场才算备战帧。
+        return name != SCREEN_NAME or _synthesis_overlay_state_of(
+            ctx, screen) == cw_synthesis_overlay_obs.STATE_ABSENT
     except Exception:   # noqa: BLE001  判据 best-effort;异常=不触发
         return False
 
