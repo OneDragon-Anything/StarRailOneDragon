@@ -334,23 +334,6 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=21,
         recovery_exit=RECOVERY_CLOSE,
     ),
-    # 合成确认浮层(2026-11-19 离线建档):装备拖装备发起合成后的 ✓/✕ 确认,
-    # 驻留不自动消失且期间游戏丢弃浮层外全部输入(全局模态阻断,框架此前全盲)。
-    # semantic=system(流程性确认,非选卡决策——它是已发起动作的收尾);
-    # closable=False 主动裁定:确认即消耗(环入口自动点 ✓ = 无策略感知的消耗性
-    # 动作,禁进清场派生集一键关);system 类不进 bail 扫描集(bail_tag='')。
-    # 入口判据 = 双锚其一(op 内接管面)/双锚全中(分发),宽窄不对称申报见
-    # 收尾 op docstring。
-    OverlaySpec(
-        screen_name='货币战争-备战-合成确认',
-        anchor_area='按钮-合成浮层通过',
-        anchor_area_alt='按钮-合成浮层取消',
-        semantic=SEMANTIC_SYSTEM,
-        handler_id='CwScreenSynthesisConfirm',
-        close_action=CLOSE_ACTION_HANDLE,
-        dispatch_priority=22,
-        recovery_exit=RECOVERY_HANDLE,
-    ),
     # 备战-奇遇介绍浮层:进入备战时压在备战界面上的展示型浮层(本局奇遇的伙伴
     # 与效果说明,点空白关闭,无选择分支)。备战两识别标志(购买经验/出战)不被
     # 它盖住 → 外循环穿透判定照样派发备战决策环;本条不进分发、不设 handler,
