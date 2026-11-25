@@ -45,8 +45,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import (
     PREP_DRAG_SETTLE_WAIT_S,
-    drag_overlay_block_status,
-    prep_drag_overlay_gate,
     row_drag_points,
 )
 from sr_od.application.currency_war.sim import cw_sim_ports
@@ -219,15 +217,6 @@ class CwActionToolUseOp(CwOperation):
             tgt_desc = f'{action.row}-{action.slot}'
         start = Point(int(action.tool_cx), int(action.tool_cy))
         if cw_sim_ports.mechanical_io_allowed():
-            # 浮层守卫(执行前输入契约拒绝):合成确认浮层/角色详情面板在场
-            # 时拖拽被游戏静默吞或退化为点卡开面板,先拦(动作没发出,受阻码
-            # 走回执映射)。char/equip 两分支共用本段 = 分支前统一。
-            # sim 门内 = sim 零触及。
-            overlay_hit = prep_drag_overlay_gate(self)
-            if overlay_hit is not None:
-                log.info('[cw][tool] 浮层在场(%s)→ 拖拽未发出', overlay_hit)
-                return self.round_fail(
-                    status=drag_overlay_block_status(overlay_hit))
             # 实机机械段(拖拽链 = 穿装批权威链:mouse_move → 拖前固定
             # 等待 → 单次拖拽 duration 1.5 → 拖后固定等待;等待全部固定
             # 时长常量,非判效)。

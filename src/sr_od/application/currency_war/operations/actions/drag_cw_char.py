@@ -95,10 +95,6 @@ class DragCwChar(CwOperation):
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
     STATUS_DRAGGED: ClassVar[str] = '已拖动'
     STATUS_BAD_SLOT: ClassVar[str] = '槽位参数非法或 screen_info 读不到'
-    # 浮层守卫受阻前缀(round_fail status 首段;全文案 = prep_actions
-    # drag_overlay_block_status 按命中标识拼装,受阻码登记见
-    # _PREP_RECEIPT_BLOCK_CODES)
-    STATUS_OVERLAY_BLOCKED: ClassVar[str] = '未执行:浮层在场'
 
     def __init__(self, ctx: SrContext, from_row: str, from_idx: int,
                  to_row: str, to_idx: int,
@@ -175,23 +171,10 @@ class DragCwChar(CwOperation):
                         f'——核对 back_slot_count 声明档={self.back_slot_count})')
             return self.round_fail(status=DragCwChar.STATUS_BAD_SLOT)
         # 机械段走守卫宿主(失焦先激活 + sim 装配静默;节点内惰性导入,
-        # 宿主对 drag_cw_char 是函数级导入,模块级互导会成环向;
-        # 模块头依赖面不变——sim port 与守卫同块惰性导入)。
+        # 宿主对 drag_cw_char 是函数级导入,模块级互导会成环向)。
         from sr_od.application.currency_war.prep_actions import (
             drag_char_guarded,
-            drag_overlay_block_status,
-            prep_drag_overlay_gate,
         )
-        from sr_od.application.currency_war.sim import cw_sim_ports
-        # 浮层守卫(执行前输入契约拒绝):合成确认浮层/角色详情面板在场时
-        # 拖拽被游戏静默吞,先拦(动作没发出,交调用方重判)。置于机械 IO
-        # 门内 = sim 零触及。
-        if cw_sim_ports.mechanical_io_allowed():
-            overlay_hit = prep_drag_overlay_gate(self)
-            if overlay_hit is not None:
-                log.info(f'[cw-drag] 浮层在场({overlay_hit})→ 拖拽未发出')
-                return self.round_fail(
-                    status=drag_overlay_block_status(overlay_hit))
         drag_char_guarded(self, self.ctx, src, dst)
         log.info(f'[cw-drag] {self.from_row}-{self.from_idx} → {self.to_row}-{self.to_idx}'
                  f' ✓ (中心拖 + hold0,机械发出)')
