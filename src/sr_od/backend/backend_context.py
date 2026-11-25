@@ -61,6 +61,7 @@ from sr_od.backend.schemas import (
     WindowStatus,
 )
 from sr_od.backend.screen_recognizer_scan import get_recognizer
+from sr_od.context.frame_source import offline_frame
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -920,6 +921,9 @@ class SrBackendContext:
         screenshot 传入 → 解析指定截图,**无需游戏窗口就绪**:绝对路径按路径读,
         纯名字到 ``.debug/images/<名字>.png`` 读;读不到抛 ``AnalyzeScreenError``
         (带解析后完整路径)。**不回写**识别状态(离线 / 可能是旧图,不污染实时识别)。
+        传图路径下整段识别链按**离线帧**跑(``sr_od.context.frame_source.offline_frame``):
+        不触发停机钩子、不写留证图、不往运行中对局的账本写行、不回抓实时窗口——
+        返回的 ``extras`` 是图里自己的值,不是当前画面的值。
 
         save_image=True(**仅实时模式生效**)→ 把截到的内存图落盘到
         ``.debug/sr_od_mcp/screenshot/``,路径写入 ``screenshot_path`` 返回,
@@ -977,36 +981,41 @@ class SrBackendContext:
                             pc_rect=[int(r.x), int(r.y), int(r.x) + int(r.w), int(r.y) + int(r.h)])
                     for r in ocr_result_list
                 ]
-            screens = find_screen_matches(self._ctx, image)
-            if write_back and screens and screens[0].is_precise:
-                self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
+            # 离线帧打标点是本入口且只在这里打(实时分支不进块):打标范围 = 从画面匹配
+            # 起到识别器止——下游的停机钩子 / 补采门 / 留证汇点 / 状态容器写端都靠
+            # frame_is_live() 判定,取帧与存盘(只在实时分支发生)不在块内。
+            offline_cm = offline_frame() if not write_back else contextlib.nullcontext()
+            with offline_cm:
+                screens = find_screen_matches(self._ctx, image)
+                if write_back and screens and screens[0].is_precise:
+                    self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
 
-            # pc_alt:精准命中画面建档的锁光标标记;模糊候选/无命中恒 False
-            # (候选画面未确认,按画面识别纪律不应直接按坐标点击)。
-            # screen_info_map 查不到按 False 防御(理论不可达:候选名来自 loader 本身)。
-            pc_alt = False
-            if screens and screens[0].is_precise:
-                screen_info = self._ctx.screen_loader.screen_info_map.get(screens[0].screen_name)
-                if screen_info is not None:
-                    pc_alt = screen_info.pc_alt
+                # pc_alt:精准命中画面建档的锁光标标记;模糊候选/无命中恒 False
+                # (候选画面未确认,按画面识别纪律不应直接按坐标点击)。
+                # screen_info_map 查不到按 False 防御(理论不可达:候选名来自 loader 本身)。
+                pc_alt = False
+                if screens and screens[0].is_precise:
+                    screen_info = self._ctx.screen_loader.screen_info_map.get(screens[0].screen_name)
+                    if screen_info is not None:
+                        pc_alt = screen_info.pc_alt
 
-            # —— 精准命中 → 按画面查表跑额外识别器(无注册则 None,稳态零额外开销)——
-            #    整个查表+调用都包在 try 里(含 get_recognizer 触发的惰性首扫):任一步异常 → extras=None,绝不中断 analyze。
-            #    extras_doc(字段说明)在 recognize 调用前先取:识别器异常时 extras=None 但说明照常返回,调用方可对照排障。
-            extras: dict | None = None
-            extras_doc: dict[str, str] | None = None
-            if screens and screens[0].is_precise:
-                try:
-                    recognizer = get_recognizer(self._ctx, screens[0].screen_name)   # 惰性首扫在此触发;扫描内部已 try/except 记 failures 不抛,但兜底防 rglob 等意外
-                    if recognizer is not None:
-                        extras_doc = getattr(recognizer, 'extras_doc', None) or None   # 声明为空 dict → None(稀疏返回)
-                        screen_info = self._ctx.screen_loader.get_screen(screens[0].screen_name)   # 精准命中保证该画面已建档故能取到(非 Optional);理论边界异常由本 try 兜成 extras=None
-                        extras = recognizer.recognize(self._ctx, image, screen_info)
-                        if extras is not None:
-                            json.dumps(extras)   # 提前校验 JSON 可序列化,违例走下面 except(extras=None),不让坏值漏到序列化层拖垮响应
-                except Exception as e:  # noqa: BLE001 recognizer 异常(含扫描/读取/返回非 JSON 可序列化值)绝不中断 analyze
-                    log.warning(f'recognizer[{screens[0].screen_name}] 异常: {e}')
-                    extras = None
+                # —— 精准命中 → 按画面查表跑额外识别器(无注册则 None,稳态零额外开销)——
+                #    整个查表+调用都包在 try 里(含 get_recognizer 触发的惰性首扫):任一步异常 → extras=None,绝不中断 analyze。
+                #    extras_doc(字段说明)在 recognize 调用前先取:识别器异常时 extras=None 但说明照常返回,调用方可对照排障。
+                extras: dict | None = None
+                extras_doc: dict[str, str] | None = None
+                if screens and screens[0].is_precise:
+                    try:
+                        recognizer = get_recognizer(self._ctx, screens[0].screen_name)   # 惰性首扫在此触发;扫描内部已 try/except 记 failures 不抛,但兜底防 rglob 等意外
+                        if recognizer is not None:
+                            extras_doc = getattr(recognizer, 'extras_doc', None) or None   # 声明为空 dict → None(稀疏返回)
+                            screen_info = self._ctx.screen_loader.get_screen(screens[0].screen_name)   # 精准命中保证该画面已建档故能取到(非 Optional);理论边界异常由本 try 兜成 extras=None
+                            extras = recognizer.recognize(self._ctx, image, screen_info)
+                            if extras is not None:
+                                json.dumps(extras)   # 提前校验 JSON 可序列化,违例走下面 except(extras=None),不让坏值漏到序列化层拖垮响应
+                    except Exception as e:  # noqa: BLE001 recognizer 异常(含扫描/读取/返回非 JSON 可序列化值)绝不中断 analyze
+                        log.warning(f'recognizer[{screens[0].screen_name}] 异常: {e}')
+                        extras = None
 
             return AnalyzeScreenResult(ocr_texts=ocr_texts, screens=screens,
                                        screenshot_path=saved_path,

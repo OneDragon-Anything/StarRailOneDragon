@@ -182,7 +182,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="分析游戏画面"))
     def analyze_screen(
-        screenshot: Annotated[str | None, Field(description="截图来源:None=实时截当前画面(需游戏在线);传路径=读该图(无需游戏在线);纯名字=读 .debug/images/<名字>.png")] = None,
+        screenshot: Annotated[str | None, Field(description="截图来源:None=实时截当前画面(需游戏在线);传路径=读该图(无需游戏在线);纯名字=读 .debug/images/<名字>.png。传图路径下识别链按离线帧跑(不停机、不留证、不写对局账本、不回抓实时窗口),extras 是图里自己的值")] = None,
         save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供视觉模型复用;离线模式忽略")] = False,
         include_ocr: Annotated[bool, Field(description="是否返回全量散落 OCR 文本(未归类到任何 area 的);默认 False 只回画面匹配+area 命中,读屏幕上的零散文字时才开")] = False,
     ) -> AnalyzeScreenOut:
@@ -191,7 +191,11 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
         - 识别内容为确认过的游戏语义，相信返回内容的语义说明；
         - 依然存在未建档，或传统算法不方便识别的内容未在本方法返回；
         - 因此，识别内容不代表画面的全部，依然要使用大模型读取图片进行完整理解；
-        - 返回坐标是精准坐标，相信本方法坐标而不是大模型读图的目测坐标。
+        - 返回坐标是精准坐标,相信本方法坐标而不是大模型读图的目测坐标。
+
+        传图路径(screenshot 传路径 / 纯名字)下识别链按离线帧跑:不触发停机钩子、
+        不写留证图、不往运行中对局的账本写行、不回抓实时窗口;返回的 extras
+        (如 gold、shop_cards)是该图自己的值,不是当前画面的值。
         """
         return AnalyzeScreenOut.from_backend(backend.analyze(screenshot, save_image, include_ocr))
 

@@ -80,6 +80,7 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     identify_character,
     resolve_char_name,
 )
+from sr_od.context.frame_source import frame_is_live
 from sr_od.context.sr_context import SrContext
 
 
@@ -169,12 +170,15 @@ def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
     不一致(计数器在跳)→ 取**末帧**(新帧更接近当下;入账计数器单调向上,末帧
     ≥ 首帧即入账后真值)+ ``obs_conflict('gold', ...)` 保留证据 + warning(不静默:
     采了哪个值、为何采,判读侧可见)。补采帧经 ``_reread_frame`` 取得(控制器截图口
-    返回 ``(时刻, 帧)`` 元组,取帧口径单一源);控制器不可得(离线/单测)退单帧读,
-    行为与修前完全一致。
+    返回 ``(时刻, 帧)`` 元组,取帧口径单一源);控制器不可得(离线/单测)**或当前帧
+    非实时帧**(``frame_is_live()`` 为假)退单帧读——一张传入的历史图没有「稍后再读」
+    这回事,不睡、不截屏,直接返回它自己的读数。
     """
     v = read_gold_opt(ctx, screen)
     if v is None:
         return None
+    if not frame_is_live():
+        return v   # 离线帧:单帧读即全部能力,不补采实时窗口
     controller = getattr(ctx, 'controller', None)
     if controller is None or not hasattr(controller, 'screenshot'):
         return v   # 离线/单测:无真控制器,单帧读即全部能力
@@ -1419,9 +1423,15 @@ def _reread_frame(ctx: SrContext) -> MatLike | None:
     None),与观察层其余「裸帧」口径不同。取帧口径只住本函数:重读门各自解包会漏
     ——元组当帧传读链,切片异常被门的 ``except Exception`` 吞成「重读不可得」,
     双帧确认静默退化成单帧且无报错。``_debounce_cap`` / ``_confirm_over_cap`` /
-    ``read_gold_settled`` / ``cw_settlement_obs._read_settle_gold_gated`` 共用;
-    新增重读门不得各自解包。
+    ``read_gold_settled`` / ``read_shop_cards`` / ``cw_settlement_obs._read_settle_gold_gated``
+    共用;新增重读门不得各自解包。
+
+    当前帧非实时帧(``frame_is_live()`` 为假)时**不调截图口、直接返 None**:本函数
+    是全部重读门的单一取帧口,离线读一张历史图时任何门都不该回抓实时窗口;
+    调用方按既有「重读不可得」分支走。
     """
+    if not frame_is_live():
+        return None
     try:
         shot = ctx.controller.screenshot()
     except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
@@ -2118,6 +2128,12 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     判定成立前,0.8s 后新截屏重读一次——两帧逐槽一致才接受;不一致 =
     动画/淡入过渡帧,以第二次为准并保留证据。重观察上限一次,不构成等待环。
 
+    **离线口径**(``frame_is_live()`` 为假,即 ``SrBackendContext.analyze`` 读图路径传
+    进来的历史图):两处补采(收起标志首判不中后的重判、终判稳定门)都不睡、不截实时
+    窗口,重读帧经 ``_reread_frame`` 取得——非实时帧下它返 None,于是收起标志首判不中
+    的图 ``shop_cards`` 返回 None(无法重判,与截屏失败同形);其余图返回首读牌面。
+    返回的牌面是该图自己的,不是当前画面的。
+
     D-55 由 OCR 改 SIFT:OCR 牌名对开拓者(玩家自定义名)读不到/匹配错;
     模板目录名须用规范名「开拓者·记忆/欢愉」。faction
     语义:``'?'``=未知(name 空/不在注册表);``''``=已知
@@ -2142,7 +2158,9 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
             return None
     elif _collapse_area is not None:
         # 无全帧结果的调用方:二值化裁剪门(3 通道回填,实机四败位),
-        # 首判 miss → 0.6s 单次重判(过渡帧防抖)。
+        # 首判 miss → 0.6s 单次重判(过渡帧防抖)。离线帧不睡不截屏:重读帧经
+        # ``_reread_frame`` 取得,非实时帧下它返 None → 走「第二帧不可得 → None」
+        # 分支(与截屏失败同形:无法重判,按店未开处理)。
         from one_dragon.base.screen.screen_utils import (
             find_area_in_screen,
         )
@@ -2153,9 +2171,9 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
             _bin_screen = _cv2.cvtColor(_bin_screen, _cv2.COLOR_GRAY2BGR)
         if find_area_in_screen(ctx, _bin_screen, _collapse_area).value != 1:
             import time as _time
-            _time.sleep(0.6)
-            _shot2 = ctx.controller.screenshot()
-            _frame2 = (_shot2[1] if isinstance(_shot2, tuple) else _shot2)
+            if frame_is_live():
+                _time.sleep(0.6)
+            _frame2 = _reread_frame(ctx)
             if _frame2 is None:
                 return None
             _bin2 = cv2_utils.to_binary(_frame2, threshold=127)
@@ -2253,12 +2271,13 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     # 终判稳定门:易误判判定(全 empty/含 unknown)强制重观察一次——
     # 防淡入帧亮度<50 被误判 empty → 买光店假象 → 误关店。不一致 =
     # 过渡帧,以第二次为准;上限一次,不构成等待环。
+    # 离线帧不睡、重读帧经 ``_reread_frame``(非实时帧返 None)→ 保首读。
     import time as _time
 
-    _time.sleep(0.8)
-    # controller.screenshot 返回 (时间戳,帧|None) 元组(非帧本体),须解包;
-    # 帧缺席(截取失败)= 无法重观察,保首读不猜。
-    _ts2, _frame2 = ctx.controller.screenshot()
+    if frame_is_live():
+        _time.sleep(0.8)
+    # 重读帧缺席(截取失败 / 离线帧)= 无法重观察,保首读不猜。
+    _frame2 = _reread_frame(ctx)
     slots2 = _read_once(_frame2) if _frame2 is not None else slots
     return slots2
 

@@ -21,6 +21,7 @@ from cv2.typing import MatLike
 from one_dragon.utils import cv2_utils, log_utils
 from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.kernel import cw_telemetry_exit
+from sr_od.context.frame_source import frame_is_live
 
 _log = log_utils.log
 # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬基准)
@@ -87,11 +88,19 @@ def cw_log(
     _log.info(f'{prefix}{tags} {body}{tail}'.strip())
 
 
-def cw_shot(image: MatLike, name: str) -> str:
+def cw_shot(image: MatLike, name: str) -> str | None:
     """存截图(crop / 整图,RGB)到 ``shots/<name>.png``,返截图名(供 ``cw_log shot=``)。
 
     同名覆盖(最新);路径为运行时截图目录下 ``<name>.png``。
+
+    当前帧非实时帧(``frame_is_live()`` 为假,即 ``SrBackendContext.analyze`` 读图路径传
+    进来的历史图)时不建目录、不写文件,返 None——留证汇点统一在此拦:调用方分散在
+    多个文件(装备读链 / 停机钩子等),逐点加判定会漏,且将来新增的留证点还会漏。
+    ``cw_log`` 对 ``shot=None`` 本就省略尾段,调用方零改动;不返「假文件名」,
+    免得排障者按 ``shot=`` 去 ``shots/`` 找不到图。
     """
+    if not frame_is_live():
+        return None
     _SHOT_DIR.mkdir(parents=True, exist_ok=True)
     cv2_utils.save_image(image, str(_SHOT_DIR / f'{name}.png'))
     return f'{name}.png'
@@ -103,7 +112,12 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
     视觉相同的只存一次,不同视觉(如不同星级 / 不同总伤害)各存一份。返文件名 / None(去重跳过或失败)。
     **采集钩子**:标定尚无 reader 的字段(星级 / 结算总伤害 / difficulty / streak 语义)——
     运行时采样本,离线设计 reader;**reader 设计好后直接删各调用处钩子**(临时代码,不留开关)。
+
+    当前帧非实时帧时不落盘,返 None(与「已采过 / 失败」同形,调用方据此不发停机);
+    理由同 ``cw_shot``。
     """
+    if not frame_is_live():
+        return None
     try:
         _h = hashlib.md5(image.tobytes()).hexdigest()[:8]
         fp = _SHOT_DIR / f'{label}__{_h}.png'
@@ -166,10 +180,21 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         内只存一张**——慢性状态冲突截图节流,防每帧 1.7MB 积压)
     :param verdict: 仲裁结果描述(如 '保旧-单调守卫'/'采新-XP确认'/'待研')
     :param ctx: 附加上下文(plane/round/source/note...)
+
+    当前帧非实时帧(``frame_is_live()`` 为假,即 ``SrBackendContext.analyze`` 读图路径传
+    进来的历史图)时:``screen`` 当作 None(不进截图节流、不存图)、跳过「向对局账本写
+    证据行」——一张旧图的读数冲突不属于正在跑的那一局的证据,入账会污染该局的判读;
+    末尾日志行照打,但 ``attn`` 降为 False 并带 ``offline=1``(离线读历史帧产生的冲突
+    不是在线异常,不与在线冲突同形,免得哨兵 / 监控按 ``[cw!]`` 检索时误报)。
+    在此拦而不逐个调用方加判定:离线识别链可达的调用点分散在三个文件五处以上,
+    且将来新增的留证钩还会漏。实时帧逐位不变。
     """
     import datetime
     import time as _time
     try:
+        live = frame_is_live()
+        if not live:
+            screen = None
         shot = None
         if screen is not None:
             _key = (field, verdict)
@@ -193,22 +218,23 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
         # 一致。渠道签名(①类属):
         # actor = 本仲裁汇点,行内身份可对账(签名必填纪律)。
-        _gs = cw_telemetry_exit.obs_event_board()
-        if _gs is not None:
-            with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    ChannelSig,
-                )
-                _gs.note_obs_event(
-                    'arbitrate', str(field),
-                    {'old': old, 'new': new, **ctx},
-                    verdict=str(verdict or ''),
-                    obs_phase=str(_OBS_PHASE or ''),
-                    sig=ChannelSig(family='obs', actor='obs_conflict',
-                                   mode='read'),
-                    evidence_refs=([{'shot': str(shot)}] if shot else []))
-        cw_log('obs', 'conflict', field, attn=True, old=old, new=new,
-               verdict=verdict, shot=shot)
+        if live:
+            _gs = cw_telemetry_exit.obs_event_board()
+            if _gs is not None:
+                with contextlib.suppress(Exception):
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        ChannelSig,
+                    )
+                    _gs.note_obs_event(
+                        'arbitrate', str(field),
+                        {'old': old, 'new': new, **ctx},
+                        verdict=str(verdict or ''),
+                        obs_phase=str(_OBS_PHASE or ''),
+                        sig=ChannelSig(family='obs', actor='obs_conflict',
+                                       mode='read'),
+                        evidence_refs=([{'shot': str(shot)}] if shot else []))
+        cw_log('obs', 'conflict', field, attn=live, old=old, new=new,
+               verdict=verdict, shot=shot, **({} if live else {'offline': 1}))
         # gold_delta 分级消费(审计建议,用户裁决落地):|gap|>10 升级为
         # warning 告警行(检索标记 ``[cw!][alarm][gold_delta]``,哨兵/监控 grep 本行
         # 即接;≤10 维持留存证据)。账面期望 vs 实读的大额错位意味着金模型已系统性

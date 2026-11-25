@@ -61,6 +61,7 @@ from sr_od.application.currency_war.obs.currency_war_char_id import (
 )
 from sr_od.application.currency_war.obs.cw_equipment import read_equipped_below
 from sr_od.config.character_const import get_character_by_id
+from sr_od.context.frame_source import frame_is_live
 from sr_od.context.sr_context import SrContext
 
 # 开拓者命途形态模板归一表(模板目录名 → 现役规范名)。模板库的
@@ -925,7 +926,16 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
     且金不动(实机局:黄泉槽整槽丢读后 2 张连发全拒
     run_20260914_210200 停机钩子 exec_fail_mismatch)。本函数即原旧路径
     内联段原样抽出,双路径共用单一源。
+
+    离线帧(``frame_is_live()`` 为假,即 ``SrBackendContext.analyze`` 读图路径传进来的
+    历史图):**只记一行日志、不停机不留证**。判定放在面板守卫之前——离线帧下后面
+    每一步(面板守卫 OCR、物品槽识别、留证存图)要么白花时间要么会写盘,没有一步该跑。
+    跳过日志 ``[cw-hook][summon] 离线帧`` 每帧一行(不要求先命中候选槽),是验证「钩子
+    确实走到了离线早退」的取证锚点,不是噪声。停机只在实时帧发生。
     """
+    if not frame_is_live():
+        log.info('[cw-hook][summon] 离线帧:占用未识别判定跳过(不停机、不留证)')
+        return
     # [触发=「占用且全部识别路径不认识」= 兜一切未知物品变体,比临时建档
     # 面宽——真删了,下个新物品变体会被当空槽乱操作,比停机贵;保留,识别
     # 覆盖新变体时自然不再触发]

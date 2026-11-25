@@ -86,6 +86,7 @@ from typing import TYPE_CHECKING
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
+from sr_od.context.frame_source import frame_is_live
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
@@ -434,8 +435,15 @@ def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int
 
     返回三次读数序列 ``[first, r2, r3]``(None = 该次不可读,视为不一致)
     ——保留证据/判读消费。
+
+    当前帧非实时帧(``frame_is_live()`` 为假,即 ``SrBackendContext.analyze`` 读图路径传
+    进来的历史图)时返回 ``[first, None, None]``——与「重读不可得」同形,调用方按既有
+    「三次不一致 → 退公式值」语义处理;不睡那两段 1 秒(历史图没有「稍后再读」,
+    生产上下文也没有 ``screenshot`` 属性,睡了也只是白睡)。
     """
     readings = [first_cv]
+    if not frame_is_live():
+        return [first_cv, None, None]
     try:
         import time as _time
         for _ in range(2):
@@ -533,7 +541,9 @@ def _observe_back_layout_to_container(ctx, n: int | None,
       同口径,防超集近似被当精确值消费;9 档已建档,直读无标记);
     - 裁决未知帧(n_raw=None:双弃权/防抖未过)不写——宁缺勿造,状态容器
       frozen 帧语义保持上一已知值,禁把兜底运行值当观察;无 session
-      (离线/测试桩/MCP 纯读)不写;
+      (离线/测试桩/MCP 纯读)**或非实时帧**(``frame_is_live()`` 为假,即
+      ``SrBackendContext.analyze`` 读图路径传进来的历史图)不写——一张旧图的
+      档位不属于正在跑的那一局,写进去会污染该局的决策层后排格数上限供数;
     - best-effort:状态容器写失败不反噬选档主链(记录层故障不毒化决策链)。
     """
     if n is None or n_raw is None:
@@ -541,6 +551,8 @@ def _observe_back_layout_to_container(ctx, n: int | None,
         # 防抖失败会回退 formula_raw,不会出现 n_raw=None):兜底运行档 8
         # 禁以「无 superset 标记的精确值」形态入状态容器(宁缺勿造;上行
         # docstring 语义即此,守卫兑现)。
+        return
+    if not frame_is_live():
         return
     try:
         match = getattr(ctx, 'cw_match', None)
