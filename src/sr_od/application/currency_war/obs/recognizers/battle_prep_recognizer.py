@@ -337,16 +337,18 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     并发安全同模块 docstring:纯读(不写 self. / 全局 / session);
     装备立绘模板经 ensure_* 幂等加载。读不到的字段 None(不伪造)。
 
-    :param full_read: 是否做完整读(含部署行/血量/晶矿)。开商店画面传
+    :param full_read: 是否做完整读(含部署行/血量/晶矿/右侧装备栏)。开商店画面传
         False——商店牌行盖住部署计数与血量、面板遮挡使立绘与晶矿识别
         不可靠(实机:行读恒缺/残缺,晶矿检出全是商品图标误报),这些字段
         **整键省略**(键不出现,与「读到空」区分;用户裁定:不识别的字段
         不该出现在返回里),要完整读数用备战画面(收店后);跳过还省 SIFT 开销。
+        右侧装备栏在商店开着时**不读**(用户裁定:商店开的画面不识别右侧装备),
+        同样整键省略。
 
     Returns:
         dict(full_read=True 时键集 = ``PREP_EXTRAS_DOC``;开商店画面省略
         front_line/back_line/deploy_count/deploy_cap/team_size_over_cap/
-        hp/reward_ores 等遮挡不可靠键,
+        hp/reward_ores/owned_equips 等遮挡不可靠键,
         开商店识别器在此基础上叠加 shop_cards / refresh_probs)。
     """
     omit_keys = frozenset() if full_read else frozenset({
@@ -395,9 +397,12 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     # owned 装备栏(右侧 区域-道具装备,read_equips SIFT;装备+消耗品混排,返名+位置,category 区分装备 vs 消耗品)
     # 前置契约:本 reader 仅在备战族画面识别命中后生成 extras,
     # 输入帧已是干净备战(非干净不识别的判定在外层建档识别),read_equips 无画面守卫。
+    # 商店开着时不读(full_read=False):用户裁定商店开的画面不识别右侧装备,与同函数里
+    # 部署行装备的既有写法一致。owned_equips 保持 None,该键由下方省略集删掉——返回的
+    # 键集与各键取值不变,变的只是不再做这次读取。
     sift_templates = ensure_equip_sift_templates(ctx)
     owned_equips: list[dict] | None = None
-    if sift_templates is not None:
+    if full_read and sift_templates is not None:
         _owned: list[dict] = []
         for eq_name, eq_pos, eq_inliers in read_equips(image, sift_templates):
             eq_info = get_equip(eq_name)
@@ -509,7 +514,9 @@ PREP_EXTRAS_DOC: dict[str, str] = {
              '{kind: unit/supply_box/tome/bookcard/empty, unit: Unit dict 或 null}'
              '+ capacity=9;unit 槽元素 = char_id/star/equips/slot,备战席无 below icon→equips 恒 [];'
              '占位物品槽 kind 识别期细分;空读→None)',
-    'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};开商店画面整键省略(用户裁定:商店态无需装备栏,完整读数收店后取);'
+    'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};'
+                    '开商店画面不读右侧装备栏、整键省略(用户裁定:商店开的画面不识别右侧装备,'
+                    '完整读数收店后取);'
                     'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
                     'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
     'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=槽 rect 几何中心'
