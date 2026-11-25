@@ -3,7 +3,7 @@
 数据模型(Equipment / EQUIPMENTS / get_equip)在 ``cw_equipment_data``
 (生成器 = ``skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py``;该生成文件为单一源)。
 本文件含:装备区**逐格分类**(``read_equip_grid`` / ``read_equips`` / ``read_equip_count``)
-与穿戴装备 TM 识别(``read_equipped_below``)。
+与穿戴装备 TM 识别(``read_equipped_below``:头像下方小图标,峰分 + 峰尖锐度两道门)。
 **拆分目的(R16 P0-1)**:生成器只写 ``cw_equipment_data``,永不覆盖本文件。
 
 装备区识别演进:全域 SIFT(单应变换天然单实例,同模板多格重复只锁一格 → 占用召回 62%)
@@ -566,13 +566,32 @@ def _check_owned_order(
 # ===== 穿戴装备识别(below-avatar icon;multi-scale TM 替 SIFT)=====
 # below-avatar icon = 角色已穿装备的小图标(头像下方)。**icon 固定 ~32px,不随装备数变**;
 # SIFT patch 天花板对 32px 小 icon 失效 → multi-scale TM(98px 模板缩到 ~32px)+ NMS(同位置取最高,
-# 防合成材料误匹配:滑轮鞋/折叠小刀同 icon 位置)。实测:3件全中 0.745-0.781 @ scale0.33;
-# threshold 0.6 baseline。
+# 防合成材料误匹配:滑轮鞋/折叠小刀同 icon 位置)。
+# 命中判据 = 两道门(单看分数不够:空槽底板偏蓝时「碎星斩舰刀」的背景假峰能到 0.64,而真图标「火力风暴潮」
+# 只有 0.59,分数分不开两者):① 峰分 ≥ _EQUIP_TM_ACCEPT;② 峰尖锐度 ≥ _EQUIP_TM_PEAK_SHARP。尖锐度 = 峰值减去
+# 相关图上距峰 _EQUIP_TM_PEAK_RING 环带内的最大值——真图标是定位到 32px 小方图上的尖峰,背景花纹与模板的
+# 相关是宽泛的,平移几像素分数几乎不掉。标定依据与回归样本见 sr-od-test/test/sr_od/application/currency_war/obs/test_cw_equipment.py。
 _EQUIP_TM_SCALES: tuple[float, ...] = (0.30, 0.33, 0.35, 0.37)  # 98px→29-36px;icon 32-34px 随位置变(梯形视角:前排~32px/后排最右~34px)
 # below-avatar icon 横排布局:icon 相对 below cx 的 offset,件数决定。
 # 1件{0} / 2件{-21,+21} / 3件{-43,0,+43};候选点(5个)覆盖所有可能。
 _EQUIP_CANDIDATES: tuple[int, ...] = (-43, -21, 0, 21, 43)
 _EQUIP_LAYOUTS: tuple[tuple[int, ...], ...] = ((-43, 0, 43), (-21, 21), (0,))  # 3件/2件/1件,大到小(完整布局优先)
+#: 命中接收下限(峰分,TM_CCOEFF_NORMED)。标定里已入库模板能命名的真图标最低峰 = 火力风暴潮 0.59,
+#: 空槽假峰在 0.58 以下的一律不读;两侧余量各约 0.01 / 0.03——低峰真图标样本只有这一件,是已知风险。
+_EQUIP_TM_ACCEPT: float = 0.58
+#: 峰尖锐度门槛。标定:真图标尖锐度 ≥0.28,空槽假峰 ≤0.13(门槛两侧各留 ≥0.07 余量)。
+_EQUIP_TM_PEAK_SHARP: float = 0.20
+#: 尖锐度环带的内、外半径(像素,相关图坐标系);越界处按存在部分取。全向环——纵向环 / 十字远环都把
+#: 空槽假峰抬到与真图标同量级,分不开。
+_EQUIP_TM_PEAK_RING: tuple[int, int] = (5, 14)
+#: 近命中(MISS 日志)下限:全库最高分落在 [_EQUIP_TM_MISS, _EQUIP_TM_ACCEPT) 的模板记 MISS。
+_EQUIP_TM_MISS: float = 0.55
+#: 局部峰枚举:相关图与该核的最大值滤波结果逐点相等 = 11×11 邻域内的局部极大值。
+_EQUIP_PEAK_MAX_FILTER_KERNEL: np.ndarray = np.ones((11, 11), np.uint8)
+#: 局部峰枚举:彼此欧氏距离小于该像素数的峰只留最高者;每模板每尺度最多取 _EQUIP_PEAK_MAX 个。
+#: 同一裁片里某模板的宽泛假峰可能高于它的真图标峰,只看最高峰会把真图标挡在尖锐度评估之外,故枚举多个。
+_EQUIP_PEAK_MIN_DIST: int = 5
+_EQUIP_PEAK_MAX: int = 5
 
 
 def load_equip_tm_grays(equip_dir: Path) -> dict[str, MatLike]:
@@ -591,16 +610,54 @@ def load_equip_tm_grays(equip_dir: Path) -> dict[str, MatLike]:
     return grays
 
 
+def _peak_sharpness(corr: np.ndarray, peak_xy: tuple[int, int]) -> float:
+    """单个相关峰的尖锐度 = 峰值 − 距峰 ``_EQUIP_TM_PEAK_RING`` 环带内(全向、越界按存在部分取)的最大值。
+
+    非有限值按 −1 处理(环带内有非有限值时整体返回 −1)。供实现与回归测试复算共用。
+    """
+    lx, ly = peak_xy
+    peak = corr[ly, lx]
+    if not np.isfinite(peak):
+        return -1.0
+    h, w = corr.shape
+    yy, xx = np.ogrid[:h, :w]
+    d2 = (yy - ly) ** 2 + (xx - lx) ** 2
+    r_in, r_out = _EQUIP_TM_PEAK_RING
+    ring = corr[(d2 >= r_in * r_in) & (d2 <= r_out * r_out)]
+    if ring.size == 0 or not np.all(np.isfinite(ring)):
+        return -1.0
+    return float(peak - ring.max())
+
+
+def _local_peaks(corr: np.ndarray) -> list[tuple[int, int, float]]:
+    """相关图里 ≥ ``_EQUIP_TM_ACCEPT`` 的局部极大值(11×11 最大值滤波平台点),按分降序。
+
+    彼此欧氏距离 < ``_EQUIP_PEAK_MIN_DIST`` 的只留最高者,最多 ``_EQUIP_PEAK_MAX`` 个。
+    返回 ``[(x, y, 分), ...]``,坐标为相关图坐标(模板左上角)。
+    """
+    plateau = (corr >= _EQUIP_TM_ACCEPT) & (corr == cv2.dilate(corr, _EQUIP_PEAK_MAX_FILTER_KERNEL))
+    ys, xs = np.nonzero(plateau)
+    if len(ys) == 0:
+        return []
+    kept: list[tuple[int, int, float]] = []
+    for j in np.argsort(-corr[ys, xs], kind='stable'):
+        x, y = int(xs[j]), int(ys[j])
+        if any((x - kx) ** 2 + (y - ky) ** 2 < _EQUIP_PEAK_MIN_DIST ** 2 for kx, ky, _ in kept):
+            continue
+        kept.append((x, y, float(corr[y, x])))
+        if len(kept) >= _EQUIP_PEAK_MAX:
+            break
+    return kept
+
+
 def read_equipped_below(
     screen: MatLike,
     tmpl_grays: dict[str, MatLike],
     below_rects: list[tuple[int, Rect]],
     scales: tuple[float, ...] = _EQUIP_TM_SCALES,
-    threshold: float = 0.6,
     nms_radius: int = 18,
-    miss_threshold: float = 0.55,
 ) -> dict[int, list[str]]:
-    """每槽 below-avatar 区 multi-scale TM + NMS → ``{slot_idx: [装备名]}``(纯 CV,可离线测)。
+    """每槽 below-avatar 区 multi-scale TM + 两道门 + NMS → ``{slot_idx: [装备名]}``(纯 CV,可离线测)。
 
     识别**角色已穿装备**(头像下方 icon),与 ``read_equips``(装备区 owned)互补。
 
@@ -608,24 +665,36 @@ def read_equipped_below(
     后排最右 ~34px)。multi-scale 枚举覆盖,每个 icon 在最接近 scale 命中最高 val;
     NMS 防同位置多命中(合成材料:滑轮鞋/折叠小刀)。
 
+    **命中判据 = 两道门**(常量区块注释有标定依据):每模板每尺度枚举相关图的局部极大值
+    (``_local_peaks``),逐个峰判 ① 峰分 ≥ ``_EQUIP_TM_ACCEPT`` ② 尖锐度 ≥ ``_EQUIP_TM_PEAK_SHARP``
+    (``_peak_sharpness``);两道都过才进候选,再走同位置去重与布局约束。候选按分数与尖锐度三分支:
+
+    - 过两道门 → 进候选;
+    - 峰分 ≥ 接收下限但尖锐度不够 → 丢弃(背景假峰的定义态);该槽最终读空时合并记一条普通级
+      ``[cw]`` 日志(``step='sharp_reject'``,列分数最高的至多 3 个「名字 / 分数 / 尖锐度」;
+      其中有尖锐度落在 [0.12, 0.20) 灰带的才截图),用于发现真图标被这道门拒掉的情况;
+    - ``_EQUIP_TM_MISS`` ≤ 全库最高分 < ``_EQUIP_TM_ACCEPT`` → 近命中,记 MISS 日志(不看尖锐度)。
+      每模板每尺度取一次全局最高分,该模板没有命中时才入近命中。
+
     :param screen: 备战画面截图(RGB,1080p;sr_od ``cv2_utils.read_image`` 约定,非 BGR)。
     :param tmpl_grays: ``load_equip_tm_grays`` 结果(``{name: gray}``,98px 大图模板)。
     :param below_rects: ``[(slot_idx, Rect), ...]`` —— 每槽 below-avatar 搜索区(调用方从 screen_info
         槽 rect 算:avatar 底部下方,icon y 中心 ≈ avatar_y2 + 14,见 ``cw_identity_obs.avatar_to_below``)。
     :param scales: 98px 模板缩放档(覆盖 ~32-34px icon)。
-    :param threshold: TM 命中阈值;0.6(实测 top1 0.74+,保守留余量)。
     :param nms_radius: 同位置去重半径(icon 间距 ~35px → 18)。
-    :param miss_threshold: MISS 日志阈值;val 在 [miss_threshold, threshold) 的近命中记 MISS(可能漏检)。
-        MISS 经 ``cw_observe.cw_log`` 记(``[cw!]``),grep ``\\[cw!\\].*MISS`` 找。
     :return: ``{slot_idx: [装备名]}``;空槽 / 无命中 → 该 slot 不在 dict。
+
+    日志(经 ``cw_observe.cw_log``,``[cw!]`` = 需关注 / ``[cw]`` = 普通):MISS(近命中,可能漏检)、
+    ``anomaly``(icon 数 >3 / 无完整布局)、``sharp_reject``(读空且有过门被拒的峰)。
 
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer / op(并发安全)。
     """
     out: dict[int, list[str]] = {}
     for slot_idx, rect in below_rects:
         crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_RGB2GRAY)  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
-        raw: list[tuple[str, float, int]] = []  # (name, val, icon_center) 命中(>=threshold)
-        near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<threshold),MISS 日志用
+        raw: list[tuple[str, float, int]] = []  # (name, val, icon_center) 过两道门的命中
+        rejected: list[tuple[str, float, float]] = []  # (name, val, sharp) 过分数门、被尖锐度门拒掉的峰
+        near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<accept),MISS 日志用
         # 大图模板 multi-scale TM(icon ~32-34px 随位置变;缩到 29-36px 覆盖)。
         # scales 语义 = 相对 98px 基准;混合库(plaza 官方烘焙已统一 98px)
         # 归一换算保留作防御(模板若非 98 尺寸仍等效目标像素)。
@@ -638,11 +707,19 @@ def read_equipped_below(
                     continue
                 resized = cv2.resize(tgray, (nw, nh), interpolation=cv2.INTER_AREA)
                 r = cv2.matchTemplate(crop, resized, cv2.TM_CCOEFF_NORMED)
-                _, mx, _, mloc = cv2.minMaxLoc(r)
-                if mx >= threshold:
-                    raw.append((name, float(mx), mloc[0] + nw // 2))  # icon 中心(模板左 + 半宽)
-                elif mx >= miss_threshold and mx > near.get(name, 0.0):
+                r = np.where(np.isfinite(r), r, -1.0)
+                _, mx, _, _ = cv2.minMaxLoc(r)
+                if mx >= _EQUIP_TM_MISS and mx > near.get(name, 0.0):
                     near[name] = float(mx)
+                for lx, ly, val in _local_peaks(r):
+                    sharp = _peak_sharpness(r, (lx, ly))
+                    if sharp >= _EQUIP_TM_PEAK_SHARP:
+                        raw.append((name, val, lx + nw // 2))  # icon 中心(模板左 + 半宽)
+                    else:
+                        rejected.append((name, val, sharp))
+        # 该模板已有命中时,它的近命中不再记(与命中互斥)
+        raw_names = {n for n, _, _ in raw}
+        near = {n: v for n, v in near.items() if n not in raw_names and v < _EQUIP_TM_ACCEPT}
         # NMS:按 icon 中心聚类(±nms_radius),每簇取 val 最高(同 icon 多模板/多尺度命中去重)
         raw.sort(key=lambda t: -t[1])
         kept: list[tuple[str, float, int]] = []  # (name, val, icon_center)
@@ -672,6 +749,15 @@ def read_equipped_below(
                 cw_log('read_equipped', target=f'slot={slot_idx}', attn=val_top < 0.7,
                        equips=str([n for n, _, _ in kept]), val_top=f'{val_top:.2f}',
                        MISS=f'[{miss_str}]', shot=shot)
+        # sharp_reject 日志:读空且有过分数门、被尖锐度门拒掉的峰。每个空槽每帧最多一行(噪声有上界);
+        # 只在被拒峰里有尖锐度落在 [0.12, 门槛) 灰带的才截图——真图标被误拒时最可能落在这段。
+        if rejected and not equipped:
+            rej_sorted = sorted(rejected, key=lambda t: -t[1])
+            rej_str = ','.join(f'{n}/{v:.2f}/{sh:.2f}' for n, v, sh in rej_sorted[:3])
+            grey = any(0.12 <= sh < _EQUIP_TM_PEAK_SHARP for _, _, sh in rej_sorted)
+            shot = cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'sharp_reject_slot{slot_idx}') if grey else None
+            cw_log('read_equipped', step='sharp_reject', target=f'slot={slot_idx}', attn=False,
+                   equips='[]', rejected=f'[{rej_str}]', shot=shot)
     return out
 
 
