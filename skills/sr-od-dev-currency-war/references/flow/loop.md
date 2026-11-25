@@ -85,14 +85,14 @@ run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/roun
 
 ## 3. 备战表面默认分支的进入序
 
-> 本分支已坍缩为纯识别派发:备战交互三段链(返回投资策略点击/接管局探测+锁定直出战/补给分流)已迁 `CwScreenPrep` 特殊流程段(观察 node 段1 子态识别四查 + 决策动作 node 段3 三处置,迭代 2026-11-18-prep-special-flow;画面 op 侧形态细则见 screen-op.md「备战(CwScreenPrep)特殊」行),以下为 as-built。
+> 本分支已坍缩为纯识别派发:备战交互三段链(返回投资策略点击/接管局探测+锁定直出战/补给分流)已迁 `CwScreenPrep` 特殊流程段(观察 node 段1 子态识别四查 + 决策动作 node 段3 三处置,迭代 2026-11-18-prep-special-flow;画面 op 侧形态细则见 screen-op.md「备战(CwScreenPrep)特殊」行),以下为 as-built。合成确认浮层是备战的子态(不是独立画面),也由 `CwScreenPrep` 自行处置——观察 node 顶部的优先分支;浮层在场的帧备战两识别标志照样同帧命中,同样被派到本分支。
 
 **动作发出决策不在本分支**:达标帧的发出决策宿主 = mandate_v1 决策链最先检查的发出点(`decide_prep_screen` 入口消费 kernel `readiness_launch_decision`;出战就绪帧产受限商店访问意图或 `StartBattle` 终点意图,随派发的备战访问 op 落执行;判据与语义 = ../strategy/14_p1_consume_arms.md §9.6/§11.10)。
 
 1. **横幅中间态守卫**:OCR「请选择投资策略」lcs 0.8 在场 → round_wait 等展开(选卡页展开中零可交互元素,不处理);
 2. 双识别标志识别(`prep_anchors_hit`)同帧命中 → 兜底清 `_fallback_clear_pending`(本轮分发未接住任何 pending 条目 → 整列清;识别到弹窗屏不清——多弹窗条目逐个存活;sim 不走本清);
 3. **max_rounds 停点**:已跑满 → 停止点分两种模式(判据 = `env_config.is_debug`,读取点单点 = 停点段):debug 模式 → round_success 停在备战画面(保留对局现场供采样检查);非 debug 模式 → 以 `STATUS_HANDOFF_PREFIX` 前缀文本交出,app 交接节点走 exit 清场退局回大厅(弃局),重开由下一次 app 运行承载。**停点先于派发,子态帧不再处置**——候选挂起、锁定不确认、返回按钮不点,直接停在画面;停点语义 =「停在备战画面、不跑备战单轮」,子态处置属备战交互(已归画面 op)。停点重跑场景的旧「探测失活」形态已由每次运行重建判据消解(重建容器 `opened_via='takeover'`,接管局的商店可开性探测照跑);
-4. 派发 `CwScreenPrep` 备战单轮(`on_result` 回调不变)。子态帧在 op 内走特殊流程:观察 node 段1 四查(0 锁定确认态〔含段3b retry 耗尽后主循环重派发的重入帧,直达出战段〕/ a 返回按钮 / b 接管局探测 / c 补给分流)+ 决策动作 node 段3 三处置(点返回 / `prep_actions.py::locked_resume_sync_and_battle` 同步步骤+出战 / 点「返回补给阶段」),细则见 screen-op.md「备战(CwScreenPrep)特殊」行。**交回契约与失败链**:子态处置均以 round_success 交回(wait 2/3/2);锁定出战未执行 → op 内 retry 保锁(框架预算每访问 1 首跑+3 重试=4 次),耗尽 → 访问 fail → 外循环连续失败计数限 5 次重派发,至多约 20 次出战尝试,≪ 旧形态 loop 节点原地重试预算 400 次。**战斗窗置位统一由外循环 `_on_prep_round` 回调承载**:对一切 success 交回统一置 `_battle_ts` + `_battle_wait_active`(含返回按钮/补给出口的非出战交回——误置位由 CwScreenBattleWait 宽限等待 + 备战 id_mark 白名单兜底分流);出战意图由统一执行器 `prep_actions.py::launch_battle_unified` 落执行;
+4. 派发 `CwScreenPrep` 备战单轮(`on_result` 回调不变)。合成确认浮层在场的帧在 op 内走优先分支(识别 → 上报浮层读数 → 策略器 `decide_synthesis_overlay` → 确认/取消动作 op → 终结交回);其他子态帧在 op 内走特殊流程:观察 node 段1 四查(0 锁定确认态〔含段3b retry 耗尽后主循环重派发的重入帧,直达出战段〕/ a 返回按钮 / b 接管局探测 / c 补给分流)+ 决策动作 node 段3 三处置(点返回 / `prep_actions.py::locked_resume_sync_and_battle` 同步步骤+出战 / 点「返回补给阶段」),细则见 screen-op.md「备战(CwScreenPrep)特殊」行。**交回契约与失败链**:子态处置均以 round_success 交回(wait 2/3/2);锁定出战未执行 → op 内 retry 保锁(框架预算每访问 1 首跑+3 重试=4 次),耗尽 → 访问 fail → 外循环连续失败计数限 5 次重派发,至多约 20 次出战尝试,≪ 旧形态 loop 节点原地重试预算 400 次。**战斗窗置位统一由外循环 `_on_prep_round` 回调承载**:对一切 success 交回统一置 `_battle_ts` + `_battle_wait_active`(含返回按钮/补给出口的非出战交回——误置位由 CwScreenBattleWait 宽限等待 + 备战 id_mark 白名单兜底分流);出战意图由统一执行器 `prep_actions.py::launch_battle_unified` 落执行;
 5. **环让位重入契约**:备战分支处理完(含弹窗让路)必须以 return 结束本轮,下一轮从循环顶重新识别画面,不在同一轮里直接再进备战分支。
 
 ## 4. 轮次推进
@@ -126,7 +126,7 @@ run 级初始化 = `handle_init`(每次 execute() 开头框架回调):plane/roun
 | max_rounds 停点(debug) | 「已跑 N 轮停备战(达 max_rounds=M)」 | 备战分支停点(先于派发) | 跳过 exit 直接结束(**非退出触发**:验证模式留局采样) |
 | max_rounds 停点(非 debug) | `STATUS_HANDOFF_PREFIX`+「停点重开:max_rounds=M」 | 备战分支停点(先于派发) | 弹窗守卫 → exit 清场退局形态(弃局回大厅) → 置 `ctx.cw_match=None`;重开由下一次 app 运行承载 |
 | 开局失败/中断(假局守卫) | 「开局失败/中断(未产生对局数据,不记 summary)」 | `_lobby_return_collect` 假局守卫 | 跳过 exit 直接结束(**非退出触发**:已在大厅,对局状态已清) |
-| route⑤ 停机位 | 「已到可交还退出调度的备战态(含免战)」 | `loop()` 停机位判定(仅 `stop_at_prep=True` 构造可达) | app 主路径不可达;exit 委托清理的交还点(见 entry-exit.md §3) |
+| route⑤ 停机位 | 「已到可交还退出调度的备战态(含免战;且合成确认浮层不在场——判定 = `cw_screen_state.is_exit_safe_prep_frame`,与退局路由③同源)」 | `loop()` 停机位判定(仅 `stop_at_prep=True` 构造可达) | app 主路径不可达;exit 委托清理的交还点(见 entry-exit.md §3) |
 
 **fail 出口**:
 

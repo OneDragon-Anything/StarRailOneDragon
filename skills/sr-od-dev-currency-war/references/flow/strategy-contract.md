@@ -21,7 +21,7 @@
 
 | 类(身份) | 干什么 | 禁什么 |
 |---|---|---|
-| `CwStrategy`(`strategies/impl/cw_strategy.py`,接口定义) | 定义全部决策入口的抽象签名(零参决策入口 14,§3.2);构造注入 + 自动决策记录 | ABC 自身零内置逻辑(纯接口,_create_state 钩子除外);零策略专属语义 |
+| `CwStrategy`(`strategies/impl/cw_strategy.py`,接口定义) | 定义全部决策入口的抽象签名(零参决策入口 15,§3.2);构造注入 + 自动决策记录 | ABC 自身零内置逻辑(纯接口,_create_state 钩子除外);零策略专属语义 |
 | `StrategyManager`(`strategies/impl/cw_strategy_manager.py`,选策略) | 按实例化/配置选择策略;注册表封闭集 = {mandate_v1} | 不承载判据;不知策略内部结构 |
 | mandate_v1(`strategies/impl/mandate_v1/`,决策本体) | 现役唯一实现;`flow.py::CwFlowStrategy` 为中间辅助 ABC,承载每局创建/pick 族/商店单动作接口的缺省实现(`_abstract=True` 不注册) | 禁自实现生命周期机制(幂等键/连败恢复/屏蔽/停滞判停〔stall〕——归流程侧);禁绕契约自造接口 |
 | `MandateV1Live`(`strategies/mandate_v1_strategy.py`,注册壳) | 把实现包注册进策略扫描器 | 壳内零判据逻辑 |
@@ -39,13 +39,14 @@
 
 `create_session`/`create_state` 工厂已停用。**决策记录自动包裹**:`__init_subclass__` 给全部决策入口自动包 wrapper(决策序号/决策标签/`decision_payload` 载荷钩子)——遥测捕获缝结构上不可漏,不靠实现自觉。
 
-### 3.2 分画面决策口 14(抽象;零参)
+### 3.2 分画面决策口 15(抽象;零参)
 
-各入口按帧的新旧标记(帧代次)自行触发终局意向重估,不设独立钩子。
+各入口按帧的新旧标记(帧代次)自行触发终局意向重估,不设独立钩子。例外:`decide_synthesis_overlay` 不读帧代次——浮层处置不走备战的常规决策入口。
 
 | 接口 | 输入 | 返回 | 语义 |
 |---|---|---|---|
 | `decide_prep_screen` | game state 直读 | **恰一个动作**(CwAction),无 None;重观察 = CwActionObsParam 两口径(in_place 环内重观察 / outer_loop 结束本次访问) | 备战决策 |
+| `decide_synthesis_overlay` | game state 直读(`gs.synthesis_overlay` 里的按钮坐标) | **恰一个动作**:确认合成 `CwActionSynthesisConfirmParam` ∨ 取消合成 `CwActionSynthesisCancelParam`;策略器不自算坐标 | 合成确认浮层处置(浮层 = 备战的子态,由备战画面 op 的优先分支消费);只在本次访问观察到浮层时被调用,字段不是读数结构 = 观察层失约抛错 |
 | `decide_shop_action` | game state 直读 | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结 | 决策本体 = `mandate_v1/shop.py`;game state shop payload 离屏 = 观察层失约抛错 |
 | pick 族 12:`decide_invest_env` / `decide_invest_strategy` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner` / `decide_star_tome` / `decide_wish_trial` / `decide_box_card` / `decide_fortune` / `decide_expert_invite` | game state 槽零参读(候选自各 `*_opts` 槽/payload 槽;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作,互斥单发 | 选项决策;动作编排归画面 op。决策规格 = `../strategy/13_pick_family.md` |
 
@@ -84,5 +85,5 @@
 
 - **依赖方向**:实现包 → 知识层/数学层/执行层单向;分包依赖矩阵禁 decision→obs 直接依赖(obs 读取入口经 app 层装配点 `install_obs_ports()` 注入);决策本体 = 纯函数。
 - **决策 hp 读取入口与可信判定**:统一读取入口 = `kernel/cw_hp_policy.py::decision_hp`(gs.hp 直读);可信判定另经 `hp_decision_trusted_of`(`gs.hp.source ∈ {observation, carried}`,prior/logic fail-closed——信息缺失时宁可判不可信,不猜值);hp 不入其余任何策略判据,新增 hp 决策消费点必经读取入口或登记豁免。
-- **sim 消费**:sim = 游戏后端(驱动反转——真流程当驱动者,状态副本在后端):四层全图装上后端即在 sim 状态副本跑一局,**全部决策入口 sim 可达**;批量运行与 A/B 不在 sim 本体内(边界 = sim/sim-design.md §8.3);校准缺口的判读限制 = sim-design §8.2 申报清单。
+- **sim 消费**:sim = 游戏后端(驱动反转——真流程当驱动者,状态副本在后端):四层全图装上后端即在 sim 状态副本跑一局,**全部决策入口 sim 可达**(例外:`decide_synthesis_overlay`——模拟后端不呈现合成确认浮层,这个入口在模拟对局里不会被调用);批量运行与 A/B 不在 sim 本体内(边界 = sim/sim-design.md §8.3);校准缺口的判读限制 = sim-design §8.2 申报清单。
 - **换策略实现与 A/B**:注册表封闭集 = {mandate_v1};换策略实现机制 = config 切 `strategy_id`(最小改动面),不改流程侧分发。归因限制:sim-design §8.2 申报面上的读数不得作策略效应证据,真代码层/机制层读数可外推(保真度分层承载)。
