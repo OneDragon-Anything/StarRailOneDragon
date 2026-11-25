@@ -34,8 +34,8 @@ area_list:
   id_mark: true
   pc_rect:
   - 1420
-  - 348
-  - 1505
+  - 314
+  - 1535
   - 402
   text: 位面
   lcs_percent: 0.5
