@@ -11,7 +11,7 @@
 
 四个组件(本模块 3 个 + manager):
 - ``CwStrategy`` —— ABC,大脑接口(终态契约:构造注入 + 零参入口
-  abstract 14,无工厂成员;零策略专属
+  abstract 15,无工厂成员;零策略专属
   语义——方向重估节拍/意向 target 机器是具体策略实现的私事,不在基类契约面上)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
 - ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻量载体对象,挂 ``ctx.cw_match``。
@@ -52,6 +52,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionRefreshInvestCardsParam,
     CwActionRefreshNodeOptionsParam,
     CwActionRefreshSupplyParam,
+    CwActionSynthesisCancelParam,
+    CwActionSynthesisConfirmParam,
 )
 
 if TYPE_CHECKING:
@@ -78,7 +80,7 @@ _TState = TypeVar('_TState')
 
 # ===== 策略遥测捕获缝(捕获缝本体与信封契约 = strategy-telemetry.md §1/§2)=====
 
-#: 决策入口显式闭集(14 个;包裹面唯一依据,禁名称前缀通配——前缀规则会把
+#: 决策入口显式闭集(15 个;包裹面唯一依据,禁名称前缀通配——前缀规则会把
 #: ``decide_shop_screen`` 序列驱动器(返回 list)卷入「恰一动作」信封语义,
 #: 且无法从名字区分生产/非生产面)。闭集 = 本模块抽象入口全集。
 DECISION_ENTRY_NAMES: frozenset[str] = frozenset({
@@ -86,6 +88,7 @@ DECISION_ENTRY_NAMES: frozenset[str] = frozenset({
     'decide_invest_env', 'decide_supply', 'decide_encounter', 'decide_megastar',
     'decide_partner', 'decide_planner', 'decide_star_tome', 'decide_wish_trial',
     'decide_box_card', 'decide_fortune', 'decide_expert_invite',
+    'decide_synthesis_overlay',
 })
 
 #: DecisionRecord 行格式版本(envelope.schema_version;信封键闭集演进时递增)。
@@ -182,9 +185,9 @@ class CwStrategy(ABC, Generic[_TState]):
       构造即唯一的每局全新创建入口;``create_session``/``create_state`` 工厂停用。
     - **实例不跨局**:match 对象弃置 = 实例连带回收(引导漏斗每局 instantiate);
       异常路径残留 match 对象的弃置守卫(:func:`discard_stale_match_container`)保留。
-    - **零参入口 14**:备战/商店/invest 双相/pick 族八屏 + 契约扩员两屏
+    - **零参入口 15**:备战/商店/invest 双相/pick 族八屏 + 契约扩员两屏
       (命运卜者强化/专家邀请函;三 overlay 选卡判据扩员,原选择装备口
-      已删除(随该屏误判修正))——决策输入一律
+      已删除(随该屏误判修正))+ 合成确认浮层处置——决策输入一律
       ``self.gs`` 自取,会话残余依赖
       由 §3.2/§3.3 重复账治理偿还。
     - **输出统一**:单一 ``CwAction``(选择族 per-screen 子类型 + 三刷新动作
@@ -366,6 +369,19 @@ class CwStrategy(ABC, Generic[_TState]):
     def decide_expert_invite(self) -> CwActionPickExpertInviteParam:
         """专家邀请函选卡(候选读 ``gs.expert_invite`` 弹窗载体槽;
         idx = -1 表现金为王,值域扩展见 CwActionPickExpertInviteParam 注)。"""
+
+    # —— 备战画面子态处置区(合成确认浮层 = 备战画面 op 的优先特殊分支,
+    #    浮层在场时先于一切备战动作;入口读状态容器 ``gs.synthesis_overlay``
+    #    取按钮坐标与合成内容)——
+
+    @abstractmethod
+    def decide_synthesis_overlay(self) -> CwActionSynthesisConfirmParam | CwActionSynthesisCancelParam:
+        """合成确认浮层处置(确认或取消,恰一个动作;坐标取
+        ``gs.synthesis_overlay`` 的 ``ok_xy`` / ``cancel_xy``,策略不自算坐标)。
+
+        只在该字段为读数结构(浮层在场)时被调用:画面 op 只认本次访问观察
+        到的浮层,不拿字段的旧值当触发条件。本入口不读帧的新旧标记(帧代次)
+        ——浮层处置不走备战画面的常规决策入口。"""
 
 
 @dataclass

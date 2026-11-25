@@ -572,6 +572,56 @@ class CwActionCollectOreParam:
 
 
 @dataclass
+class CwActionSynthesisConfirmParam:
+    """确认合成(点合成确认浮层上的 ✓ 一次;浮层收起,合成产物入库)。
+
+    合成确认浮层是备战画面的子态,不是独立画面:框架在装备栏内找到成对的
+    ✕/✓ 定位浮层,把两颗按钮的中心写进状态容器 ``synthesis_overlay`` 字段。
+    本动作只按坐标点一下,不读屏、不验证。终结动作(点完返回主循环重新观察;
+    点击没生效时下一帧仍读到浮层,会再进一次这个动作)。
+
+    ``from_dict`` = MCP run_operation JSON 通道构造(共享形态单一源 =
+    ``cw_vocab.action_param_from_dict``)。
+
+    [索引/坐标定义]
+    - cx/cy: 坐标系 = 1080p 全局像素(✓ 按钮中心);取值时机 = 观察帧现读
+      (框架跑局 = 状态容器 ``synthesis_overlay`` 的 ``ok_xy``,由观察上报写入;
+      MCP 直接调用 = 当帧 extras 的 ``synthesis_overlay.ok_xy``,读完即用);
+      写入端 = 观察上报(策略器不自算坐标)。op 只守卫坐标非负且在画面内,
+      不做落点前校验。
+    """
+    cx: int         # 1080p 点击点 x(✓ 按钮中心)
+    cy: int         # 1080p 点击点 y(✓ 按钮中心)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionSynthesisConfirmParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
+
+
+@dataclass
+class CwActionSynthesisCancelParam:
+    """取消合成(点合成确认浮层上的 ✕ 一次;浮层收起,材料不动)。
+
+    与 ``CwActionSynthesisConfirmParam`` 同构,坐标换成取消按钮 ✕ 的中心
+    (``cancel_xy``);坐标系、取值时机、写入端同前,不赘述。
+    """
+    cx: int         # 1080p 点击点 x(✕ 按钮中心)
+    cy: int         # 1080p 点击点 y(✕ 按钮中心)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+    @classmethod
+    def from_dict(cls, d: dict) -> CwActionSynthesisCancelParam:
+        """dict → 动作实例(MCP run_operation JSON 通道;共享形态单一源 =
+        cw_vocab.action_param_from_dict)。"""
+        return action_param_from_dict(cls, d)
+
+
+@dataclass
 class CwActionOpenBoxParam:
     """开简易武装箱(点「武装箱开启位-N」开启钮 → 弹武装箱四选一;弹窗期
     箱仍占席,选完才离席)。
@@ -1349,7 +1399,8 @@ class CwActionObsParam:
 CwAction = (
         CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
         CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
-        CwActionMoveUnitParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
+        CwActionMoveUnitParam | CwActionCollectOreParam | CwActionSynthesisConfirmParam | CwActionSynthesisCancelParam |
+        CwActionOpenBoxParam | CwActionOpenTomeParam |
         CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
         CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
@@ -1366,7 +1417,8 @@ CW_ACTION_TYPES: tuple = (
     CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
     CwActionMoveUnitParam,
-    CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
+    CwActionCollectOreParam, CwActionSynthesisConfirmParam, CwActionSynthesisCancelParam,
+    CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
     CwActionWearEquipParam,
     CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,

@@ -36,6 +36,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     CwAction,
     CwActionObsParam,
+    CwActionSynthesisCancelParam,
+    CwActionSynthesisConfirmParam,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
@@ -260,6 +262,26 @@ class MandateV1Strategy(CwFlowStrategy):
         actions = decide_prep_frame(self.gs, self.config,
                                     registry=self.registry)
         return actions[0] if actions else CwActionObsParam(scope='outer_loop')
+
+    def decide_synthesis_overlay(self) -> CwActionSynthesisConfirmParam | CwActionSynthesisCancelParam:
+        """合成确认浮层处置:恒返回确认动作,坐标取状态容器 ``synthesis_overlay``
+        的 ``ok_xy``。
+
+        为什么直接确认:这是流程性确认,不是选卡决策——合成是玩家(或经 MCP
+        直接调用的人)把材料拖到一起时**已经发起**的动作,浮层只是它的收尾,
+        框架替他点 ✓。是否依据合成内容(两件原料、产物预览)改为取消,留给
+        策略算法迭代。
+
+        字段不是读数结构时被调用 = 观察层失约(画面 op 只在本次访问观察到
+        浮层时才调本入口,不拿字段的旧值当触发条件),按 bug 显式抛错。本入口
+        不读帧的新旧标记(帧代次),不走备战的常规入口内务。
+        """
+        value = self.gs.synthesis_overlay.value
+        assert isinstance(value, dict), (
+            f'合成确认浮层不在场时调用了处置入口(synthesis_overlay={value!r})'
+            '——观察层失约,画面 op 只应在本次访问观察到浮层时调用')
+        cx, cy = value['ok_xy']
+        return CwActionSynthesisConfirmParam(cx, cy)
 
     def decide_shop_action(self) -> Action:
         """商店单动作入口(mandate 覆写 = 两项前置内务;决策本体 =
