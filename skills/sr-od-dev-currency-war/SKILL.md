@@ -198,6 +198,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 画面识别与动作 op 的追踪文件(按画面记识别核对的日期和结论、每个该有动作 op 的动作有没有动作 op、该画面的缺口;长期保存,打到哪个画面查哪一章) | [references/screen-tracking.md](references/screen-tracking.md)(文件路径/格式/谁在什么时候写/什么不记在这里) |
 | 运行状态/焦点/待办 | 新迭代走 `.temp/changes/active/<迭代名>/`(迭代目录含 tasks.md 进度,规范见 od-dev-run-iteration);`.debug/progress/` 下的 CW 存量目录(dag.jsonl 与旧文法 `进度.md`)只读封存,新登记事项不再写入。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针 |
 | **待跟进事项**(货币战争专用的待办文件——寿命超过单个迭代的事项。条目写四样、状态标签六种,写法见 [references/autonomous-loop.md](references/autonomous-loop.md) §2.5;按旧记法写的条目怎么读也在那里。原名「跨迭代挂账板」,别处按旧名字提到它的就是这一份) | `.temp/tracking/currency-war/待跟进事项.md`(全域唯一文件;迭代内欠账留各迭代收尾清单,收口时转移进该文件) |
+| **玩法指引的不足**(货币战争的一份记录文件——实机探索 agent 照玩家 skill 的指引打的时候,感到不够用的地方:要做判断觉得难而没有指引、有指引但不适合现在的情况、照着做效果不好。一条写四样,由实机探索 agent 自己写;写法、怎么收场见 [references/autonomous-loop.md](references/autonomous-loop.md) §3.7) | `.temp/tracking/currency-war/玩法指引的不足.md`(不在版本控制里,会话结束了也留着;文件不存在 = 还没有登记过) |
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度追踪文件,一律不进共享文档。**
 
