@@ -3443,6 +3443,27 @@ class GameState:
     # —— 交互状态 ——
     prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(恢复锁定=会话推断档,零现役写入方——锁定承载在对局流程态 Match.locked_resume)
     event_overlay: Field[str | None] = field(default_factory=Field)  # 'none'=确认无浮层;None=没读到(双义禁令)
+    # 合成确认浮层(备战画面的子态:把一件装备拖到另一件装备上弹出的确认条)读数。
+    # 值分三档,沿用 event_overlay 的双义约定:
+    # - dict = 浮层在场 = {'ok_xy': (x, y), 'cancel_xy': (x, y),
+    #       'panel_rect': [x1, y1, x2, y2],
+    #       'inputs': [{'name', 'conf', 'cx', 'cy'}, …恰 2 项],
+    #       'product': {'name', 'conf', 'cx', 'cy'}};
+    # - 'none' = 本帧确认无浮层;
+    # - None = 未观察(从未读过)。**不以 None 表示「无浮层」**:observe 拒绝 None
+    #   (写了也写不进去),且分支判定会把「没读到」误当「有浮层」或反过来。
+    # 坐标系 = 1080p 游戏空间、观察帧上的像素:ok_xy / cancel_xy = ✓ / ✕ 按钮
+    # 中心(动作 op 的点击坐标);cx / cy = 装备格中心。name = 装备图标模板名,
+    # None = 未识别——只是参考读数,流程不依赖它;conf = 模板匹配最高分。
+    # 取值时机 = 观察帧现读(obs/cw_synthesis_overlay_obs;备战画面 op 的观察
+    # 节点与备战 extras 识别器同源)。判「值是读数结构」一律 isinstance(value, dict)。
+    # 写入端 = **只有观察上报一个**(kernel/cw_screen_report/prep.py 的
+    # report_screen_prep_obs);动作上报不写该字段——点击后浮层收没收起由下一帧
+    # 观察写成读数结构或 'none'(点击没生效时仍是读数结构)。
+    # 歧义态(两对及以上)、有按钮候选但配不成对、商店开着的帧上不写该字段,
+    # 留着的是上一帧的旧值——运行时读方(处置函数)只认本次访问的识别结果,
+    # 不在这些帧上读它。不进 DEFAULT_GS_SCHEMA 域版本表,同 event_overlay 先例。
+    synthesis_overlay: Field[dict | str | None] = field(default_factory=Field)
 
     # —— 备战席溢出(§3.2.20;2026-09-15 实机建档 prep.md 告警/溢出节)——
     # [索引定义] overflow_warning:告警横幅「备战席已满」在场 = 存在未安置

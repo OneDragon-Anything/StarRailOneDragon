@@ -36,6 +36,10 @@ class CwScreenPrepObs:
       摄入面(不做二次落状态容器)。
     - ``event_overlay``:事件 overlay bail 标签镜像(取自
       ``prep.event_overlay``,便于决策侧/测试零穿透消费;无字段写域)。
+    - ``synthesis_overlay``:合成确认浮层读数(备战画面子态;结构见
+      ``GameState.synthesis_overlay`` 字段注释)。``dict`` = 浮层在场;
+      ``'none'`` = 本帧确认无浮层;``None`` = 本帧未读(歧义 / 有候选但配
+      不成对 / 商店开着的帧不识别,调用方留 ``None``)。
     - ``node_path_chain``:备战帧现行链(插入位置 = 备战入口 heavy 观察的
       节点行读;在场 = 本帧轮位对齐 clean 读,写 = node_path 双写 +
       node_path_baseline 幂等回填)。
@@ -44,6 +48,7 @@ class CwScreenPrepObs:
 
     prep: PrepObservation = field(default_factory=PrepObservation)
     event_overlay: str | None = None
+    synthesis_overlay: dict | str | None = None
     node_path_chain: NodeChain | None = None
     screen: Any = None
 
@@ -61,6 +66,12 @@ def report_screen_prep_obs(gs: GameState, obs: CwScreenPrepObs, *,
       观察渠道原值构造
       (family='obs', actor='CwScreenPrep', screen='货币战争-备战',
       mode='read', quality={'bench': 'real_read'})。
+    - ``synthesis_overlay`` → ``gs.synthesis_overlay``(本字段唯一的写端):
+      值是读数结构 → 写;值是 ``'none'`` 且字段当前值不是 ``'none'`` 才写
+      (上一帧是读数结构,或从未观察)——已是 ``'none'`` 不写:状态容器每次
+      写入都落一条带全量快照的流水行,干净帧每次备战访问都写会让流水白白
+      变胖,而 ``'none'`` 语义上本就是「沿用」;值是 ``None`` 不写(未读到
+      的域零写)。
     - ``prep``/``event_overlay``/``screen``:无状态容器摄入域(字段写端在
       观察漏斗),不产生写入。
     """
@@ -69,6 +80,11 @@ def report_screen_prep_obs(gs: GameState, obs: CwScreenPrepObs, *,
                          screen='货币战争-备战', mode='read',
                          quality={'bench': 'real_read'})
     _validate_sig(sig, ('obs',))
+    overlay = obs.synthesis_overlay
+    if isinstance(overlay, dict):
+        gs.observe(gs.synthesis_overlay, overlay, evidence='prep_overlay', sig=sig)
+    elif overlay == 'none' and gs.synthesis_overlay.value != 'none':
+        gs.observe(gs.synthesis_overlay, 'none', evidence='prep_overlay', sig=sig)
     if obs.node_path_chain is not None:
         gs.observe(gs.node_path, obs.node_path_chain,
                    evidence='prep_row', sig=sig)

@@ -58,6 +58,7 @@ import numpy as np
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from one_dragon.utils.file_utils import get_project_root
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_equipment_data import get_equip
 from sr_od.application.currency_war.kernel.cw_game_state import BenchView, Unit
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -94,6 +95,13 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_level,
     read_level_up_cost,
     read_streak,
+)
+from sr_od.application.currency_war.obs.cw_synthesis_overlay_obs import (
+    CANCEL_TEMPLATE_DIR,
+    OK_TEMPLATE_DIR,
+    STATE_ABSENT,
+    STATE_PRESENT,
+    read_synthesis_overlay,
 )
 
 if TYPE_CHECKING:
@@ -158,6 +166,7 @@ class _BattlePrepState:
     aura_slot: int | None                # 前排主角光环光标槽位(read_front_aura_slot 带内 TM;光环归属可视标记,1 基前排物理槽;未命中→None)
     reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights 多尺度模板匹配;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;首见机制)
     rail_shop: dict | None           # 银轨商店入口域(_read_rail_shop;{present,cx,cy,open_cx,open_cy,balance,buyable};模板/画面档缺失→None 整键;两态都返回,见 PREP_EXTRAS_DOC)
+    synthesis_overlay: dict | None   # 合成确认浮层读数(read_synthesis_overlay;{ok_xy,cancel_xy,panel_rect,inputs,product};不在场→None;开商店画面与读不准的帧整键省略,见 PREP_EXTRAS_DOC)
 
 
 def _read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
@@ -342,19 +351,20 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         不可靠(实机:行读恒缺/残缺,晶矿检出全是商品图标误报),这些字段
         **整键省略**(键不出现,与「读到空」区分;用户裁定:不识别的字段
         不该出现在返回里),要完整读数用备战画面(收店后);跳过还省 SIFT 开销。
-        右侧装备栏在商店开着时**不读**(用户裁定:商店开的画面不识别右侧装备),
-        同样整键省略。
+        右侧装备栏与合成确认浮层在商店开着时**不读**(用户裁定:商店开的
+        画面不识别右侧装备),同样整键省略。
 
     Returns:
-        dict(full_read=True 时键集 = ``PREP_EXTRAS_DOC``;开商店画面省略
-        front_line/back_line/deploy_count/deploy_cap/team_size_over_cap/
-        hp/reward_ores/owned_equips 等遮挡不可靠键,
+        dict(full_read=True 时键集 = ``PREP_EXTRAS_DOC`` 的例外只有一处:
+        合成确认浮层的按钮候选配不成对或有歧义时 ``synthesis_overlay`` 省略;
+        开商店画面省略 front_line/back_line/deploy_count/deploy_cap/
+        team_size_over_cap/hp/reward_ores/owned_equips 等遮挡不可靠键,
         开商店识别器在此基础上叠加 shop_cards / refresh_probs)。
     """
     omit_keys = frozenset() if full_read else frozenset({
         'front_line', 'back_line', 'deploy_count', 'deploy_cap',
         'team_size_over_cap',
-        'hp', 'reward_ores', 'owned_equips', 'aura_slot',
+        'hp', 'reward_ores', 'owned_equips', 'aura_slot', 'synthesis_overlay',
     })
     # 装备(slot_idx → 装备名;先读,再注入 Unit.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
     # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
@@ -414,6 +424,26 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
                 'inliers': eq_inliers,
             })
         owned_equips = _owned or None
+    # 合成确认浮层(备战画面的子态,位置在右侧装备栏内):商店开着时不识别
+    # (full_read=False),该键进上方省略集。识别是纯读;入参缺失(按钮模板或
+    # 搜索矩形取不到)时 read_synthesis_overlay 抛异常而不是判「不在场」,由后端
+    # 入口兜成 extras=None——判成不在场的话,调用方会以为可以照常点击。
+    synthesis_overlay: dict | None = None
+    overlay_unreadable = False
+    if full_read:
+        _overlay = read_synthesis_overlay(
+            image,
+            ctx.template_loader.get_template(OK_TEMPLATE_DIR, OK_TEMPLATE_DIR),
+            ctx.template_loader.get_template(CANCEL_TEMPLATE_DIR, CANCEL_TEMPLATE_DIR),
+            _area_rect(ctx, '区域-道具装备'),
+            equip_grays)
+        if _overlay.state == STATE_PRESENT:
+            synthesis_overlay = _overlay.reading
+        elif _overlay.state != STATE_ABSENT:
+            # 有按钮候选但配不成对 / 歧义:读不出可靠的浮层框。该键省略而不是给
+            # null——null 等于告诉调用方「无浮层」。
+            overlay_unreadable = True
+            log.warning(f'[cw] 合成确认浮层读不准,extras 省略该键: {_overlay.candidates_detail()}')
     phase = phase0
     level = level0
     #cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
@@ -468,6 +498,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
             {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)
         ] or None) if full_read else None,
         rail_shop=_read_rail_shop(ctx, image),
+        synthesis_overlay=synthesis_overlay,
     )
     data = asdict(state)
     if omit_keys:
@@ -475,6 +506,9 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         # 与「读了但没读到」的语义区分开(用户裁定:不识别的字段不该出现在返回里)。
         for k in omit_keys:
             data.pop(k, None)
+    if overlay_unreadable:
+        # 同一个口径:本帧给不出这个读数 → 键不出现
+        data.pop('synthesis_overlay', None)
     data['xp_progress'] = _read_xp_progress(ctx, image)
     data['levelup_cost'] = read_level_up_cost(ctx, image)
     return data
@@ -542,6 +576,16 @@ PREP_EXTRAS_DOC: dict[str, str] = {
                  '(同局多帧在场/缺席与余额-可负担性不相关),待采样收敛,勿当「现在买得起」用;'
                  'False 不产出:「确无胶囊」与「OCR 失读」不可区分,消费方按「未知」处理)。'
                  '模板/画面档缺失→整键 None。横幅 y 随局浮动,识别为带内全搜',
+    'synthesis_overlay': '合成确认浮层(备战画面的子态:把一件装备拖到另一件装备上弹出的确认条)'
+                         '读数 dict {ok_xy, cancel_xy, panel_rect, inputs, product}:'
+                         'ok_xy / cancel_xy = ✓ / ✕ 按钮中心(1080p 绝对坐标,确认 / 取消的点击点);'
+                         'panel_rect = 浮层外接范围 [x1,y1,x2,y2];inputs = 两件原料 [{name,conf,cx,cy}],'
+                         'product = 产物预览 {name,conf,cx,cy}(cx/cy = 装备格中心;name = 装备图标模板名,'
+                         '未识别→None,只是参考读数;conf = 模板匹配最高分)。'
+                         '不在场→None(= 无浮层)。**键不出现 = 本帧没提供这个读数**,两种情况:'
+                         '一是商店面板展开着(商店开着时不读右侧装备栏,要这个读数先收起商店);'
+                         '二是浮层的按钮候选配不成对或有歧义(这种形态框架接不住,先人工看画面)。'
+                         '浮层在场期间一切点击 / 拖拽都会被它拦住,排查点击 / 拖拽失效时先看这个字段',
     'xp_progress': '经验面板「N/M」进度 [已攒, 升级所需](读不到→None)',
     'levelup_cost': '购买经验按钮价格(int 金币;读不到→None)',
 }
