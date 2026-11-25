@@ -68,6 +68,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionSellDeployedParam,
     CwActionStaffProjectorUseParam,
     CwActionStartBattleParam,
+    CwActionSynthesisCancelParam,
+    CwActionSynthesisConfirmParam,
     CwActionWearEquipParam,
     CwActionWrenchUseParam,
 )
@@ -146,6 +148,12 @@ from sr_od.application.currency_war.operations.cw_op.cw_sell_deployed_action imp
 from sr_od.application.currency_war.operations.cw_op.cw_start_battle_action import (
     CwActionStartBattleOp,
 )
+from sr_od.application.currency_war.operations.cw_op.cw_synthesis_cancel_action import (
+    CwActionSynthesisCancelOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_synthesis_confirm_action import (
+    CwActionSynthesisConfirmOp,
+)
 from sr_od.application.currency_war.operations.cw_op.cw_tool_use_action import (
     CwActionToolUseOp,
 )
@@ -186,6 +194,9 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionStaffProjectorUseParam: CwActionToolUseOp,
     CwActionPerfectProjectorUseParam: CwActionToolUseOp,
     CwActionLuckyTokenUseParam: CwActionToolUseOp,
+    # 合成确认浮层处置(备战画面的子态;两行各指一类——确认与取消的收起等待不同)
+    CwActionSynthesisConfirmParam: CwActionSynthesisConfirmOp,
+    CwActionSynthesisCancelParam: CwActionSynthesisCancelOp,
     # 转场族
     CwActionStartBattleParam: CwActionStartBattleOp,   # 终结(返回主循环战斗分支)
     CwActionOpenShopParam: CwActionOpenShopOp,         # terminal 承载行(执行抛,正常路径不可达)

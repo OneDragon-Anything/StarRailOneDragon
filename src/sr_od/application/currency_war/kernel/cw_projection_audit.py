@@ -505,6 +505,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'event_overlay': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='浮层双义读面(§3.6.1),零逻辑写端'),
+    'synthesis_overlay': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='合成确认浮层读面(备战画面子态),零逻辑写端——确认/取消两个动作'
+              '不写「已处理」,由下一帧观察覆盖'),
     'overflow_warning': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位,角色/占席'

@@ -358,6 +358,30 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 
 
+def report_action_synthesis_confirm_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
+    """确认合成上报:状态容器零写——不写 ``synthesis_overlay``,也不写装备库存。
+    「浮层已处理」由下一帧观察写成 ``'none'`` 或新的读数结构;在这里写逻辑态的话,
+    点击没生效的下一帧(浮层仍在场)会落一条「修推算代码」的真失配缺陷行——点击没生效、
+    再处置一次是设计明示的重试形态,不该记成 bug。合成产物需要可靠的装备名才能记账,
+    框内图标识别只是参考读数,写错比不写糟;库存真值由下一帧全量观察覆盖。
+
+    applied 出口构造后果声明:动作后仍在备战画面。``next_screen`` 直接写备战画面档名,
+    不走 :func:`_decl_bottom`——那个函数按当前节点推导底层画面,点这颗按钮不改画面。"""
+    return _report_zero_write(
+        gs, param, sig, 'zero_write(synthesis_confirm)',
+        decl=WorldDecl(next_screen='货币战争-备战', trigger=''))
+
+
+
+def report_action_synthesis_cancel_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
+    """取消合成上报:状态容器零写,理由与后果声明同确认合成
+    (:func:`report_action_synthesis_confirm_param`)——材料不动,库存无变化。"""
+    return _report_zero_write(
+        gs, param, sig, 'zero_write(synthesis_cancel)',
+        decl=WorldDecl(next_screen='货币战争-备战', trigger=''))
+
+
+
 # —— 刷新建议三动作(遭遇/补给/投资):参数类已登记(CW_ACTION_TYPES)。
 #    投资刷新已接入调用生产面(2026-10-19 用户裁定「sim 与实机一致提供刷新
 #    次数」批):生产动作发出面 = 画面 op 刷新链自上报本函数取声明喂入
