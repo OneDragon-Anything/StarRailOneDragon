@@ -1224,20 +1224,29 @@ def _validate_paddle_xy(x: int, y: int, level: int | None) -> bool:
 
 
 def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None,
-                             screen: MatLike | None) -> tuple[int | None, int | None]:
+                             ) -> tuple[int | None, int | None,
+                                       list[tuple[int, int, bool]] | None, bool]:
     """单次 OCR 结果 → 位置感知解析(与 ``_read_deploy_paddle`` 守卫分层:本函数只管解析)。
 
     流程:连通域字形(剔图标)→ 斜杠=细长字形 → OCR 文本数字串对齐字形 → 约束验证。
-    全部失败 → (None, None);唯一候选歧义/约束拒绝时 obs_conflict 保留证据(证据行节流由
-    obs_conflict 自带)。``screen`` 供保留证据截图(None=纯解析,不保留证据)。
+    本函数只算不发:证据行由 ``_read_deploy_paddle`` 在管线出口统一发(解析放在管线
+    中间发,一级失败、二级兜底成功的帧会留下一条误报拒信)。
+
+    返回 ``(x, y, candidates, level_relaxed)``:
+    - ``(x, y)``:解析成功的读数,失败为 ``(None, None)``;
+    - ``candidates``:``_resolve_paddle_digits`` 末次得到的候选清单。``None`` = 没走到
+      约束出口(无合格字形,或 OCR 文本无数字,两处提前返回);``[]`` = 走了约束出口但
+      没有合法候选。调用方靠这一点区分「读到了数字却解析不出」(留证)与「区域被遮挡 /
+      不在部署计数画面」(零证据);
+    - ``level_relaxed``:本次成功是否走「level 先验放宽」通道。
     """
     glyphs = _paddle_glyph_strip(crop)
     if not glyphs:
-        return None, None
+        return None, None, None, False
     blob = ''.join(r.data for r in ocr_results)
     text_digits = re.sub(r'\D', '', blob)
     if not text_digits:
-        return None, None
+        return None, None, None, False
     slash_idx: int | None = None
     digit_n = 0
     for _, _, _h, area in glyphs:           # glyphs 已按 x 排序
@@ -1249,30 +1258,32 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
     x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, level,
                                          text_has_slash='/' in blob)
     if x is not None:
-        return x, y
-    # level 先验修正通道(分诊 C 根修;帧证据 obs_conflict_deploy_paddle__d9f64136:
-    # 画面 4/4、字形干净,level 先验 ≥5 时 y≥level 把唯一合法候选拒空)。level 来自
-    # 三源解析(自身可误读/毒化),不该让间接先验一票否决直接几何读——全部候选仅
-    # 因 y≥level 被拒时,用绝对域(0≤x≤13,1≤y≤13)重解析一次,采回 + 保留证据(cap 侧
-    # 与 level 的一致性由 _debounce_cap 双帧通道终审,判据同上)。
-    # X > Y 的解析结果直接返回:超限态是合法读数,其采信门(双帧确认)与留证归
-    # 调用侧 _confirm_over_cap,解析层不重复留证(每帧多条 paddle 读)。
+        return x, y, cands, False
+    # level 先验放宽通道:level 来自三源解析(自身可误读/毒化),不该让间接先验一票否决
+    # 直接几何读——画面字形干净、只因 level 偏高时 y≥level 会把唯一合法候选拒空。
+    # 全部候选落空时用绝对域(0≤x≤13,1≤y≤13)重解析一次并采回;放宽通道的披露行由
+    # _read_deploy_paddle 在该级成功时发,解析层不留证。超限态(X > Y)的采信门(双帧
+    # 确认)与留证仍归调用侧 _confirm_over_cap。
     if level is not None:
         x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, None,
                                              text_has_slash='/' in blob)
         if x is not None:
-            if screen is not None:
-                obs_conflict('deploy_paddle', None, {'text': blob, 'candidates': cands},
-                             screen, verdict=('采-y<level(唯一合法候选被 level 先验拒;'
-                                              '对照 level 疑毒化,修正不锁,cap 侧双帧终审)'),
-                             source='paddle_positional')
-            return x, y
-    if screen is not None:
-        obs_conflict('deploy_paddle', None, {'text': blob, 'candidates': cands},
-                     screen, verdict=('拒-位置感知解析约束不过(斜杠丢失/图标混入后'
-                                      '候选歧义或语义域外;详见 candidates)'),
-                     source='paddle_positional')
-    return None, None
+            return x, y, cands, True
+    return None, None, cands, False
+
+
+def _emit_paddle_relaxed(text_l1: str, text: str,
+                         cands: list[tuple[int, int, bool]], screen: MatLike) -> None:
+    """发 level 先验放宽成功的披露行(哪级成功在哪级发;截图节流由 obs_conflict 自带)。
+
+    ``text_l1`` = 一级原生 OCR 文本(让判读者看见一级是否失败过),``text`` = 成功那
+    一级的文本(一级成功时两者同值),``cands`` = 成功那一级的候选清单。
+    """
+    obs_conflict('deploy_paddle', None,
+                 {'text_l1': text_l1, 'text': text, 'candidates': cands}, screen,
+                 verdict=('采-y<level(唯一合法候选被 level 先验拒;'
+                          '对照 level 疑毒化,修正不锁,cap 侧双帧终审)'),
+                 source='paddle_positional')
 
 
 def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
@@ -1295,6 +1306,10 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
        (与 ``read_enemy_difficulty`` 两级形状一致;实拍斜杠变异 '717'=7/7、
        图标前缀 '10/3'=0/3 一级即可解,二级防原生 det 整体漏检)。
 
+    **证据行只在管线出口发**(解析函数 ``_parse_paddle_positional`` 只算不发):拒信 1 条
+    (带两级 OCR 文本;只在两级都未解析成功、且至少一级走到约束出口时发,无字形 / 无数字
+    的帧零证据);level 先验放宽成功的披露 1 条(哪级成功在哪级发,带截图)。
+
     **cap = level + 宝钻数**(D-53 实测核正):无加成时 deploy cap = 团队等级
     (5 fixture 跨 lv3/4/5/7 核:Y 恒=level)。财富宝钻 +1 团队槽且**可叠加**——
     官方效果原文「拥有宝钻可以使团队规模上限+1,无论是否被角色穿戴」
@@ -1302,9 +1317,9 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
     ⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废;旧「+1 封顶」
     假设同废(叠加无上界,消费端域检查见 cw_screen_prep 审计#15 已反转)。
 
-    零重帧原则:解析失败只返 (None, None) 并保留证据,不在解析层重截帧;
-    重帧仍归 ``read_deploy_cap_debounced`` 的域外防抖(瞬时误读须跨帧才能识别,
-    同帧源不可替代)。
+    零重帧原则:两级都未解析成功、且至少一级走到约束出口,才保留 1 条拒信证据(带两级
+    文本),不在解析层重截帧;重帧仍归 ``read_deploy_cap_debounced`` 的域外防抖(瞬时误读
+    须跨帧才能识别,同帧源不可替代)。
 
     保留裁剪读(crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题;
     裁切(padding 给足)是稳读前提。
@@ -1316,15 +1331,40 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
     if crop.size == 0:
         return None, None
     results = ctx.ocr_service.get_ocr_result_list(image=crop)
-    x, y = _parse_paddle_positional(crop, results, level, screen)
+    text_l1 = ''.join(r.data for r in results)
+    x, y, cands_l1, relaxed = _parse_paddle_positional(crop, results, level)
     if x is not None:
+        if relaxed:
+            _emit_paddle_relaxed(text_l1, text_l1, cands_l1, screen)
         return x, y
     # 一级解析失败(原生 det 漏检/斜杠读成数字后候选歧义)→ 二值化抹图标后重 OCR:
     # 图标移除后 rec 对「斜杠 + 数字」还原率显著提升(58 帧实测 '717'→'7/7'),同帧
-    # 源内重试,不重截帧。
+    # 源内重试,不重截帧。一级失败是预期内的,拒信留到管线出口(两级都失败)再发。
     results2 = ctx.ocr_service.get_ocr_result_list(
         image=cv2.cvtColor(_paddle_binary_stripped(crop), cv2.COLOR_GRAY2RGB))
-    return _parse_paddle_positional(crop, results2, level, screen)
+    text_l2 = ''.join(r.data for r in results2)
+    x, y, cands_l2, relaxed = _parse_paddle_positional(crop, results2, level)
+    if x is not None:
+        if relaxed:
+            _emit_paddle_relaxed(text_l1, text_l2, cands_l2, screen)
+        return x, y
+    if cands_l1 is None and cands_l2 is None:
+        return None, None    # 两级都没走到约束出口:区域被遮挡/不在部署计数画面,零证据
+    # 拒信只带一份清单:优先取非空的(更有判读价值),来源由 candidates_from 如实标注
+    if cands_l2:
+        cands_reject, cands_from = cands_l2, 'l2'
+    elif cands_l1:
+        cands_reject, cands_from = cands_l1, 'l1'
+    else:
+        cands_reject, cands_from = ((cands_l2, 'l2') if cands_l2 is not None
+                                    else (cands_l1, 'l1'))
+    obs_conflict('deploy_paddle', None,
+                 {'text_l1': text_l1, 'text_l2': text_l2, 'candidates': cands_reject,
+                  'candidates_from': cands_from}, screen,
+                 verdict=('拒-位置感知解析约束不过(斜杠丢失/图标混入后'
+                          '候选歧义或语义域外;详见 candidates)'),
+                 source='paddle_positional')
+    return None, None
 
 
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
