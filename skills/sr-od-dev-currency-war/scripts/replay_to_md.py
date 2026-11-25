@@ -206,7 +206,7 @@ class DecisionRecord:
     load_seq: int                 # 全局加载序(0 基;FIFO 分配与去重稳定基准)
     dtag: str                     # <strategy_id>:<dseq>,动作级 join 键
     strategy_id: str
-    entry: str                    # 决策入口名(14 闭集,ENTRY_SCREEN_MAP 键)
+    entry: str                    # 决策入口名(15 闭集,ENTRY_SCREEN_MAP 键)
     #: 决策帧节点 {plane, round_num, kind}(gs.node 现读);None = null 帧,
     #: 不入章级挂载,计数进局头「未归属」(render-assembly §3)
     node: dict[str, Any] | None
@@ -410,13 +410,14 @@ _ALL_ENTRY_KEYS: frozenset[str] = frozenset(
     for key in spec.entry_fields)
 
 
-#: 决策入口 → 渲染章键(策略遥测迭代 render-assembly §2,14 行闭集直译;
+#: 决策入口 → 渲染章键(策略遥测迭代 render-assembly §2,15 行闭集直译;
 #: 章键 = 注册表现名,注册表缺失/更名时以注册表为准修正本表)。适用集
-#: 分两路:prep/shop/supply 走动作级 dtag join(各自确认链产回执,见
-#: _ACTION_JOIN_ENTRIES),其余 11 个选择族入口不产回执、走章级挂载
-#: ——两级互斥。
+#: 分两路:prep/shop/supply/合成确认浮层处置走动作级 dtag join(各自确认链
+#: 产回执,见 _ACTION_JOIN_ENTRIES),其余 11 个选择族入口不产回执、走章级
+#: 挂载——两级互斥。合成确认浮层是备战画面的子态,处置记在备战章下。
 ENTRY_SCREEN_MAP: dict[str, str] = {
     'decide_prep_screen': '画面-备战',
+    'decide_synthesis_overlay': '画面-备战',
     'decide_shop_action': '画面-商店',
     'decide_invest_env': '画面-投资环境',
     'decide_invest_strategy': '画面-投资策略',
@@ -432,11 +433,12 @@ ENTRY_SCREEN_MAP: dict[str, str] = {
     'decide_star_tome': '画面-书卡',
 }
 
-#: 动作级 join 适用集(prep/shop/supply,各自确认链产回执;其余 11 个
-#: 选择族入口不产回执,其 dtag 出现在回执上 = 陈旧搭错异常形态,按失配
-#: 处理——capture-store §2 适用域申报的渲染侧对偶)。
+#: 动作级 join 适用集(prep/shop/supply/合成确认浮层处置,各自确认链产回执;
+#: 其余 11 个选择族入口不产回执,其 dtag 出现在回执上 = 陈旧搭错异常形态,
+#: 按失配处理——capture-store §2 适用域申报的渲染侧对偶)。
 _ACTION_JOIN_ENTRIES: frozenset[str] = frozenset(
-    {'decide_prep_screen', 'decide_shop_action', 'decide_supply'})
+    {'decide_prep_screen', 'decide_shop_action', 'decide_supply',
+     'decide_synthesis_overlay'})
 
 #: 回执 op 命名域归一(render-assembly §3):prep 统一口与商店落地门写
 #: 动作类型名(``type(action).__name__``),open_shop/close_shop/补给确认
@@ -476,6 +478,9 @@ ACTION_WORD_MAP: dict[str, str] = {
     'CwActionLevelUpParam': '升级', 'CwActionLevelUpShopParam': '店内升级',
     'CwActionStartBattleParam': '出战', 'CwActionCollectOreParam': '采晶矿',
     'CwActionCloseShopOp': '收店',
+    # 合成确认浮层处置(经执行器分派的回执写参数类名,直接调用的回执写 op 类名)
+    'CwActionSynthesisConfirmParam': '确认合成', 'CwActionSynthesisCancelParam': '取消合成',
+    'CwActionSynthesisConfirmOp': '确认合成', 'CwActionSynthesisCancelOp': '取消合成',
     # 代码词表补录(旧流实测有、新账未再现,保留映射)
     'LevelUp': '升级', 'LevelUpShop': '店内升级', 'RefreshShop': '刷新商店',
     'OpenBox': '开箱',
@@ -493,6 +498,7 @@ FIELD_CN_MAP: dict[str, str] = {
     'active_env': '投资环境', 'active_strategies': '持卡',
     'planner_opts': '策划候选', 'settlement': '结算', 'node': '节点',
     'node_pos': '节点序位',
+    'synthesis_overlay': '合成确认浮层',
     'current_screen': '画面', 'overflow_warning': '溢出警告',
     'overflow_card': '溢出卡',
     # 经济 / 商店域
