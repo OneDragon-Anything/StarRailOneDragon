@@ -6,6 +6,8 @@
 对局中名单(前缀 − 白名单)与大厅态白名单互补,两者各配一个画面匹配函数。
 图鉴查询页名单(CODEX_STATE_SCREENS)是大厅态白名单的子集,单独成常量供退出链
 按屏名清单识别图鉴页(消费方自带画面匹配,不另配函数)。
+唯一的例外依赖 = :func:`is_exit_safe_prep_frame` 在函数内惰性导入观察域的合成确认
+浮层识别(模块级不导入,上面「只依赖基础原语」的边界不变)。
 """
 from typing import TYPE_CHECKING
 
@@ -78,6 +80,33 @@ def in_match_screen_names(screen_info_list: list) -> list[str]:
     return [si.screen_name for si in screen_info_list
             if si.screen_name.startswith(CW_IN_MATCH_PREFIX)
             and si.screen_name not in LOBBY_STATE_SCREENS]
+
+
+def is_exit_safe_prep_frame(ctx: 'SrContext', screen: MatLike,
+                            screen_name: str | None = None) -> bool:
+    """当前帧是不是「可安全交还退出调度」的备战态。
+
+    两个条件同时成立才算:屏名在 A 类名单(:data:`PREP_DIRECT_EXIT_SCREENS`)里,且合成
+    确认浮层不在场。退出链路由③与对局循环的 stop_at_prep 停机位共用本判定——同源是防
+    「循环停 ↔ 退出重派」互踢死循环的硬前提。
+
+    为什么要加浮层这一条:合成确认浮层是全局模态,在场时备战画面的识别标志照样全中,
+    只看屏名会把浮层帧当成可交还的备战态直接去点门形图标——那一下会被浮层吞掉,退局
+    必败。浮层在场、有按钮候选但配不成对、配对有歧义,都算不安全(判否之后交给备战
+    画面 op 处置,处置完的下一帧才交还)。开商店画面不在 A 类名单里,商店开着的帧不进
+    这道判定、不读右侧装备。
+
+    Args:
+        screen_name: 调用方已经认过的屏名;缺省时现做一次对局中画面全集识别。调用方
+            手里已有屏名就传进来,省一次全集识别。
+    """
+    if screen_name is None:
+        screen_name = get_in_match_screen_name(ctx, screen)
+    if screen_name not in PREP_DIRECT_EXIT_SCREENS:
+        return False
+    from sr_od.application.currency_war.obs import cw_synthesis_overlay_obs
+    state = cw_synthesis_overlay_obs.read_synthesis_overlay_of(ctx, screen).state
+    return state == cw_synthesis_overlay_obs.STATE_ABSENT
 
 
 def get_in_match_screen_name(ctx: 'SrContext', screen: MatLike) -> str | None:

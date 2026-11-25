@@ -7,14 +7,15 @@
 间距配成一对,由 ✓ 的命中位置派生两颗按钮的点击坐标与三个装备格的位置,再读三个
 格里的装备图标。
 
-本模块只有纯函数、没有状态(识别器的模块头约定它是纯读;按帧缓存归各自的调用方,
-不放在这里)。入参缺失(按钮模板或搜索矩形取不到)抛 ``SynthesisOverlayInputError``
+本模块的识别函数是纯函数、没有状态(识别器的模块头约定它是纯读;按帧缓存归各自的
+调用方,不放在这里)。入参缺失(按钮模板或搜索矩形取不到)抛 ``SynthesisOverlayInputError``
 而不判「不在场」——判成不在场的话,所有浮层帧都会被当成干净的备战帧走常规路径,
 点击全被游戏丢弃,而且没有任何告警。
 
 调用方:备战画面 op 的观察节点、备战 extras 识别器(``read_prep_extras``)、
 停机钩子门(``cw_obs_core.is_prep_like_frame``)、退出链的「可安全交还」判定、
-装备读帧刷新原语的拒写门。
+装备读帧刷新原语的拒写门。各消费面统一走 :func:`read_synthesis_overlay_of`
+(按运行上下文备料后调纯函数);只有测试直接调纯函数、自己备料。
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from sr_od.application.currency_war.obs.cw_equipment import _EQUIP_SCALES_FAST
 if TYPE_CHECKING:
     from one_dragon.base.geometry.rectangle import Rect
     from one_dragon.base.screen.template_info import TemplateInfo
+    from sr_od.context.sr_context import SrContext
 
 # 两颗按钮的模板目录名(模板目录两层同名)。画面档退役后这两个模板不再被任何画面档
 # 引用,由本模块的调用方按目录名直取:
@@ -338,3 +340,31 @@ def read_synthesis_overlay(screen: MatLike, ok_template: TemplateInfo | None,
         state=STATE_PRESENT, reading=reading,
         ok_candidates=tuple(ok_candidates), cancel_candidates=tuple(cancel_candidates),
         pairs=tuple(pairs))
+
+
+#: 装备栏搜索矩形在备战画面档里的区域名(矩形本身以画面档为单一真相源)。
+SEARCH_AREA_NAME: str = '区域-道具装备'
+
+
+def read_synthesis_overlay_of(ctx: SrContext, screen: MatLike) -> SynthesisOverlayResult:
+    """按运行上下文备料,再调 :func:`read_synthesis_overlay`——各消费面的统一入口。
+
+    备料三样:两颗按钮的模板(模板目录两层同名)、搜索矩形(备战画面档
+    ``SEARCH_AREA_NAME`` 的 pc_rect)、装备图标灰度模板库。五个消费面(备战画面 op 的
+    观察节点、备战 extras 识别器、停机钩子门、退出链的可交还判定、装备读帧刷新原语)
+    都从这里进,备料写法只有这一份。按钮模板或搜索矩形取不到时照常抛
+    ``SynthesisOverlayInputError``,由各消费面按自己的异常通道响应。
+    """
+    from sr_od.application.currency_war.kernel.cw_obs_core import (
+        SCREEN_NAME,
+        _area_rect,
+    )
+    from sr_od.application.currency_war.obs.cw_equipment import (
+        ensure_equip_tm_templates,
+    )
+    return read_synthesis_overlay(
+        screen,
+        ctx.template_loader.get_template(OK_TEMPLATE_DIR, OK_TEMPLATE_DIR),
+        ctx.template_loader.get_template(CANCEL_TEMPLATE_DIR, CANCEL_TEMPLATE_DIR),
+        _area_rect(ctx, SEARCH_AREA_NAME, SCREEN_NAME),
+        ensure_equip_tm_templates(ctx))

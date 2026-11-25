@@ -35,11 +35,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs import cw_synthesis_overlay_obs as overlay_obs
-from sr_od.application.currency_war.obs.cw_equipment import (
-    ensure_equip_tm_templates,
-)
 from sr_od.application.currency_war.obs.cw_observe_full import (
     read_owned_equips_dual_key,
 )
@@ -64,14 +60,7 @@ def untrusted_reading_reason(ctx: SrContext, screen: MatLike) -> str | None:
     for screen_name, reason in _SCREEN_BLOCKS:
         if screen_utils.is_target_screen(ctx, screen, screen_name=screen_name):
             return reason
-    result = overlay_obs.read_synthesis_overlay(
-        screen,
-        ctx.template_loader.get_template(overlay_obs.OK_TEMPLATE_DIR,
-                                         overlay_obs.OK_TEMPLATE_DIR),
-        ctx.template_loader.get_template(overlay_obs.CANCEL_TEMPLATE_DIR,
-                                         overlay_obs.CANCEL_TEMPLATE_DIR),
-        _area_rect(ctx, '区域-道具装备', '货币战争-备战'),
-        ensure_equip_tm_templates(ctx))
+    result = overlay_obs.read_synthesis_overlay_of(ctx, screen)
     if result.state == overlay_obs.STATE_PRESENT:
         return '合成确认浮层在场'
     if result.state in (overlay_obs.STATE_AMBIGUOUS, overlay_obs.STATE_UNPAIRED):
