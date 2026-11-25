@@ -14,8 +14,10 @@
 
 调用方:备战画面 op 的观察节点、备战 extras 识别器(``read_prep_extras``)、
 停机钩子门(``cw_obs_core.is_prep_like_frame``)、退出链的「可安全交还」判定、
-装备读帧刷新原语的拒写门。各消费面统一走 :func:`read_synthesis_overlay_of`
-(按运行上下文备料后调纯函数);只有测试直接调纯函数、自己备料。
+装备读帧刷新原语的拒写门。其中四个(备战画面 op 的观察节点、停机钩子门、退出链的
+「可安全交还」判定、装备读帧刷新原语)走 :func:`read_synthesis_overlay_of`(按运行
+上下文备料后调纯函数);备战识别器沿用自己在读备战栏时已经加载好的装备模板库,
+直接调纯函数,备料与统一入口等价。测试直接调纯函数、自己备料。
 """
 from __future__ import annotations
 
@@ -350,10 +352,11 @@ def read_synthesis_overlay_of(ctx: SrContext, screen: MatLike) -> SynthesisOverl
     """按运行上下文备料,再调 :func:`read_synthesis_overlay`——各消费面的统一入口。
 
     备料三样:两颗按钮的模板(模板目录两层同名)、搜索矩形(备战画面档
-    ``SEARCH_AREA_NAME`` 的 pc_rect)、装备图标灰度模板库。五个消费面(备战画面 op 的
-    观察节点、备战 extras 识别器、停机钩子门、退出链的可交还判定、装备读帧刷新原语)
-    都从这里进,备料写法只有这一份。按钮模板或搜索矩形取不到时照常抛
-    ``SynthesisOverlayInputError``,由各消费面按自己的异常通道响应。
+    ``SEARCH_AREA_NAME`` 的 pc_rect)、装备图标灰度模板库。四个消费面(备战画面 op 的
+    观察节点、停机钩子门、退出链的可交还判定、装备读帧刷新原语)从这里进,备料写法
+    只有这一份;备战识别器沿用自己已加载的装备模板库,直接调纯函数。按钮模板或
+    搜索矩形取不到时照常抛 ``SynthesisOverlayInputError``,由各消费面按自己的异常
+    通道响应。
     """
     from sr_od.application.currency_war.kernel.cw_obs_core import (
         SCREEN_NAME,
