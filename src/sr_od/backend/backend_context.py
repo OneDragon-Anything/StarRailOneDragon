@@ -58,6 +58,7 @@ from sr_od.backend.schemas import (
     RunStatusResult,
     RunStopResult,
     ScreenCreateResult,
+    ScreenDeleteResult,
     WindowStatus,
 )
 from sr_od.backend.screen_recognizer_scan import get_recognizer
@@ -1128,6 +1129,48 @@ class SrBackendContext:
             self._ctx.screen_loader.save_screen(screen_info)
             return AreaMutationResult(screen_name=screen_name, area_name=area_name,
                                       action='deleted', area_count=len(screen_info.area_list))
+
+    def delete_screen(self, screen_name: str) -> ScreenDeleteResult:
+        """删除整个画面档(含全部 area;删单独 yml + 重写合并缓存 + reload)。操作类,不可逆。
+
+        被其他画面的跳转边(goto_list)指向时拒绝删除:画面删掉后那些边指向不存在的画面,
+        路由初始化(ScreenLoader.init_screen_route)只 log.error 不报错,故在此拦下并列出引用方。
+        只删画面档本身,不动该画面专用的模板图片目录和代码里的画面名引用,由调用方自行清理。
+        无需游戏在线。
+        写档互斥:已有写档调用进行中时本调用立即失败(等待重试)。
+
+        Args:
+            screen_name: 要删除的画面名(中文,建档匹配键)。
+
+        Returns:
+            删除结果(画面 ID / 画面名 / 随画面一并删除的 area 数)。
+
+        Raises:
+            ScreenInfoError: screen_name 为空 / 画面名未找到 / 画面仍被其他画面的跳转边指向。
+            ScreenWriteBusyError: 已有写档调用进行中(等待重试)。
+        """
+        with self._screen_write_mutex():
+            if not screen_name:
+                raise ScreenInfoError('screen_name 不能为空')
+            loader = self._ctx.screen_loader
+            try:
+                screen_info = loader.get_screen(screen_name)  # 未找到 raise
+            except Exception as e:
+                raise _screen_not_found_error(loader, screen_name, e) from e
+            # 画面名.区域名 形式列出引用方,方便逐个去改 goto_list
+            referrers = sorted(
+                f'{other.screen_name}.{area.area_name}'
+                for other in loader.screen_info_list if other.screen_name != screen_name
+                for area in other.area_list if screen_name in (area.goto_list or []))
+            if referrers:
+                raise ScreenInfoError(
+                    f'画面仍被跳转边引用,未删除: {referrers}'
+                    f'(先用 upsert_screen_area 改掉这些 area 的 goto_list,再删除画面)')
+            screen_id = screen_info.screen_id
+            removed_area_count = len(screen_info.area_list)
+            loader.delete_screen(screen_id)
+            return ScreenDeleteResult(screen_id=screen_id, screen_name=screen_name,
+                                      removed_area_count=removed_area_count)
 
     def create_screen(self, screen_id: str, screen_name: str, app_id: str = '', pc_alt: bool = False) -> ScreenCreateResult:
         """创建一个新画面(空 area_list;写 yml + reload)。操作类。

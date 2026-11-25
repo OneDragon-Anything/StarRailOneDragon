@@ -20,6 +20,7 @@ DEV_ONLY_TOOLS: frozenset[str] = frozenset({
     'create_screen',            # 画面建档写操作(识别资产维护)
     'upsert_screen_area',       # 同上
     'delete_screen_area',       # 同上
+    'delete_screen',            # 同上
     'describe_operation_flow',  # op 节点流转图:改 op 的编排审查用;「用 op」的 list/describe/run 归玩家
     'record_screen',            # 录屏取证(dev 依赖 imageio-ffmpeg)
 })

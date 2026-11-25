@@ -195,6 +195,19 @@ class ScreenCreateOut(BaseModel):
         return cls(**asdict(result))
 
 
+class ScreenDeleteOut(BaseModel):
+    """删除画面结果(delete_screen 返回)。"""
+
+    screen_id: str = Field(description='被删除画面的 ID(英文 snake_case,yml 文件名)')
+    screen_name: str = Field(description='被删除画面的画面名(中文)')
+    removed_area_count: int = Field(description='随画面一并删除的 area 数')
+
+    @classmethod
+    def from_backend(cls, result: 'ScreenDeleteResult') -> 'ScreenDeleteOut':
+        """框架删除画面结果 dataclass → MCP 输出模型(同构 asdict 转换)。"""
+        return cls(**asdict(result))
+
+
 class AreaMutationOut(BaseModel):
     """画面区域变更结果(upsert/delete_screen_area 返回)。"""
 
@@ -396,6 +409,21 @@ class ScreenCreateResult:
 
     screen_id: str
     screen_name: str
+
+
+@dataclass
+class ScreenDeleteResult:
+    """删除画面结果(传输无关)。
+
+    Attributes:
+        screen_id: 被删除画面的 ID(英文 snake_case,yml 文件名)。
+        screen_name: 被删除画面的画面名(中文,建档匹配键)。
+        removed_area_count: 随画面一并删除的 area 数。
+    """
+
+    screen_id: str
+    screen_name: str
+    removed_area_count: int
 
 
 @dataclass

@@ -74,6 +74,7 @@ from sr_od.backend.schemas import (
     RunStatusOut,
     RunStopOut,
     ScreenCreateOut,
+    ScreenDeleteOut,
     ScreenNamesOut,
     WindowStatusOut,
 )
@@ -250,6 +251,20 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od",
         收到拒绝就稍后重试,不要并发提交写档请求。
         """
         return AreaMutationOut.from_backend(backend.delete_screen_area(screen_name, area_name))
+
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="删除画面"))  # 操作类+不可逆:删整个 screen_info
+    def delete_screen(
+        screen_name: Annotated[str, Field(description="要删除的画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
+    ) -> ScreenDeleteOut:
+        """删除整个画面(含全部 area;删单独 yml + 重写合并缓存 + reload,不可逆)。操作类(改画面建档),无需游戏在线。
+
+        被其他画面的跳转边(goto_list)指向时会拒绝并列出引用方(画面名.区域名):
+        先用 upsert_screen_area 改掉那些 area 的 goto_list,再来删除。
+        只想删画面里的一个区域用 delete_screen_area。
+        写档互斥:已有写档请求进行中时本请求立即失败并提示等待重试(非排队),
+        收到拒绝就稍后重试,不要并发提交写档请求。
+        """
+        return ScreenDeleteOut.from_backend(backend.delete_screen(screen_name))
 
     @mcp.tool(annotations=ToolAnnotations(title="新建画面"))  # 操作类:建新 screen_info(写 yml + reload)
     def create_screen(
