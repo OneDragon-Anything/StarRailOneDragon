@@ -12,7 +12,7 @@
 
 | # | 量 | 源清单 | 现仲裁状态 | 证据出处 |
 |---|---|---|---|---|
-| 1 | gold | ①裁剪 3x OCR;②同源多帧补采(稳定门取末帧) | **单源+帧间稳定门**(无真正第二源;末帧>首帧的时序依据=收入计数器单调向上) | `read_gold_settled`(cw_observation.py:149) |
+| 1 | gold | ①裁剪 3x OCR;②同源多帧补采(稳定门取末帧;**仅实时帧补采,离线帧单帧读**) | **单源+帧间稳定门**(无真正第二源;末帧>首帧的时序依据=收入计数器单调向上) | `read_gold_settled`(cw_observation.py:160) |
 | 2 | hp | ①原生 OCR;②3x 放大 OCR;③对账层 session.last_hp_real;④二值化第三级 | **双通道仲裁(采放大,标定记录在案)+对账层+trusted 位** —— 家族里最完整的先例 | `read_hp_opt`/`reconcile_hp`() |
 | 3 | level | ①OCR 直读(无兜底);②XP 分母反推;③`_expected_level` 启发式;④session 单调链 | **三源仲裁**(XP 主权/单调守卫/跳变守卫/authoritative 位;毒化防线=纯启发式不写回) | `_resolve_level`(cw_observation.py:1919) |
 | 4 | deploy_cap | ①paddle「X/Y」的 Y(直读);②level 估兜底;③域防抖双帧重读 | **域守卫(level≤cap≤level+2)+域外双帧一致采信+域外且重读不一致→拒信 None** | `_debounce_cap`() |
@@ -25,7 +25,7 @@
 | 11 | streak | ①session 结算值(带符号);②备战 OCR magnitude | **仅对账保留证据,无裁决**(不等即 obs_conflict,不采任何一方) | read_game_state streak 段 |
 | 12 | enemy_difficulty | ①逐帧敌方难度读数两级管线 OCR(live);②session 简报恒值 | **优先级仲裁:live 优先**(读链翻转,旧「session 优先」把真值结构性压死 92.7%) | read_game_state enemy_difficulty 段 |
 | 13 | shop 牌费用/星级 | ①画面费用徽章(模板快路+OCR 慢路);②roster 注册表 1★ 费 | **一致性校验仲裁:倍数∈{1,3,9} 才采徽章**,否则 roster 兜底+保留证据 | `resolve_cost_star` |
-| 14 | shop 牌身份 | SIFT 单源(未识别='?'显式,不猜) | **单源显式未知**(无第二源;fail 方向=拒买) | `read_shop_cards` |
+| 14 | shop 牌身份 | SIFT 单源(未识别='?'显式,不猜) | **单源显式未知**(无第二源;fail 方向=拒买;离线帧不补采,见下方「离线读图口径」) | `read_shop_cards`(cw_observation.py:2109) |
 | 15 | phase_round | ①顶栏 OCR;②last-known-good 缓存 | **时序防抖类:值域守卫+单调守卫+连续 2 帧同值回退确认** | `read_phase_round` |
 | 16 | OpenShop 期望账(播种) | ①(旧账,已停用);②屏幕真值 | **已单源化=最强仲裁**(停用旧账;回退分支失去存在前提) | |
 | 17 | 装备 equips | ①主域 deployed 视图 equips(上报写,观察读回);②(无画面面板第二源) | **主域+读回**,无第二画面源可裁(口径;缺口登记 §8④) | `board_from_tracked`/unit_bond_tags |
@@ -33,6 +33,19 @@
 | 19 | bench 是否满(A10-1 补) | ①「备战席已满」警告 OCR(`read_bench_full`);②bench 9 格 CV 占用计数==9;③`deploy_vacancy==0` 推断 | **三读数面并存,互不对账无分歧保留证据通道**(「警告在 ∧ 计数不满」形态无观测);登记 §8⑧ | cw_observation.py:1900 / cw_screen_prep.py vacancy 段 |
 | 20 | node_sequence 序列/进度(A10-2 补) | ①台账 seq(位面详情采集写);②逐帧行检测推进(past/upcoming 槽位计数) | **票B 隐式对账**(§1 行 10 勘误:past_n 对 seq 本质是本量的双源对账),无显式仲裁无独立保留证据键 | cw_observation.py:614-627 |
 | 21 | deploy_vacancy 合成量(A10-3 补;A5 根) | ①heavy 段 `max(0, cap−paddle 直读)`(cw_screen_prep.py:608-610);②板满门仲裁值(cw_op_deploy.py:661) | **同一量两条口径并存,无对账无 divergent 传播**——P1 消费通道篇 swap 放行条件(m1/m1′ `check_seats`)消费的是①,而①的 dep_n 无仲裁 | cw_screen_prep.py:608 / mandate.py:133-140 |
+
+**离线读图口径(上表全部多帧补采与留证的共同规则)**:「实时帧」= 从游戏窗口现截的画面;「离线帧」= 调用方用 `analyze_screen(screenshot=图路径)` 传入的历史图(backend 入口在识别器执行期间把它标成非实时,标记读口 = `sr_od/context/frame_source.py::frame_is_live()`)。读链里凡「睡一会儿再截一张新画面重读」的补采,都只能补到**当前游戏窗口**的画面——离线读一张旧图时去补采,读到的是与这张图无关的当前画面,等于把别人的读数安在旧图头上。所以:
+
+| 补采 / 副作用点 | 实时帧 | 离线帧 |
+|---|---|---|
+| `read_gold_settled` 金稳定门 | 睡后补采,两帧不一致取末帧+保留证据 | 不睡不截屏,返回这张图自己的单帧读数 |
+| `read_shop_cards` 商店牌面重读(收起标志首判不中后的重判、终判稳定门两处) | 补采重读 | 不补采:收起标志首判不中的图返回 `None`(与截屏失败同形);首读含 unknown 的图返回首读,unknown 槽没有第二帧可救 |
+| `_debounce_cap` 域外上限双帧重读 | 重读一致才采信 | 域外上限直接拒信返回 `None` |
+| 后排布局档三读防抖(`cw_back_layout.py::_cv_confirm_readings`)与状态容器写账(`_observe_back_layout_to_container`) | 隔约 1s 重读两次;读数写入状态容器 | 零睡眠,后两次读数记 `None`;不写状态容器 |
+| 留证存图(`kernel/cw_observe.py::cw_shot` / `cw_shot_unique`) | 落盘到运行时截图目录,返回文件名 | 不落盘,返回 `None` |
+| 冲突入账(`kernel/cw_observe.py::obs_conflict`) | 向对局账本写证据行+存去重截图 | 不写账不存图;日志行照打但降为非关注级并带 `offline=1` |
+
+调用方分散在多个文件,判定统一放在以上汇点,不在各调用点逐个加。停机类钩子(召唤物/物品未识别)同此规则,见 `../flow/guards.md` §4。离线读图返回的都是**这张图自己的**读数,不是当前画面的。
 
 **家族四件与本清点的映射**:①=行 16(已闭);②=行 3/4 的 level/cap 读链毒化(读数问题族,P1 消费通道篇 §9.2 前置项,本篇 §3/§8⑦ 接);③=行 5(已闭,7026c5db)+行 7(勘误待裁决,§8①);④=行 9(§3 专章)。
 

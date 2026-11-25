@@ -38,6 +38,8 @@
 ## 4. 召唤物/物品未识别停机(`obs/cw_identity_obs.py`)
 
 触发 = 备战栏槽位占用但 SIFT 未识别(金币说明 overlay 开着则跳过本帧判定——overlay 盖住备战栏右端会制造假「占用未识别」)。处置 = `stop_running(save_screenshot=True)`。**不能降级**——未建档物品被当空槽/普通占用乱操作比停机贵。
+
+**离线规则(只对实时帧停机)**:「实时帧」= 从游戏窗口现截的画面;「离线帧」= 调用方用 `analyze_screen(screenshot=图路径)` 传入的历史图,backend 入口在读图分支内把它标成非实时(帧来源信号 = `sr_od/context/frame_source.py::frame_is_live()`)。钩子函数体第一句看这个标记:离线帧 → 只打一行 `[cw-hook][summon] 离线帧:占用未识别判定跳过` 日志后返回,不调 `stop_running`、不做面板守卫 OCR、不留证截图。理由:停机是在保护「正在跑的那一局」,读一张旧图没有局可停;旧图的留证会混进当前局的截图目录。判读离线读图结果时,看到占用未识别**不会**触发本钩子,要确认是否真有未建档物品须对实时画面读。其余只打日志不停机的留证汇点(存图 `kernel/cw_observe.py::cw_shot` / `cw_shot_unique`、入账 `obs_conflict`)口径见 `strategy/15_observation_multisource_arbitration.md` §1。
 **处理流程**:点该槽位看内容 → 物品变体 → 补进 `find_armory_boxes`/`find_tomes` 模板或新增物品类目 → 真召唤物 → `character_avatar/<名>/raw.png` 建模板 → roster 核条目。
 
 ## 5. 观察对账失配告警(kernel;`cw_mismatch_policy.py` 槽 + `currency_war_app.py` 闭包)
