@@ -38,8 +38,8 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.base.screen.screen_utils import get_match_screen_name
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_screen_state import (
-    PREP_DIRECT_EXIT_SCREENS,
     get_in_match_screen_name,
+    is_exit_safe_prep_frame,
 )
 from sr_od.application.currency_war.operations.cw_loop import CwLoop
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
@@ -176,7 +176,10 @@ class CwEntryExit(CwOperation):
         # ③ A 类:可直接点门形图标退出的备战态(含出战钮形态变体;屏名白名单,
         # 非识别标志判定——变体画面「出战」识别标志被「跳过」/「幕后茶歇」替换,
         # 识别标志判定恒 False)
-        if name in PREP_DIRECT_EXIT_SCREENS:
+        # 另加一个条件:合成确认浮层不在场。浮层在场的备战帧是全局模态,点门形
+        # 图标会被它吞掉——这种帧不满足本条,落到⑤委托,由对局循环派备战画面 op
+        # 先处置浮层,下一帧再交还。
+        if is_exit_safe_prep_frame(self.ctx, screen, name):
             self._miss_streak = 0
             return self.round_success(ST_PREP)
 
