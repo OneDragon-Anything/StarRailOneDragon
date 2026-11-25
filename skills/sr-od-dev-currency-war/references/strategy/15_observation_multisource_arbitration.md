@@ -15,8 +15,8 @@
 | 1 | gold | ①裁剪 3x OCR;②同源多帧补采(稳定门取末帧;**仅实时帧补采,离线帧单帧读**) | **单源+帧间稳定门**(无真正第二源;末帧>首帧的时序依据=收入计数器单调向上) | `read_gold_settled`(cw_observation.py:160) |
 | 2 | hp | ①原生 OCR;②3x 放大 OCR;③对账层 session.last_hp_real;④二值化第三级 | **双通道仲裁(采放大,标定记录在案)+对账层+trusted 位** —— 家族里最完整的先例 | `read_hp_opt`/`reconcile_hp`() |
 | 3 | level | ①OCR 直读(无兜底);②XP 分母反推;③`_expected_level` 启发式;④session 单调链 | **三源仲裁**(XP 主权/单调守卫/跳变守卫/authoritative 位;毒化防线=纯启发式不写回) | `_resolve_level`(cw_observation.py:1919) |
-| 4 | deploy_cap | ①paddle「X/Y」的 Y(直读);②level 估兜底;③域防抖双帧重读 | **域守卫(level≤cap≤level+2)+域外双帧一致采信+域外且重读不一致→拒信 None** | `_debounce_cap`() |
-| 5 | deployed 计数 | ①paddle X(游戏自带计数器,= 团队规模占用数);②CV 槽位占用实测 | **min 仲裁+spread>1 分歧保留证据+独立细分键**(7026c5db;板满门消费仲裁值);**超限例外**:cap 已知且 X > cap → 不取低值直接采 X(X 是规模占用数,CV 只数单位看不见规模,取低值会把光环持有者的额外占用压掉;cap 未知退回取低值;`cw_arbitration.py::combine_deployed_count`) | `arbitrate_deployed_count` |
+| 4 | deploy_cap | ①paddle「X/Y」的 Y(直读;解析口径:文本数字串按斜杠**字形**位置对齐,不靠文本里的 `/`——斜杠被读成数字时依次试四种对齐式「直接 / 去首位 / 去斜杠位 / 去首位+去斜杠位」,末式仅对 X、Y 各一位、文本恰比数字字形多两位且首位为 `1` 时启用;多候选且恰两个数字字形同形(宽差与面积比同时在线内)时只留 X=Y 候选;对不齐仍走拒信;纯逻辑单测与离线全量留帧验算已证,X/X 满板帧实机未覆盖);②level 估兜底;③域防抖双帧重读 | **域守卫(level≤cap≤level+2)+域外双帧一致采信+域外且重读不一致→拒信 None** | `_debounce_cap`() |
+| 5 | deployed 计数 | ①paddle X(游戏自带计数器,= 团队规模占用数;与行 4 的 Y 取自同一次对齐,解析口径见行 4);②CV 槽位占用实测 | **min 仲裁+spread>1 分歧保留证据+独立细分键**(7026c5db;板满门消费仲裁值);**超限例外**:cap 已知且 X > cap → 不取低值直接采 X(X 是规模占用数,CV 只数单位看不见规模,取低值会把光环持有者的额外占用压掉;cap 未知退回取低值;`cw_arbitration.py::combine_deployed_count`) | `arbitrate_deployed_count` |
 | 6 | deployed 槽位身份 | ①CV+SIFT 现读(read_deployed_chars);②(历史跟踪账,已停用);③paddle X 对齐(截断/补齐);④board 重建 | **对齐目标=paddle X;身份=SIFT 单源**(未知='?'显式;无第二身份源可裁) | read_game_state deployed 段 |
 | 7 | bench 名单/占用 | ①备战栏 9 格 CV 扫描;②(历史跟踪账,已停用;后播种 = heavy 读屏重建);③商店行卡片(空间归属应排除) | **无空间归属仲裁** —— r9 诊断报告 §2.1 记「bench 名单=商店 4 卡」;7026c5db 勘误经三证**否决**该归因(待裁决行在案)→ 病灶存疑待复现 | report §2.1 vs 7026c5db commit 注 |
 | 8 | board 阵营计数 | ①OCR 徽标(可视区);②computed(tracked 身份全集) | **双源仲裁:computed 基础数据+备战帧徽标覆写**(帧态门:非备战帧双不可信只保留证据;后经裁决翻转) | read_game_state board 段 |
@@ -26,7 +26,7 @@
 | 12 | enemy_difficulty | ①逐帧敌方难度读数两级管线 OCR(live);②session 简报恒值 | **优先级仲裁:live 优先**(读链翻转,旧「session 优先」把真值结构性压死 92.7%) | read_game_state enemy_difficulty 段 |
 | 13 | shop 牌费用/星级 | ①画面费用徽章(模板快路+OCR 慢路);②roster 注册表 1★ 费 | **一致性校验仲裁:倍数∈{1,3,9} 才采徽章**,否则 roster 兜底+保留证据 | `resolve_cost_star` |
 | 14 | shop 牌身份 | SIFT 单源(未识别='?'显式,不猜) | **单源显式未知**(无第二源;fail 方向=拒买;离线帧不补采,见下方「离线读图口径」) | `read_shop_cards`(cw_observation.py:2109) |
-| 15 | phase_round | ①顶栏 OCR;②last-known-good 缓存 | **时序防抖类:值域守卫+单调守卫+连续 2 帧同值回退确认** | `read_phase_round` |
+| 15 | phase_round | ①顶栏 OCR(记号过滤:拼接文本前剔除宽或高小于阈值的记号——读区左侧的杂散小记号会被拼成「1-10」一类假值);②last-known-good 缓存。读数只认完整「X-Y」/「第X位面」,无数字回退、流程侧与工具面同口径(短横线被单独识别成小记号而遭剔除的帧读不出:流程侧走 last-known-good,工具面返 None;纯逻辑单测与离线全量留帧验算已证,实机取证候下一局) | **时序防抖类:值域守卫+单调守卫+连续 2 帧同值回退确认** | `read_phase_round` |
 | 16 | OpenShop 期望账(播种) | ①(旧账,已停用);②屏幕真值 | **已单源化=最强仲裁**(停用旧账;回退分支失去存在前提) | |
 | 17 | 装备 equips | ①主域 deployed 视图 equips(上报写,观察读回);②(无画面面板第二源) | **主域+读回**,无第二画面源可裁(口径;缺口登记 §8④) | `board_from_tracked`/unit_bond_tags |
 | 18 | shop_refresh_cost | ①面板徽标读数;②基价常量 | **源定性勘误后删伪源**(徽标=利息数值非刷价,OCR 退出主链) —— 仲裁的第三形态:证明某源读的不是这个量后删除 | `read_shop_refresh_cost` docstring |
