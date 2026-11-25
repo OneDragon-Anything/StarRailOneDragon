@@ -985,18 +985,16 @@ _PHASE_ROUND_XY_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
 _PHASE_ROUND_PLANE_ONLY_RE = re.compile(r'第\s*(\d)\s*位面')
 
 
-def parse_phase_round_text(blob: str, *,
-                           digit_fallback: bool = False,
-                           ) -> tuple[int, int] | None:
+def parse_phase_round_text(blob: str) -> tuple[int, int] | None:
     """顶栏文本 → (plane, round) 解析纯函数(read_phase_round 与
     ``battle_prep_recognizer._read_phase_round_pure`` 共享单一源,
     第 4 份同族解析器并入;同正则同解析序)。
 
-    解析序:「X-Y」两位数形态(修饰局「1-10」整读)→「第X位面」
-    (产出 (p,p))→ ``digit_fallback=True`` 时数字回退(首数字 d →
-    (d,d),错源形态——交值域守卫/上层单调门覆盖;read_phase_round 恒关
-    停用裁定,Lv 泄漏形「Lv.3」会产出值域内 (3,3) 假 win 面,
-    仅识别器工具态保留该分支)。全不中 → None。
+    解析序:「X-Y」两位数形态(修饰局「1-10」整读)→「第X位面」(产出 (p,p))。
+    读数只认带短横线的完整「X-Y」或「第X位面」,不做数字回退(流程侧与工具面同
+    口径):文本里孤立的首个数字不构成阶段读数——开商店态短横线漏检时「2」「6」被读成
+    (2,2) 这种值域内假值,null 是「不知道」,假值会误导照着它做判断的消费方。
+    全不中 → None。
     """
     m = _PHASE_ROUND_XY_RE.search(blob)
     if m:
@@ -1004,10 +1002,6 @@ def parse_phase_round_text(blob: str, *,
     plane_m = _PHASE_ROUND_PLANE_ONLY_RE.search(blob)
     if plane_m:
         return int(plane_m.group(1)), int(plane_m.group(1))
-    if digit_fallback:
-        digits = re.findall(r'\d', blob)
-        if digits:
-            return int(digits[0]), int(digits[0])
     return None
 
 
@@ -1020,6 +1014,27 @@ def phase_round_in_range(cand: tuple[int, int],
     plane 判定短路在前(node_round_cap 对集外位面响亮抛错)。"""
     return (1 <= cand[0] <= 3
             and 1 <= cand[1] <= node_round_cap(cand[0], round_caps))
+
+
+#: 「区域-阶段」读区记号进拼接的最小边(像素,宽与高都要 ≥ 它)。实测:真「X-Y」记号最小边
+#: ≥33;开商店态短横线漏检后拆开的单个数字记号最小边 17;混进读区的杂散小记号 9×6 与
+#: 11×10(读成「0」/「√」,拼出「1-10」这类值域外假值)。读区备战 / 开商店两态共用,不能靠
+#: 收窄读区排除杂散记号。可复核用例 = ``test_cw_observation.py`` 的
+#: ``phase_blob_from_tokens`` 用例。
+_PHASE_TOKEN_MIN_SIDE: int = 12
+
+
+def phase_blob_from_tokens(results: list) -> str:
+    """「区域-阶段」OCR 记号 → 待解析文本:按原顺序取各项 ``data``,剔除宽或高小于
+    ``_PHASE_TOKEN_MIN_SIDE`` 的记号再拼接(只删不改序,不影响「X-Y」正则搜索)。
+
+    调用侧(流程侧 ``read_phase_round`` 与工具面 ``_read_phase_round_pure``)拼接前都走
+    本函数。已知边界:短横线在画面上只有 8×3 像素,若某帧识别把它单独吐成一个记号,会被
+    本过滤剔掉、「X-Y」读不出(流程侧走 last-known-good、工具面返 None);三局留帧里
+    短横线都与数字合在同一记号内。
+    """
+    return ''.join(r.data for r in results
+                   if r.w >= _PHASE_TOKEN_MIN_SIDE and r.h >= _PHASE_TOKEN_MIN_SIDE)
 
 
 def read_phase_round(ctx: SrContext, screen: MatLike,
@@ -1037,19 +1052,16 @@ def read_phase_round(ctx: SrContext, screen: MatLike,
     读到**倒退值**(如 plane3 → plane2)= OCR 假阳 → 保旧 + obs_conflict 保留证据(毒化面:
     支出 gate/P2P3 概率表/_expected_level 兜底全歪)。
 
-    数字 fallback 分支已停用(延迟审计候选③):该分支唯一合法产出 (1,1) 与
-    无历史兜底返回值完全重合,结构上不可能改变任何返回值;近两日 868 次被拒全为
-    纯浪费的 OCR 判读(被拒数字是 A8 难度/Lv 泄漏的错源,不是可修复的形变真值,
-    上下文规则修复无对象)→ 整段删除即治本。blob 无 X-Y/第X位面 匹配 → 直接走
-    last-known-good/(1,1) 兜底。值域守卫(source=ocr_range)不属 fallback,是
-    M70 假 win 防毒化守卫,保留。
+    读不到的帧(过渡帧 / 读区内无完整「X-Y」):解析只认完整 X-Y / 第X位面,无数字回退;
+    不匹配走 last-known-good/(1,1) 兜底。值域守卫(source=ocr_range)是 M70 假 win 防毒化
+    守卫,保留。
 
     正则/值域 两位数形态:``1-10`` 形读数(人身意外险修饰局)不再被
     单字符类正则截成 (1,1) 误读——误读比拒读更毒((1,1) 是倒退形态,经
     2 帧确认通道会被采信固化);值域上限随场字段(func:`node_round_cap`)。
     """
     global _last_phase_round
-    blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
+    blob = phase_blob_from_tokens(_ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
     new = parse_phase_round_text(blob)
     if new is not None and not phase_round_in_range(new, round_caps):
         # ⚠️ 值域守卫(M70 假 win 根因):plane 只有 1-3,读出 8(恢复对局时顶栏被
@@ -1147,17 +1159,34 @@ def _paddle_binary_stripped(crop: MatLike) -> MatLike:
     return bw
 
 
+#: 「X/X」同形收口的两个字形宽差上界(像素)。实测同一数字「6/6」两字形宽 37 / 38、面积
+#: 770 / 773(宽差 1);不同数字「5/6」两字形宽 35 / 38、面积 814 / 771(宽差 3,面积差 5.3%)。
+#: 宽差单独不足以区分不同数字,须与面积比同时成立。可复核用例 =
+#: ``cw_observation/test_read_deploy_paddle.py`` 的同形收口用例。
+_PADDLE_SAME_SHAPE_MAX_W_DIFF: int = 3
+#: 「X/X」同形收口的两个字形面积比上界(``|a1-a2| / max(a1,a2)``)。依据同上:同数字面积差
+#: 0.4%,已知最近的不同数字 5.3%——离阈值只有 0.3 个百分点,「不同数字面积相近」的分布
+#: 没有数据,所以收口只在候选多于一个且含 x == y 候选时才起作用。
+_PADDLE_SAME_SHAPE_MAX_AREA_RATIO: float = 0.05
+
+
 def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int | None,
                            level: int | None,
-                           text_has_slash: bool = False) -> tuple[int | None, int | None,
-                                                                  list[tuple[int, int, bool]]]:
+                           text_has_slash: bool = False,
+                           digit_glyph_shapes: list[tuple[int, int]] | None = None,
+                           ) -> tuple[int | None, int | None,
+                                      list[tuple[int, int, bool]]]:
     """位置感知解析核心(纯逻辑,可构造测试)。
 
     ``text_digits``:OCR 框文本里的数字串(斜杠可能被读成数字,图标可能贡献前缀数字);
     ``glyph_digit_n``:连通域数字字形个数(几何真值,图标已剔除);
     ``slash_idx``:数字字形序列中斜杠的下标(None=斜杠字形未识别,走候选拆分);
     ``text_has_slash``:OCR 文本里是否出现 '/'(斜杠读对时才为 True);
-    ``level``:当前等级(提供时约束 y≥level)。
+    ``level``:当前等级(提供时约束 y≥level);
+    ``digit_glyph_shapes``:全部被计为数字的字形的 ``(宽, 面积)``,按 x 升序;同形收口
+      只用其中恰 2 项的情形。``None`` = 不做同形收口。取法必须与调用方数 ``glyph_digit_n``
+      是同一循环的同一分支(见 ``_parse_paddle_positional``),两套规则各自表述时清单与
+      字形数会对不上。
 
     返回 ``(x, y, candidates)``。对齐候选(出处=58 帧逐框 OCR + 二值化抹图标重 OCR
     实测,见 ``_read_deploy_paddle``):
@@ -1166,20 +1195,28 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
       (迁移审计a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
       (抹图标后仍现 '16/7'=6/7 实证,非图标独有)→ 去首个再切;
     - **去斜杠位对齐**:文本无 '/' 且多 1 个数字 = 斜杠被读成数字
-      ('717'=7/7 实证)→ 去掉斜杠位置上的那个数字再切。
+      ('717'=7/7 实证)→ 去掉斜杠位置上的那个数字再切;
+    - **去首 + 去斜杠位对齐**:两个错位同时出现(图标前缀 + 斜杠读成数字,「6/6」一级文本
+      '1616' 实证)。只在五条前提同时成立时尝试:斜杠字形已识别 / 文本无 '/' / 数字字形数
+      为 2(X、Y 各一位——多位数时斜杠读成的数字不再固定落在第 2 位,该式无几何依据)/
+      文本数字数恰比字形多 2(多 1 位时没有多余字符可去:二级文本图标已抹白,「1/6」的
+      '116' 若也去两位会得到错的 (1,1))/ 文本首位为 '1'(图标与空心字形的幻影前缀恒读作
+      '1';幻影前缀落在 Y 上时如 '5116' 首位是真数字,该式不触发,结果仍是读不出)。
     全部候选过 ``_validate_paddle_xy`` 约束验证;裁决:有 direct 候选取 direct
-    (唯一),否则候选唯一才采,多候选歧义 → (None, None,候选清单) 交调用方保留证据。
+    (唯一);否则多候选歧义时做**同形收口**——数字字形恰 2 个且两字形同形
+    (宽差 ≤ ``_PADDLE_SAME_SHAPE_MAX_W_DIFF`` 且面积比 ≤ ``_PADDLE_SAME_SHAPE_MAX_AREA_RATIO``)
+    → 只保留 x == y 的候选(滤后为空则不收口);收口后候选唯一才采,仍多候选 →
+    (None, None,候选清单)交调用方保留证据(清单含被收口掉的候选)。
     """
     x_n: int | None = None if slash_idx is None else slash_idx
     y_n: int | None = None if x_n is None else glyph_digit_n - x_n
     cands: list[tuple[int, int, bool]] = []
 
-    def _try(drop_idx: int | None, direct: bool) -> None:
-        """按「去掉文本数字串中 drop_idx 处字符(None=不去) + 斜杠位切分」生成并验证候选。"""
+    def _try(drop_idx: tuple[int, ...], direct: bool) -> None:
+        """按「去掉文本数字串中 drop_idx 各下标处字符(空元组=不去) + 斜杠位切分」生成并验证候选。"""
         if x_n is None or y_n is None or y_n <= 0:
             return
-        seg = text_digits if drop_idx is None else \
-            text_digits[:drop_idx] + text_digits[drop_idx + 1:]
+        seg = ''.join(ch for i, ch in enumerate(text_digits) if i not in drop_idx)
         if len(seg) != x_n + y_n or len(seg[:x_n]) == 0:
             return
         x, y = int(seg[:x_n]), int(seg[x_n:])
@@ -1188,10 +1225,16 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
                 cands.append((x, y, direct))
 
     if slash_idx is not None:
-        _try(None, True)                        # 直接对齐
-        _try(0, False)                          # 去首(图标/幻影前缀)
+        _try((), True)                          # 直接对齐
+        _try((0,), False)                       # 去首(图标/幻影前缀)
         if not text_has_slash:
-            _try(slash_idx, False)              # 去斜杠位(斜杠被读成数字)
+            _try((slash_idx,), False)           # 去斜杠位(斜杠被读成数字)
+            if (glyph_digit_n == 2 and len(text_digits) == glyph_digit_n + 2
+                    and text_digits[0] == '1'):
+                # 去首 + 去斜杠位:第 0 位 = 图标前缀,slash_idx + 1 = 斜杠读成的数字
+                # (前缀占第 0 位,把它从斜杠下标位往后推一位)。不用 {0, slash_idx}:
+                # 那删的是「前缀 + X 的末位」,不对应任何真实错位。
+                _try((0, slash_idx + 1), False)
     else:
         # 斜杠字形未识别:按数字字形拆分点枚举(约束唯一才采)
         for cut in range(1, glyph_digit_n):
@@ -1205,6 +1248,14 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
     if len(directs) == 1:
         return directs[0][0], directs[0][1], cands
     distinct = {(c[0], c[1]) for c in cands}
+    if len(distinct) > 1 and glyph_digit_n == 2 and digit_glyph_shapes is not None \
+            and len(digit_glyph_shapes) == 2:
+        (w1, a1), (w2, a2) = digit_glyph_shapes
+        if (abs(w1 - w2) <= _PADDLE_SAME_SHAPE_MAX_W_DIFF
+                and abs(a1 - a2) / max(a1, a2) <= _PADDLE_SAME_SHAPE_MAX_AREA_RATIO):
+            same = {c for c in distinct if c[0] == c[1]}
+            if same:
+                distinct = same
     if len(distinct) == 1:
         x, y = distinct.pop()
         return x, y, cands
@@ -1233,6 +1284,8 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
     """单次 OCR 结果 → 位置感知解析(与 ``_read_deploy_paddle`` 守卫分层:本函数只管解析)。
 
     流程:连通域字形(剔图标)→ 斜杠=细长字形 → OCR 文本数字串对齐字形 → 约束验证。
+    对齐候选 = 直接 / 去首 / 去斜杠位 / 去首 + 去斜杠位四式;多候选歧义且恰两个数字
+    字形同形时只留 X = Y(规则与前提见 ``_resolve_paddle_digits``)。
     本函数只算不发:证据行由 ``_read_deploy_paddle`` 在管线出口统一发(解析放在管线
     中间发,一级失败、二级兜底成功的帧会留下一条误报拒信)。
 
@@ -1253,14 +1306,17 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
         return None, None, None, False
     slash_idx: int | None = None
     digit_n = 0
-    for _, _, _h, area in glyphs:           # glyphs 已按 x 排序
+    digit_shapes: list[tuple[int, int]] = []
+    for _, w, _h, area in glyphs:           # glyphs 已按 x 排序
         if area < _PADDLE_SLASH_MAX_AREA:
             if slash_idx is None:
                 slash_idx = digit_n         # 只认首个细长字形为斜杠
         else:
             digit_n += 1
+            digit_shapes.append((w, area))  # 与 digit_n 同一分支收集,口径恒同
     x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, level,
-                                         text_has_slash='/' in blob)
+                                         text_has_slash='/' in blob,
+                                         digit_glyph_shapes=digit_shapes)
     if x is not None:
         return x, y, cands, False
     # level 先验放宽通道:level 来自三源解析(自身可误读/毒化),不该让间接先验一票否决
@@ -1270,7 +1326,8 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
     # 确认)与留证仍归调用侧 _confirm_over_cap。
     if level is not None:
         x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, None,
-                                             text_has_slash='/' in blob)
+                                             text_has_slash='/' in blob,
+                                             digit_glyph_shapes=digit_shapes)
         if x is not None:
             return x, y, cands, True
     return None, None, cands, False

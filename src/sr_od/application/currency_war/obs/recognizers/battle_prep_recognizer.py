@@ -84,6 +84,7 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
 )
 from sr_od.application.currency_war.obs.cw_observation import (
     parse_phase_round_text,
+    phase_blob_from_tokens,
     phase_round_in_range,
     read_board,
     read_deploy_cap,
@@ -112,7 +113,8 @@ def _read_phase_round_pure(ctx: SrContext, screen: MatLike) -> tuple[int, int] |
     P1=9,「1-10」断言对本工具面不作要求,修饰局真值由场字段/台账
     承载),但**去掉**模块全局 ``_last_phase_round`` 的写 / 读
     (并发安全:recognizer 不得与运行中 operation 竞争该全局)。
-    数字回退分支(digit_fallback=True)随共享实现保留、行为不变。
+    与流程侧同一口径:读数只认带短横线的完整「X-Y」或「第X位面」,不做数字回退;
+    记号进拼接前经 ``cw_observation.phase_blob_from_tokens`` 剔除杂散小记号。
     读不到时返 None(不伪造 (1,1) 兜底)。
 
     Args:
@@ -122,8 +124,8 @@ def _read_phase_round_pure(ctx: SrContext, screen: MatLike) -> tuple[int, int] |
     Returns:
         ``(plane, round_num)``;OCR 读不到/值域外返 None。
     """
-    blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
-    cand = parse_phase_round_text(blob, digit_fallback=True)
+    blob = phase_blob_from_tokens(_ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
+    cand = parse_phase_round_text(blob)
     if cand is not None and phase_round_in_range(cand):
         return cand
     return None
