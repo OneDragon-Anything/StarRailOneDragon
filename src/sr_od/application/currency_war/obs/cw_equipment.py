@@ -3,7 +3,7 @@
 数据模型(Equipment / EQUIPMENTS / get_equip)在 ``cw_equipment_data``
 (生成器 = ``skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py``;该生成文件为单一源)。
 本文件含:装备区**逐格分类**(``read_equip_grid`` / ``read_equips`` / ``read_equip_count``)
-与穿戴装备 TM 识别(``read_equipped_below``:头像下方小图标,峰分 + 峰尖锐度两道门)。
+与穿戴装备 TM 识别(``read_equipped_below``:头像下方小图标,第一读 + 数字旁 / 火光下两处补读,读不清报 ``EQUIP_UNKNOWN``)。
 **拆分目的(R16 P0-1)**:生成器只写 ``cw_equipment_data``,永不覆盖本文件。
 
 装备区识别演进:全域 SIFT(单应变换天然单实例,同模板多格重复只锁一格 → 占用召回 62%)
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 # __all__ 告知 ruff 这些 re-export 非 unused(F401)
 __all__ = ['Equipment', 'EQUIPMENTS', 'EQUIPMENT_ROSTER', 'get_equip', 'load_equip_templates', 'read_equips',
            'read_equip_grid', 'read_equip_count', 'EquipCell',
+           'EQUIP_UNKNOWN', 'equip_icon_top_y',
            'load_equip_tm_grays', 'read_equipped_below', 'ensure_equip_tm_templates', 'ensure_equip_sift_templates']
 
 _EQUIP_SIFT = cv2.SIFT_create()  # type: ignore[attr-defined]  # cv2 stubs 不含 SIFT(实际存在)
@@ -563,29 +564,90 @@ def _check_owned_order(
            shot=cw_shot(screen[y1:y2, x1:x2], 'owned_anomaly'))
 
 
-# ===== 穿戴装备识别(below-avatar icon;multi-scale TM 替 SIFT)=====
+# ===== 穿戴装备识别(below-avatar icon;multi-scale TM + 两处补读)=====
 # below-avatar icon = 角色已穿装备的小图标(头像下方)。**icon 固定 ~32px,不随装备数变**;
 # SIFT patch 天花板对 32px 小 icon 失效 → multi-scale TM(98px 模板缩到 ~32px)+ NMS(同位置取最高,
 # 防合成材料误匹配:滑轮鞋/折叠小刀同 icon 位置)。
-# 命中判据 = 两道门(单看分数不够:空槽底板偏蓝时「碎星斩舰刀」的背景假峰能到 0.64,而真图标「火力风暴潮」
-# 只有 0.59,分数分不开两者):① 峰分 ≥ _EQUIP_TM_ACCEPT;② 峰尖锐度 ≥ _EQUIP_TM_PEAK_SHARP。尖锐度 = 峰值减去
-# 相关图上距峰 _EQUIP_TM_PEAK_RING 环带内的最大值——真图标是定位到 32px 小方图上的尖峰,背景花纹与模板的
-# 相关是宽泛的,平移几像素分数几乎不掉。标定依据与回归样本见 sr-od-test/test/sr_od/application/currency_war/obs/test_cw_equipment.py。
+# 小图标上常叠着别的东西——数量数字贴在左下角、被高亮卡片的火光压住顶边、整张卡片带高亮框。叠住时真图标的
+# 峰分掉到 0.40–0.57,而空槽底板上的假峰能到 0.64(空槽底板偏蓝时「碎星斩舰刀」的背景假峰),单看分数分不开。
+# 读链因此分三读一合并:
+# ① 整条比一遍,峰过「矩形判空」「峰尖锐度」两道门;
+# ② 数字旁补读——找到数量数字,把数字框排除后只在它贴着的图标位置附近重比;
+# ③ 火光下补读——认出火光,把图标顶边以上几行排除后只在 5 个候选位置附近重比;
+# ④ 合并去重,按布局取最大完整的一套。分数不到可信线的名字、有装备线索却读不全的格子,报 EQUIP_UNKNOWN。
+# 尖锐度 = 峰值减去相关图上距峰 _EQUIP_TM_PEAK_RING 环带内的最大值——真图标是定位到 32px 小方图上的尖峰,
+# 背景花纹与模板的相关是宽泛的,平移几像素分数几乎不掉。标定依据与回归样本见 sr-od-test/test/sr_od/application/currency_war/obs/test_cw_equipment.py。
 _EQUIP_TM_SCALES: tuple[float, ...] = (0.30, 0.33, 0.35, 0.37)  # 98px→29-36px;icon 32-34px 随位置变(梯形视角:前排~32px/后排最右~34px)
 # below-avatar icon 横排布局:icon 相对 below cx 的 offset,件数决定。
 # 1件{0} / 2件{-21,+21} / 3件{-43,0,+43};候选点(5个)覆盖所有可能。
 _EQUIP_CANDIDATES: tuple[int, ...] = (-43, -21, 0, 21, 43)
 _EQUIP_LAYOUTS: tuple[tuple[int, ...], ...] = ((-43, 0, 43), (-21, 21), (0,))  # 3件/2件/1件,大到小(完整布局优先)
-#: 命中接收下限(峰分,TM_CCOEFF_NORMED)。标定里已入库模板能命名的真图标最低峰 = 火力风暴潮 0.59,
-#: 空槽假峰在 0.58 以下的一律不读;两侧余量各约 0.01 / 0.03——低峰真图标样本只有这一件,是已知风险。
-_EQUIP_TM_ACCEPT: float = 0.58
-#: 峰尖锐度门槛。标定:真图标尖锐度 ≥0.28,空槽假峰 ≤0.13(门槛两侧各留 ≥0.07 余量)。
+#: 读不清的占位名,不是装备名:某位置有装备但名字没认出来,或该格子有装备线索却读不全。消费方按「看不清」处理。
+EQUIP_UNKNOWN: str = 'unknown'
+#: 第一读的峰分下限(TM_CCOEFF_NORMED)。被叠住的真图标峰分最低量到 0.40 一带,所以下限放这里;
+#: 低分放进来的空槽假峰由下面两道门挡。
+_EQUIP_TM_ACCEPT: float = 0.40
+#: 名字可信线:第一读里峰分不到这条线的名字不报,该位置报 ``EQUIP_UNKNOWN``;补读只收过线的峰。
+#: 依据:已入库模板能命名的干净真图标最低峰 0.59;0.40–0.58 一段里读过对的名字,也读错过名字。
+_EQUIP_TM_TRUST: float = 0.58
+#: 峰尖锐度门槛(第一读与数字旁补读同用)。标定(328 帧实机备战画面普查,空槽 3107 个):第一读配 0.20 时空槽零误读,
+#: 放到 0.15 出 7 个空槽误读。
 _EQUIP_TM_PEAK_SHARP: float = 0.20
+#: 火光下补读的尖锐度门槛:火光下的真图标尖锐度量到 0.18–0.62,门槛随之下移;只在该补读内生效。
+_EQUIP_FLAME_PEAK_SHARP: float = 0.15
 #: 尖锐度环带的内、外半径(像素,相关图坐标系);越界处按存在部分取。全向环——纵向环 / 十字远环都把
 #: 空槽假峰抬到与真图标同量级,分不开。
 _EQUIP_TM_PEAK_RING: tuple[int, int] = (5, 14)
-#: 近命中(MISS 日志)下限:全库最高分落在 [_EQUIP_TM_MISS, _EQUIP_TM_ACCEPT) 的模板记 MISS。
-_EQUIP_TM_MISS: float = 0.55
+#: 矩形判空:命中矩形内「棋盘底色」像素占比的上限。棋盘底色 = 搜索区底边左右各 30 像素合起来的中位色,与它
+#: 各通道差都不超过 ``_EQUIP_BG_TOL`` 的像素算底色。空槽上的假峰整个矩形落在底板上(占比接近 1),真图标不超过 0.09。
+_EQUIP_BG_TOL: int = 25
+_EQUIP_BG_MAX: float = 0.05
+#: 图标中心离最近候选点不超过这么多像素才归到该候选点上;更远的算孤立误检,不取。
+_EQUIP_LAYOUT_TOL: int = 11
+
+# ----- 数量数字(贴在图标左下角的白字黑边数字)-----
+#: 白字:三个通道都不低于 ``_EQUIP_BADGE_WHITE``;黑边:三个通道都不高于 ``_EQUIP_BADGE_BLACK``。
+_EQUIP_BADGE_WHITE: int = 225
+_EQUIP_BADGE_BLACK: int = 40
+#: 一个数字白块的高、宽(像素)和最少像素数。
+_EQUIP_DIGIT_H: tuple[int, int] = (16, 20)
+_EQUIP_DIGIT_W: tuple[int, int] = (3, 13)
+_EQUIP_DIGIT_AREA: int = 25
+#: 数字白块顶边所在的行不小于这个值(上面还放得下一个图标);数字的纵向位置随前后排变,所以不限固定行。
+_EQUIP_BADGE_MIN_Y: int = 12
+#: 数字白块外扩 2 像素的一圈里,黑像素数达到白字像素数的这个倍数才算数量数字(图标自带的白色块接近 0)。
+_EQUIP_BADGE_RING_BLACK: float = 0.25
+#: 一个数量数字(几位数字合起来)的总宽范围(像素);同一个数字里相邻两位之间的空隙上限(像素)。
+_EQUIP_BADGE_W: tuple[int, int] = (9, 42)
+_EQUIP_BADGE_GAP: int = 8
+#: 图标左上角相对数字框左上角的偏移(像素):数字贴在图标左下角。
+_EQUIP_BADGE_ICON_DX: int = 1
+_EQUIP_BADGE_ICON_DY: int = -19
+
+# ----- 补读(数字旁 / 火光下):在期望位置附近,把叠住图标的像素排除后重比 -----
+#: 图标左上角在期望位置周围 ``_EQUIP_EXTRA_SEARCH`` 像素内找峰;相关图取期望位置周围 ±``_EQUIP_EXTRA_WINDOW``
+#: 的一块来算(要盖住尖锐度环带)。
+_EQUIP_EXTRA_SEARCH: int = 7
+_EQUIP_EXTRA_WINDOW: int = 21
+#: 数字框外扩几像素一起排除出比对。
+_EQUIP_BADGE_OUTLINE: int = 3
+#: 补读里参与比对的像素占模板像素的比例下限:只剩一小撮像素时分数不可信。
+_EQUIP_EXTRA_MIN_KEPT: float = 0.5
+#: 认火光:搜索区上半部(前 ``_EQUIP_FLAME_ROWS`` 行)、图标横向范围(中线两侧各 ``_EQUIP_FLAME_HALF_W`` 像素)内,
+#: R、G、B 分别不低于 / 不低于 / 不高于 ``_EQUIP_FLAME_RGB`` 的像素达到 ``_EQUIP_FLAME_MIN_PIXELS`` 个。
+#: 标定:带火光的格子 249–433 个,其余格子最多 138 个。
+_EQUIP_FLAME_ROWS: int = 20
+_EQUIP_FLAME_HALF_W: int = 55
+_EQUIP_FLAME_RGB: tuple[int, int, int] = (240, 200, 215)
+_EQUIP_FLAME_MIN_PIXELS: int = 200
+#: 火光下补读排除的行数:图标顶边以上(含顶边)这么多行不参与比对——火光横穿图标上沿,只盖住最上面三四行;
+#: 排到 8 行、12 行开始出假读。
+_EQUIP_FLAME_CUT_ROWS: int = 5
+#: 图标顶边在搜索区里的行号,按排取(前排卡片更靠下,图标也更靠下)。
+_EQUIP_ICON_TOP_Y_FRONT: int = 19
+_EQUIP_ICON_TOP_Y_BACK: int = 10
+#: 典型图标(34 像素)的半宽:把「图标中心在某个候选位置」换算成「模板左上角的期望横坐标」时用。
+_EQUIP_ICON_HALF: int = 17
 #: 局部峰枚举:相关图与该核的最大值滤波结果逐点相等 = 11×11 邻域内的局部极大值。
 _EQUIP_PEAK_MAX_FILTER_KERNEL: np.ndarray = np.ones((11, 11), np.uint8)
 #: 局部峰枚举:彼此欧氏距离小于该像素数的峰只留最高者;每模板每尺度最多取 _EQUIP_PEAK_MAX 个。
@@ -650,157 +712,313 @@ def _local_peaks(corr: np.ndarray) -> list[tuple[int, int, float]]:
     return kept
 
 
+def _board_mask_integral(crop_rgb: MatLike) -> np.ndarray:
+    """矩形判空用的积分图:棋盘底色像素记 1,其余记 0(判据与棋盘底色的取法见 ``_EQUIP_BG_MAX`` 注释)。
+
+    :param crop_rgb: below-avatar 搜索区(RGB)。
+    :return: ``cv2.integral`` 的结果;矩形 (x, y, w, h) 内的底色像素数 =
+        ``ii[y + h, x + w] - ii[y, x + w] - ii[y + h, x] + ii[y, x]``。
+    """
+    bottom = np.vstack([crop_rgb[-1, :30], crop_rgb[-1, -30:]]).astype(np.int16)
+    board = (np.abs(crop_rgb.astype(np.int16) - np.median(bottom, axis=0)[None, None, :]).max(axis=2) <= _EQUIP_BG_TOL)
+    return cv2.integral(board.astype(np.uint8))
+
+
+def _find_count_badges(crop_rgb: MatLike) -> list[tuple[int, int, int, int]]:
+    """搜索区里的数量数字,返回每个数字的框 ``[(x1, y1, x2, y2), ...]``(含端点)。
+
+    一位数字 = 白字连通块,高、宽、像素数在 ``_EQUIP_DIGIT_*`` 范围内,且外扩 2 像素的一圈里黑像素够多
+    (见 ``_EQUIP_BADGE_RING_BLACK``);同一个数字的几位是一行里相邻的白块,按行合并后总宽要在 ``_EQUIP_BADGE_W`` 内。
+
+    :param crop_rgb: below-avatar 搜索区(RGB)。
+    """
+    white = (crop_rgb.min(axis=2) >= _EQUIP_BADGE_WHITE).astype(np.uint8)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(white, connectivity=8)
+    black = (crop_rgb.max(axis=2) <= _EQUIP_BADGE_BLACK)
+    digits: list[list[int]] = []
+    for i in range(1, count):
+        x, y, w, h, area = (int(v) for v in stats[i])
+        if not (_EQUIP_DIGIT_H[0] <= h <= _EQUIP_DIGIT_H[1] and _EQUIP_DIGIT_W[0] <= w <= _EQUIP_DIGIT_W[1]
+                and area >= _EQUIP_DIGIT_AREA and y >= _EQUIP_BADGE_MIN_Y):
+            continue
+        comp = (labels == i)
+        ring = (cv2.dilate(comp.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0) & ~comp
+        if int((black & ring).sum()) < _EQUIP_BADGE_RING_BLACK * area:
+            continue
+        digits.append([x, y, x + w - 1, y + h - 1])
+    digits.sort()
+    merged: list[list[int]] = []
+    for digit in digits:
+        if (merged and 0 <= digit[0] - merged[-1][2] - 1 <= _EQUIP_BADGE_GAP
+                and abs(digit[1] - merged[-1][1]) <= 3):
+            merged[-1][0] = min(merged[-1][0], digit[0])
+            merged[-1][2] = max(merged[-1][2], digit[2])
+        else:
+            merged.append(list(digit))
+    return [tuple(b) for b in merged if _EQUIP_BADGE_W[0] <= b[2] - b[0] + 1 <= _EQUIP_BADGE_W[1]]
+
+
+def _is_flame(crop_rgb: MatLike) -> bool:
+    """这条搜索区是否压着被高亮卡片的火光(判据见 ``_EQUIP_FLAME_MIN_PIXELS`` 注释)。输入 RGB。"""
+    cx = crop_rgb.shape[1] // 2
+    top = crop_rgb[:min(_EQUIP_FLAME_ROWS, crop_rgb.shape[0]), cx - _EQUIP_FLAME_HALF_W:cx + _EQUIP_FLAME_HALF_W].astype(np.int16)
+    r_min, g_min, b_max = _EQUIP_FLAME_RGB
+    return int(((top[:, :, 0] >= r_min) & (top[:, :, 1] >= g_min) & (top[:, :, 2] <= b_max)).sum()) >= _EQUIP_FLAME_MIN_PIXELS
+
+
+def equip_icon_top_y(row_prefix: str) -> int:
+    """这一排的装备图标顶边在 below-avatar 搜索区里的行号(火光下补读按它定从哪一行开始比)。
+
+    :param row_prefix: 画面建档里的排前缀(前排 / 后排 / 后排 N 槽 / 备战栏);前排取 ``_EQUIP_ICON_TOP_Y_FRONT``,
+        其余取 ``_EQUIP_ICON_TOP_Y_BACK``。
+    """
+    return _EQUIP_ICON_TOP_Y_FRONT if row_prefix == '前排' else _EQUIP_ICON_TOP_Y_BACK
+
+
+def _resized_templates(
+    tmpl_grays: dict[str, MatLike],
+    scales: tuple[float, ...],
+) -> dict[tuple[int, int], list[tuple[str, MatLike]]]:
+    """模板按各尺度缩好,按缩放后的 (高, 宽) 分组:``{(高, 宽): [(名字, 灰度图), ...]}``。一次读链只缩一遍,第一读与补读共用。"""
+    out: dict[tuple[int, int], list[tuple[str, MatLike]]] = {}
+    for name, tgray in tmpl_grays.items():
+        th, tw = tgray.shape
+        k = 98.0 / max(tw, th)   # 模板宽→98 基准的换算系数;scales 语义 = 相对 98px 基准
+        for s in scales:
+            nw, nh = int(tw * s * k), int(th * s * k)
+            if nw < 12 or nh < 12:
+                continue
+            out.setdefault((nh, nw), []).append((name, cv2.resize(tgray, (nw, nh), interpolation=cv2.INTER_AREA)))
+    return out
+
+
+def _masked_ncc(patches: np.ndarray, keep: np.ndarray, templ: np.ndarray) -> np.ndarray:
+    """逐位置的遮罩归一化相关:只在参与像素上做零均值归一化,与 TM_CCOEFF_NORMED 同义。
+
+    :param patches: (位置数, 像素数) 灰度小块。
+    :param keep: (位置数, 像素数) 布尔阵,True = 该像素参与比对。
+    :param templ: (模板数, 像素数) 模板灰度。
+    :return: (位置数, 模板数);分母为 0 的位置记 -1。
+    """
+    p = patches * keep
+    nk = keep.sum(axis=1).astype(np.float32)
+    cross = p @ templ.T
+    sum_p = p.sum(axis=1)
+    sum_p2 = (p * p).sum(axis=1)
+    kf = keep.astype(np.float32)
+    sum_t = kf @ templ.T
+    sum_t2 = kf @ (templ * templ).T
+    num = cross - sum_p[:, None] * sum_t / nk[:, None]
+    var_p = sum_p2 - sum_p * sum_p / nk
+    var_t = sum_t2 - sum_t * sum_t / nk[:, None]
+    den = np.sqrt(np.maximum(var_p, 0)[:, None] * np.maximum(var_t, 0))
+    return np.where(den > 1e-6, num / np.maximum(den, 1e-6), -1.0)
+
+
+def _extra_peaks(
+    gray: MatLike,
+    ex_lx: int,
+    ex_ly: int,
+    excl: np.ndarray,
+    resized: dict[tuple[int, int], list[tuple[str, MatLike]]],
+    min_sharp: float,
+    min_kept: float = 0.0,
+) -> list[tuple[str, float, int]]:
+    """补读:在期望位置附近逐位置做「``excl`` 标记的像素不参与」的归一化相关,每块模板取分数最高的一处。
+
+    :param gray: 搜索区灰度图。
+    :param ex_lx: 图标左上角的期望横坐标(相关图坐标)。
+    :param ex_ly: 图标左上角的期望纵坐标(相关图坐标)。
+    :param excl: 与 ``gray`` 同形的布尔阵,True = 该像素不参与比对(数字框、火光盖住的行)。
+    :param resized: ``_resized_templates`` 的结果。
+    :param min_sharp: 尖锐度门槛;峰分门槛固定用 ``_EQUIP_TM_TRUST``。
+    :param min_kept: 参与比对的像素占模板像素的比例下限(见 ``_EQUIP_EXTRA_MIN_KEPT``)。
+    :return: 过门的 ``[(名字, 峰分, 图标中心 x)]``,按峰分降序;每块模板最多一处。
+    """
+    best: dict[str, tuple[float, int]] = {}
+    win = _EQUIP_EXTRA_WINDOW
+    r_in, r_out = _EQUIP_TM_PEAK_RING
+    for (h, w), items in resized.items():
+        if h >= gray.shape[0] or w >= gray.shape[1]:
+            continue
+        lxs = np.arange(max(0, ex_lx - win), min(gray.shape[1] - w, ex_lx + win) + 1)
+        lys = np.arange(max(0, ex_ly - win), min(gray.shape[0] - h, ex_ly + win) + 1)
+        if lxs.size == 0 or lys.size == 0:
+            continue
+        windows = np.lib.stride_tricks.sliding_window_view(gray, (h, w))
+        patches = windows[np.ix_(lys, lxs)].reshape(lys.size * lxs.size, h * w).astype(np.float32)
+        gx = lxs[None, :, None, None] + np.arange(w)[None, None, None, :]
+        gy = lys[:, None, None, None] + np.arange(h)[None, None, :, None]
+        keep = (~excl[gy, gx]).reshape(lys.size * lxs.size, h * w)
+        templ = np.stack([t.reshape(-1) for _name, t in items]).astype(np.float32)
+        with np.errstate(invalid='ignore', divide='ignore'):
+            ncc = _masked_ncc(patches, keep, templ).reshape(lys.size, lxs.size, len(items))
+        central = ((np.abs(lys[:, None] - ex_ly) <= _EQUIP_EXTRA_SEARCH)
+                   & (np.abs(lxs[None, :] - ex_lx) <= _EQUIP_EXTRA_SEARCH))
+        kept = keep.mean(axis=1).reshape(lys.size, lxs.size)
+        for j, (name, _t) in enumerate(items):
+            m = ncc[:, :, j]
+            iy, ix = np.unravel_index(int(np.argmax(np.where(central, m, -2.0))), m.shape)
+            val = float(m[iy, ix])
+            if val < _EQUIP_TM_TRUST or kept[iy, ix] < min_kept:
+                continue
+            dd = (lys[:, None] - lys[iy]) ** 2 + (lxs[None, :] - lxs[ix]) ** 2
+            ring = m[(dd >= r_in * r_in) & (dd <= r_out * r_out)]
+            if ring.size == 0 or val - float(ring.max()) < min_sharp:
+                continue
+            if name not in best or val > best[name][0]:
+                best[name] = (val, int(lxs[ix] + w // 2))
+    return sorted(((name, val, icon_cx) for name, (val, icon_cx) in best.items()), key=lambda t: -t[1])
+
+
 def read_equipped_below(
     screen: MatLike,
     tmpl_grays: dict[str, MatLike],
     below_rects: list[tuple[int, Rect]],
+    icon_top_y: int,
     scales: tuple[float, ...] = _EQUIP_TM_SCALES,
     nms_radius: int = 18,
 ) -> dict[int, list[str]]:
-    """每槽 below-avatar 区 multi-scale TM + 两道门 + NMS → ``{slot_idx: [装备名]}``(纯 CV,可离线测)。
+    """每槽 below-avatar 区:第一读 + 两处补读 → 去重 → 布局约束 → ``{slot_idx: [装备名]}``(纯 CV,可离线测)。
 
-    识别**角色已穿装备**(头像下方 icon),与 ``read_equips``(装备区 owned)互补。
+    识别**角色已穿装备**(头像下方 icon),与 ``read_equips``(装备区 owned)互补。流程与标定依据见本函数上方
+    「穿戴装备识别」块注释,这里只列契约:
 
-    **icon ~32-34px 随位置变**:不随装备数变,但随角色位置/梯形视角略变(前排 ~32px /
-    后排最右 ~34px)。multi-scale 枚举覆盖,每个 icon 在最接近 scale 命中最高 val;
-    NMS 防同位置多命中(合成材料:滑轮鞋/折叠小刀)。
-
-    **命中判据 = 两道门**(常量区块注释有标定依据):每模板每尺度枚举相关图的局部极大值
-    (``_local_peaks``),逐个峰判 ① 峰分 ≥ ``_EQUIP_TM_ACCEPT`` ② 尖锐度 ≥ ``_EQUIP_TM_PEAK_SHARP``
-    (``_peak_sharpness``);两道都过才进候选,再走同位置去重与布局约束。候选按分数与尖锐度三分支:
-
-    - 过两道门 → 进候选;
-    - 峰分 ≥ 接收下限但尖锐度不够 → 丢弃(背景假峰的定义态);该槽最终读空时合并记一条普通级
-      ``[cw]`` 日志(``step='sharp_reject'``,列分数最高的至多 3 个「名字 / 分数 / 尖锐度」;
-      其中有尖锐度落在 [0.12, 0.20) 灰带的才截图),用于发现真图标被这道门拒掉的情况;
-    - ``_EQUIP_TM_MISS`` ≤ 全库最高分 < ``_EQUIP_TM_ACCEPT`` → 近命中,记 MISS 日志(不看尖锐度)。
-      每模板每尺度取一次全局最高分,该模板没有命中时才入近命中。
+    - **第一读**:每模板每尺度枚举相关图的局部极大值(``_local_peaks``,峰分 ≥ ``_EQUIP_TM_ACCEPT``),逐个峰过
+      ① 矩形判空(``_EQUIP_BG_MAX``)② 尖锐度 ≥ ``_EQUIP_TM_PEAK_SHARP``;峰分不到 ``_EQUIP_TM_TRUST`` 的名字不可信。
+    - **数字旁补读**:每个数量数字,若第一读没在它贴着的图标位置读到可信的名字,就把数字框排除后在该位置附近重比。
+    - **火光下补读**:认出火光时,把图标顶边以上 ``_EQUIP_FLAME_CUT_ROWS`` 行排除,在 5 个候选位置附近各重比一遍。
+    - **合并**:三读的峰按峰分降序做同位置去重(图标中心横向相距 ≤ ``nms_radius`` 留最高),再取最大完整布局。
 
     :param screen: 备战画面截图(RGB,1080p;sr_od ``cv2_utils.read_image`` 约定,非 BGR)。
     :param tmpl_grays: ``load_equip_tm_grays`` 结果(``{name: gray}``,98px 大图模板)。
     :param below_rects: ``[(slot_idx, Rect), ...]`` —— 每槽 below-avatar 搜索区(调用方从 screen_info
         槽 rect 算:avatar 底部下方,icon y 中心 ≈ avatar_y2 + 14,见 ``cw_identity_obs.avatar_to_below``)。
+        同一次调用里的槽位应当同属一排(见 ``icon_top_y``)。
+    :param icon_top_y: 这一排图标顶边在搜索区里的行号(``equip_icon_top_y``);火光下补读用它定排除到哪一行。
     :param scales: 98px 模板缩放档(覆盖 ~32-34px icon)。
     :param nms_radius: 同位置去重半径(icon 间距 ~35px → 18)。
-    :return: ``{slot_idx: [装备名]}``;空槽 / 无命中 → 该 slot 不在 dict。
+    :return: ``{slot_idx: [装备名]}``;空槽 → 该 slot 不在 dict。名字不可信的位置、有装备线索(候选位置命中 /
+        认出数量数字 / 认出火光)却凑不出完整布局的格子,对应位置是 ``EQUIP_UNKNOWN``(后者整格只报一个)。
 
-    日志(经 ``cw_observe.cw_log``,``[cw!]`` = 需关注 / ``[cw]`` = 普通):MISS(近命中,可能漏检)、
-    ``anomaly``(icon 数 >3 / 无完整布局)、``sharp_reject``(读空且有过门被拒的峰)。
+    日志(经 ``cw_observe.cw_log``):``unknown``(读清的格子里有 ``EQUIP_UNKNOWN``,需关注,带搜索区截图)、
+    ``anomaly``(图标数 >3,需关注)。
 
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer / op(并发安全)。
     """
     out: dict[int, list[str]] = {}
+    resized = _resized_templates(tmpl_grays, scales)
     for slot_idx, rect in below_rects:
-        crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_RGB2GRAY)  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
-        raw: list[tuple[str, float, int]] = []  # (name, val, icon_center) 过两道门的命中
-        rejected: list[tuple[str, float, float]] = []  # (name, val, sharp) 过分数门、被尖锐度门拒掉的峰
-        near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<accept),MISS 日志用
-        # 大图模板 multi-scale TM(icon ~32-34px 随位置变;缩到 29-36px 覆盖)。
-        # scales 语义 = 相对 98px 基准;混合库(plaza 官方烘焙已统一 98px)
-        # 归一换算保留作防御(模板若非 98 尺寸仍等效目标像素)。
-        for name, tgray in tmpl_grays.items():
-            th, tw = tgray.shape
-            k = 98.0 / max(tw, th)   # 模板宽→98 基准的换算系数
-            for s in scales:
-                nw, nh = int(tw * s * k), int(th * s * k)
-                if nw < 12 or nh < 12 or nw >= crop.shape[1] or nh >= crop.shape[0]:
-                    continue
-                resized = cv2.resize(tgray, (nw, nh), interpolation=cv2.INTER_AREA)
-                r = cv2.matchTemplate(crop, resized, cv2.TM_CCOEFF_NORMED)
+        crop_rgb = screen[rect.y1:rect.y2, rect.x1:rect.x2]  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
+        gray = cv2.cvtColor(crop_rgb, cv2.COLOR_RGB2GRAY)
+        below_cx = gray.shape[1] // 2
+        badges = _find_count_badges(crop_rgb)
+        flame = _is_flame(crop_rgb)
+        # (名字, 峰分, 图标中心 x, 名字是否可信);图标中心 x = 模板左上角 x + 半宽
+        raw: list[tuple[str, float, int, bool]] = []
+        rejected: list[tuple[str, float, float]] = []  # (名字, 峰分, 尖锐度) 过了矩形判空、被尖锐度门拒掉的峰,日志用
+        board_ii = _board_mask_integral(crop_rgb)
+        # 第一读:先判空再算尖锐度——空槽上的峰绝大多数整个落在底板上,判空只要四次取值。
+        for (h, w), items in resized.items():
+            if h >= gray.shape[0] or w >= gray.shape[1]:
+                continue
+            for name, resized_t in items:
+                r = cv2.matchTemplate(gray, resized_t, cv2.TM_CCOEFF_NORMED)
                 r = np.where(np.isfinite(r), r, -1.0)
-                _, mx, _, _ = cv2.minMaxLoc(r)
-                if mx >= _EQUIP_TM_MISS and mx > near.get(name, 0.0):
-                    near[name] = float(mx)
                 for lx, ly, val in _local_peaks(r):
+                    board_n = board_ii[ly + h, lx + w] - board_ii[ly, lx + w] - board_ii[ly + h, lx] + board_ii[ly, lx]
+                    if board_n / (h * w) > _EQUIP_BG_MAX:
+                        continue
                     sharp = _peak_sharpness(r, (lx, ly))
                     if sharp >= _EQUIP_TM_PEAK_SHARP:
-                        raw.append((name, val, lx + nw // 2))  # icon 中心(模板左 + 半宽)
+                        raw.append((name, val, lx + w // 2, val >= _EQUIP_TM_TRUST))
                     else:
                         rejected.append((name, val, sharp))
-        # 该模板已有命中时,它的近命中不再记(与命中互斥)
-        raw_names = {n for n, _, _ in raw}
-        near = {n: v for n, v in near.items() if n not in raw_names and v < _EQUIP_TM_ACCEPT}
-        # NMS:按 icon 中心聚类(±nms_radius),每簇取 val 最高(同 icon 多模板/多尺度命中去重)
-        raw.sort(key=lambda t: -t[1])
-        kept: list[tuple[str, float, int]] = []  # (name, val, icon_center)
-        for name, val, icon_center in raw:
-            if any(abs(icon_center - kc) <= nms_radius for _, _, kc in kept):
+        # 火光下补读:5 个候选位置各找一遍;排除 = 图标顶边以上 _EQUIP_FLAME_CUT_ROWS 行 + 各数字框
+        if flame:
+            excl = _digit_exclusion(gray.shape, badges)
+            excl[:icon_top_y + _EQUIP_FLAME_CUT_ROWS, :] = True
+            for off in _EQUIP_CANDIDATES:
+                raw.extend((name, val, icon_cx, True) for name, val, icon_cx in _extra_peaks(
+                    gray, below_cx + off - _EQUIP_ICON_HALF, icon_top_y, excl, resized,
+                    _EQUIP_FLAME_PEAK_SHARP, _EQUIP_EXTRA_MIN_KEPT))
+        # 数字旁补读:第一读已经在这个数字贴着的图标位置读到可信名字的,不用补读
+        for x1, y1, x2, _y2 in badges:
+            icon_cx0 = x1 - _EQUIP_BADGE_ICON_DX + _EQUIP_ICON_HALF
+            if any(abs(icon_cx - icon_cx0) <= _EQUIP_LAYOUT_TOL and trusted for _n, _v, icon_cx, trusted in raw):
                 continue
-            kept.append((name, val, icon_center))
-        # 布局约束:icon 中心归候选点(cx±43/±21/0),取最大完整 1/2/3件布局,剔孤立误检 + 缺候选 MISS。
-        equipped = _select_equipped_layout(kept, crop.shape[1] // 2, slot_idx, screen, rect)
+            raw.extend((name, val, icon_cx, True) for name, val, icon_cx in _extra_peaks(
+                gray, x1 - _EQUIP_BADGE_ICON_DX, y1 + _EQUIP_BADGE_ICON_DY, _digit_exclusion(gray.shape, [(x1, y1, x2, _y2)]),
+                resized, _EQUIP_TM_PEAK_SHARP))
+        # 同位置去重:按峰分降序,图标中心横向相距 ≤ nms_radius 的只留最高(同一图标被多块模板 / 多个尺度 / 多读命中)
+        raw.sort(key=lambda t: -t[1])
+        kept: list[tuple[str, float, int, bool]] = []
+        for name, val, icon_cx, trusted in raw:
+            if any(abs(icon_cx - k[2]) <= nms_radius for k in kept):
+                continue
+            kept.append((name, val, icon_cx, trusted))
+        equipped = _select_equipped_layout(kept, below_cx, has_evidence=bool(badges) or flame)
         if equipped:
             out[slot_idx] = equipped
         # icon 数守卫:角色 below 最多3件,>3 = 误检/邻槽串入
         if len(kept) > 3:
             cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
-                   anomaly=f'icon数{len(kept)}>3(误检/邻槽串入)', equips=str([n for n, _, _ in kept]),
+                   anomaly=f'icon数{len(kept)}>3(误检/邻槽串入)', equips=str([n for n, _, _, _ in kept]),
                    shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'over3_slot{slot_idx}'))
-        # MISS 日志:近命中(val 刚低于 threshold)可能是漏检。
-        # ⚠️ 分级([cw!]=需关注/[cw]=普通,语义详 ``cw_observe``):清晰读(val_top≥0.7)的 near-MISS 是被拒候选
-        # (噪声,非漏检)→ [cw] 普通;疑似漏检(val_top<0.7 / kept 空)→ [cw!] 需关注。
-        if near:
-            kept_names = {n for n, _, _ in kept}
-            miss_items = sorted(((n, v) for n, v in near.items() if n not in kept_names), key=lambda t: -t[1])
-            if miss_items:
-                miss_str = ','.join(f'{n}({v:.2f})' for n, v in miss_items[:5])
-                val_top = kept[0][1] if kept else 0.0
-                shot = cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'miss_slot{slot_idx}')
-                cw_log('read_equipped', target=f'slot={slot_idx}', attn=val_top < 0.7,
-                       equips=str([n for n, _, _ in kept]), val_top=f'{val_top:.2f}',
-                       MISS=f'[{miss_str}]', shot=shot)
-        # sharp_reject 日志:读空且有过分数门、被尖锐度门拒掉的峰。每个空槽每帧最多一行(噪声有上界);
-        # 只在被拒峰里有尖锐度落在 [0.12, 门槛) 灰带的才截图——真图标被误拒时最可能落在这段。
-        if rejected and not equipped:
-            rej_sorted = sorted(rejected, key=lambda t: -t[1])
-            rej_str = ','.join(f'{n}/{v:.2f}/{sh:.2f}' for n, v, sh in rej_sorted[:3])
-            grey = any(0.12 <= sh < _EQUIP_TM_PEAK_SHARP for _, _, sh in rej_sorted)
-            shot = cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'sharp_reject_slot{slot_idx}') if grey else None
-            cw_log('read_equipped', step='sharp_reject', target=f'slot={slot_idx}', attn=False,
-                   equips='[]', rejected=f'[{rej_str}]', shot=shot)
+        # unknown 日志:记下没认出来的低分名字、被尖锐度门拒掉的最高几个峰,以及这一格是不是带数字 / 火光。
+        if EQUIP_UNKNOWN in equipped:
+            low = [(n, v) for n, v, _c, trusted in kept if not trusted]
+            flat = sorted(((v, n, sh) for n, v, sh in rejected), reverse=True)[:3]
+            cw_log('read_equipped', step='unknown', target=f'slot={slot_idx}', attn=True,
+                   equips=str(equipped), flame=flame, badges=len(badges),
+                   low_score=f'[{",".join(f"{n}({v:.2f})" for n, v in low[:3])}]',
+                   sharp_rejected=f'[{",".join(f"{n}({v:.2f}/{sh:.2f})" for v, n, sh in flat)}]',
+                   shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'unknown_slot{slot_idx}'))
     return out
 
 
-def _select_equipped_layout(
-    kept: list[tuple[str, float, int]],
-    below_cx: int,
-    slot_idx: int,
-    screen: MatLike,
-    rect: Rect,
-) -> list[str]:
-    """布局约束选装备:kept icon 中心归候选点(cx±43/±21/0),取最大完整 1/2/3件布局。
+def _digit_exclusion(
+    shape: tuple[int, ...],
+    badges: list[tuple[int, int, int, int]],
+) -> np.ndarray:
+    """数字框的排除阵:框本身、外扩 ``_EQUIP_BADGE_OUTLINE`` 像素、以及框顶以下同几列的全部像素(数字可能比检出的白字更宽)。
 
-    - icon 中心归最近候选(±11 内);非候选 = 孤立(误检,不取)。
-    - 命中候选取最大完整布局(3件{-43,0,+43} > 2件{-21,+21} > 1件{0};候选 ⊆ 命中)→ 该布局装备。
-    - 更大布局部分中(缺候选)= MISS(漏检)``[cw!]``;无完整布局 = 异常 ``[cw!]`` + 截图。
+    :param shape: 搜索区的 (高, 宽)。
+    :param badges: ``_find_count_badges`` 的结果。
+    :return: (高, 宽) 布尔阵,True = 不参与比对。
     """
-    cand_name: dict[int, str] = {}
-    for name, _val, icon_center in kept:
-        off = icon_center - below_cx
+    excl = np.zeros(shape[:2], bool)
+    o = _EQUIP_BADGE_OUTLINE
+    for x1, y1, x2, _y2 in badges:
+        excl[max(0, y1 - o):, max(0, x1 - o):x2 + o + 1] = True
+    return excl
+
+
+def _select_equipped_layout(
+    kept: list[tuple[str, float, int, bool]],
+    below_cx: int,
+    has_evidence: bool,
+) -> list[str]:
+    """布局约束选装备:图标中心归候选点(中线 ±43 / ±21 / 0),取最大完整的一套布局。
+
+    :param kept: 同位置去重后的命中 ``(名字, 峰分, 图标中心 x, 名字是否可信)``,已按峰分降序。
+    :param below_cx: 搜索区中线横坐标。
+    :param has_evidence: 这一格有没有装备线索(认出数量数字 / 认出火光)。
+    :return: 最大完整布局各位置的名字,名字不可信的位置是 ``EQUIP_UNKNOWN``;凑不出完整布局时,
+        有候选位置命中或有装备线索 → ``[EQUIP_UNKNOWN]``,都没有 → ``[]``(读空)。
+    """
+    cand: dict[int, tuple[str, bool]] = {}
+    for name, _val, icon_cx, trusted in kept:
+        off = icon_cx - below_cx
         nearest = min(_EQUIP_CANDIDATES, key=lambda c: abs(c - off))
-        if abs(nearest - off) <= 11:
-            cand_name.setdefault(nearest, name)  # NMS 已 val 降序,首个=最高
-    hit = set(cand_name)
+        if abs(nearest - off) <= _EQUIP_LAYOUT_TOL:
+            cand.setdefault(nearest, (name, trusted))  # kept 已按峰分降序,首个 = 最高
+    hit = set(cand)
     chosen = next((lay for lay in _EQUIP_LAYOUTS if set(lay) <= hit), None)
     if chosen is not None:
-        return [cand_name[o] for o in chosen]
-    # 无完整布局:CW 每角色最多3件,1/2/3件布局覆盖全部合法配置;无完整布局 = 误检
-    # → 返 [] 不返 fallback 候选(防把不可靠候选当 occupied)。anomaly + MISS 日志保留(诊断)。
-    if hit:
-        cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
-               anomaly=f'无完整1/2/3件布局(命中候选{sorted(hit)})→判空(误检,不返)',
-               equips=str([cand_name[o] for o in sorted(cand_name)]),
-               shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'nolayout_slot{slot_idx}'))
-    # MISS:更大布局部分中(缺候选 = 漏检)
-    for lay in _EQUIP_LAYOUTS:
-        partial = set(lay) & hit
-        if partial and not set(lay) <= hit:
-            missing = [c for c in lay if c not in hit]
-            cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
-                   MISS=f'布局{lay}缺候选{missing}(漏检)',
-                   shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'layoutmiss_slot{slot_idx}'))
-            break
-    return []
+        return [cand[o][0] if cand[o][1] else EQUIP_UNKNOWN for o in chosen]
+    # 每角色最多 3 件,1 / 2 / 3 件布局覆盖全部合法排法;凑不出完整布局时,读到的名字不可靠,一个都不报。
+    return [EQUIP_UNKNOWN] if hit or has_evidence else []
 
 
 def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:

@@ -59,7 +59,10 @@ from sr_od.application.currency_war.obs.currency_war_char_id import (
     identify_character,
     load_avatar_templates,
 )
-from sr_od.application.currency_war.obs.cw_equipment import read_equipped_below
+from sr_od.application.currency_war.obs.cw_equipment import (
+    equip_icon_top_y,
+    read_equipped_below,
+)
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.frame_source import frame_is_live
 from sr_od.context.sr_context import SrContext
@@ -1872,9 +1875,10 @@ def read_row_equipped(
     """某排(前排/后排/备战栏)每槽 below-avatar 已穿装备 → ``{slot_idx: [装备名]}``(纯读)。
 
     从 ctx screen_info 取 ``{prefix}-1..{count}`` avatar rect → ``avatar_to_below`` → ``read_equipped_below``。
-    空槽 / 无命中 → 该 slot 不在 dict。与 ``read_deployed_rows``(角色身份)互补:角色 + 装备 = 完整槽位态。
+    空槽 → 该 slot 不在 dict;读不清的名字 / 格子是 ``cw_equipment.EQUIP_UNKNOWN``。与 ``read_deployed_rows``(角色身份)
+    互补:角色 + 装备 = 完整槽位态。
 
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer(并发安全)。
     """
     below_rects = [(idx, avatar_to_below(r)) for idx, r in _ctx_slots(ctx, prefix, count)]
-    return read_equipped_below(screen, tmpl_grays, below_rects)
+    return read_equipped_below(screen, tmpl_grays, below_rects, icon_top_y=equip_icon_top_y(prefix))
