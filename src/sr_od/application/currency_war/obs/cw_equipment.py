@@ -815,6 +815,72 @@ def _masked_ncc(patches: np.ndarray, keep: np.ndarray, templ: np.ndarray) -> np.
     return np.where(den > 1e-6, num / np.maximum(den, 1e-6), -1.0)
 
 
+def _plain_ncc(patches: np.ndarray, templ: np.ndarray) -> np.ndarray:
+    """逐位置的普通归一化相关(零均值,与 TM_CCOEFF_NORMED 同义)。
+
+    :param patches: (位置数, 像素数) 灰度小块。
+    :param templ: (模板数, 像素数) 模板灰度。
+    :return: (位置数, 模板数);分母为 0 的位置记 -1。
+    """
+    p = patches - patches.mean(axis=1, keepdims=True)
+    t = templ - templ.mean(axis=1, keepdims=True)
+    den = np.linalg.norm(p, axis=1)[:, None] * np.linalg.norm(t, axis=1)[None, :]
+    return np.where(den > 1e-6, (p @ t.T) / np.maximum(den, 1e-6), -1.0)
+
+
+def _top_rows_excluded(excl: np.ndarray) -> int:
+    """排除阵最上面连续被整行排除的行数(一行都没有就是 0)。
+
+    这部分像素在任何比较位置都不参与,``_rows_cut_ncc`` 按行一起算;其余排除像素(数字框)只影响碰到它的位置。
+    """
+    partial = np.flatnonzero(~excl.all(axis=1))
+    return int(partial[0]) if partial.size else excl.shape[0]
+
+
+def _rows_cut_ncc(
+    gray: MatLike,
+    lys: np.ndarray,
+    lxs: np.ndarray,
+    cut: int,
+    templ: np.ndarray,
+    plain: dict[tuple[int, int], MatLike] | None,
+    shape: tuple[int, int],
+    need: np.ndarray,
+) -> np.ndarray:
+    """只排除最上面 ``cut`` 行时的逐位置归一化相关——与 ``_masked_ncc`` 在同样的排除下等价,但同一行图标顶边的位置
+    整行一起算,不用给每个位置单独摊开像素掩码。
+
+    图标顶边在第 ly 行时,图像第 ``cut`` 行以上的像素不参与,也就是模板最上面 ``max(0, cut - ly)`` 行不参与;
+    ``ly ≥ cut`` 时整块模板都参与,相关值就是普通模板匹配的相关图——``plain`` 里有第一读算过的就直接取,没有就现算。
+
+    :param gray: 搜索区灰度图。
+    :param lys: / :param lxs: 要算的图标左上角纵、横坐标(相关图坐标)。
+    :param cut: 最上面 ``cut`` 行不参与(0 = 没有整行排除,处处是普通模板匹配的相关)。
+    :param templ: (模板数, 高, 宽) 模板灰度。
+    :param plain: 第一读的相关图 ``{(高, 宽): (模板数, 相关图高, 相关图宽)}``,可为 None。
+    :param shape: 模板的 (高, 宽),``plain`` 的键。
+    :param need: (纵坐标数, 横坐标数) 布尔阵,True = 这个位置要算。整行排除以外的排除像素(数字框)落进比较窗口的
+        位置由调用方用 ``_masked_ncc`` 另算,这里不算——数字框贴着图标,这种位置常占一大半,算了也是白算。
+    :return: (纵坐标数, 横坐标数, 模板数);没算的位置记 -1。
+    """
+    h, w = shape
+    out = np.full((lys.size, lxs.size, templ.shape[0]), -1.0, np.float32)
+    for i, ly in enumerate(lys):
+        sel = np.flatnonzero(need[i])
+        if sel.size == 0:
+            continue
+        k = max(0, min(h, cut - ly))
+        if k == h:
+            continue
+        if k == 0 and plain is not None and shape in plain:
+            out[i, sel] = plain[shape][:, ly, lxs[sel]].T
+            continue
+        cols = lxs[sel][:, None] + np.arange(w)[None, :]
+        patches = gray[ly + k:ly + h, cols].transpose(1, 0, 2).reshape(sel.size, (h - k) * w).astype(np.float32)
+        out[i, sel] = _plain_ncc(patches, templ[:, k:, :].reshape(templ.shape[0], -1))
+    return out
+
+
 def _extra_peaks(
     gray: MatLike,
     ex_lx: int,
@@ -823,8 +889,12 @@ def _extra_peaks(
     resized: dict[tuple[int, int], list[tuple[str, MatLike]]],
     min_sharp: float,
     min_kept: float = 0.0,
+    plain: dict[tuple[int, int], MatLike] | None = None,
 ) -> list[tuple[str, float, int]]:
     """补读:在期望位置附近逐位置做「``excl`` 标记的像素不参与」的归一化相关,每块模板取分数最高的一处。
+
+    分两步算:先当只有最上面整行被排除,同一行图标顶边的位置整行一起算(``_rows_cut_ncc``);比较窗口里落着其余排除
+    像素(数字框)的位置,这一步算的值不对,再用逐位置掩码(``_masked_ncc``)算——没碰到数字框的位置占得越多越省。
 
     :param gray: 搜索区灰度图。
     :param ex_lx: 图标左上角的期望横坐标(相关图坐标)。
@@ -833,11 +903,15 @@ def _extra_peaks(
     :param resized: ``_resized_templates`` 的结果。
     :param min_sharp: 尖锐度门槛;峰分门槛固定用 ``_EQUIP_TM_TRUST``。
     :param min_kept: 参与比对的像素占模板像素的比例下限(见 ``_EQUIP_EXTRA_MIN_KEPT``)。
+    :param plain: 第一读的相关图(键 = 模板的 (高, 宽)),整块模板都参与的位置直接取用,见 ``_rows_cut_ncc``。
     :return: 过门的 ``[(名字, 峰分, 图标中心 x)]``,按峰分降序;每块模板最多一处。
     """
     best: dict[str, tuple[float, int]] = {}
     win = _EQUIP_EXTRA_WINDOW
     r_in, r_out = _EQUIP_TM_PEAK_RING
+    cut = _top_rows_excluded(excl)
+    # 整行排除以外的排除像素的积分图(行号从 cut 起算):判一个比较窗口里有没有这种像素只要四次取值
+    below_ii = np.pad(excl[cut:].astype(np.int32).cumsum(0).cumsum(1), ((1, 0), (1, 0)))
     for (h, w), items in resized.items():
         if h >= gray.shape[0] or w >= gray.shape[1]:
             continue
@@ -845,17 +919,28 @@ def _extra_peaks(
         lys = np.arange(max(0, ex_ly - win), min(gray.shape[0] - h, ex_ly + win) + 1)
         if lxs.size == 0 or lys.size == 0:
             continue
-        windows = np.lib.stride_tricks.sliding_window_view(gray, (h, w))
-        patches = windows[np.ix_(lys, lxs)].reshape(lys.size * lxs.size, h * w).astype(np.float32)
-        gx = lxs[None, :, None, None] + np.arange(w)[None, None, None, :]
-        gy = lys[:, None, None, None] + np.arange(h)[None, None, :, None]
-        keep = (~excl[gy, gx]).reshape(lys.size * lxs.size, h * w)
-        templ = np.stack([t.reshape(-1) for _name, t in items]).astype(np.float32)
-        with np.errstate(invalid='ignore', divide='ignore'):
-            ncc = _masked_ncc(patches, keep, templ).reshape(lys.size, lxs.size, len(items))
+        templ = np.stack([t for _name, t in items]).astype(np.float32)
         central = ((np.abs(lys[:, None] - ex_ly) <= _EQUIP_EXTRA_SEARCH)
                    & (np.abs(lxs[None, :] - ex_lx) <= _EQUIP_EXTRA_SEARCH))
-        kept = keep.mean(axis=1).reshape(lys.size, lxs.size)
+        k = np.clip(cut - lys, 0, h)
+        # 比较窗口 [max(ly, cut), ly + h) × [lx, lx + w) 里落着数字框的位置
+        y_top = np.maximum(lys, cut) - cut
+        y_bot = lys + h - cut
+        box = (below_ii[y_top[:, None], lxs] - below_ii[y_top[:, None], lxs + w]
+               - below_ii[y_bot[:, None], lxs] + below_ii[y_bot[:, None], lxs + w])
+        hit = box > 0
+        ncc = _rows_cut_ncc(gray, lys, lxs, cut, templ, plain, (h, w), need=~hit)
+        kept = np.repeat(((h - k) / h)[:, None], lxs.size, axis=1)
+        hy, hx = np.nonzero(hit)
+        if hy.size > 0:
+            windows = np.lib.stride_tricks.sliding_window_view(gray, (h, w))
+            patches = windows[lys[hy], lxs[hx]].reshape(hy.size, h * w).astype(np.float32)
+            gy = lys[hy][:, None, None] + np.arange(h)[None, :, None]
+            gx = lxs[hx][:, None, None] + np.arange(w)[None, None, :]
+            keep = (~excl[gy, gx]).reshape(hy.size, h * w)
+            with np.errstate(invalid='ignore', divide='ignore'):
+                ncc[hy, hx] = _masked_ncc(patches, keep, templ.reshape(len(items), -1))
+            kept[hy, hx] = keep.mean(axis=1)
         for j, (name, _t) in enumerate(items):
             m = ncc[:, :, j]
             iy, ix = np.unravel_index(int(np.argmax(np.where(central, m, -2.0))), m.shape)
@@ -919,12 +1004,16 @@ def read_equipped_below(
         rejected: list[tuple[str, float, float]] = []  # (名字, 峰分, 尖锐度) 过了矩形判空、被尖锐度门拒掉的峰,日志用
         board_ii = _board_mask_integral(crop_rgb)
         # 第一读:先判空再算尖锐度——空槽上的峰绝大多数整个落在底板上,判空只要四次取值。
+        # 相关图留给两处补读:补读里整块模板都参与的比较位置,相关值和第一读一样,不用重算。
+        first_maps: dict[tuple[int, int], MatLike] = {}
         for (h, w), items in resized.items():
             if h >= gray.shape[0] or w >= gray.shape[1]:
                 continue
+            maps: list[MatLike] = []
             for name, resized_t in items:
                 r = cv2.matchTemplate(gray, resized_t, cv2.TM_CCOEFF_NORMED)
                 r = np.where(np.isfinite(r), r, -1.0)
+                maps.append(r)
                 for lx, ly, val in _local_peaks(r):
                     board_n = board_ii[ly + h, lx + w] - board_ii[ly, lx + w] - board_ii[ly + h, lx] + board_ii[ly, lx]
                     if board_n / (h * w) > _EQUIP_BG_MAX:
@@ -934,6 +1023,7 @@ def read_equipped_below(
                         raw.append((name, val, lx + w // 2, val >= _EQUIP_TM_TRUST))
                     else:
                         rejected.append((name, val, sharp))
+            first_maps[(h, w)] = np.stack(maps)
         # 火光下补读:5 个候选位置各找一遍;排除 = 图标顶边以上 _EQUIP_FLAME_CUT_ROWS 行 + 各数字框
         if flame:
             excl = _digit_exclusion(gray.shape, badges)
@@ -941,7 +1031,7 @@ def read_equipped_below(
             for off in _EQUIP_CANDIDATES:
                 raw.extend((name, val, icon_cx, True) for name, val, icon_cx in _extra_peaks(
                     gray, below_cx + off - _EQUIP_ICON_HALF, icon_top_y, excl, resized,
-                    _EQUIP_FLAME_PEAK_SHARP, _EQUIP_EXTRA_MIN_KEPT))
+                    _EQUIP_FLAME_PEAK_SHARP, _EQUIP_EXTRA_MIN_KEPT, plain=first_maps))
         # 数字旁补读:第一读已经在这个数字贴着的图标位置读到可信名字的,不用补读
         for x1, y1, x2, _y2 in badges:
             icon_cx0 = x1 - _EQUIP_BADGE_ICON_DX + _EQUIP_ICON_HALF
@@ -949,7 +1039,7 @@ def read_equipped_below(
                 continue
             raw.extend((name, val, icon_cx, True) for name, val, icon_cx in _extra_peaks(
                 gray, x1 - _EQUIP_BADGE_ICON_DX, y1 + _EQUIP_BADGE_ICON_DY, _digit_exclusion(gray.shape, [(x1, y1, x2, _y2)]),
-                resized, _EQUIP_TM_PEAK_SHARP))
+                resized, _EQUIP_TM_PEAK_SHARP, plain=first_maps))
         # 同位置去重:按峰分降序,图标中心横向相距 ≤ nms_radius 的只留最高(同一图标被多块模板 / 多个尺度 / 多读命中)
         raw.sort(key=lambda t: -t[1])
         kept: list[tuple[str, float, int, bool]] = []
