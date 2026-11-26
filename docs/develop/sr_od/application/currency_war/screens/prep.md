@@ -86,7 +86,7 @@ action = strategy.decide_prep_screen(状态容器 game state 直读;
 ## 7. 子态与 overlay
 
 - 子态「备战-开商店」:外循环「商店开画面」分支转交商店访问(文档 = [shop.md](shop.md));环入口 `_try_collapse_open_shop` 收起探针兜底漏帧。
-- 暗色锁定子态(策略锁定/遭遇锁定):`CwScreenPrepLockedReturn` 点右上返回按钮(此态下备战两个 id_mark 识别标志仍精准命中,不先分流会被当正常备战操作读暗牌)。
+- 锁定子态(策略锁定/遭遇锁定/主角锁定/茶歇锁定):`CwScreenPrepLockedReturn` 点右上返回按钮回各档对应页面(文档 = [prep_locked_return.md](prep_locked_return.md));带暗色蒙层的锁定态下备战两个 id_mark 识别标志仍精准命中,不先分流会被当正常备战操作读暗牌;茶歇锁定态没有暗色蒙层、没有出战钮。
 - overlay 覆盖:全部 overlay 在外循环先行分流;观察段 `obs.event_overlay` 非空 = 返回主循环重新分发(双保险)。
 
 ## 8. 守卫与防线
