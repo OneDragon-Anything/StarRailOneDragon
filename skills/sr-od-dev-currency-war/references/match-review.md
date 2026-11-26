@@ -1,7 +1,7 @@
 # 单局复盘协议(判定方法论 + 粒度=外层循环画面op调用,载体=渲染器画面章)
 
-> **定位:本协议只做数据复盘**——重建画面、玩家打法对照、位面三问、候选修复项;**不管 bug 定位与修复路由**(复盘报告交给编排者分诊处置,口径=autonomous-loop「问题处置循环」)。
-> **执行者 = 每次复盘新开的子 agent**(干净上下文,不带编排者此前的判断倾向)。**触发 = 编排者按需派单**(app 自动流程跑局的局终,后台异步;自主推进场景一的对局由 agent 自己手动打、没有对局运行记录,不派,见 autonomous-loop.md §3.1)。**报告由渲染器生成**:`skills/sr-od-dev-currency-war/scripts/replay_to_md.py`(项目根 `uv run` 直接运行)——实机局 `--match <game_id>` 读档案切片,sim 局/未装配局 `--journal <journal路径>` 读裸 journal(配 `--game-id` 命名);缺省落盘 `.debug/currency_war/deep_review/<game_id>.md`(深评固定落点)。复盘动作 = 在该报告上填逐决策面画面章的 `策略评价` 节与文末「复盘者附加」节;产出的缺陷候选交编排者按问题处置循环分诊(autonomous-loop §2.4),不重做。
+> **定位:本协议只做数据复盘**——重建画面、玩家打法对照、位面三问、候选修复项;**不管 bug 定位与修复路由**(复盘报告交给编排者分诊处置,口径=autonomous/orchestrator.md「问题处置循环」)。
+> **执行者 = 每次复盘新开的子 agent**(干净上下文,不带编排者此前的判断倾向)。**触发 = 编排者按需派单**(app 自动流程跑局的局终,后台异步;自主推进场景一的对局由 agent 自己手动打、没有对局运行记录,不派,见 autonomous/orchestrator.md §3.1)。**报告由渲染器生成**:`skills/sr-od-dev-currency-war/scripts/replay_to_md.py`(项目根 `uv run` 直接运行)——实机局 `--match <game_id>` 读档案切片,sim 局/未装配局 `--journal <journal路径>` 读裸 journal(配 `--game-id` 命名);缺省落盘 `.debug/currency_war/deep_review/<game_id>.md`(深评固定落点)。复盘动作 = 在该报告上填逐决策面画面章的 `策略评价` 节与文末「复盘者附加」节;产出的缺陷候选交编排者按问题处置循环分诊(autonomous/orchestrator.md §2.4),不重做。
 > **判定尺 = 玩法文档 + 已登记用户裁定**(§判定尺,2026-09-07 用户裁定)——判「算法做得对不对」;迭代目标只排修复优先级,不参与判卷;A/B 验证当期改动才用当期目标行判据(telemetry-reading 判读流程步骤 0 的分界,两种活动别混)。
 
 ## 第 1 步 · 阅读理解(开工前提;任务书直接引用本清单)

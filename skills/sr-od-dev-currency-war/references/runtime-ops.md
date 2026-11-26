@@ -15,17 +15,17 @@
 ## 启动与重启
 
 - 启动对局:MCP `run_standalone_app`(app=`currency_war`);进度 `get_run_status`(state/current_node/retry);停止 `stop_run`(信号式,当前节点完成后退出——发完信号游戏可能还在打,等自动战斗结算再动画面)。
-- 改代码生效路径 = 重启 MCP server(办法见项目入口文件 §6 的启动脚本)。重启前先确认没有运行中的 run:对局运行中重启会丢对局,先 stop_run 等结算。重启后要确认 MCP 连接恢复(调一次 get_run_status,调通为准),步骤见 autonomous-loop.md §3.6「重启 MCP server」。模板文件改了以后,有的也要重启才生效:往立绘库、装备库加模板,或者改了已有的模板,都要;哪种要、哪种不要,见同一处的说明。
+- 改代码生效路径 = 重启 MCP server(办法见项目入口文件 §6 的启动脚本)。重启前先确认没有运行中的 run:对局运行中重启会丢对局,先 stop_run 等结算。重启后要确认 MCP 连接恢复(调一次 get_run_status,调通为准),步骤见 [autonomous/orchestrator.md](autonomous/orchestrator.md) §6.4「重启 MCP server」。模板文件改了以后,有的也要重启才生效:往立绘库、装备库加模板,或者改了已有的模板,都要;哪种要、哪种不要,见同一处的说明。
 - 重启代价(针对 MCP server 自己在跑的对局):对局丢、session(target/信号/失败记忆)清零——重启后首局 target 重选是已知断档(位面 1),判读时别把首局异当回归。实机探索 agent 自己打的对局不受影响(见下一条「改动集中纪律」)。**位面 2 同样成立(经位面 2 事故扩档实证)**:中断恢复时重建的 StrategySession 策略方向数据缺失(target_comp=None、方向历史不可得)在位面 2+ 的中断恢复对局同样出现——该缺失曾与「动作发出-执行」的衔接缺口复合,造成 15 分钟无推进的卡死(run_20260908_210431;衔接缺口与守卫缺口已修,该形态降级为「出战推进、后续重评」的质量问题,方向数据缺失的治本修复已登记为策略批待办)。**中断恢复的对局 = 卡死类报警第一排查上下文**:NODE-DWELL/守卫停机/断流报警先核恢复态(判定基准 = 日志「已在对局中,跳过 start 交 loop」行 + 首条 state 行直接非 r1),遥测按下方「重启后中断恢复段的遥测不可信」节的口径判读。
-- 改动集中纪律:局中不改代码;一局跑完(或早停)再重启加载,改动集中到局间一次重启生效。适用对象 = MCP server 自己在跑的对局;实机探索 agent 自己打的对局,它停下以后就可以改代码并重启(见 autonomous-loop.md §3.6)。
+- 改动集中纪律:局中不改代码;一局跑完(或早停)再重启加载,改动集中到局间一次重启生效。适用对象 = MCP server 自己在跑的对局;实机探索 agent 自己打的对局,它停下以后就可以改代码并重启(见 autonomous/orchestrator.md §6.4)。
 - **起局前核代码新鲜度(机械检查)**:起局前核 MCP server 进程启动时间晚于最新本地 commit 时间(`git log -1 --format=%ci` 对照进程 StartTime)——「重启 server 前起局」= 旧代码跑新局,复现已修 bug 还污染归因(停局-重启-起局序列中此步最易被跳);确认已重启过可跳过。
 - 旧自主推进代码带 `# 未验证` 注释:进对应画面复审(重点补日志/截图让每步可观测)后删注释才能信——复审是义务不是可跳的。
-- **重启前四步确认**(全过才动手):① `git status` 干净(或仅剩声明过的挂起件;自主推进场景一怎么判,见 autonomous-loop.md §3.6「重启 MCP server」);② 全量 pytest 0 failed(`uv run pytest sr-od-test/ -m "not slow"`,分层命令见 SKILL.md 单一源地图「测试分层」行;自主推进场景一测试有失败时怎么办,同样见 autonomous-loop.md §3.6「重启 MCP server」);③ `check_game_window` is_win_valid=true(无效先 open_game);④ `analyze_screen` 确认在货币战争-大厅(不在则先按下方残局清理序回大厅;例外:自主推进场景一不要求在大厅——对局可能停在半路,见 autonomous-loop.md §3.6)。server 本身挂了、连不上的时候,这里做的是救活它,不是为了加载新代码:①②照做,③④要靠 server 才能查,等 server 起来以后再补做。
+- **重启前四步确认**(全过才动手):① `git status` 干净(或仅剩声明过的挂起件;自主推进场景一怎么判,见 autonomous/orchestrator.md §6.4);② 全量 pytest 0 failed(`uv run pytest sr-od-test/ -m "not slow"`,分层命令见 SKILL.md 单一源地图「测试分层」行;自主推进场景一测试有失败时怎么办,同样见 autonomous/orchestrator.md §6.4);③ `check_game_window` is_win_valid=true(无效先 open_game);④ `analyze_screen` 确认在货币战争-大厅(不在则先按下方残局清理序回大厅;例外:自主推进场景一不要求在大厅——对局可能停在半路,见 autonomous/orchestrator.md §6.4)。server 本身挂了、连不上的时候,这里做的是救活它,不是为了加载新代码:①②照做,③④要靠 server 才能查,等 server 起来以后再补做。
 - **早停判据**(无信息量局,满足任一即 stop_run + 判读 + 修复 + 重启跑新局):① 死局形态(连续多轮上场阵容缺核心成员,商店里出现了应买的目标成员却没买);② 验证已得(本轮要验证的行为已观察到,后续无新信息——自动化侧=`cw_early_stop.py` 判据表见下节);③ 已知未修问题主导(局是旧代码跑的、修复已 commit 待加载);④ **重大修复待加载=无条件早停重开**——重大策略/战力修复 commit 后,在跑的旧代码局素材价值趋零,继续跑=验证延迟。例外:对照局(A/B 交叉核对)与终验局不适用。
 
 ## 局间交接序(停局后到下一局开跑)
 
-本节写给 MCP server 自己在跑的对局。实机探索 agent 自己打的对局不走这一节:对局留着,不清理残局(autonomous-loop.md §3.6)。
+本节写给 MCP server 自己在跑的对局。实机探索 agent 自己打的对局不走这一节:对局留着,不清理残局(autonomous/orchestrator.md §6.2)。
 
 1. 停局(stop_run)→ 等自动战斗结算(游戏停后会打完当前战斗)。
 2. 残局清理(**优先一键 op `CwEntryExit`(operations/cw_entry/,经 `run_operation` 调用,支持全入口态——备战/战斗中含暂停 X/投资策略等 overlay/胜负结算/失败链,放弃+结算 3 页+回大厅一次完成)**;op 不可用时手动链兜底:结算屏「继续挑战」→ 等自动战斗打完 → 备战态 ESC → 「放弃并结算」→ 失败页「下一步」×2 → 「返回货币战争」;遭遇/投资 overlay 多半要先进后出——「返回备战界面」→ ESC 中断；手动链=人工操作指引，不受 op 代码 ESC 绝对禁令约束）。判定每一步用 `analyze_screen`,认 screen 名不认感觉。
@@ -51,7 +51,7 @@
 - 三层:①进程内哨兵 flag(`.debug/temp/currency_war/*.flag`,停机钩子按 od-dev-stop-hooks 处理);②后台哨兵脚本(tail 日志:关键词汇命中即 exit=推送,可自愈词汇走驻留续侦非退出[CONT 事件:只核对证据、不重启实例];只报需介入的事件;水位已停用,同一纪元内同签名去重);③定时轮询兜底(轮到必执行:run 状态+哨兵存活+进度对比+**事件哨兵 HIT 证据文件 `cw_hit_alert.md` 修改时间核对**——v5.1 起一般词汇报警走驻留续侦非退出,轮询核对是 CONT 事件消费延迟的上界)。
 - 哨兵单实例纪律:重新启动前确认旧实例已退出;双哨兵 = 重复报警+双倍开销。
 - 轮询提示词定期更新:提示词里写死的「当前局 N=某修复首验」会过期,误导后续判读。
-- 用户要用电脑 = 全停实机(哨兵+定时+run),别抢鼠标。自主推进场景一(实机探索 agent 用鼠标打局)同理:用户要用电脑,就由用户叫停,按 autonomous-loop.md §3.8 走。
+- 用户要用电脑 = 全停实机(哨兵+定时+run),别抢鼠标。自主推进场景一(实机探索 agent 用鼠标打局)同理:用户要用电脑,就由用户叫停,按 autonomous/orchestrator.md §7.1 走。
 
 ### 哨兵脚本组(版本化,住 skill 的 scripts/ 子目录:`skills/sr-od-dev-currency-war/scripts/`)
 
@@ -62,7 +62,7 @@
 | `cw_runs_gap.py` | journal 收尾对账 v3(旧「runs 断流」的 journal 等价:实机段停更+主日志静默但段无 match_final 收尾行 → 报警;报警词仍为 `[RUNS-GAP]`;数据源=state/journal.jsonl)。**过渡守卫**:match_final 写点属待落地接入,接入落地前账面无任何收尾行→报警抑制自愈退出(武装打印标注);账面出现首个收尾行自动恢复判据,接入验收后守卫可删 | 随局 |
 | `cw_asset_sentinel.py`(本目录) | 资产完整性哨兵 v1(运行时资产基线对比,**只报不修**——恢复走框架下载链/git checkout,禁自恢复下载。监控 4 个对象:OCR 模型 `onnx_ocr/ppocrv5`[缺省在用,实测为 junction(Windows 目录链接)指向外部模型库,链接悬空/目标被清可检测]+`ppocrv6`[watch 档,丢失不影响运行时、不触发退出]+CW 立绘库 `character_avatar`+首领头像库 `cw_boss_avatar`(21 公司目录制)。首跑落基线 `asset_baseline.json`,之后每轮对比:目录丢失/junction 悬空/目录清空/关键模型文件缺失(det/rec/cls/dict)= `[ASSET-HIT]` **立即退出 exit 3**;部分文件缺失/新文件/大小变化/链接形态变化= `[ASSET-HIT-CONT]` 驻留续侦+同一纪元内同签名去重,证据落 `asset_hit_alert.md`,恢复后 `[ASSET-OK]` 收尾。背景:模型目录在 gitignore 内、被清后 git 恢复不了,历史多次靠事后人工恢复) | **长驻型,不随局武装**:实机探索期开工(派第一个实机探索 agent)前武装一次即可(资产不随局变化);重新启动三步照走(rewatch 查旧/杀净已纳管 `asset` 件,`--asset` 显式列入武装命令);资产恢复/正当变更(版本重采等)完成后 `--rebaseline` 显式重建基线(**损坏基线可被重建覆盖**——基线损坏时唯一出路就是 `--rebaseline` 重建〔显式确认〕);无 `--rebaseline` 参数时基线损坏以 exit 2 拒绝静默重建(防止把已发生的清空记录成新正常态) |
 
-- **武装命令口径**:哨兵全家统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-dev-currency-war\scripts\<脚本>.py` 后台起(退出码即警报;2026-11-13 CW 工具整体迁入本目录后资产哨兵不再有 tools/cw 例外路径);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 位面 2 投资策略误报经信道送达并处置,实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `skills/sr-od-dev-currency-war/scripts/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap|asset_sentinel` 双查;事件哨兵 v5.1 起删 `cw_sentinel.pos` 可选(武装一律锚尾;rewatch 杀净时顺手删,留着也不碍事);job id 记进自主工作文件夹的线表备注栏(自主工作文件夹见 autonomous-loop.md §2.5)。
+- **武装命令口径**:哨兵全家统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-dev-currency-war\scripts\<脚本>.py` 后台起(退出码即警报;2026-11-13 CW 工具整体迁入本目录后资产哨兵不再有 tools/cw 例外路径);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 位面 2 投资策略误报经信道送达并处置,实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `skills/sr-od-dev-currency-war/scripts/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap|asset_sentinel` 双查;事件哨兵 v5.1 起删 `cw_sentinel.pos` 可选(武装一律锚尾;rewatch 杀净时顺手删,留着也不碍事);job id 记进自主工作文件夹的线表备注栏(自主工作文件夹见 autonomous/orchestrator.md §2.5)。
 - **重新启动三步(硬序,防实例堆积)**:查旧(rewatch)→ kill 净(rewatch,含上一局残留)→ 编排者经会话后台任务信道 arm 新;起完 `rewatch --verify N` 核岗。**值守兜底定期核:随局哨兵实例数应=3(每脚本恰 1,资产哨兵长驻另计、武装期恰 1),多杀少补**。
 - **杀哨兵只许经 rewatch;任何信道停后必复扫**:Stop-Process / 后台 job 等单点杀在 Windows 不级联——pwsh 包装被杀后 uv→venv python→base python 链照样存活(2026-09-08 实证:孤儿占 runs_gap 锁拒新实例武装+报警链断成哑哨兵)。rewatch 杀净已带树终杀(psutil 连带终止链上后代)+杀后复扫断言(复扫非空自动再杀,有界重试后仍非空 exit 2)。停净判据=跑一遍 `skills/sr-od-dev-currency-war/scripts/rewatch.py` 见到「**复扫零残留 ✅**」或「**无需杀(本来就干净)**」二者之一(他信道已停净时只有后者出现;「[复扫]」前缀行=仍在杀,末轮失败行需人工核查权限)。
 - **试用期纪律**:哨兵/早停脚本上线后的前几个报警周期 = 试用期——报警先核对时间戳与归属(旧行重放/中途启动缺上下文/局后空闲三类误报实证),再信内容;watcher 上线不算完,前几个报警逐一复盘。v5.1 起三类误报在 `[SENTINEL-HIT-CONT]` 驻留报警同样可能,CONT 级报警核对证据时照此甄别;**CONT 级(非退出)报警只核对证据文件,不要重启哨兵实例**——CONT 是非退出事件,实例未退、监控能力未降级,核对证据即可,而重新启动三步的「杀净」会杀掉在岗健康实例(丢在岗去重状态+秒级监控空窗)。
