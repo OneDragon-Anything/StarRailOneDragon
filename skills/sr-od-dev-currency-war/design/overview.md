@@ -15,7 +15,7 @@
 - `SKILL.md`:导读(代码架构含影响面申报要对照的三样)+ 入口分诊表(任务 → 对应域,路由到各域 references 主线)+ 派子 agent 时任务书「领域规范」栏照抄的那一段 + 单一源地图(全部指针的集中地)+ 文档同步。
 - `references/autonomous/orchestrator.md`:自主推进的编排者手册(四个场景与场景怎么确定;通用编排:窗口所有权、问题处置循环、记录文件;场景一:关注什么与开局、实机探索任务书、局间流程、修复线、叫停与恢复;场景二到四;领域叠加件)。通用框架单一源 = od-dev-agent-autonomous-mode 的需求线流水线。
 - `references/autonomous/exploration.md`:实机探索 agent 作业手册(打一局货币战争:开工前读什么、步骤、动作 op 哪些该有怎么判、局内情况处理、交接与恢复、能写哪些文件、单局报告、取证与知识的可靠性)。
-- `references/screen-tracking.md`:画面识别与动作 op 的追踪文件(货币战争长期追踪目录里的一份记录文件:路径、格式、谁在什么时候写、什么不记在这里;按旧记法写的待跟进事项条目怎么读)。
+- `references/screen-tracking.md`:画面识别与动作 op 的追踪文件(货币战争长期追踪目录里的一份记录文件:路径、格式、谁在什么时候写、什么不记在这里)。
 - `references/sim-testing.md`:模拟测试专属说明(边界 + 找问题三步主线(统计 → 筛坏指标 → 挑局复盘);A/B 归 strategy-work「验证」)。
 - `references/telemetry-reading.md`:实机局数据判读方法论(判读流程与先定标准步骤、查询工具、观察面全量清单、视图覆盖矩阵、采集缺口)。
 - `references/runtime-ops.md`:实机运维细则(启动与重启、早停判据、局间交接序、残局画面清单、监控栈与哨兵脚本组)。
