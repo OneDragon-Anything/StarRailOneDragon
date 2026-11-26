@@ -582,7 +582,8 @@ _EQUIP_TM_SCALES: tuple[float, ...] = (0.30, 0.33, 0.35, 0.37)  # 98px→29-36px
 # 1件{0} / 2件{-21,+21} / 3件{-43,0,+43};候选点(5个)覆盖所有可能。
 _EQUIP_CANDIDATES: tuple[int, ...] = (-43, -21, 0, 21, 43)
 _EQUIP_LAYOUTS: tuple[tuple[int, ...], ...] = ((-43, 0, 43), (-21, 21), (0,))  # 3件/2件/1件,大到小(完整布局优先)
-#: 读不清的占位名,不是装备名:某位置有装备但名字没认出来,或该格子有装备线索却读不全。消费方按「看不清」处理。
+#: 读不清的占位名,不是装备名:某位置有装备但名字没认出来,或该格子有装备线索(候选位置读到峰 / 认出数量数字)却读不全。
+#: 消费方按「看不清」处理。
 EQUIP_UNKNOWN: str = 'unknown'
 #: 第一读的峰分下限(TM_CCOEFF_NORMED)。被叠住的真图标峰分最低量到 0.40 一带,所以下限放这里;
 #: 低分放进来的空槽假峰由下面两道门挡。
@@ -984,7 +985,8 @@ def read_equipped_below(
     :param scales: 98px 模板缩放档(覆盖 ~32-34px icon)。
     :param nms_radius: 同位置去重半径(icon 间距 ~35px → 18)。
     :return: ``{slot_idx: [装备名]}``;空槽 → 该 slot 不在 dict。名字不可信的位置、有装备线索(候选位置命中 /
-        认出数量数字 / 认出火光)却凑不出完整布局的格子,对应位置是 ``EQUIP_UNKNOWN``(后者整格只报一个)。
+        认出数量数字)却凑不出完整布局的格子,对应位置是 ``EQUIP_UNKNOWN``(后者整格只报一个)。认出火光只触发火光下补读,
+        不算线索:高亮卡片下的角色可能一件装备都没穿,这种格子读空。
 
     日志(经 ``cw_observe.cw_log``):``unknown``(读清的格子里有 ``EQUIP_UNKNOWN``,需关注,带搜索区截图)、
     ``anomaly``(图标数 >3,需关注)。
@@ -1047,7 +1049,8 @@ def read_equipped_below(
             if any(abs(icon_cx - k[2]) <= nms_radius for k in kept):
                 continue
             kept.append((name, val, icon_cx, trusted))
-        equipped = _select_equipped_layout(kept, below_cx, has_evidence=bool(badges) or flame)
+        # 火光不算有装备的线索:高亮卡片下的角色可能一件都没穿。真图标被火光盖死的格子,要同时认出数量数字才报看不清。
+        equipped = _select_equipped_layout(kept, below_cx, has_evidence=bool(badges))
         if equipped:
             out[slot_idx] = equipped
         # icon 数守卫:角色 below 最多3件,>3 = 误检/邻槽串入
@@ -1093,7 +1096,7 @@ def _select_equipped_layout(
 
     :param kept: 同位置去重后的命中 ``(名字, 峰分, 图标中心 x, 名字是否可信)``,已按峰分降序。
     :param below_cx: 搜索区中线横坐标。
-    :param has_evidence: 这一格有没有装备线索(认出数量数字 / 认出火光)。
+    :param has_evidence: 这一格有没有装备线索(认出数量数字;火光不算,见 ``read_equipped_below``)。
     :return: 最大完整布局各位置的名字,名字不可信的位置是 ``EQUIP_UNKNOWN``;凑不出完整布局时,
         有候选位置命中或有装备线索 → ``[EQUIP_UNKNOWN]``,都没有 → ``[]``(读空)。
     """
