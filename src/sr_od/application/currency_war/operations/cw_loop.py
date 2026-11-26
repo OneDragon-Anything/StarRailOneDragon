@@ -168,6 +168,16 @@ STATUS_LOBBY_DONE: str = '对局结束,回大厅'
 #: 及各自测试。
 STATUS_HANDOFF_PREFIX: str = '异常退出交接:'
 
+#: 备战锁定族「屏名 → 返回按钮识别标志」对照表。锁定返回一份 op 类
+#: (CwScreenPrepLockedReturn)服务多个画面档,分发处传命中的那对(带参构造),
+#: 屏名只在此列举一处。新增锁定族画面档时在此追加一行,分发分支不改。
+_LOCK_RETURN_AREAS: dict[str, str] = {
+    '货币战争-备战-策略锁定': '按钮-返回投资策略选择',
+    '货币战争-备战-遭遇锁定': '按钮-返回遭遇选择',
+    '货币战争-备战-主角锁定': '按钮-返回主角选择',
+    '货币战争-备战-茶歇锁定': '按钮-返回幕后茶歇',
+}
+
 
 def _dispatch_pos(ctx: Any) -> tuple[int, int]:
     """[cw-op] 行位置键:状态容器节点读口现读(缺省镜像 kernel 读口 1 形态;
@@ -308,9 +318,9 @@ class CwLoop(CwOperation):
     #: 阶段一身份分发画面清单(get_match_screen_name 过滤器;遍历序 = loader
     #: 序,非优先级——各画面身份经语料两向验证互不共命中,顺序不影响结论)。
     #: 清单不含:备战(阶段二两识别标志同帧判定默认,扩展识别标志语料误杀)、补给锁定
-    #(按钮在普通节点 revisit 备战同样出现,#18 接入调用暂缓)、道具详情弹窗/
-    #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则);主角锁定为暗色
-    #: 锁定族走阶段一先例(已入清单,与策略/遭遇锁定同一分支三元组消费)。
+    #(按钮在普通节点 revisit 备战同样出现,补给锁定接入调用暂缓)、道具详情弹窗/
+    #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则);策略/遭遇/主角/茶歇
+    #: 锁定同属锁定族,已入清单,经 ``_LOCK_RETURN_AREAS`` 同一分支带参消费。
     #: 单一源 = kernel/cw_dispatch_tables(常量本体与内容维护口径申报住彼;
     #: 现役唯一代码消费方 = 本 loop 的分发 + 预检 + 候选过滤——出战发出链
     #: 浮层闸门已退役,退役裁定持久指针 = prep_actions.py:8-15 模块头)。
@@ -992,7 +1002,7 @@ class CwLoop(CwOperation):
 
         if name == '货币战争-投资策略':
             # 横幅中间态(展开动画)帧身份天然 miss,不会进入本分支——该态
-            # 不处理,由阶段二守卫等待(screen_flow_timing.md #30)。
+            # 不处理,由阶段二守卫等待(用户裁定:横幅中间态不处理)。
             return self._dispatch_screen_op(
                 CwScreenInvestStrategy(self.ctx), journal_name='投资策略',
                 frame_tag='overlay_invest_strategy', wait=2)
@@ -1049,19 +1059,17 @@ class CwLoop(CwOperation):
                 frame_tag='overlay_shop_card_detail', wait=1.5,
                 on_result=_on_shop_card_detail, on_fail_retry=True)
 
-        if name in ('货币战争-备战-策略锁定', '货币战争-备战-遭遇锁定',
-                    '货币战争-备战-主角锁定'):
+        if name in _LOCK_RETURN_AREAS:
             _lock_screen = name
-            _lock_area = ('按钮-返回投资策略选择' if name == '货币战争-备战-策略锁定'
-                          else '按钮-返回遭遇选择' if name == '货币战争-备战-遭遇锁定'
-                          else '按钮-返回主角选择')
+            _lock_area = _LOCK_RETURN_AREAS[name]
 
             def _on_prep_locked(ok: bool, _res: Any,
                                 _ls: str = _lock_screen) -> None:
                 log.info('[cw-loop] 暗色锁定态(%s)→ 点返回按钮(success=%s)',
                          _ls, ok)
 
-            # 两画面档一份 op 类,分发处传命中的那对(带参构造)
+            # 多画面档一份 op 类,分发处传命中的那对(带参构造);对照表 =
+            # _LOCK_RETURN_AREAS
             return self._dispatch_screen_op(
                 CwScreenPrepLockedReturn(self.ctx, _lock_screen, _lock_area),
                 journal_name='备战暗色锁定', frame_tag='overlay_lock',
@@ -1340,7 +1348,9 @@ class CwLoop(CwOperation):
         # PREP_DIRECT_EXIT_SCREENS,且合成确认浮层不在场;框架建档判定非手写
         # 识别标志),与退出路由③是同一个函数——两侧判定
         # 同源是防「loop 停↔退出重派」互踢死循环的硬前提。语义 = 可点门形
-        # 退出的备战态(含免战)。已知边界:B 类浮层(选择伙伴等)在场时
+        # 退出的备战态(成员以常量 PREP_DIRECT_EXIT_SCREENS 为准,不在此枚举)。
+        # 下面的状态文本与 flow/loop.md §6 出口表互引(那一格在本文本后附了判定
+        # 说明),改其中一个要同步另一个。已知边界:B 类浮层(选择伙伴等)在场时
         # 全集识别返回其专属屏名 ∉ A 类 → 本停机位判否,交下方分发分支
         # 处理浮层,处理完屏名回 A 类才交还(互踢推演成立);开商店等已
         # 独立建档的备战子态同理由屏名区分。合成确认浮层在场时备战的识别
@@ -1403,10 +1413,10 @@ class CwLoop(CwOperation):
         # 形态)。清单 = 过滤器非优先级:遍历序 = loader 序,各画面身份经语料
         # 两向验证(本画面 fixture 全 True + 堆叠底图/兄弟帧 False)后顺序不影响结论。
         # 横幅中间态/动画帧身份天然 miss → 落阶段二/兜底等待
-        #(screen_flow_timing.md #30 裁定:展开动画不处理,等展开完成)。
+        #(用户裁定:展开动画不处理,等展开完成)。
         # 清单不含:备战(部署态/补给revisit按钮/攻略位移使右上角与棋盘标签识别标志
         # 不可靠,语料 18/57 误杀 → 阶段二两识别标志同帧判定默认)、补给锁定
-        #(其按钮在普通战斗节点 revisit 备战同样出现,#18 接入调用暂缓裁定的延续)、
+        #(其按钮在普通战斗节点 revisit 备战同样出现,补给锁定接入调用暂缓的裁定延续)、
         # 道具详情弹窗(道具名可变无固定身份)/消耗品浮层/阿哈装备(无独立
         # 画面档)→ 三者走阶段三特殊规则。
         # 画面身份读点改道(sim 统一 3.4 接入调用):sim 装配后身份 = 后端
@@ -1461,7 +1471,7 @@ class CwLoop(CwOperation):
 
         # ===== 阶段二:备战表面默认分支(两识别标志同帧命中 = 购买经验∧出战;57/57 语料稳定) =====
         # 备战不用身份判定:部署态/补给revisit按钮/攻略位移使扩展识别标志不可靠(语料
-        # 18/57 误杀)。横幅中间态守卫(#30 裁定):横幅文案在场 =
+        # 18/57 误杀)。横幅中间态守卫(用户裁定):横幅文案在场 =
         # 选卡页展开中,零可交互元素,不处理等展开(OCR 走全图缓存零额外成本)。
         if self.round_by_ocr(screen, '请选择投资策略', lcs_percent=0.8).is_success:
             return self.round_wait(wait=1.0)
