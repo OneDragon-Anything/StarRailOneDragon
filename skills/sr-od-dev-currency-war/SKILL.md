@@ -194,7 +194,7 @@ extras = `analyze_screen` 对已建档画面的结构化读数扩展(工具返�
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_traits_data`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md) |
 | 版本更新后 CW 域要做哪些事(适配清单) | [references/version-update.md](references/version-update.md)(判型/各域明细/换赛季战役组织) |
-| 新版本实机探索局怎么打(实机探索 agent 的开工、步骤、局内情况处理、单局报告;不开自主推进时独有的几条) | [exploration.md](references/autonomous/exploration.md);版本适配总流程归 version-update |
+| 新版本实机探索局怎么打(实机探索 agent 的开工、步骤、局内情况处理、单局报告) | [exploration.md](references/autonomous/exploration.md);版本适配总流程归 version-update |
 | 画面识别与动作 op 的追踪文件(按画面记识别核对的日期和结论、每个该有动作 op 的动作有没有动作 op、该画面的缺口;长期保存,打到哪个画面查哪一章) | [references/screen-tracking.md](references/screen-tracking.md)(文件路径/格式/谁在什么时候写/什么不记在这里) |
 | 运行状态/焦点/待办 | 新迭代走 `.temp/changes/active/<迭代名>/`(迭代目录含 tasks.md 进度,规范见 od-dev-run-iteration);`.debug/progress/` 下的 CW 存量目录(dag.jsonl 与旧文法 `进度.md`)只读封存,新登记事项不再写入。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针 |
 | **待跟进事项**(货币战争专用的待办文件,只放寿命超过单个迭代的事项。条目怎么写见 [orchestrator.md](references/autonomous/orchestrator.md) §2.5。原名「跨迭代挂账板」,别处按旧名字提到它的就是这一份) | `.temp/tracking/currency-war/待跟进事项.md`(全域唯一文件;迭代内欠账留各迭代收尾清单,收口时转移进该文件) |
