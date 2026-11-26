@@ -4,12 +4,12 @@
 
 ## 1. 分发判定
 
-- 外循环分发(阶段一身份行):id_mark「货币战争-投资策略.标识-请选择投资策略」命中即派发。历史「双信号+复探」判据与 OCR 全短语读法已停用(screen_flow_timing #30 裁定:横幅中间态不处理,帧落阶段二守卫等待)。
+- 外循环分发(阶段一身份行):id_mark「货币战争-投资策略.标识-请选择投资策略」命中即派发。历史「双信号+复探」判据与 OCR 全短语读法已停用(用户裁定:横幅中间态不处理,帧落阶段二守卫等待)。
 - 分发 = 阶段一身份行(标题识别标志);判定不复制分发表,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 
 ## 2. 画面形态声明
 
-**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**无任何可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],识别标志判定天然 miss,现行分发判据与该裁定一致)。
+**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**无任何可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],识别标志判定天然 miss,现行分发判据与该裁定一致)。
 
 **单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口识别标志复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落状态容器(GameState) `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,权威版本 = [../skill strategy/29_invest_strategy_screen.md](../skill strategy/29_invest_strategy_screen.md);接口规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
 

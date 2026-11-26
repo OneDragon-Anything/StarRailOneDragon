@@ -124,7 +124,7 @@ class CwActionSellDeployedOp(CwOperation):
             # 落点 = 出售区单一源,sell_point 的 area 缺失 RuntimeError
             # 上抛 = 建档漂移哨,共享原语既有形态保留)。
             drag_char_guarded(self, self.ctx, src, sell_point(self.ctx))
-            # 卖出动画固定等待(用户口述口径 #21:卖出动画 1s;非判效)。
+            # 卖出动画固定等待(用户口述口径:卖出动画 1s;非判效)。
             time.sleep(1.0)
         else:
             # sim:机械拖拽静默跳过(直连旁路 port 检查,sim-design.md

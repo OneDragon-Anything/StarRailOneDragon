@@ -129,7 +129,7 @@ class CwActionPickSupplyOp(CwOperation):
         # + 单位入账分支 + 装备后果分支;norm_item 未解析 = 翻来源留存证据)。
         # 2026-10-29 流程模型对齐:确认后**不再上报节点推进**——游戏行为 =
         # 补给选完关闭 overlay 回备战并自动弹店,出战动作才完成节点
-        #(流程模型单一源 = screen_flow_timing.md 口述流程模型节,#14);
+        #(流程模型单一源 = 玩家 skill 必读篇 01-玩法基础.md §2.4);
         # 旧「确认点击落地即 report_node_advance(supply_confirm)」随该
         # 语义废止。round data 携带 pick_supply 声明(落点 = 商店档)。
         world_decl: WorldDecl | None = None

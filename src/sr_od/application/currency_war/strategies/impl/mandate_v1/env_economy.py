@@ -84,7 +84,7 @@ _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 
 # 取卡序→位面结构映射(k 1 基;策略大师通道 P(第 k 张策略可取) 的位面归属)。
 # 结构:k1 = 开局取卡(entry 流程固定,局首)、k2 = P1 中段首取卡
-# (screen_flow_timing #11:1-3 节点完成后)、k3 = P2 前段(63 局
+# (用户口述:1-3 节点完成后)、k3 = P2 前段(63 局
 # decisions.jsonl 观测拼版主位 (2,2);旧 sim 注入日程
 # SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已删除(随sim 重做)面停用,
 # 取卡时点 = 投资策略 offer 固定轮次日程,权威版本 = sim-design.md §2.2)。

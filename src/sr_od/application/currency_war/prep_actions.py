@@ -79,8 +79,8 @@ from sr_od.operations.sr_operation import SrOperation
 #: 执行);弹窗就位与否交下一帧观察。
 _OVERLAY_ANIM_WAIT_S: float = 1.8
 
-#: 商店收起动画时长(操作完成自等动画;实测口径 screen_flow_timing
-#: #15「收起过场动画 ~1s 即备战画面稳定」,用户口述。op 完成后显式等待,替代
+#: 商店收起动画时长(操作完成自等动画;用户口述「收起过场动画 ~1s 即备战
+#: 画面稳定」。op 完成后显式等待,替代
 #: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
 #: 商店打开动画时长(固定时长自等;用户口述定值 2026-09-02「干净的备战

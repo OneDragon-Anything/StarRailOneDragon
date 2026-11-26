@@ -59,7 +59,8 @@ def report_action_pick_invest_strategy_param(
       结果可辨形态,投资双支对齐);出口构造后果声明
       (:data:`_DECL_TRIGGER`,next_screen = :func:`window_stable_screen_now`
       窗稳态预测——2026-10-29 流程模型对齐:offer 选完 overlay 关闭回
-      备战,游戏自动弹出商店(#14 触发源「投资策略选完后」);offer 槽
+      备战,游戏自动弹出商店(用户口述:投资策略选完后属于自动开店的
+      触发情形);offer 槽
       节点多为 battle 型(稳态 = 商店档),改节点序列环境(战争边疆
       P3 战斗→遭遇)下为遭遇模态屏,推导单一源收尾),旧「返回当前
       节点屏(node_screen_now)」随 sim 呈现改造废止——reconcile 断言

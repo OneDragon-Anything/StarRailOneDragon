@@ -118,8 +118,8 @@ class CwScreenInvestStrategy(CwOperation):
     _EXCLUDE: ClassVar[set[str]] = {'请选择投资策略', '攻略', '返回备战界面', '图例', '确认', '刷新次数1'}
     #: 入口识别标志复探窗(动画帧容忍,治本 20/21 局同型失败「返回状态 非投资
     #: 策略屏」):投资策略节点首访时派发帧 → 本 op 首帧之间落在
-    #: 「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md
-    #: #11),首帧采样可 miss「标识-请选择投资策略」。复探窗语义 = 首探
+    #: 「备战 → 金币过场动画 → overlay 淡入」过渡段(用户口述),首帧采样可
+    #: miss「标识-请选择投资策略」。复探窗语义 = 首探
     #: miss → 短窗后新截图复探,窗口内命中即继续;超窗仍 miss 才 round_retry
     #: (防无限等真非目标屏)。执行层时序常量,非策略数值。
     ENTRY_REPROBE_TIMES: ClassVar[int] = 4
@@ -131,8 +131,8 @@ class CwScreenInvestStrategy(CwOperation):
     # x≈{477,975,1474}(y 同带 ≈855)→ dx ≈ −88。偏移错 → 刷新未命中,
     # 重读=原卡名集,重决策结果天然等价(能力退化非事故,复测即修)。
     _REFRESH_BTN_DX: ClassVar[int] = -88
-    # 刷新后等待(执行层时序常量,非策略数值;screen_flow_timing
-    # #13:刷新动画 ~1s,等待 1.5s 覆盖)。
+    # 刷新后等待(执行层时序常量,非策略数值;用户口述:刷新动画 ~1s,
+    # 等待 1.5s 覆盖)。
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
 
     def __init__(self, ctx: SrContext):

@@ -21,8 +21,8 @@ __init__`` docstring)。本包 → 状态容器单向依赖。
 出口构造 ``WorldDecl``(trigger = ``pick_encounter``;``next_screen`` =
 商店档——2026-10-29 流程模型对齐:遭遇选完 overlay 关闭回备战,游戏自动
 弹出商店,遭遇战由出战动作开打(流程模型单一源 =
-``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程模型
-节,#14);旧「选档落地即该遭遇战结算」语义(battle_resolve 直达)随
+``skills/sr-od-currency-war/references/01-玩法基础.md`` §2.4「每个节点都按
+同一套顺序走」);旧「选档落地即该遭遇战结算」语义(battle_resolve 直达)随
 sim 状态副本模型呈现改造废止),
 转移事件广播随本动作单轨切换摘除。
 """

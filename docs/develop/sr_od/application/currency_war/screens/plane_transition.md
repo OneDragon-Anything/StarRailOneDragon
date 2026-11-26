@@ -45,7 +45,7 @@
 
 - journal op 名 = 「位面过渡」;日志前缀 `[cw-flow-plane]`。
 - 测试:两 node 行为测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(位面过渡观察门 miss 早退与链 report/落地复查组合)(代码注另引 `test_cw_flow_ops.py`(现状:sr-od-test 无此文件,测试面重建归测试仓批;申报见下),现状不在测试仓 = 开放设计注)。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #2/#29;画面档 = `assets/game_data/screen_info/currency_war_plane_transition.yml`。
+- game 侧知识:「点击空白处继续」提示出现后可点;进位面 2、3 的 1 号节点照常自动开商店,仅开局 1-1 例外(用户口述);画面档 = `assets/game_data/screen_info/currency_war_plane_transition.yml`。
 
 ## 开放设计注
 

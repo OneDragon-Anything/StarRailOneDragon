@@ -105,8 +105,8 @@ def report_action_start_battle_param(gs: GameState, param: Any, sig: ChannelSig,
 
     **补给节点分支**(2026-10-29 流程模型对齐):supply 节点出战 =
     完成节点(无战斗无结算屏,流程模型单一源 =
-    ``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程
-    模型节——补给选完回备战,出战即进下一回合)→ 转
+    ``skills/sr-od-currency-war/references/01-玩法基础.md`` §2.4 口述
+    流程——补给选完回备战,出战即进下一回合)→ 转
     :func:`report_node_advance`(trigger = ``supply_finish``)按终结动作
     推进,声明由该入口构造(node_advance,下一画面按其推导);补给
     节点不在免战跳过辖域,分支先于跳过声明构造,二者不共现。

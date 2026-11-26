@@ -33,8 +33,8 @@
 构造 ``WorldDecl``(trigger = ``pick_supply``;``next_screen`` = 商店档
 ——2026-10-29 流程模型对齐:补给选完 overlay 关闭回备战,游戏自动弹出
 商店,出战即完成节点(流程模型单一源 =
-``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程模型
-节,#14);旧「选卡后画面停留补给屏,随后到的 node_advance 声明才切走」
+``skills/sr-od-currency-war/references/01-玩法基础.md`` §2.4「每个节点都按
+同一套顺序走」);旧「选卡后画面停留补给屏,随后到的 node_advance 声明才切走」
 语义随「确认即推节点」废止),转移事件
 广播随本动作单轨切换摘除。
 
@@ -80,7 +80,8 @@ _SUPPLY_GRANT_STAR: int = 1
 _DECL_TRIGGER: str = 'pick_supply'
 
 #: 补给声明(宝钻写归 backend ``_on_supply_picked`` 读状态容器现值,本上报
-#: 零写;next_screen 权威 = 流程模型 #14——选完关闭 overlay 回备战并
+#: 零写;next_screen 权威 = 流程模型(用户口述:补给选完属于自动开店的
+#: 触发情形)——选完关闭 overlay 回备战并
 #: 自动弹店,稳态 = 商店档)。
 _DECL: WorldDecl = WorldDecl(next_screen=SCREEN_SHOP_PANEL,
                              trigger=_DECL_TRIGGER)

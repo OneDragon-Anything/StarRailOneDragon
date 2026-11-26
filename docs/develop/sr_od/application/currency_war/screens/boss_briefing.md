@@ -50,8 +50,8 @@
 
 - journal op 名 = 「BOSS简报」;日志前缀 `[cw-flow-boss]`。
 - 测试:两 node 行为测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(BOSS 简报真类装配与观察门 miss 早退);识别标志排他测试 = 代码注引用 `test_cw_anchor_exclusion.py`,该文件现状不在测试仓(开放设计注②)。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #26(「点击空白处继续」出现即可点);画面档 = `assets/game_data/screen_info/currency_war_boss_briefing.yml`。
+- game 侧知识:「点击空白处继续」出现即可点(用户口述);画面档 = `assets/game_data/screen_info/currency_war_boss_briefing.yml`。
 
 ## 开放设计注
 
-① 点掉后去向:本 op as-built 语义 = 点空白即返回主循环重新判定、去向归外循环;游戏行为 = 点掉后回备战并自动弹商店(`screen_flow_timing.md` #14/#27,用户口述 2026-10-29 确认)。第七/八局接管实录中商店识别标志超时系恢复局商店锁死态(战斗中崩溃重进的局,economy.md「恢复局商店锁死」条),非 boss 节点特殊行为。② 识别标志排他测试:`test_cw_anchor_exclusion.py` 在 sr-od-test 现状无对应文件,测试面重建归属待测试仓清理批。③ game 侧时序 #26 校准对象列「bot 处理」句(旧外循环位面过渡分支 OCR「点击空白处继续」命中即点)描述的是已停用的旧接入调用;在用 = 阶段一画面身份分发专用本 op(观察门 = 徽记模板 id_mark ∨「强敌」片段判别兜底,不 OCR 提示文案,见 §1/§3)。#26 口述时序列本体(「点击空白处继续」出现即稳定、可点)仍有效且被 README §5.1 正确引用,不在修正面。修正归 game 侧文档批。
+① 点掉后去向:本 op as-built 语义 = 点空白即返回主循环重新判定、去向归外循环;游戏行为 = 点掉后回备战并自动弹商店(用户口述 2026-10-29 确认,多触发源之一)。第七/八局接管实录中商店识别标志超时系恢复局商店锁死态(战斗中崩溃重进的局,economy.md「恢复局商店锁死」条),非 boss 节点特殊行为。② 识别标志排他测试:`test_cw_anchor_exclusion.py` 在 sr-od-test 现状无对应文件,测试面重建归属待测试仓清理批。③ 在用 = 阶段一画面身份分发专用本 op(观察门 = 徽记模板 id_mark ∨「强敌」片段判别兜底,不 OCR 提示文案,见 §1/§3)。

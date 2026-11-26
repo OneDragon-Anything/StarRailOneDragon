@@ -40,8 +40,7 @@
 两段直继承 SrOperation。观察 node = 画面身份门(标识-遭遇节点,miss =
 round_fail 返回主循环重新判定)→ 门命中即用 node runner 帧一次读(候选 +
 剩余次数,同帧同源;**入口 2s 稳定期已删**,用户裁定:原
-「返回备战界面出现后 2s 才稳定」口径废弃,见 screen_flow_timing.md #23
-supersession 注;候选读缺的失败安全 = act 空候选零点击终结返回主循环重新识别画面,
+「返回备战界面出现后 2s 才稳定」口径废弃;候选读缺的失败安全 = act 空候选零点击终结返回主循环重新识别画面,
 禁盲选确认——选卡确认不可逆消耗本节点)→ ``report_screen_encounter_obs``
 落状态容器 ``encounter`` + ``encounter_refresh_left``(空候选整函数早退不写
 含 left,闸在 report 内;match/gs 缺席的局外兜底路径跳过 report)→ obs +
@@ -117,8 +116,7 @@ class CwScreenEncounter(CwOperation):
 
         门 miss = round_fail 早退返回主循环重新判定(现役首闸同 status)。
         门命中即用 node runner 帧一次读(候选 + 剩余次数,同帧同源;
-        用户裁定 入口 2s 稳定期删除,原时序口径见
-        screen_flow_timing.md #23 supersession 注;候选读缺的失败安全 =
+        用户裁定 入口 2s 稳定期删除;候选读缺的失败安全 =
         act 空候选零点击终结返回主循环重新识别画面)→ ``report_screen_encounter_obs``
         落状态容器 ``encounter`` + ``encounter_refresh_left``(空候选不写,
         闸在 report 内)。"""
@@ -223,9 +221,8 @@ class CwScreenEncounter(CwOperation):
                      ' 点钮一次后终结交回', target.x, target.y)
             self.ctx.controller.mouse_move(target)   # 防吞点击(截图前移光标)
             self.ctx.controller.click(target)
-            # 用户口述口径(#23):遭遇屏刷新后 2s 画面稳定
-            # ——等满 2s 再结束本次访问(固定等待归产生动画的操作,非判效轮询;
-            # docs/game/currency_war/research/screen_flow_timing.md)。
+            # 用户口述口径:遭遇屏刷新后 2s 画面稳定
+            # ——等满 2s 再结束本次访问(固定等待归产生动画的操作,非判效轮询)。
             time.sleep(2.0)
             return self.round_success(
                 '分支刷新已点,本访问终结交回(外循环重进重建入口)',

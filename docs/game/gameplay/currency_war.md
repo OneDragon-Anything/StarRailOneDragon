@@ -21,7 +21,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 | 人怎么打:开局 / 经济 / 升级 / 阵容 / 装备纪律 | 已退役口述登记簿(2026-10-16 删)(直觉假设登记簿) |
 | 经济机制:牌池 / 刷新概率 / 商店行为 | [economy.md](../currency_war/research/economy.md) |
 | 战斗机制:伤害乘区 / 星级 / 扣血结构 | [combat.md](../currency_war/research/combat.md) |
-| 对局画面流程与各屏事实 | [screen_flow_timing.md](../currency_war/research/screen_flow_timing.md) + [screens/](../screens/)(currency_war_* 各屏) |
+| 对局画面流程与各屏事实 | [screens/](../screens/)(currency_war_* 各屏) |
 | 过渡阵容(P1 怎么活到成型) | [transitions.md](../currency_war/research/transitions.md) → [transition_combos.md](../currency_war/research/transition_combos.md) |
 | 什么形态能过哪个位面(位面间演化定量) | [stage_transitions.md](../currency_war/research/stage_transitions.md)(P1 配方见 transition_combos) |
 | 终局阵容打法(十类) | [final_comps/](../currency_war/research/final_comps/README.md) |

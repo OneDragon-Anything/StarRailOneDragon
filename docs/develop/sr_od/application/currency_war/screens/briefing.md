@@ -31,12 +31,12 @@
 | 无注册表动作 op——词缀效果点采(观察侧采集分支) | 画面 op 内置动作(观察 node `_collect_affix_effects`:逐词缀 center 点击采 tooltip) | 无 report(采集写端 best-effort,见 §3) | 否(点采 tooltip 不终结;采集/登记失败不阻塞推进) |
 | 无动作 op——单步推进由内置动作完成 | 画面 op 内置动作(决策动作 node `act`:`round_by_find_and_click_area` 点「货币战争-简报.按钮-下一步」) | 无自上报(观察上报 = `report_screen_briefing_obs` 落状态容器,观察 node 承载) | 是(点推进即终结):`round_wait` 机械部分完成即结束本次访问循环推进,落地复查标识不在 = `round_success`(wait=`BRIEFING_SETTLE_S`)返回主循环 |
 
-单动作 = 点「货币战争-简报.按钮-下一步」(`round_by_find_and_click_area`,success_wait=2)。交互时序:识别标志(本场对局首领)出现后 ~1s 动画完结为可点稳定时机(screen_flow_timing #1);固定时长完成承诺在出口等待(`BRIEFING_SETTLE_S`,常量单一源 = `operations/cw_screen/cw_flow_const.py`),点击本身无前缓冲。无已知交互陷阱。
+单动作 = 点「货币战争-简报.按钮-下一步」(`round_by_find_and_click_area`,success_wait=2)。交互时序:识别标志(本场对局首领)出现后 ~1s 动画完结为可点稳定时机(用户口述);固定时长完成承诺在出口等待(`BRIEFING_SETTLE_S`,常量单一源 = `operations/cw_screen/cw_flow_const.py`),点击本身无前缓冲。无已知交互陷阱。
 
 ## 5. 终结与交回
 
 - 点「下一步」已发 → `round_wait`(机械部分完成即结束本次访问,零验证:不读屏判「是否已转移」)。
-- 落地复查(`_click_pending` 在):标识不在 = 已离开简报 → `round_success(wait=BRIEFING_SETTLE_S)` 返回主循环(等待 = #1 识别标志后动画完结口径);标识在 = 点击未落地 → 重点(`round_wait` 循环推进,无防御上限)。
+- 落地复查(`_click_pending` 在):标识不在 = 已离开简报 → `round_success(wait=BRIEFING_SETTLE_S)` 返回主循环(等待 = 识别标志出现后约 1s 动画完结的口径,用户口述);标识在 = 点击未落地 → 重点(`round_wait` 循环推进,无防御上限)。
 - 首发标识 miss(中断恢复的对局/序列中后段首帧形态)→ `round_fail('非简报屏')` 交编排壳按步分流。
 
 ## 6. 状态上报面
@@ -61,4 +61,4 @@
 
 - journal op 名 = 「位面简报」;日志前缀全集:`[cw-flow-briefing]`(act 落地复查 1 行)+ `[cw-briefing]`(词缀效果采集与账本登记,宿主 = `operations/cw_screen/cw_screen_briefing.py`)+ `[cw][briefing]` / `[cw!][briefing]`(新词条注册 / 垃圾值拒写 / 与已有读数不一致时不覆盖 / boss 名两段归一失败,宿主 = `obs/cw_briefing_obs.py`);观察三读数日志(「简报词缀读得(观察)」/「简报首领读得(位面序…)」/「简报首领未读到…」/「简报敌人难度读得(观察)」)及 boss 两段归一失败 warning(「简报首领 boss 名两段归一失败…」,观察失败不写不上报返回主循环重新识别画面)无前缀,检索键 = journal op 名 + 日志文本。
 - 测试:两 node 行为测试 + 写入流交叉核对 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(简报观察门 miss 早退/report/三字段写语义交叉核对;`_collect_affix_effects` 以 monkeypatch 摘除点采)。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #1;画面档 = `assets/game_data/screen_info/currency_war_briefing.yml`。
+- game 侧知识:首领出现后约 1s 动画完结、可点「下一步」(用户口述);画面档 = `assets/game_data/screen_info/currency_war_briefing.yml`。

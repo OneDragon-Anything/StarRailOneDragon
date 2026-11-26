@@ -2,13 +2,14 @@
 
 单一源声明:本模块只承载 cw_flow 新 op 的完成承诺时长;商店开/收动画等既有
 常量仍在 ``prep_actions``(SHOP_CLOSE_ANIM_S / SHOP_OPEN_ANIM_S)。
-值依据均为用户口述时序(docs/game/currency_war/research/screen_flow_timing.md),
+值依据均为用户口述时序(各画面点了以后等多久,见玩家画面文档
+skills/sr-od-currency-war/references/screens/),
 待实机校准时只改这里。
 """
 from __future__ import annotations
 
 #: 简报:点「下一步」离开识别标志(简报标识消失,CwScreenBriefing 出口已验)后的固定时长
-#: (01-opening §1,#1 口述「识别标志出现后 ~1s 动画完结」)。
+#: (用户口述「识别标志出现后 ~1s 动画完结」)。
 BRIEFING_SETTLE_S: float = 1.0
 
 #: 备战触发型 overlay 族(盛会之星/列车同行/武装箱/祈愿/策划/命运/秘典)确认后

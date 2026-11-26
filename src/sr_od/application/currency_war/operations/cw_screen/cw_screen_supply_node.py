@@ -43,7 +43,7 @@ pick 族「状态容器槽零参读」+ 同族 9 决策面 op 既成约定):候�
 读数 ≥1(读缺跳写、状态容器留残值由逐访问覆盖语义承接)∧ 识别标志分量(实机 =
 ``_refresh_point`` 在位,识别标志缺并入拒绝面防机械点击 None;sim = 无识别标志条件,
 恒过)。两态执行:实机 = 文本识别标志位 + ``_REFRESH_BTN_DX`` 机械点击 + 2s 固定
-等待(screen_flow_timing.md #19);sim = 「文本-剩余次数」area 点击(基类
+等待(用户口述);sim = 「文本-剩余次数」area 点击(基类
 sim 改道 ``click_answer`` → 后端 ``_handle_click_source`` →
 ``_supply_refresh``:剩余闸内嵌再验 + left−1 + 选项重掷经同名 report 落
 状态容器;点击源语义权威源 = ``sim/sim-design.md`` §3.2)。
@@ -390,8 +390,7 @@ class CwScreenSupplyNode(CwOperation):
                 # before_screenshot 移光标 → click 落空。
                 self.ctx.controller.mouse_move(target)
                 self.ctx.controller.click(target)
-                # 用户口述口径(docs/game/currency_war/research/
-                # screen_flow_timing.md #19):补给屏刷新后 2s 画面稳定
+                # 用户口述口径:补给屏刷新后 2s 画面稳定
                 # ——原 0.6s 依赖「下一轮 wait 1.5s」合计 2.1s,余量仅 0.1s,
                 # 重掷动画尾帧可能被读(选项读缺 → 决策建立在残缺选项上)。
                 # 等满 2s 再结束本次访问(固定等待归产生动画的操作)。

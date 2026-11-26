@@ -35,7 +35,7 @@
 
 ## 7. 子态与 overlay
 
-无子态。开局补给动画无结束标志 = 本 op 存在的原因(screen_flow_timing #5/#29:1-1 是唯一不自动开商店、动画最长的开局节点)。
+无子态。开局补给动画无结束标志 = 本 op 存在的原因(用户口述:1-1 是唯一不自动开商店、动画最长的开局节点)。
 
 ## 8. 守卫与防线
 
@@ -45,4 +45,4 @@
 
 - journal op 名 = 「等待1-1」;日志前缀 `[cw-flow-wait11]`。
 - 测试:两 node 行为测试 + 假时钟超时测试(标志命中 round_wait 轮询/超时保留证据 fail)= `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。
+- game 侧知识:1-1 是唯一不自动开商店、动画最长的开局节点(用户口述);开局补给动画时长与就绪标志见玩家画面文档 [货币战争-投资环境.md](../../../../../../skills/sr-od-currency-war/references/screens/货币战争-投资环境.md)。

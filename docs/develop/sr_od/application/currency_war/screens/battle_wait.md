@@ -34,7 +34,7 @@
 
 | 分支 | 判定识别标志 | 动作与等待语义 |
 |---|---|---|
-| 挑战成功结算 | 「货币战争-结算.按钮-继续挑战」 | 采集钩子 → 读点前等 1.5s + 重截(结算数据后于按钮渲染,screen_flow_timing #6/#25)→ `_record_round_outcome` → 新帧指纹计数(`last_settle_fp` 同屏指纹,点击不生效不虚增 `rounds_done`)→ 委托 `CwOpSettleConfirm`(点击/长按兜底/兑现回调/settle_confirm 推进上报随 op);op 失败 → bail 交外循环兜底链 |
+| 挑战成功结算 | 「货币战争-结算.按钮-继续挑战」 | 采集钩子 → 读点前等 1.5s + 重截(结算数据后于按钮渲染,用户口述)→ `_record_round_outcome` → 新帧指纹计数(`last_settle_fp` 同屏指纹,点击不生效不虚增 `rounds_done`)→ 委托 `CwOpSettleConfirm`(点击/长按兜底/兑现回调/settle_confirm 推进上报随 op);op 失败 → bail 交外循环兜底链 |
 | 失败结算页 | 「货币战争-结算-失败.标识-挑战进度」∧「标识-挑战结束」∧ 无继续挑战 | 进度符号(`settle_page1_progress_sign`):neg → 置败局标志;面板延迟门(`SETTLE_PANEL_WAIT_S`:伤害说明面板 visible 或超时才放行推进,超时兜底覆盖胜轮面板整块不现);页1 三项暂存(`settle_page1_progress`/`settle_page1_settle`,消费时同窗校验 `settle_p1_battle_ts == battle_ts`);`_record_loss_page`(telemetry-only 补录,同屏指纹防重)→ 按钮族 OCR(`前往结算/下一页/下一步/返回货币战争`)命中即点,全 miss 点空白 `BLANK` |
 | 点空白加速 | OCR「点击空白加速」 | progress/三项暂存 + 面板延迟门 → 点空白加速(结算页1 动画帧) |
 | 前往结算链 | OCR 按钮族(同上四按钮) | 「前往结算」帧补 outcome 行(指纹防重);「下一步」∧ OCR「挑战失败」→ hp=0 补录 + 置败局标志;命中即点 |
@@ -83,7 +83,7 @@
 
 - journal op 名 = 「战斗等待」(dispatch 包装统一落 `[cw-op]` 行)+ 委托 op「货币战争-结算确认」(日志前缀 `[cw-settle-confirm]`);节点推进上报 = settle_confirm journal 行(actor 归因 = `kernel/cw_game_state.py::_NODE_ADVANCE_ACTORS` → CwOpSettleConfirm;判定语义 = [../flow/action_exec.md](../flow/action_exec.md) §2.1 / kernel `report_node_advance` 注释);缺陷分键 = `phase_round`/`perception_conflict`(reader_source=`settlement_vs_prep_round`);结算观测日志前缀 `[cw-bwait]`,bail 保留证据 `[cw!]` 行;结算屏时序帧采集 = `operations/settle_collect_hooks.py::settle_frame_collect`(临时采集件,文件自声明清单完成后整段可删)。
 - 测试:bail 预算测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(测试面目录 = 同目录;战斗等待专属行为测试的重建归属见模块头申报)。
-- game 侧知识:结算时序 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #6/#25;画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
+- game 侧知识:结算时序(用户口述:「继续挑战」按钮出现后约 1.5s 结算数据才渲染完);画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
 
 ## 开放设计注
 

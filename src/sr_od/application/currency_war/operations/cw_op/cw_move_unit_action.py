@@ -130,7 +130,7 @@ class CwActionMoveUnitOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             # 实机机械段(失焦守卫 + 统一拖拽原语,中心拖 + hold0)。
             drag_char_guarded(self, self.ctx, src, dst)
-            # 拖动触发的羁绊徽章动画口径(screen_flow_timing #10「都等 2s」
+            # 拖动触发的羁绊徽章动画口径(用户口述「都等 2s」
             # 简单方案;固定时长等待,非判效)。
             time.sleep(2.0)
         else:

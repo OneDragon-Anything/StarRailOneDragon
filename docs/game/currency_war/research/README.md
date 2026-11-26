@@ -45,7 +45,6 @@
    - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略(证据分级标注,码源+口述):穿着即合成/前后台限定/商店自带装备/唯一件/工具 7 件全量+使用语义(策略决策件挂策略池)/冶金炉回收流水线(经济账框架,生产化)
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
     - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策)
-   - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
 2. **玩家纪律**(人怎么打;机制之上的打法约束):
    - ~~user_playstyle.md~~ **已删除(2026-10-16 用户裁定:口述登记簿退役,一切判据以设计文档为准)**——策略判据权威版本 = `skills/sr-od-dev-currency-war/references/strategy/`(判据权威定义 = 各编号篇);历史条目号 [N] 语义按 git 历史回溯
 3. **过渡体系与战力证据**(位面 1 怎么活到成型、什么形态能过):
@@ -82,7 +81,6 @@
 
 **策略工作的基线 = research/ 全部文档 + data/ 全部未建模数据文档**(research 按上方「玩家理解序」读:机制是纪律的前提,纪律是过渡的前提,过渡是终局的前提)——策略判断横跨经济/战斗/阵容/终局,漏任何一面都判错;不读全就无法预判改动波及面。
 
-- research/ **唯一排除**:screen_flow_timing(画面流转时序,运行时/运维侧,非策略面)。
 - data/(`docs/game/currency_war/data/`,**全部策略相关**):gameplay(官方玩法说明)/ competitors(词缀机制+20 竞争阵营唯一源)/ bosses(boss 克制启示)/ advantage_layouts(跨局 meta 增益)/ plaza_meta(实战 meta)。已建模入代码注册表的数据已删 doc,查值直接看注册表(清单见 data/README)。
 
 消费方(sr-od-dev-currency-war skill、判读/验证工作流)引用「改策略前读什么」时指本节,别在别处另列清单。

@@ -636,8 +636,8 @@ def apply_strategy_plane_refire_xp(gs: GameState,
     不补即持卡局等级进度失真,即时经验效果条目同缺口来源)。已开始判据与
     kernel 登记拍补发桥(apply_effect_plane_refire_grant)同口径:策略卡
     登记恒发生于节点窗内(策略选卡全日程非 round-1,开场 1-1 前弹的是
-    投资环境——live 权威版本 screen_flow_timing.md「第一次投资策略 overlay」
-    节),进窗推进已在 (plane,1) 消费过位面开始边界 → ``gs.node`` 在场
+    投资环境——用户口述流程:第一次投资策略 overlay 在 1-3 节点完成后弹),
+    进窗推进已在 (plane,1) 消费过位面开始边界 → ``gs.node`` 在场
     即已开始,None = 保守零补发(禁猜)。数额 = 逐卡直读
     :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**(聚合字段集
     不含 xp_per_plane,误走 = 静默零发放);写入形态与
@@ -2110,7 +2110,7 @@ class SimBackend:
         elif screen_name == SCREEN_BOSS_BRIEFING \
                 and area_name == '区域-空白点击':
             # 2026-10-29 流程模型对齐:简报点空白关闭模态回备战并自动
-            # 弹店(#14 触发源「BOSS 简报关闭后」),boss 战由出战动作
+            # 弹店(用户口述:BOSS 简报关闭后自动开店),boss 战由出战动作
             # 触发(battle_resolve);旧「点空白 → _resolve_battle 直接
             # 结算」随呈现改造废止。
             self._dismiss_and_settle_prep()
@@ -2234,15 +2234,15 @@ class SimBackend:
 
     def _settle_on_prep(self) -> None:
         """落到备战档并按自动弹店规则呈现(2026-10-29 流程模型对齐,
-        流程模型单一源 = ``docs/game/currency_war/research/screen_flow_
-        timing.md`` 口述流程模型节 + #14):节点窗收尾或节点弹窗关闭回到
-        备战后,游戏自动弹出商店(bot 视角 = 开商店态直接呈现,策略器
-        商店会话经外循环商店访问路径接管);商店收起回备战 = 可操作主
-        窗口(close_shop 声明走 '' 纯转移 dismiss,不经本 helper,零
-        重弹面)。
+        流程模型单一源 = 用户口述,记在玩家必读篇
+        ``skills/sr-od-currency-war/references/01-玩法基础.md`` §2.4):节点
+        窗收尾或节点弹窗关闭回到备战后,游戏自动弹出商店(bot 视角 = 开
+        商店态直接呈现,策略器商店会话经外循环商店访问路径接管);商店
+        收起回备战 = 可操作主窗口(close_shop 声明走 '' 纯转移 dismiss,
+        不经本 helper,零重弹面)。
 
-        1-1 例外不弹(#29:开局奖励替代商店;等待变体完成后进窗照常
-        走本 helper,例外内置)。``_sub`` 不在本 helper 内清理——子态
+        1-1 例外不弹(用户口述的例外;等待变体完成后进窗照常走本
+        helper,例外内置)。``_sub`` 不在本 helper 内清理——子态
         (晶矿面板等)由调用方在调用前置定,弹店经 ``_present_modal``
         保存 ``_return_sub``、关店恢复,子态跨商店会话存续与实机一致
         (商店收起后晶矿面板仍在)。"""
@@ -2698,7 +2698,7 @@ class SimBackend:
         暴露失配,fail-visible 非静默)。
 
         落点(2026-10-29 流程模型对齐):关闭补给模态回备战并自动弹店
-        (#14 触发源「补给选择完后」);节点推进归出战动作
+        (用户口述:补给选择完后自动开店);节点推进归出战动作
         (``supply_finish``),本分支零推进。"""
         chosen = self.gs.chosen_supply.value
         if chosen is not None and any(
@@ -2713,7 +2713,7 @@ class SimBackend:
 
     def _on_encounter_picked(self) -> None:
         """遭遇选定落地(2026-10-29 流程模型对齐):关闭遭遇模态回备战
-        并自动弹店(#14 触发源「遭遇选择完后」);遭遇战由出战动作触发
+        并自动弹店(用户口述:遭遇选择完后自动开店);遭遇战由出战动作触发
         (battle_resolve 消费 ``chosen_encounter`` 现值,时点后移不改
         消费语义——确认时已写状态容器)。效果面零写入(选档已由 kernel 上报
         落 ``chosen_encounter``,本层零效果)。"""
@@ -4495,8 +4495,8 @@ class SimBackend:
 
     def _present_node_screen(self) -> None:
         """按节点类型呈现对应屏(2026-10-29 流程模型对齐,流程模型单一
-        源 = ``docs/game/currency_war/research/screen_flow_timing.md``
-        口述流程模型节):**所有节点类型底层恒备战档**——进节点先出备战
+        源 = ``skills/sr-od-currency-war/references/01-玩法基础.md`` §2.4
+        「每个节点都按同一套顺序走」):**所有节点类型底层恒备战档**——进节点先出备战
         (过渡帧),节点弹窗(补给/遭遇/BOSS 简报)是备战上的模态
         (:meth:`_present_modal`),弹窗关闭回备战并自动弹店
         (:meth:`_dismiss_and_settle_prep` 系);battle/reward 无节点弹窗,

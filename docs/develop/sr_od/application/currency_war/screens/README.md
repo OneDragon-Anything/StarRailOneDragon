@@ -81,12 +81,12 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
-| 简报点「下一步」 | `research/screen_flow_timing.md` 时序 #1(首领出现 +1s 可点) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(阶段一身份行「货币战争-简报」);内嵌词缀效果采集段 `_collect_affix_effects`(逐词缀点采 OCR 效果,对注册表 `src/sr_od/application/currency_war/data/affix_effects_data.py` 比对(注册表住 src 树代码;本文头注 `data/X.md` 短路径约定仅适用于 docs/game 侧,不适用于 src 文件),新名/不一致才截图收集;采集写端 best-effort,OCR 采不到即跳过) | 点推进即终结(空决策形态;点采 tooltip 不终结) |
-| BOSS 简报点空白 | 同上 #26(「点击空白处继续」出现即可点) | `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(阶段一身份行「货币战争-BOSS简报」;位面过渡身份帧含 boss 判别片段时排他接管);点掉后返回主循环重新判定——回备战并自动弹店(`screen_flow_timing.md` #14/#27;接管局例外 = 恢复局商店锁死态只能出战,见 [boss_briefing.md](boss_briefing.md) 开放设计注①) | 点空白即终结 |
-| 位面过渡点空白 | 同上 #2 | `operations/cw_screen/cw_screen_plane_transition.py::CwScreenPlaneTransition`(阶段一身份行「货币战争-位面过渡」) | 点空白即终结 |
+| 简报点「下一步」 | 首领出现后约 1s 可点(用户口述) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(阶段一身份行「货币战争-简报」);内嵌词缀效果采集段 `_collect_affix_effects`(逐词缀点采 OCR 效果,对注册表 `src/sr_od/application/currency_war/data/affix_effects_data.py` 比对(注册表住 src 树代码;本文头注 `data/X.md` 短路径约定仅适用于 docs/game 侧,不适用于 src 文件),新名/不一致才截图收集;采集写端 best-effort,OCR 采不到即跳过) | 点推进即终结(空决策形态;点采 tooltip 不终结) |
+| BOSS 简报点空白 | 「点击空白处继续」出现即可点(用户口述) | `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(阶段一身份行「货币战争-BOSS简报」;位面过渡身份帧含 boss 判别片段时排他接管);点掉后返回主循环重新判定——回备战并自动弹店(用户口述,多触发源之一;接管局例外 = 恢复局商店锁死态只能出战,见 [boss_briefing.md](boss_briefing.md) 开放设计注①) | 点空白即终结 |
+| 位面过渡点空白 | 「点击空白处继续」提示出现后动画完结,即可点(用户口述) | `operations/cw_screen/cw_screen_plane_transition.py::CwScreenPlaneTransition`(阶段一身份行「货币战争-位面过渡」) | 点空白即终结 |
 | 位面详情点 X 关闭 | game 侧画面档 = docs/game/screens/货币战争-位面详情.md(检视浮层;用途见 research/plane_schedule_observed.md「位面详情画面」条) | `operations/cw_screen/cw_screen_plane_detail.py::CwScreenPlaneDetail`(阶段一身份行「货币战争-位面详情」,分发判定单一源 = flow/outer_loop.md §2.2;单篇动作清单 = [plane_detail.md](plane_detail.md) §4) | 点 X 即终结(空决策形态) |
 | 采集位面情报(切位面卡/点 boss 节点为采集内部步) | game 侧画面档 = docs/game/screens/货币战争-位面详情.md(宿主屏与上一行同档;用途见 research/plane_schedule_observed.md「位面详情画面」条——中断恢复的对局补采的运行时源) | `operations/cw_screen/cw_screen_plane_intel.py::CwScreenPlaneIntel`(多屏管线形态 6 node,op-layer §3;非外循环分支直管——调用路 = 备战委派插入位置 `cw_screen_prep.py` 观察 node ∧ 手动调起编排 `operations/cw_entry/cw_entry_plane_intel.py::CwEntryPlaneIntel`,单一源 = [plane_intel.md](plane_intel.md)) | 纯观察采集(无游戏推进动作;切卡/点节点带详情条联动转移证据);管线走完上报后由编排点 X 关屏,关屏成功才返回主循环 |
-| 无动作(开局补给动画无结束标志,就绪等待) | research/screen_flow_timing.md #5/#29(1-1 是唯一不自动开商店、动画最长的开局节点) | `operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne`(外循环投资环境分支链序第二段,非独立分发分支;轮询 id_mark「货币战争-备战.标识-备战阶段」只判备战面板就绪,超时上界 = `cw_flow_const.py::ONE_ONE_MAX_WAIT_S` 兜底) | 无动作(就绪等待,success 即终结;超时存图保留证据 失败结束本次访问,返回主循环) |
+| 无动作(开局补给动画无结束标志,就绪等待) | 用户口述:1-1 是唯一不自动开商店、动画最长的开局节点 | `operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne`(外循环投资环境分支链序第二段,非独立分发分支;轮询 id_mark「货币战争-备战.标识-备战阶段」只判备战面板就绪,超时上界 = `cw_flow_const.py::ONE_ONE_MAX_WAIT_S` 兜底) | 无动作(就绪等待,success 即终结;超时存图保留证据 失败结束本次访问,返回主循环) |
 | 点「下一步」(无画面档画面的兜底推进) | 无画面档(能落到本分支 = 该「下一步」不属于任何已建档画面档;入口信号 = 自有 OCR「下一步」同源判定,外循环「下一步」兜底分支,flow/outer_loop.md §2.2) | `operations/cw_screen/cw_screen_next_button.py::CwScreenNextButton`(空决策形态无 report;单篇动作清单 = [next_button.md](next_button.md) §4) | 点「下一步」即终结(复查时 OCR 不命中 = 已离开本画面 success 结束本次访问;推进未落地 失败结束本次访问,返回主循环重新判定) |
 
 ### 5.2 投资环境(货币战争-投资环境)
@@ -94,7 +94,7 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(阶段一身份行「货币战争-投资环境」);决策 = pick 族 `decide_invest_env`(规格 = skill strategy/13_pick_family.md) | 确认离开(overlay 消失) |
-| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即结束本次访问**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = 投资环境刷新三态判据(策略层 `invest_env`,权威版本 = skill strategy/28_invest_env_screen.md §4;) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
+| 刷新圆钮重掷三卡 | 刷新动画约 2s(用户口述) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即结束本次访问**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = 投资环境刷新三态判据(策略层 `invest_env`,权威版本 = skill strategy/28_invest_env_screen.md §4;) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
 
 ### 5.3 备战画面(货币战争-备战)
 
@@ -110,7 +110,7 @@
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`;编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:执行 = 商店访问编排(open_shop → 商店画面 op 两 node 访问 → 收店),完成后返回主循环重识别 |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`(单击原子);发出意图 = mandate_v1 决策链最先检查的发出点(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `prep_actions.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:返回主循环战斗分支 |
 | 出战被拒确认弹窗(前台无角色) | 出战时前台区无角色,游戏弹确认提示阻塞战斗开始(`data/gameplay.md`) | `cw_screen_no_front_hint.py::CwScreenNoFrontHint`(阶段一身份分发,空决策形态;单篇 = [toast_no_front.md](toast_no_front.md)) | 无策略归属(推进为流程义务) | 点确认即终结(零恢复动作:不重部署不补发出,重判归主循环下一帧) |
-| 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→固定等待 2s→自上报结束本次访问;席满未点开的晶矿由下一帧观察回补;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
+| 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(用户口述) | `CollectOre`(批式:一次全点→固定等待 2s→自上报结束本次访问;席满未点开的晶矿由下一帧观察回补;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱弹武装箱四选一,箱选完才离席(弹窗期箱在席 = 测试仓建档帧 `货币战争-备战-武装箱选择/box_open.webp` 实证;离席归 pick_box_card 上报清槽) | `OpenBox`(点「开启」即结束本次访问;选卡弹窗由画面 op `CwScreenBoxPick` 闭环、武装箱获得说明弹窗由 `CwScreenArmoryBox` 点 × 关闭,均非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
 | 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(点槽一次开启;星徽四选一弹窗由外循环阶段一身份分发 `CwScreenBookcard` 接管选卡,非本动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
 | 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进型弹窗 `CwScreenRoleDetailOverlay` 等(阶段一身份分发,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
@@ -132,9 +132,9 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(阶段一身份分发,分支号制已停用) | 确认离开(overlay 消失)= 画面终结 |
-| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 内置动作)/ 遭遇(`cw_screen_encounter.py` 刷新终结分支,状态容器 `encounter_refresh_left` 剩余闸)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定,状态容器 `supply_refresh_left` 剩余闸);建议刷新 = 各屏策略层刷新判据(策略屏 = `invest_strategy` 帧级门+槽级动作集,权威版本 = skill strategy/29_invest_strategy_screen.md §4;环境屏 = `invest_env` 三态,28_invest_env_screen.md §4) | **刷新 = 终结为全域规范**(权威版本 = [op-layer.md](op-layer.md) §1.4):投资环境整组重掷、投资策略逐卡、遭遇、补给(点钮 + 2s 后 round_success 返回主循环重进 = 入口重建)全链终结语义,闸全域 = 剩余语义观察真值(`*_refresh_left`,禁已用推算);确认离开才画面终结 |
+| 逐卡/整屏刷新重掷 | 刷新后约 2s 稳定(用户口述) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 内置动作)/ 遭遇(`cw_screen_encounter.py` 刷新终结分支,状态容器 `encounter_refresh_left` 剩余闸)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定,状态容器 `supply_refresh_left` 剩余闸);建议刷新 = 各屏策略层刷新判据(策略屏 = `invest_strategy` 帧级门+槽级动作集,权威版本 = skill strategy/29_invest_strategy_screen.md §4;环境屏 = `invest_env` 三态,28_invest_env_screen.md §4) | **刷新 = 终结为全域规范**(权威版本 = [op-layer.md](op-layer.md) §1.4):投资环境整组重掷、投资策略逐卡、遭遇、补给(点钮 + 2s 后 round_success 返回主循环重进 = 入口重建)全链终结语义,闸全域 = 剩余语义观察真值(`*_refresh_left`,禁已用推算);确认离开才画面终结 |
 | 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `CwActionOpenBookcardOp`(备战决策环终结动作,`terminal=True`;动作发出点 = 策略器 entry ① prep 实体面卡片分支 `strategies/impl/mandate_v1/entry.py`)→ 弹窗由阶段一身份分发 `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite` 选卡 | 开卡即备战访问终结;弹窗选卡确认离开 = 弹窗访问终结 |
-| 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别 id_mark = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
+| 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别 id_mark = 右上操作按钮(用户口述) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 | 关「属性详情」面板 | 点卡身上部误触发 | 未建模独立处理(点卡 = 机械单发);面板残留由下一帧重新识别自愈(重分发重走链/详情 overlay 族分支) | 面板关闭即随重新访问收敛 |
 | 盛会之星「请选择强化角色」伴随文案 | 该 area 与「按钮-确认选择」rect 重叠,系伴随文案非步骤 | 未建模独立处理(确认 = 纯机械单发);确认未落地残留归巨星节点循环复查自愈 | 确认推进即画面终结 |
 | 阿哈装备点首件(四选一固定单发) | 投资策略「阿哈大悦」装备选择 overlay(无独立画面档,id_mark = 货币战争-备战.标识-简易装备;不选卡死备战) | `cw_screen_aha_equip_pick.py::CwScreenAhaEquipPick`(空决策形态 + 固定单发不问策略器;单篇 = [aha_equip_pick.md](aha_equip_pick.md)) | 点首件自动关 overlay 即终结 |
@@ -142,7 +142,7 @@
 
 ### 5.6 战斗窗与结算、回大厅收尾
 
-战斗自动进行(auto-battler),玩家无操作面:`operations/cw_screen/cw_screen_battle_wait.py::CwScreenBattleWait` 三段式(等结算→结算处理→结束本次访问);结算点「继续挑战」出现后 ~1.5s 结算数据才稳定(时序 #6),点继续 = 战斗窗终结回备战(自动开商店,唯 1-1 例外 #29)。对局结束回到大厅画面时,由主循环的"大厅收尾"分支直接处理(运行收尾、奖励分配、存档写入都在那里),对局主循环到此结束。
+战斗自动进行(auto-battler),玩家无操作面:`operations/cw_screen/cw_screen_battle_wait.py::CwScreenBattleWait` 三段式(等结算→结算处理→结束本次访问);结算点「继续挑战」出现后 ~1.5s 结算数据才稳定,点继续 = 战斗窗终结回备战(自动开商店,唯 1-1 例外;用户口述)。对局结束回到大厅画面时,由主循环的"大厅收尾"分支直接处理(运行收尾、奖励分配、存档写入都在那里),对局主循环到此结束。
 
 ## 6. 回外循环(终结)语义总表
 

@@ -764,7 +764,7 @@ class CwScreenBattleWait(CwOperation):
         """分支链(挑战成功结算/失败页 1f 全链/点空白加速/前往结算链/
         过场屏/战斗宽限/未知帧 bail 的序位即语义,**分支序禁重排**;
         出口判定(终局识别标志/白名单)归 wait() 原位先行)。"""
-        # ②段:挑战成功结算(读点 → 继续挑战;screen_flow_timing #25
+        # ②段:挑战成功结算(读点 → 继续挑战;用户口述:
         # 读点前等 1.5s)
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._unknown_streak = 0
@@ -773,7 +773,7 @@ class CwScreenBattleWait(CwOperation):
                 settle_frame_collect,
             )
             settle_frame_collect(screen)
-            # screen_flow_timing #25:按钮出现后结算数据 ~1.5s 才渲染完,
+            # 用户口述:按钮出现后结算数据 ~1.5s 才渲染完,
             # 读点前等 1.5s + 重截;采集钩子仍抓首见帧(时序价值在动画帧)。
             time.sleep(1.5)
             screen = self.screenshot()

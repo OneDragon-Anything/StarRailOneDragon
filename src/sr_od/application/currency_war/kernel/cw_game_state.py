@@ -1593,8 +1593,8 @@ def apply_effect_plane_refire_grant(gs: GameState, spec: Any, *,
     为什么:位面开始桥只对登记后到达的 (plane,1) 推进边界发放,拿卡晚于
     位面开始时该位面段对持卡局系统性缺失;裁定 = 持卡即视同享有当位面
     位面段、拿卡拍补发。已开始判据 = 策略卡登记恒发生于节点窗内(策略选
-    卡全日程非 round-1,开场 1-1 前弹的是投资环境——live 权威版本
-    screen_flow_timing.md「第一次投资策略 overlay」节;direct grant 插入位置
+    卡全日程非 round-1,开场 1-1 前弹的是投资环境——用户口述流程:第一次
+    投资策略 overlay 在 1-3 节点完成后弹;direct grant 插入位置
     亦在窗内),进窗推进已在 (plane,1) 消费过位面开始边界 → ``gs.node``
     在场即已开始;node 缺席(局外/未观察形态)= 保守零补发(禁猜)。
 
@@ -4826,10 +4826,11 @@ def window_stable_screen_now(gs: GameState) -> str:
     弹窗形态的**顶层**稳态——reconcile 断言对象 = 顶层屏。
 
     预测规则(流程模型单一源 =
-    ``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程
-    模型节):位面首节点窗起点 = 位面过渡屏(点空白后才进窗)→ 弹窗型
+    ``skills/sr-od-currency-war/references/01-玩法基础.md`` §2.4「每个
+    节点都按同一套顺序走」):位面首节点窗起点 = 位面过渡屏(点空白后
+    才进窗)→ 弹窗型
     节点(补给/遭遇/BOSS 简报)窗稳态 = 备战底层上的节点弹窗模态(等
-    处理)→ battle/reward 回备战即自动弹店(#14)稳态 = 开商店,唯 1-1
+    处理)→ battle/reward 回备战即自动弹店(用户口述)稳态 = 开商店,唯 1-1
     例外不弹 = 备战档。恒非空串(降级形态回备战档,同
     :func:`node_screen_now` 口径)。
     """
