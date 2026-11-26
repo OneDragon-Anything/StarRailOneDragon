@@ -585,7 +585,7 @@ def gen_equip_templates(cfg: dict) -> None:
       **保持原始分辨率不 resize**(用户 2026-08-15:烘焙缩放没必要,匹配时 multi-scale
       TM/SIFT 自适应;below-avatar 的 scale 档按模板实际尺寸换算即可);
     - 历史成员(简易/配方子件等官方无独立 art 的采集模板)原样保留——手工模板直接入库
-      本库,不再有独立手工库,生成器不做手工段合并(2026-11 起)。
+      本库,不再有独立手工库,生成器不做手工段合并。
 
     匹配证据(2026-08-15):装备追踪弹窗 GT 3/3(内点 43/18/33);owned 列实拍进阶件全
     检出(多检出列车同行星徽)——官方 art 满足识别。
@@ -640,7 +640,7 @@ def gen_equip_templates(cfg: dict) -> None:
             n_skip += 1  # 幂等:官方图未变,合成结果与现文件一致
             continue
         buf.tofile(dst)
-    # 手工模板直接入库 cw_equip_plaza(2026-11 起无独立手工库):本生成器只刷新官方
+    # 手工模板直接入库 cw_equip_plaza(无独立手工库):本生成器只刷新官方
     # art 段,历史成员原样保留,不做任何合并/增删。
     if failed:
         raise RuntimeError(f"plaza 装备下载失败(官方 art 单源,失败不兜底混图):{sorted(failed)}")
