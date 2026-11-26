@@ -40,7 +40,7 @@
 - 观察 node 上报 = `report_screen_*_obs` 写入 game state(`kernel/cw_screen_report/` 每屏一文件)。**上报接口包形态**:每屏一文件(obs 类 + report 函数同居,与动作侧 `cw_action_report/` 每动作一文件对称);obs 类 = `CwScreenXxxObs`(该屏一次观察的类型化载荷,纯数据);上报函数 = `report_screen_<snake>_obs`(「一个上报概念一个形状」,禁按类型聚合的分派转移函数)。节点推进上报族例外:推进走 kernel `report_node_advance`(trigger 封闭集 {settle_confirm, supply_finish}),不设 report_screen 形态。chosen_*(选择落地记录)不进 report——由动作上报/获得链按「点完即写」契约承载,字段级归属 = 代码字段定义注释(`kernel/cw_game_state.py`)。
 - **观察对账唯一发生点**:推算状态 vs 下一帧实读的比对只在观察边界(report 写入 game state 时,由 game state 执行仲裁 `kernel/cw_reconcile.py`);其余任何层不做双态比对。
 - 观察 node 上报 = `report_screen_*_obs` 写入 game state(`kernel/cw_screen_report/` 每屏一文件)。
-- **观察必须产出坐标**:观察侧识别到的可交互实体(选项卡/备战栏条目/装备栏条目/晶矿/浮层按钮等),其上报事实一律携带画面坐标(cx/cy 或等价定位)——game state 字段与 MCP extras 同源可得,坐标不得只存在于 extras。用途 = 动作原语参数第三类(动态坐标显式传参,见 SKILL.md §1.4)的坐标来源:动作 op 按坐标/idx 自取,零内部识别。坐标字段只由观察上报写入(每次整表覆盖、随帧刷新);**禁止动作执行后回填坐标**(实体刚获得时还没有画面读数);坐标缺席语义 = 动作发出侧跳过该动作、下一帧重新观察后重派,禁止猜值回填。先例:事件线 pick 族的选项坐标字段、`owned_equip_xy`。
+- **观察坐标上报按动作 op 需要定**:实体坐标能由动作 op 按画面建档(固定槽位/固定网格)从下标换算出的(前排/后台/备战栏/商店牌/装备栏等),观察只报下标事实,坐标不上报;动作 op 无法从下标换算坐标的实体(位置随局浮动,如晶矿/浮层按钮),观察必须报坐标——这类坐标是动作原语参数第三类(见 SKILL.md §1.4)的唯一来源,动作 op 零内部识别。需要坐标的实体,坐标 game state 与 extras 同源可得,不得只存在于 extras。坐标字段只由观察上报写入(每次整表覆盖、随帧刷新);**禁止动作执行后回填坐标**(实体刚获得时还没有画面读数);坐标缺席语义 = 动作发出侧跳过该动作、下一帧重新观察后重派,禁止猜值回填。先例:事件线 pick 族的选项坐标字段。
 - **观察层失约抛错**:决策入口消费的 payload 槽离屏 None = 观察层失约(如 shop payload 离屏)——显式报错,禁策略侧兜底。
 - 识别器(`obs/recognizers/`)注册为 `analyze_screen` 的 extras 扩展,MCP 读数与画面 op 观察同一实现(双消费面,见 SKILL.md §1.4)。
 - **观察事实双面同集**:同一画面单帧读屏得到的结构化观察事实,op 上报(game state)与识别器 extras 两面键集一致——op 读到的,extras 必须同键返回;只加一面 = 违例,实现同源不豁免(共用同一实现但 extras 不把结果带回仍算缺)。跨帧推导状态与流程事实不属观察事实,两面都不放。用途 = MCP 调用方与策略层消费同一份读数,MCP 侧零推算。
