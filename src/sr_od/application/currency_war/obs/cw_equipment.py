@@ -49,9 +49,9 @@ _EQUIP_MATCHER = cv2.BFMatcher()
 
 
 def load_equip_templates(equip_dir: Path) -> dict[str, tuple[MatLike, tuple, np.ndarray]]:
-    """加载 cw_equip 模板库(``<名>.png`` → SIFT 关键点/描述子)。
+    """加载装备模板库(``<名>.png`` → SIFT 关键点/描述子)。
 
-    cw_equip 是单 png(非 ``<id>/raw.png`` 结构),直接读 png → gray → SIFT。
+    模板库是单 png(非 ``<id>/raw.png`` 结构),直接读 png → gray → SIFT。
     返回 ``{name: (gray, keypoints, descriptors)}``(同 ``load_avatar_templates`` 结构)。
     """
     templates: dict[str, tuple[MatLike, tuple, np.ndarray]] = {}
@@ -657,7 +657,7 @@ _EQUIP_PEAK_MAX: int = 5
 
 
 def load_equip_tm_grays(equip_dir: Path) -> dict[str, MatLike]:
-    """加载 cw_equip 模板为 gray dict(``{name: gray}``;TM 用)。
+    """加载装备模板库为 gray dict(``{name: gray}``;TM 用)。
 
     与 ``load_equip_templates`` 互补:本函数返简单 gray(TM matchTemplate 用),后者返 SIFT 预计算
     (keypoints/descriptors)。两套并存 —— 装备区 icon 大(~70px)与 below-avatar mini icon 小
@@ -1112,7 +1112,7 @@ def _select_equipped_layout(
 
 
 def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
-    """确保 ctx 缓存 cw_equip TM 模板(98px grays);返 ``grays`` 或 None(目录缺)。
+    """确保 ctx 缓存装备模板库 TM 模板(98px grays);返 ``grays`` 或 None(目录缺)。
 
     首次 load 缓存 ``ctx.cw_equip_tm_grays``;后续读缓存。recognizer 装备识别的 templates 加载点。
 
@@ -1120,10 +1120,7 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
     """
     grays = getattr(ctx, 'cw_equip_tm_grays', None)
     if grays is None:
-        base = get_project_root() / 'assets' / 'template'
-        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方 + 手工补充;生成器 gen_plaza_chars.py 产物)
-        if not equip_dir.is_dir():
-            equip_dir = base / 'currency_war' / 'equip_legacy'   # 回退:旧手工库
+        equip_dir = get_project_root() / 'assets' / 'template' / 'cw_equip_plaza'   # 装备模板库(plaza 官方 art + 手工补充直接入库;生成器 gen_plaza_chars.py 产物)
         if not equip_dir.is_dir():
             return None
         grays = load_equip_tm_grays(equip_dir)
@@ -1132,7 +1129,7 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
 
 
 def ensure_equip_sift_templates(ctx: SrContext) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
-    """确保 ctx 缓存 cw_equip 模板(``read_equips`` / ``read_equip_grid`` 用);返 ``templates`` 或 None(目录缺)。
+    """确保 ctx 缓存装备模板库模板(``read_equips`` / ``read_equip_grid`` 用);返 ``templates`` 或 None(目录缺)。
 
     首次 ``load_equip_templates`` 缓存 ``ctx.cw_equip_sift_templates``;后续读缓存。
 
@@ -1140,10 +1137,7 @@ def ensure_equip_sift_templates(ctx: SrContext) -> dict[str, tuple[MatLike, tupl
     """
     templates = getattr(ctx, 'cw_equip_sift_templates', None)
     if templates is None:
-        base = get_project_root() / 'assets' / 'template'
-        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 ensure_equip_tm_templates)
-        if not equip_dir.is_dir():
-            equip_dir = base / 'currency_war' / 'equip_legacy'   # 回退:旧手工库
+        equip_dir = get_project_root() / 'assets' / 'template' / 'cw_equip_plaza'   # 装备模板库(同 ensure_equip_tm_templates)
         if not equip_dir.is_dir():
             return None
         templates = load_equip_templates(equip_dir)
