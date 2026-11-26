@@ -1,6 +1,6 @@
 ---
 name: sr-od-treasures-lightward
-description: 要打、自动化、开发或理解逐光捡金系列玩法（忘却之庭·混沌回忆、虚构叙事、末日幻影、异相仲裁）时用——进副本、看环境增益、查推荐阵容、选编队进战斗、领奖励的操作路由与玩法分型知识，references/gameplay.md 装玩法机制全量建档。凡是「打这期混沌回忆/虚构叙事/末日幻影」「逐光捡金怎么自动挑战」「异相仲裁怎么进」，或开发逐光捡金相关功能（新类型适配/修挑战 bug/补画面建档）、要了解该系列玩法机制，都先用本 skill，即使没明说。基础配队与养成决策归 sr-od-game-coach；单条 op 的实现与调试归 od-dev-write-operation；运行失败排查归 od-dev-debug-automation。
+description: 要打、自动化、开发或理解逐光捡金系列玩法（忘却之庭·混沌回忆、虚构叙事、末日幻影、异相仲裁）时用——进副本、看环境增益、查推荐阵容、选编队进战斗、领奖励的操作路由与玩法分型知识，references/gameplay.md 装玩法机制全量建档。凡是「打这期混沌回忆/虚构叙事/末日幻影」「逐光捡金怎么自动挑战」「异相仲裁怎么进」，或开发逐光捡金相关功能（新类型适配/修挑战 bug/补画面建档）、要了解该系列玩法机制，都先用本 skill，即使没明说。基础配队与养成决策归 sr-od-game-coach；单条 op 的实现与调试归 od-dev-write-operation。
 ---
 
 # 逐光捡金玩法路由（sr-od-treasures-lightward）

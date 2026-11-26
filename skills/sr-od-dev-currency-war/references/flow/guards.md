@@ -2,7 +2,7 @@
 
 > 来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_shop.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。路径根 = `src/sr_od/application/currency_war/`;代码定位一律用 `文件::符号名`。
 
-> 分工判据(od-dev-stop-hooks):**采集哨兵不停机**(bot 可能只是慢;停滞判读 = 事件哨兵 `skills/sr-od-dev-currency-war/scripts/cw_sentinel.py`,只保留证据不停机);**停机钩子保画面**(`stop_running(reason=..., save_screenshot=True)` 一行——框架自动截图 + `[stop]` 日志行即现场事实)。
+> 分工判据:**采集哨兵不停机**(bot 可能只是慢;停滞判读 = 事件哨兵 `skills/sr-od-dev-currency-war/scripts/cw_sentinel.py`,只保留证据不停机);**停机钩子保画面**(`stop_running(reason=..., save_screenshot=True)` 一行——框架自动截图 + `[stop]` 日志行即现场事实)。
 
 ## 1. 外循环连续失败重派上限(通用规则)
 
