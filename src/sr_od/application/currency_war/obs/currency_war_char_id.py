@@ -347,7 +347,7 @@ if __name__ == '__main__':
     screen_path = sys.argv[1] if len(sys.argv) > 1 else str(
         repo / '.debug' / 'sr_od_mcp' / 'screenshot' / 'screenshot_20260802_121926_271794.png'
     )
-    avatar_dir = repo / 'assets' / 'template' / 'currency_war/character_avatar'   # 官方立绘库(plaza big_icon 烘焙,唯一库)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,对齐)
+    avatar_dir = repo / 'assets' / 'template' / 'cw_character_avatar'   # 官方立绘库(plaza big_icon 烘焙,唯一库)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,对齐)
     # 填充的备战槽(GT 坐标,峰高证实有角色)
     slots = {
         'bench-1': (382, 845, 495, 979),

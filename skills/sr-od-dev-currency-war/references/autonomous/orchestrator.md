@@ -559,7 +559,7 @@
 **什么改动要重启**:三种之一就要。
 
 1. 改了运行时代码(`src/sr_od/` 下);
-2. 往立绘库、装备库里加了模板。立绘库 = `assets/template/cw_character_avatar`;装备库 = `assets/template/currency_war/` 下的 `equip_plaza`、`equip_legacy`;
+2. 往立绘库、装备库里加了模板。立绘库 = `assets/template/cw_character_avatar`;装备库 = `assets/template/cw_equip_plaza`(手工模板直接入库装备库,生成器只刷官方 art 段、不再合并独立手工库);
 3. 改了已有的模板文件。
 
 不用重启的:只改了画面档、测试、文档;或者只新加了立绘库、装备库以外的模板。

@@ -73,14 +73,14 @@ def read_owned_equips_dual_key(ctx: SrContext,
     框架环记账)。
 
     Returns:
-        ``(names, xy)``;``None`` = 识别域未就绪(cw_equip 模板库未加载 /
+        ``(names, xy)``;``None`` = 识别域未就绪(装备模板库未加载 /
         screen_info 区域-道具装备 缺失,原因 log 保留证据),消费方按
         None 走「不写保现值」守卫(宁缺勿造)。
     """
     sift = ensure_equip_sift_templates(ctx)
     if sift is None:
         log.warning('[cw][equip_dual_key] 装备观察域未就绪:'
-                    'cw_equip 模板库未加载(owned 不采集)')
+                    '装备模板库未加载(owned 不采集)')
         return None
     rect = _area_rect(ctx, '区域-道具装备', SCREEN_NAME)
     if rect is None:
@@ -209,7 +209,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         _eq_grays = ensure_equip_tm_templates(ctx)
         if _eq_grays is None:
             log.warning('[cw][observe_full] 装备观察域未就绪:'
-                        'cw_equip TM grays 未加载(occupied 不采集)')
+                        '装备 TM grays 未加载(occupied 不采集)')
         else:
             _bk_n, _bk_pfx = select_back_layout(ctx, frame)
             out['back_layout_slots'] = _bk_n

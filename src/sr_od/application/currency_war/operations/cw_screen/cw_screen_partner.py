@@ -108,7 +108,7 @@ class CwScreenPartner(CwOperation):
         return opts
 
     def _identify_portraits(self, screen, cands: list[tuple[str, int, int]]) -> list[str]:
-        """r104:SIFT 立绘识别候选真身(character_avatar 库)→ 每候选 char_id(''=未识别)。
+        """r104:SIFT 立绘识别候选真身(cw_character_avatar 库)→ 每候选 char_id(''=未识别)。
 
         候选立绘区 = label 上方大区域(立绘中心 ≈ label y-60,向上扩 ~200px);
         识别失败回落 label 流派名(旧行为)。真身识别让 decide_partner 的

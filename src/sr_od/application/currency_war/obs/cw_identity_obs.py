@@ -2,7 +2,7 @@
 
 与 ``cw_observation``(OCR 字段)互补:本模块读 OCR 看不见的**身份** —— 备战栏 / 舞台槽内角色
 立绘 → 规范名(``read_deployed_rows`` / ``read_bench_view``),用 ``currency_war_char_id`` 的
-SIFT 匹配器对模板库(生产用 ``currency_war/character_avatar`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
+SIFT 匹配器对模板库(生产用 ``cw_character_avatar`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
 
 **与状态容器跟踪的关系**(设计):备战席/上场位默认由 bot 跟踪(动作推演 + 观察对账写状态容器,
 见 kernel/cw_game_state)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
@@ -98,7 +98,7 @@ _validate_trailblazer_form_map()
 def resolve_char_name(avatar_id: str) -> str | None:
     """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(注册表成员,双 roster)。
 
-    **半身立绘库(``currency_war/character_avatar``)key = 中文规范名**(官方 plaza 烘焙,含变体独立模板,如
+    **半身立绘库(``cw_character_avatar``)key = 中文规范名**(官方 plaza 烘焙,含变体独立模板,如
     ``姬子·启行`` / ``千冶·刃``;系统单位 = 实拍模板,如 ``佩佩``)→ ``identify_character`` 返回的
     avatar_id 已是规范名 → 本函数 ``avatar_id in CHARACTER_ROSTER`` /
     ``in SYSTEM_UNIT_ROSTER`` 直接命中返(角色/系统单位双 roster,识别链

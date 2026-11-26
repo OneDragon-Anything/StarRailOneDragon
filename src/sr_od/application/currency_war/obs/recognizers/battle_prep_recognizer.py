@@ -41,7 +41,7 @@ analyze 验证兜底;列车图案纯 CV 核心与横幅/胶囊解析纯函数有
 菱形徽记(画面档「标识-银轨商店徽记」,浮层态徽记在场而横幅被盖,唯一稳定锚;
 见 ``cw_toggle_shop_panel``)。
 
-⚠️ **可靠性标注**:立绘库 ``currency_war/character_avatar``(官方 plaza 烘焙)实测可用 —— D-22
+⚠️ **可靠性标注**:立绘库 ``cw_character_avatar``(官方 plaza 烘焙)实测可用 —— D-22
 (手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 交叉核对持平(14 vs 15,一致 13);实机对局实证:
 plaza 烘焙立绘库经备战执行面身份链 live 验证通过(该执行面已停用)。消费方据该字段时仍知其 SIFT 来源(非 OCR),供智能体交叉验证而非盲信
 (证据链见 ``currency_war_char_id`` docstring)。

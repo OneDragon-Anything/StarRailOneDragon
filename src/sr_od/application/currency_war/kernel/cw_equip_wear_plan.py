@@ -224,7 +224,7 @@ def _build_equip_wear_plan(session: Any,
     if _owned_v is None:
         return EquipPlanBuild(
             fail_reason='装备观察域未就绪:owned'
-                        '(cw_equip 模板库未加载/区域-道具装备 缺失)')
+                        '(装备模板库未加载/区域-道具装备 缺失)')
     owned_names = list(_owned_v)
     # 上阵视图现读(deployed 单字段完整槽位表,
     # 行内槽号 = 子表下标派生)

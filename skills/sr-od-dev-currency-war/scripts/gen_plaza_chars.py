@@ -13,7 +13,8 @@
    2. 官方立绘模板库 assets/template/cw_character_avatar/(立绘图源 =
       plaza 接口 role_list[].big_icon 烘焙;**角色粒度单模板**——同名多档共用一目录,
       官方多档 icon URL 全同视觉同图,底色取起始档 rarity);
-   3. 官方装备模板库 equip_plaza(混合:plaza 进阶 art + 手工简易/特权);
+   3. 官方装备模板库 assets/template/cw_equip_plaza/(plaza 进阶 art 下载合成;
+      手工模板直接入库本库,重跑只刷新官方 art 段、不增删历史成员);
    4. 注册表段片段 .debug/game_data/currency_war/plaza/registry_chars_v<版本>.py —
       官方逐条 `_ch(...)` 调用文本(行尾逗号合法语句形态,与 cw_chars.py 官方段
       现状一致;参数序 = cw_chars._ch 工厂签名;每条 skills=(...) 技能块,每技能一行
@@ -62,7 +63,7 @@ from sr_od.application.currency_war.data.cw_chars import CharacterSkill  # noqa:
 
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
 TPL_DIR = REPO / "assets/template/cw_character_avatar"  # 官方立绘模板库(替代手采库)
-EQUIP_TPL_DIR = REPO / "assets/template/currency_war/equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
+EQUIP_TPL_DIR = REPO / "assets/template/cw_equip_plaza"  # 官方装备模板库(plaza进阶art;手工模板直接入库,重跑只刷官方段)
 PLAZA_DIR = REPO / ".debug/game_data/currency_war/plaza"  # 拉取缓存与生成片段统一落点(与 plaza_fetch.OUT_DIR 同目录)
 
 CONFIG_URL = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg"
@@ -576,29 +577,26 @@ def gen_templates(roles: list) -> None:
 
 
 def gen_equip_templates(cfg: dict) -> None:
-    """产物3:装备模板库 cw_equip_plaza(混合库,单 png <名>.png 与手工 cw_equip 同构)。
+    """产物3:装备模板库 cw_equip_plaza(单 png <名>.png)。
 
-    组成:
+    组成(重跑只刷新第一段,不增删历史成员):
     - plaza 进阶装备**普通版** art(去特权重复:特权 36 对与普通完全同图,SIFT 无法区分,
-      特权靠 codex 金框 → 用手工模板):RGBA 透明底 → 深底合成,**保持原始分辨率不 resize**
-      (用户 2026-08-15:烘焙缩放没必要,匹配时 multi-scale TM/SIFT 自适应;below-avatar
-      的 scale 档按模板实际尺寸换算即可);
-    - 手工 cw_equip 中名字不在 plaza 普通名集合的全部拷贝(简易装备 53 + 特权 36 等,
-      plaza 无此数据/同图不可分)。
+      特权识别走基础名模板 + 金框饱和度仲裁,不设特权名模板):RGBA 透明底 → 深底合成,
+      **保持原始分辨率不 resize**(用户 2026-08-15:烘焙缩放没必要,匹配时 multi-scale
+      TM/SIFT 自适应;below-avatar 的 scale 档按模板实际尺寸换算即可);
+    - 历史成员(简易/配方子件等官方无独立 art 的采集模板)原样保留——手工模板直接入库
+      本库,不再有独立手工库,生成器不做手工段合并(2026-11 起)。
 
-    匹配证据(2026-08-15):装备追踪弹窗 GT 3/3(内点 43/18/33 vs 手工 28/16/24);
-    owned 列实拍进阶件 plaza≥手工(多检出列车同行星徽);简易件 plaza 无数据靠手工。
+    匹配证据(2026-08-15):装备追踪弹窗 GT 3/3(内点 43/18/33);owned 列实拍进阶件全
+    检出(多检出列车同行星徽)——官方 art 满足识别。
     """
-    import shutil
-
     import cv2
     import numpy as np
 
-    manual_dir = REPO / "assets/template/currency_war/equip_legacy"
     EQUIP_TPL_DIR.mkdir(parents=True, exist_ok=True)
     seen_url: dict = {}
     plaza_normal_names: set = set()
-    failed: set = set()   # 下载/解码失败的 plaza 名(手工段 fallback 补)
+    failed: set = set()   # 下载/解码失败的 plaza 名(有失败即整体报错停,不混非官方图)
     n_skip = 0
     for e in cfg["equipment_list"]:
         name = e["name"].replace(chr(0x2022), chr(0x00B7))
@@ -642,27 +640,11 @@ def gen_equip_templates(cfg: dict) -> None:
             n_skip += 1  # 幂等:官方图未变,合成结果与现文件一致
             continue
         buf.tofile(dst)
-    # 手工补充:名字不在 plaza 普通名的全部(简易/特权/合成件)
-    # 命名对齐(2026-08-15):registry 的 财富(基础)/(强化) 共用手工 财富.png 两份拷贝;
-    # plaza 的 诅咒·干将莫邪 为 registry 漏项(cw_equipment_data 生成器待补),模板照收。
-    n_copy = 0
-    alias: dict[str, str] = {"财富(基础)": "财富", "财富(强化)": "财富"}
-    for png in sorted(manual_dir.glob("*.png")):
-        if png.stem in plaza_normal_names or png.stem in alias.values():
-            continue
-        dst = EQUIP_TPL_DIR / png.name
-        if not dst.exists():
-            shutil.copyfile(png, dst)
-            n_copy += 1
-    for reg_name, manual_name in alias.items():
-        src = manual_dir / (manual_name + ".png")
-        dst = EQUIP_TPL_DIR / (reg_name + ".png")
-        if src.exists() and not dst.exists():
-            shutil.copyfile(src, dst)
-            n_copy += 1
+    # 手工模板直接入库 cw_equip_plaza(2026-11 起无独立手工库):本生成器只刷新官方
+    # art 段,历史成员原样保留,不做任何合并/增删。
     if failed:
-        raise RuntimeError(f"plaza 装备下载失败(保持统一官方,不 fallback 手工):{sorted(failed)}")
-    print(f"[eqtpl] plaza {len(plaza_normal_names)} art(未变跳过 {n_skip}) + 手工补充 {n_copy} -> 共 {len(list(EQUIP_TPL_DIR.glob('*.png')))}")
+        raise RuntimeError(f"plaza 装备下载失败(官方 art 单源,失败不兜底混图):{sorted(failed)}")
+    print(f"[eqtpl] plaza {len(plaza_normal_names)} art(未变跳过 {n_skip}) -> 共 {len(list(EQUIP_TPL_DIR.glob('*.png')))}(含历史成员)")
 
 
 def main() -> None:

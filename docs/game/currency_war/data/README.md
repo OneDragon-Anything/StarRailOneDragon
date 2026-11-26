@@ -16,7 +16,7 @@
 
 ## 文件说明
 
-**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_traits_data.TRAITS`,29 条,`skills/sr-od-dev-currency-war/scripts/gen_traits.py` 生成勿手编)/角色(`cw_chars.CHARACTERS`,63 条含同名多档,含技能原文 `Character.skills`)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(61 档 = 61 名角色,同名多档合并成档,`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_traits_data.TRAITS`,29 条,`skills/sr-od-dev-currency-war/scripts/gen_traits.py` 生成勿手编)/角色(`cw_chars.CHARACTERS`,63 条含同名多档,含技能原文 `Character.skills`)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,116)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(61 档 = 61 名角色,同名多档合并成档,`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
 
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|
@@ -57,7 +57,7 @@
 | 罗刹站位/类型 | 角色表小缺口 | content/6252 单独取(本次批量漏取) |
 | **优势布局全量(钻钞 cost + 效果原文)** | 跨局 meta(R2-1 / 09) | advantage_layouts.md 暂用 bwiki;米游社图鉴 channel/map/209 **无此项**,玩法说明 6564 只有机制 → 待米游社专页(若日后收录)或实机校准 |
 | **费用刷新概率表(等级 × 1-5 费)** | ~~A4 牌池模型精度~~ **已闭** | `cw_shop_odds.REFRESH_PROB` 游戏内实机 OCR 全量落地;economy.md 指常量名 |
-| 装备合成配方(哪 2 简易→哪进阶) | 07 装备合成树(EQUIP_RECIPES) | EQUIPMENTS 注册表有效果无逐条配方;待 content/info 逐条补或实机 |
+| ~~装备合成配方(哪 2 简易→哪进阶)~~ | ~~07 装备合成树(EQUIP_RECIPES)~~ **已闭** | EQUIPMENTS 注册表 `recipes` 字段(官方 compose_list 直灌)经 `data/cw_synthesis.py` import 期派生全量两基础件→进阶图谱,kernel 六处消费;`EQUIP_RECIPES` 为从未落地的旧工具名,不存在该工件 |
 
 > **注**:旧文件 `../cw_game_data.md` 已废弃,数据已拆分到本目录各文件。
 
