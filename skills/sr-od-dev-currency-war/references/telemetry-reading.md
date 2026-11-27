@@ -30,7 +30,7 @@ uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [
 ### 阵容质量(三维,缺一即盲判)
 | 字段 | 标记点 | 复盘问题 |
 |---|---|---|
-| board | 快照 `state.values.board` 的行间差分(每条写入行的快照都带这个键;羁绊计数「名×计数」,按上阵行算出、不读画面;状态流水里没有 `board` 写入行) | 羁绊档位构成;配方成型进度 |
+| board | 快照 `state.values.board` 的行间差分(上阵行写过之后的写入行,快照都带这个键;缺键 = 未知,不参与差分。羁绊计数「名×计数」,按上阵行算出、不读画面;状态流水里没有 `board` 写入行) | 羁绊档位构成;配方成型进度 |
 | board_next_tier | 无独立键(按 `board` 快照的行间差分自算) | 距下档几人(差一人没凑上=供给问题) |
 | deployed(char_id/star/equips/槽位) | journal `deployed` 写入行(前排/后排分列,单位「名★级」+装备) | 核心在场吗(空壳档位);星级演进(核心 2★ 何时到);装备归属(carry 拿 key_equips 了吗/乱穿);**站位**(前排数 vs 设计) |
 | bench | journal `bench` 写入行(槽位表) | bench 囤什么(压缩件/final 囤件/滞留件);席满管理 |

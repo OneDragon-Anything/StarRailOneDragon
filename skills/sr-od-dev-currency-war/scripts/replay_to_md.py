@@ -23,9 +23,10 @@
 动作节(动作的效果写入先于其回执落盘;组尾无回执认领 → 章内变化块;
 非 logic_action 非 obs 写入挂组内最近动作节);board 写入行自己不入变化表
 ——变化表里的 board 行是派生行:后值 = 写入行快照的 ``values.board``,前值
-= 基线(流水里上一条带快照的写入行的 board),两者不同才出行,注记
-「(派生)」;进了变化表的写入行,派生行紧跟该行;非观察族的 board 写入行
-(动作效果挂钩行)的派生行回挂到它前面最近一条进表的写入行后面(见
+= 基线(流水里上一条快照带 board 键的写入行的 board;快照缺键的行 board
+不可知,不动基线),两者不同才出行,注记「(派生)」;进了变化表的写入行,
+派生行紧跟该行;非观察族的 board 写入行(旧流水里紧跟在造成变化的写入行
+后面)的派生行回挂到它前面最近一条进表的写入行后面(见
 :class:`_BoardDeriver`);章内
 「0 观察 = 开章快照 ∩ 注册键集(表格型键出独立表:备战章上阵表
 紧贴备战席表前,余同备战席/商品牌面/选项面)+ 本章观察道写入动态
@@ -1205,26 +1206,35 @@ def _precompute_prevs(rows: list[dict[str, Any]]) -> dict[int, Any]:
 
 
 def _board_table(v: Any) -> dict[str, Any]:
-    """board 快照值 → 羁绊计数表(缺键/非字典 = 空表)。"""
+    """board 快照值 → 羁绊计数表(非字典 = 空表)。"""
     return v if isinstance(v, dict) else {}
 
 
 def _board_in(row: dict[str, Any]) -> dict[str, Any] | None:
-    """带快照的写入行 → 快照里的 board(快照在上阵字段有值时才带 board 键;
-    缺键 = 空表);不带快照的行 → None(它的 board 不可知,不动基线)。"""
+    """带快照且快照带 board 键的写入行 → 快照里的 board;其余 → None(board
+    不可知:不动基线、不出派生行)。
+
+    快照只在上阵字段有值时才带 board 键(``GameState.full_state_snapshot``)。
+    缺键的行有三类:一局最前面的行、中断接管后到上阵行重新写入之间的行、
+    档案切片带进来的下一局开头的行。缺键不能当空表:那会在变化表里出一条
+    「原有羁绊 → (空)」的错误行,读者会读成羁绊被清空了。
+    """
     st = row.get('state')
     if not isinstance(st, dict) or not isinstance(st.get('values'), dict):
         return None
-    return _board_table(st['values'].get('board'))
+    vals = st['values']
+    if 'board' not in vals:
+        return None
+    return _board_table(vals['board'])
 
 
 def _precompute_prev_boards(
         rows: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
-    """全局 ts 序单遍:带快照的写入行 idx → 基线(本行之前最近一条带快照的
-    写入行,其快照里的 board;之前没有 = 空表)。
+    """全局 ts 序单遍:board 可知的写入行 idx → 基线(本行之前最近一条 board
+    可知的写入行,其快照里的 board;之前没有 = 空表)。
 
     观察族和逻辑族都算,进没进变化表都算:基线是流水的行间差分基准,与显示
-    无关。不带快照的行不动基线。
+    无关。board 不可知的行(不带快照,或快照缺 board 键)不动基线。
     """
     prev_of: dict[int, dict[str, Any]] = {}
     base: dict[str, Any] = {}
@@ -1247,9 +1257,11 @@ class _BoardDeriver:
     board 行一律由行间差分得出:后值 = 本行快照 board,前值 = 基线
     (:func:`_precompute_prev_boards`),两者不同才出行,说明列「(派生)」。
     - 进了变化表的写入行::meth:`attach`,派生行紧跟该行;
-    - 被排掉的非观察族 board 写入行(动作效果的挂钩行,快照 board 比它的
-      因果行晚一步才变)::meth:`attach_dropped`,派生行回挂到它前面最近一条
-      进了变化表的写入行后面;锚点失效 → 当前章的章内变化块;
+    - 被排掉的非观察族 board 写入行::meth:`attach_dropped`,派生行回挂到它
+      前面最近一条进了变化表的写入行后面;锚点失效 → 当前章的章内变化块。
+      旧流水的这类行有两种来源,都紧跟在造成变化的写入行后面:动作上报后
+      的挂钩行(快照 board 比因果行晚一步才变);早期采集形态下备战画面 op
+      写的面板读数(前面是它自己写的前排、后排行);
     - 被排掉的观察族 board 写入行:只推进基线(预计算已计),不出行。
     """
 
@@ -1510,8 +1522,10 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         return
     if f == 'board':
         # board 写入行自己不进变化表(变化表里的 board 行只由行间差分派生)。
-        # 走到这里的都是非观察族(观察族已在上面返回)= 动作效果的挂钩行,
-        # 它的快照 board 比因果行晚一步才变 → 派生行回挂到锚点后面。
+        # 走到这里的都是非观察族(观察族已在上面返回)。旧流水的这类行紧跟在
+        # 造成变化的写入行后面(动作上报后的挂钩行,或备战画面 op 写的面板
+        # 读数、前面是它自己的前排/后排行),新值第一次出现在它的快照里
+        # → 派生行回挂到锚点后面。
         # 未注册画面 op 的行不回挂:它的因果行(同一个 op 写的上阵行)本来就不
         # 进变化表(下方 unreg 分支),回挂只会把羁绊变化挂到不相干的行后面
         if not unreg:
