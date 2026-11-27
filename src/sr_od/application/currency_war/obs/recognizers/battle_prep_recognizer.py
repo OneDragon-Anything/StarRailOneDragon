@@ -60,6 +60,7 @@ from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_equipment_data import get_equip
+from sr_od.application.currency_war.kernel.cw_bond_equips import _recount_board
 from sr_od.application.currency_war.kernel.cw_game_state import BenchView, Unit
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_PHASE,
@@ -87,7 +88,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
     parse_phase_round_text,
     phase_blob_from_tokens,
     phase_round_in_range,
-    read_board,
     read_deploy_cap,
     read_deployed_count,
     read_gold,
@@ -157,7 +157,7 @@ class _BattlePrepState:
     team_size_over_cap: bool | None  # 团队规模超限态(= deploy_count > deploy_cap;任一 None→None;单帧口径,双帧采信门在 flow 层读链/出战守卫)
     level: int                      # 团队规模等级(read_level,Lv.N;cap>level=钻石/宝钻加成)
     bench_overflow: bool            # 「备战席已满」告警横幅在场(OCR;True=有未安置单位,出战被游戏忽略——flow 层 overflow_warning 同源口径)
-    board: dict[str, int]           # 羁绊面板可见行原文(read_board OCR 直读;v4.7 面板滚动+重排,只是可见子集,决策用 flow 层计算值)
+    board: dict[str, int] | None   # 上阵羁绊计数(本帧读出的上阵行经 _recount_board 现算;上阵行没读→None;商店开着时整键省略)
     front_line: list[Unit] | None  # 前排 Unit 行(SIFT 身份 + read_star 星级 + read_row_equipped 装备按 slot 注入 equips;templates 未加载→None)
     back_line: list[Unit] | None   # 后排 Unit 行(同上)
     bench: BenchView | None        # 备战席状态容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
@@ -362,7 +362,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         开商店识别器在此基础上叠加 shop_cards / refresh_probs)。
     """
     omit_keys = frozenset() if full_read else frozenset({
-        'front_line', 'back_line', 'deploy_count', 'deploy_cap',
+        'front_line', 'back_line', 'board', 'deploy_count', 'deploy_cap',
         'team_size_over_cap',
         'hp', 'reward_ores', 'owned_equips', 'aura_slot', 'synthesis_overlay',
     })
@@ -392,6 +392,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     #(按 slot 对齐注入;Unit frozen → replace 新构造)。
     front_line: list[Unit] | None = None
     back_line: list[Unit] | None = None
+    board: dict[str, int] | None = None
     bench: BenchView | None = None
     if full_read and templates is not None:
         front_hits, back_hits = read_deployed_rows(ctx, image, templates, level=level0)
@@ -399,6 +400,10 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
                        for s, u in front_hits] or None)
         back_line = ([replace(u, equips=back_equips.get(s, []))
                       for s, u in back_hits] or None)
+        # 羁绊计数 = 这一帧读出的上阵行现算(全项目唯一算法,与状态容器的 board 同源;
+        # 输入是不截断的前排 + 后排,装备按槽注入后的行,装备授予的羁绊才计得进去)。
+        # 前排空、后排有时照常算:判「读没读」用上面的条件,不看 front_line 是不是 None。
+        board = _recount_board((front_line or []) + (back_line or []))
     if templates is not None:
         _bv = read_bench_view(ctx, image, templates)
         # 备战席无 below icon → unit equips 保持 [];空读(零占用)→ None
@@ -453,9 +458,6 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
     # director gated=26」双真相)。extras 序列化 None→
     # 合法 null(backend json.dumps 预校验);extras_doc
     # 文案同步「读不到→None」。(模块级 import。)
-    # board = 面板 OCR 直读(快路径;可见行原文,语义与截断警示见 read_board docstring)。
-    # 羁绊计数决策面用 flow 层 board_from_deployed(以算为准)——extras 不做慢的
-    # SIFT 单位表计算路径(用户裁定:读要快,算的逻辑单独改对)。
     # 告警横幅在场 = 溢出态(有未安置单位,出战被游戏忽略;flow 层 overflow_warning
     # 同源口径,识别面 = 画面档「告警-备战席已满」OCR 区)。横幅在 y 512-555,
     # 商店牌行(y≤330)盖不住 → 备战/开商店两态都可读,不进省略清单。
@@ -483,7 +485,7 @@ def read_prep_extras(ctx: SrContext, image: MatLike,
         team_size_over_cap=(None if _paddle_x is None or _paddle_cap is None
                             else _paddle_x > _paddle_cap),
         level=level,
-        board=read_board(ctx, image),
+        board=board,
         front_line=front_line,
         back_line=back_line,
         bench=bench,
@@ -533,10 +535,12 @@ PREP_EXTRAS_DOC: dict[str, str] = {
                           '此时点「出战」被游戏静默拒绝(无横幅无弹窗、按钮仍亮)——先让占用 ≤ 上限(撤/卖场上单位或升上限)再出战;'
                           '卖备战席角色无效(备战席不计规模)。单帧口径;任一读数 None → None。开商店画面整键省略(同 deploy_count)',
     'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
-    'board': '羁绊面板可见行原文 {羁绊名: 面板数字}(OCR 直读,快路径)。'
-             '⚠️ v4.7 面板滚动+重排,本读数只是可见子集,不可当完整羁绊计数或'
-             '在场人数用于决策;决策面用 flow 层 board_from_deployed 计算值'
-             '(证据与推导见 research/v47_first_match_observation.md §2.5)',
+    'board': '上阵羁绊计数 {羁绊名: 单位数}(按本帧读出的 front_line / back_line 现算,'
+             '全项目唯一算法;含后排全部格,「只数三星」的羁绊只计 3 星及以上的单位)。'
+             '与 front_line 同进退:开商店画面整键省略(不读上阵行);头像模板未加载→None。'
+             '两种值不全的形态:布局未知(后排格数没认出来)时只读得到前排,board 不含后排;'
+             '装备模板未加载时上阵行的 equips 为空,board 不含装备授予的羁绊。'
+             '供智能体交叉验证而非盲信',
     'front_line': '前排 Unit 行 list(元素 Unit dict: char_id/star/equips/slot;'
                   'char_id=规范名,slot=排内 1 基画面槽号,equips=装备名 list)。SIFT 立绘识别,'
                   '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'

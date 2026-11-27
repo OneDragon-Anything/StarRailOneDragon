@@ -81,7 +81,7 @@ class FooRecognizer(ScreenRecognizer):
 
 参考实现（都在 `currency_war/obs/recognizers/`，不同纯读策略）：
 
-- `battle_prep_recognizer.py`（备战）：复用纯 reader `read_gold`/`read_hp`/`read_board` + 自写 `_read_phase_round_pure`（避免复用写全局的 `read_phase_round`）。
+- `battle_prep_recognizer.py`（备战）：复用纯 reader `read_gold`/`read_hp` + 自写 `_read_phase_round_pure`（避免复用写全局的 `read_phase_round`）。extras 的 `board` 不读画面：用识别器自己读出的上阵行经 `kernel/cw_bond_equips.py::_recount_board` 现算；商店开着时整键省略，头像模板没加载时为 None。
 - `briefing_recognizer.py`（简报）：复用纯 reader `read_affixes`/`read_bosses`，纯 OCR + 正则，不写 session。
 - `settlement_recognizer.py`（结算）：复用纯函数 `parse_settlement_hp` + 全屏 OCR 命中 analyze 缓存；**不**复用需 plane/round 的 `read_round_outcome`。
 - `invest_strategy_recognizer.py`（投资策略）：自写 OCR `区域-卡名行` + 正则筛选项名。
