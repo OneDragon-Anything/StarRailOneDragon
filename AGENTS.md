@@ -90,7 +90,7 @@ uv run ruff check --fix src/你修改的文件.py
 - 翻页拖距测试期按「相邻两屏重叠量」标定：纵向列表至少留两行、横向列表至少留两列的内容重叠 —— 鼠标 DPI/窗口尺寸使同一像素拖距的实际位移因机而异，重叠量是防跳行漏扫的标定口径；标定确认后代码落固定像素常量即可，不做运行时重叠计算。
 - 回到列表顶部：短 duration 的快速、大范围拖拽，通常几次即可到顶，不做逐屏识别判顶；仅列表特别长、次数不好估计时，才配合「列表顶部标志/首屏内容不再变化」判顶退出。
 - round 系列函数的 wait 参数一律**显式声明**，按实机动画过渡时间填写，不使用默认值：
-  - `round_success/round_wait/round_retry/round_fail` 用 `wait`；`round_by_goto_screen`/`round_by_find_and_click_area` 用 `pre_delay`（点击前）/`success_wait`（成功后）/`retry_wait`（重试间隔）。
+  - `round_success/round_wait/round_retry/round_fail` 用 `wait`；`round_by_find_and_click_area` 用 `pre_delay`（点击前）/`success_wait`（成功后）/`retry_wait`（重试间隔）；`round_by_goto_screen` 用 `success_wait`/`retry_wait`。
   - `wait_round_time` 语义 = 「等待总时长减去本轮已耗时」，不是「再睡多久」。
 - op 的节点流转用 MCP 的 `describe_operation_flow` 查看：一张图列出全部节点、分支和跳转关系。改 op 前先看图了解现状，改完再看图核对——新加的分支有没有拦断原有路径、边有没有接错，以图为准，不凭记忆。核对符合预期后，再做下一个改动；不符合就先修到符合，不往上叠加。
 - 完整方法论（round 结果语义、节点粒度、循环结构选型、调试纪律）见 skill `od-dev-write-operation`。
