@@ -39,17 +39,19 @@
 === 板面双源口径(如实声明)===
 rung 经 ``_settle_rung`` 从上阵行**重算**板面(其内部走
 ``_recount_board`` 单一源);form_progress 读板面状态容器现值(实机行 =
-观测的 ``state.board`` 左面板真值,sim = GameState.board)。两特征各随
+决策快照的 ``state.board``,sim = GameState.board;现行口径都是状态容器
+按上阵行现算的羁绊计数)。两特征各随
 其单一源的既定输入,不互相改写。
 
 === 实机行未识别单位的入账口径 ===
 decisions 行 ``state.deployed`` 条目可带 char_id=''(识别失败件,约占
 deployed 条目 7.8%)。特征核心的行侧适配**不携带**条目的 faction 字段
-——``_recount_board`` 的 faction 兜底仅 faction 载体鸭子输入可达,
-sim 的 ``Unit`` 无 faction 位(状态容器「阵营不存」红线),不携带才使两侧
-结构同形;依据 = sim-power-model §4.1 组 A「char_id 为空的槽位条目不
-计入任何单位计数」。观测板面(state.board)不受此影响(它记录左面板
-所见,含未识别件的阵营贡献)。
+——阵营不落字段,``_recount_board`` 对身份未知的单位直接不计(没有阵营
+回退分支),sim 的 ``Unit`` 同样无 faction 位(状态容器「阵营不存」红线),
+不携带才使两侧结构同形;依据 = sim-power-model §4.1 组 A「char_id 为空的
+槽位条目不计入任何单位计数」。``state.board`` 与行侧重算同口径(未识别件
+的贡献都不计);提交 3a59ab4c9 之前的对局记录里这个键是画面面板读数,
+含未识别件的贡献,跨这个断点混用数据要知道口径不同。
 
 边界:开拓者的排敏感形态归一(前排=记忆/后排=欢愉)随
 ``unit_bond_tags`` 单一源走,行侧按条目 ``position_pref``、sim 侧按
@@ -191,7 +193,7 @@ class SimpleUnit:
     """decisions 行条目的 duck Unit 适配(属性面与状态容器 Unit 对齐)。
 
     只带 kernel 特征链读取的属性(char_id/star/equips/position_pref);
-    故意**无 faction 位**——``_recount_board`` 的 faction 兜底不触发,
+    故意**无 faction 位**——``_recount_board`` 只按 char_id 与装备取标签,
     两侧结构同形(依据见模块 docstring)。"""
 
     def __init__(self, char_id: str, star: int,
@@ -244,8 +246,8 @@ def compute_features(board_value: dict[str, int] | None,
                      enemy_difficulty: float | int | None) -> FeatureVector:
     """特征核心(双侧唯一算术;定义与单一源见模块 docstring)。
 
-    :param board_value: 板面计数状态容器值(sim = GameState.board.value /
-        实机行 = state.board 观测左面板真值)。
+    :param board_value: 羁绊计数状态容器值(sim = GameState.board.value /
+        实机行 = 决策快照的 state.board;口径见模块 docstring)。
     :param deployed: 上阵槽位视图(sim = GameState.deployed.value /
         实机行 = :func:`row_deployed_view` 产物)。
     :param level: 人口等级(实机行 = state.level;None 按域缺省 0,

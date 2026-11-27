@@ -7,7 +7,8 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 **并发安全(关键)**:本 ``recognize`` 必须是**纯读** —— 不写 ``self.``、不写任何模块全局、不读写
 ``cw_match.session``。原因:``analyze_screen`` 是观察类 tool,可在某 CW operation **运行期间**被并发调用
 (观察类不查 run_slot);若本识别器写了 operation 也在用的可变状态,会互相污染。故:
-- gold / hp / streak / deploy / board 复用 ``cw_observation`` 的**纯 reader**(它们不写全局 / session);
+- gold / hp / streak / deploy 复用 ``cw_observation`` 的**纯 reader**(它们不写全局 / session);
+- board 不读画面:按本帧读出的上阵行用 ``cw_bond_equips._recount_board`` 现算(纯函数;键的说明见 ``PREP_EXTRAS_DOC`` 的 ``board`` 一项);
 - **phase 不复用 ``read_phase_round``**(它成功时写模块全局 ``_last_phase_round`` 的 last-known-good 兜底,
   会与 operation 竞争污染兜底值)→ 本模块自写 ``_read_phase_round_pure``(只 OCR + 共享解析纯函数
   ``parse_phase_round_text``,不缓存不写全局,读不到返 None);

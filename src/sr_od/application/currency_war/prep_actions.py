@@ -547,8 +547,8 @@ def locked_resume_sync_and_battle(op, ctx):
     容器均为本次运行新建(establish_new_match 每次新建 StrategySession
     与 GameState;跨 run 残留由 loop handle_init 重建判据弃旧重建,
     判据 = 2026-11-19-resume-rebuild design §2.4),新容器未观察
-    ⇒ deploy-swap 卖出通道整体跳过(board 未观察不可判),同步步实际
-    只做确定性部署;若未来放开 mid-run 复用旧 session,stale board
+    ⇒ deploy-swap 卖出通道整体跳过(场上阵容未观察、不可判),同步步实际
+    只做确定性部署;若未来放开 mid-run 复用旧 session,陈旧的场上阵容
     会让同步步按旧目标线卖新局板面——届时须先加卖出输入守卫。
 
     **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
@@ -733,7 +733,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
       ``ctx.cw_match.locked_sync_done``(回执已停用,失败概念随之消解);
       锁定确认分支复位证据位。同步步载体 = 统一拖动/换星直卖原子序
       (按策略层部署计划现算逐 move 发;恢复局卖出通道整体跳过语义
-      不变——board 未观察时计划恒空)。
+      不变——场上阵容未观察时计划恒空)。
     - ``sync_once=False``(达标分支面,调用面 = 策略层前置动作发出点):
       **不过标志**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,
       已同步形态下零 move 即零待部署;标志只覆盖恢复局面,达标分支第二次发出

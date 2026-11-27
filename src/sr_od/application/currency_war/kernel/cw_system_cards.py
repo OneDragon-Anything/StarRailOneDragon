@@ -17,7 +17,7 @@
 1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
    身份口径改读
    ``cw_board_by_row.board_by_row_of(gs)`` 全板合计视图(全仓按排聚合单一源;
-   C6 契约,P4 起状态容器行域直读);判据语义零变化(仍取 max(board OCR,身份计数));
+   C6 契约,P4 起状态容器行域直读);判据语义零变化(仍取 max(board 计数,身份计数));
 2. C2 伪码返回 ``EngineState`` —— 本模块按规格返回 ``bool``(缺件审计走
    ``engine_missing``;EngineState 包装留给 decision_v2 接入调用面)。
 
@@ -123,13 +123,15 @@ def _owned_units(gs: GameState) -> list:
 
 
 def _faction_count(gs: GameState, faction: str) -> int:
-    """板上某羁绊的计数(身份口径优先,board OCR 兜底,取 max)。
+    """板上某羁绊的计数(两个计数取 max)。
 
-    deployed 与 board 应一致(cw_state 头注);单侧 miss(OCR 漏/重建缺身份)时
-    取 max 容错——**判激活侧非计费侧**,漏判激活比多判更伤(体系卡是 P1 战力主体)。
-    身份口径 = C6 ``board_by_row_of`` 全板合计视图(全仓按排聚合单一源;
-    口径:get_char(char_id) 羁绊全集,多羁绊角色每系都计;faction
-    类2 注册表派生,未知名不计)。"""
+    两个计数出自同一份上阵行,算法不同:board = ``GameState.board``(按上阵行
+    连同装备现算,``cw_bond_equips._recount_board`` 单一算法);身份口径 = C6
+    ``board_by_row_of`` 全板合计视图(全仓按排聚合单一源;只算角色的阵营与
+    流派,多羁绊角色每系都计,未知名不算,装备授予的羁绊不算)。取 max 是
+    **判激活侧非计费侧**的容错——漏判激活比多判更伤(体系卡是 P1 战力主体)。
+    两边的差别:装备授予的羁绊只有 board 有,取 max 天然计入;board 对「只数
+    三星」的羁绊设星级门,身份口径不设,取 max 后这类羁绊按不设门的数走。"""
     cnt_board = (gs.board.value or {}).get(faction, 0)
     cnt_ident = board_by_row_of(gs).count(faction)
     return max(cnt_board, cnt_ident)

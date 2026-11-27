@@ -102,8 +102,8 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     - **写序**(每点):spheres 摘除 → 附着键移除(命中路径,随摘除
       同点随机态写,evidence 'ore_reward_detach#ore{k}')→ 未抽中域
       标记(值不变,现值非 None 才标)→ 奖励应用(金 +N/装备 +件/
-      角色落位 + 3合1 连锁——每级合并后受影响域各落一行,board 派生
-      随行写自动继承随机态;抽中域现值 None = 跳该采样写留观察,
+      角色落位 + 3合1 连锁——每级合并后受影响域各落一行;抽中域现值
+      None = 跳该采样写留观察,
       诚实缺失);缺项路径该点全部写行 evidence 前缀
       'ore_reward_attach_missing#';
     - **动作级出参**:全部开成 = applied=True;混合批 =
@@ -254,7 +254,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                 written.add('equips')
         else:
             # 角色奖励:落备战席首空槽 → 3合1 连锁(每级合并后受影响域
-            # 各落一行;board 派生随行写自动继承随机态)。bench 整表写
+            # 各落一行)。bench 整表写
             # = 工作槽表直构(占位件 kind 原样保留,见函数头 P1 申报)
             bench_place(work_bench, BenchSlot(
                 kind='unit', unit=Unit(char_id=reward.char_id,

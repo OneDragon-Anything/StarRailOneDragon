@@ -23,9 +23,10 @@
     <property type=X display=all> → 属性中文名 / display=icon 删除 / <color> 删除;
     未知标签保留原文 + 警告不静默。
 
-count_mode 判定(建模不接线):29 条默认 TOTAL;覆盖表仅千星商会 = STAR3(官方 desc
+count_mode 判定:29 条默认 TOTAL;覆盖表仅千星商会 = STAR3(官方 desc
 「每上场1位3星【千星商会】角色,将激活1级羁绊效果」);覆盖表逐条带 desc 引文校验,
-文案漂移即非零退出。板面计数接线归策略批,本脚本只落数据字段。
+文案漂移即非零退出。计数方式由羁绊计数算法消费(kernel/cw_bond_equips.py 的
+_recount_board),本脚本只落数据字段。
 
 翻译与成员对拍(查表契约 = 派生形态,design.md §2.3):
   - 运行期从角色注册表 CHARACTERS 派生 plaza id → 规范名映射({c.source: c.name}),
@@ -81,7 +82,8 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E40
 
 TRAIT_TYPES_IN_SCOPE = (0, 1, 2)  # 0 阵营 / 1 流派 / 2 独立;type 3 不进本数据域
 COUNT_MODE_DEFAULT = "TOTAL"
-# count_mode 覆盖表(依据 = 官方 desc 三星计数句式;接线归策略批,此处只建模):
+# count_mode 覆盖表(依据 = 官方 desc 三星计数句式;消费方 = 羁绊计数算法
+# _recount_board,此处只落数据):
 # 新增 STAR3 羁绊时人工裁定后在此补行,引文校验会同步核对 desc 文案。
 COUNT_MODE_OVERRIDES: dict[str, str] = {"千星商会": "STAR3"}
 STAR3_DESC_ANCHOR = "每上场1位3星"  # 三星计数句式锚,覆盖表与全集双向校验共用

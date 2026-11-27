@@ -2587,8 +2587,8 @@ def check_strategy_bond_battle_grants(gs: GameState,
        猜装);
     2. 激活羁绊数评估:逐羁绊 ``max(board 状态容器计数, board_by_row 身份
        聚合计数)`` 取 max 判激活(判激活侧 max 容错,cw_system_cards.
-       _faction_count 同款——漏判激活比多判更伤);board 与 deployed
-       双未观察 → 激活数 = 0 fail-closed 宁缺勿造;羁绊注册表外未知名
+       _faction_count 同款——漏判激活比多判更伤);上阵行未观察时两个
+       计数都为空 → 激活数 = 0 fail-closed 宁缺勿造;羁绊注册表外未知名
        不计;激活判据 = 计数 ≥ ``trait_by_name[tag].tiers[0]``(档位单一
        源 = 羁绊注册表;独立羁绊 tiers=(1,) 单人即激活,与左面板显示
        同口径);
@@ -2736,7 +2736,7 @@ def check_strategy_bond_tier_grants(gs: GameState,
         组队族时平读无限定排除词);计数走 :func:`cw_system_cards.
         _faction_count`(board 状态容器 × board_by_row 身份聚合双源取
         max 容错——判激活侧非计费侧;L2 星徽装备贡献只有 board 状态
-        容器(左面板真值口径)承载,双源 max 融合天然计入;双源双缺 → 0
+        容器(按上阵行连同装备现算)承载,双源 max 融合天然计入;双源双缺 → 0
         零武装 fail-closed);
     4. 逐档首达一次性标志位 + 发放:``spec.tiers`` 升序逐档,激活数 ≥ 档位 ∧
        ``'<卡名>#<档位>'`` ∉ 一次性标志位域(strategy_bond_tier_fired)→

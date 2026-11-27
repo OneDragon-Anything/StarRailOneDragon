@@ -76,7 +76,7 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     旧 deploy_move 上报同核,随其戊批纳入统一管理并入本核)。场上→场上纯换位与
     下场/席内挪位无锁无变换。
 
-    bench/deployed 写后 board 羁绊计数随行写端挂钩重算(禁手写)。
+    bench/deployed 写后不必写羁绊计数:``GameState.board`` 读时按上阵行现算(禁手写)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace

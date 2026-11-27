@@ -3,7 +3,7 @@
 策略层字段(faction/character/event 优先级等)= **meta 层,版本依赖**:游戏更新会改
 阵营/角色/事件,最新数据**以米游社百科或游戏内图鉴为准**,本文件默认值仅是
 2026-08 调研(`.debug/temp/currency_war/strategy_research.md`)的起步值,需随版本维护。
-bot 运行时**以实机 OCR(左面板激活数、商店角色名)为真值**,本配置只做"偏好/tiebreaker"。
+bot 运行时**以实机观察为真值**(角色身份与商店读画面,羁绊激活数按上阵单位算出、不读画面),本配置只做"偏好/tiebreaker"。
 """
 from __future__ import annotations
 

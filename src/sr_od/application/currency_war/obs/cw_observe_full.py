@@ -168,8 +168,8 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         # r334(review 第5条:恢复 F2 门)——gold 仅 shop 开态
         # 可信(关态读空恒 0):重读也只在开态做,否则每个
         # 关态 heavy 白付 3×0.3s+3 次全量 OCR(系统性变慢)
-        # 且换入的帧来自 0.3-0.9s 后异帧(轮转窗内 board
-        # 可回退)。shop_open 由调用方传(它有帧上下文)。
+        # 且换入的帧来自 0.3-0.9s 后异帧(不是同一时刻的画面,整份读数
+        # 一并替换)。shop_open 由调用方传(它有帧上下文)。
         import time
         if _st.gold == 0 and op is not None and shop_open:
             for _ in range(3):

@@ -121,7 +121,7 @@ def _form_progress(comp: 'Comp', session) -> float:
     """fp 遥测 helper(代码审查要求:fp 轨迹可观测;调用方保证阵容非 None)。
 
     输入域 = 段顶入口观察帧(非 simulate 推演态):该帧在 visit 段顶
-    已合成进 session 状态容器单例,本读直取单例(board 同帧同源),
+    已合成进 session 状态容器单例,本读直取单例(羁绊计数由同一帧读入的上阵行算出),
     state 侧过渡桥的消费随之清零。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress

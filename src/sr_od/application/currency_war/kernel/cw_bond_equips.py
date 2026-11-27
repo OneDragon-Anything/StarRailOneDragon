@@ -3,13 +3,12 @@
 **board 口径的 per-unit 标签函数**——各消费方共用本函数,规则同源(一个函数):
 
 - 羁绊计数:``_recount_board``(本模块;board 的唯一算法);
-- 状态容器派生:``cw_game_state._row_unit_tags``;
+- 同一标签函数套在状态容器行上的入口:``cw_game_state._row_unit_tags``(只服务模拟器后端的盛会之星判定,不参与羁绊计数);
 - 资格判定与部署搜索:``cw_faction_callbacks``、``strategies/impl/mandate_v1/deploy_search.py``。
 
 口径分层(sim-wiring.md「羁绊口径分层」节):
 
-- **L1 纯羁绊全集**:factions + schools + independent(独立羁绊行与左面板
-  同口径);
+- **L1 纯羁绊全集**:factions + schools + independent(三类都从角色注册表直取);
 - **L2 装备羁绊贡献(雏形,本模块落地)**:**星徽 = 额外增加一个羁绊**
   (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述裁定)/
   欢愉卡带与星核猎手卡带 = **计数 +1**
@@ -107,8 +106,8 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
       * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者
         对该羁绊贡献 2 = 自身 1 + 卡 1);
     - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**:该单位对任何羁绊
-      零贡献(``_recount_board`` 不计它,也不回退别的字段;状态容器派生
-      ``cw_game_state._row_unit_tags`` 同口径——Unit 无 faction 位)。
+      零贡献(``_recount_board`` 不计它,也不回退别的字段;状态容器行上的入口
+      ``cw_game_state._row_unit_tags`` 调的是本函数,结果同样是空元组——Unit 无 faction 位)。
 
     duck-typed:凡带 char_id/equips 属性(Unit 或
     SimpleNamespace shim)皆可——实机/sim/检查三侧同函数。

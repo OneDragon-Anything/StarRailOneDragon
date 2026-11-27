@@ -173,7 +173,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                  verdict: str = '', **ctx) -> None:
     """观察冲突 hook:证据行进统一 state 账本(obs_event)+ 去重截图。best-effort,失败不抛不阻塞。
 
-    :param field: 冲突字段(level/gold/hp/board...)
+    :param field: 冲突字段(level/gold/hp/deploy_paddle...)
     :param old: 上次观察值(session 持久)
     :param new: 本次读值
     :param screen: 冲突帧(传则存去重截图,文件名进证据行;**同 (field,verdict) 300s

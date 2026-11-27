@@ -4,7 +4,7 @@
 
 1. ``DragCwChar.drag_char``(静态原语,**生产共用**):中心拖一个角色 ``src → dst`` —— ``mouse_move`` 源
    (settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
-   即拾取 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
+   即拾取 实测)→ ``park_cursor`` 把光标停到中立区(防 drag 锁残留致后续 drag 落空)。
    **机械执行零判效**(阶段三判效拆除,总纲阶段三族2):原「验源槽像素 diff + retry 3 次」
    随拆除停用——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwActionDeployMoveOp``)/
    穿戴工具原子(prep_actions 机械原语经统一拖拽原语)/ sell(``drag_bench_to_sell``)/ 本 op 都走它
@@ -190,7 +190,7 @@ class DragCwChar(CwOperation):
 
         机制(实测,推翻旧 avatar 假设):整张卡可拖,中心拖 + 按下即移(hold_time=0)即拾取。
         流程:``mouse_move`` 源(settle,防截图移光标后紧接 drag 落空)→ ``drag_to(hold_time=0)``
-        → ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
+        → ``park_cursor`` 把光标停到中立区(防 drag 锁残留致后续 drag 落空)。
 
         Args:
             op: 调用方 op(取 ``op.ctx.controller`` 操作)。
@@ -200,6 +200,5 @@ class DragCwChar(CwOperation):
         time.sleep(0.2)
         op.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.0)
         time.sleep(0.5)
-        # 光标 parking(审计 P0):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
-        # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
+        # 光标 parking:拖完把光标停到 UID 黑块中立区,免得停在画面元素上挡住后续识别。
         op.park_cursor(after_wait=0.3)

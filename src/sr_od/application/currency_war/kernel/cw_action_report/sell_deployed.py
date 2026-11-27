@@ -22,8 +22,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig,
                                       session: object = None) -> LogicOutcome:
     """卖场上单位上报:deployed 视图摘槽(置 None 不移位)→ 单字段整值
-    替换写(board 随行写派生;一次写 = 一次完整语义
-    变更)+ gold +退款 + 装备回收。
+    替换写(羁绊计数不随写,``GameState.board`` 读时按上阵行现算;一次写 =
+    一次完整语义变更)+ gold +退款 + 装备回收。
     deployed_idx 越界/空槽或 expect 失配 = applied=False 零写。
 
     deployed_idx = 前排 0-3 / 后排 4+(排内 1 基槽号,值域随
