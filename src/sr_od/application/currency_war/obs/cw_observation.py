@@ -22,8 +22,6 @@ v1 OCR 可读性(实机多样本 + 诊断脚本确认):
 - **level**:``read_level`` OCR 优先 + ``_expected_level`` 兜底;telemetry level 跨样本合理(✓)。
 - **hp**:⚠️ **plan-time 读不到(保血原本未武装),根因已确认 = shop 开启时右上角 HP 区空,非读取器坏**。
   ``BuyShopCards`` 在 shop 关闭帧读 hp → 覆盖 state.hp(见 shop.buy)。
-- **board**:count 解析曾脆(全屏 OCR 把 "2/3" 误读 "213");改用 ``_board_pairs`` 聚焦解析 X/Y,
-  count=X + next_tier=Y(``read_board`` 只取 count),根因(全屏密度)解决。
 """
 from __future__ import annotations
 
@@ -40,7 +38,6 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
     effective_cost,
@@ -59,7 +56,6 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
     node_round_cap,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
-    A_BOARD,
     A_GOLD,
     A_PHASE,
     A_SHOP_CARD_PREFIX,
@@ -1384,7 +1380,7 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
     文本),不在解析层重截帧;重帧仍归 ``read_deploy_cap_debounced`` 的域外防抖(瞬时误读
     须跨帧才能识别,同帧源不可替代)。
 
-    保留裁剪读(crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题;
+    保留裁剪读(crop-first 审计):X/Y 指示做全屏 OCR 不稳(全屏密度问题);
     裁切(padding 给足)是稳读前提。
     """
     rect = _area_rect(ctx, '区域-部署数')
@@ -1679,216 +1675,6 @@ def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
     """
     x, cap = read_paddle_pair_confirmed(ctx, screen, level)
     return x, _debounce_cap(ctx, screen, cap, level)
-
-
-#: 徽标记号框左缘下界(1080p 画面绝对坐标;记号级几何过滤,不是识别 / 点击区域)。
-#: 结论:框左缘小于本值的纯数字记号是阵营图标被 OCR 读成的数字,不是徽标计数。
-#: 出处:全样本实测——徽标左缘 70–87、图标列数字记号左缘 32–66(左缘 60–66 的纯数字记号
-#: 全部是阵营图标的误读);可复核指针 = 测试 ``cw_observation/test_board_pairs.py`` 对
-#: ``_is_board_icon_token`` 的合成记号断言与夹具「徽标误读-少女乐队读8」(图标记号左缘 66,须拒)。
-#: 边界:两侧余量各 2 像素,是本规则最窄处——真徽标左缘再左移 2 像素(跌破本值)、或图标
-#: 记号左缘再右移 2 像素(越过 66)即失效。徽标侧失效是双重的:该徽标既被徽标分支拒掉,
-#: 自身又成了「图标列数字记号」,把本行的徽标小格重读一并跳掉,整行只剩 expected / 恒 1。
-#: 徽标侧的余量靠极少数样本撑着(左缘落在 70–71 的真徽标仅 3 枚)——所以徽标分支拒绝左缘
-#: 落在 66–67 的徽标候选时打一条 info 日志,把它变成可查;届时先核帧再调。
-_BOARD_BADGE_X_MIN = 68
-
-#: 「名称行心 ↔ 记号心」距离上限(像素):主循环判定记号是否属于本行、第四级判定图标列
-#: 数字记号是否在本行旁,两处共用同一口径。
-#: 出处:实测相邻名称行心距 82–86;图标列数字记号心在本行名称行心下方 +4…+19,
-#: 到其他行名称行心 ≥ 66——本值到本行侧余量 ≥ 26、到邻行侧 ≥ 21。
-_BOARD_ROW_DY = 45
-
-#: 徽标列右界(1080p):阵营图标旁计数徽标左缘 x≈70-87,名称列/档位链 x≥104
-_BOARD_BADGE_X_MAX = 104
-
-
-def _is_board_icon_token(r) -> bool:
-    """记号是否为「图标列数字记号」= 阵营图标被 OCR 读成的数字(徽标判定的排除条件)。
-
-    判据 = 去空格后纯数字 且 框左缘 < ``_BOARD_BADGE_X_MIN``;不限位数——位数上限只是
-    徽标候选的条件,对「图标列数字记号」没有依据。只读记号的文本与左缘,不碰 ctx、不触发 OCR。
-    左缘读 ``r.x``(与徽标候选判定同一写法;不用 center.x——中心比左缘大半个字宽,边界断言的意义会变)。
-    """
-    data = (r.data or '').replace(' ', '')
-    return data.isdigit() and getattr(r, 'x', r.center.x) < _BOARD_BADGE_X_MIN
-
-
-def _board_rescue_xy(faction: str, data: str, max_count: int) -> tuple[int, int] | None:
-    """斜杠丢失容错:OCR 把 "X/Y" 的 '/' 误读丢/误读成 '1'("2/3"→"213"、"2/4"→"24")时还原 (X, Y)。
-
-    还原方式 = 原串直拆 + 删一个 '1' 后拆两数,X∈[1,max_count] 且 Y 必须是该阵营
-    注册表 tiers 中的某个更高激活档(Y∈tiers 是防裸数字/档位链误配的硬校验;
-    档位链如持续伤害 "2/4/6"→"21416"/"246" 拆不出合法对 → 自然拒绝)。
-    """
-    if not data.isdigit() or len(data) < 2:
-        return None
-    tiers = trait_by_name[faction].tiers if faction in trait_by_name else ()
-    candidates = [data] + [data[:i] + data[i + 1:] for i, ch in enumerate(data) if ch == '1']
-    for trimmed in candidates:
-        for k in range(1, len(trimmed)):
-            a, b = trimmed[:k], trimmed[k:]
-            if not (a.isdigit() and b.isdigit()):
-                continue
-            x, y = int(a), int(b)
-            if 1 <= x <= max_count and y in tiers and y > x:
-                return x, y
-    return None
-
-
-def _read_badge_cell(ctx: SrContext, screen: MatLike | None, row_y: float) -> int | None:
-    """单个阵营行的徽标小格放大重读 → count;失读 → None。
-
-    第四级兜底:整面板原生分辨率 OCR 常漏读小徽标。徽标几何 = 名称行下方固定偏移
-    (徽标框 y≈名称行+21..+48,白字深色圆底;裁格 x≈66-108——66 是裁格左界(含余量),
-    徽标左缘 70 起)。小格裁切 + 3x 放大复用 ``_ocr_upscaled`` 的 det 天花板手法;
-    3x 空读再试 5x。纯数字 1-12 之外按失读处理。
-    证据 = 夹具「第四级-无图标记号行读2」(测试 ``cw_observation/test_board_pairs.py``):
-    原生分辨率漏读的徽标由本放大重读读出。
-    screen=None(测试注入态,无像素)→ None。
-    """
-    if screen is None:
-        return None
-    cell = Rect(66, int(row_y) + 10, 108, int(row_y) + 58)
-    for scale in (3, 5):
-        for r in _ocr_upscaled(ctx, screen, cell, scale=scale):
-            data = (r.data or '').strip()
-            if data.isdigit():
-                v = int(data)
-                if 1 <= v <= 12:
-                    return v
-    return None
-
-
-def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
-                 expected: dict[str, int] | None = None) -> tuple[dict[str, tuple[int, int]], bool]:
-    """OCR 左面板 → ({阵营: (count, next_tier)}, honest)。
-
-    聚焦裁切 OCR 才稳读 "X/Y"(全屏把 "2/3" 误读 "213"→ 旧 read_board 显脆,实为全屏密度问题;
-    区域裁切可读对)。next_tier 未解析到 → 记 0(未知;消费方 ``read_board`` 只取 count)。
-
-    count 优先级(board 计数系统性低估修复;证据 = 夹具「徽标误读-云上五骁读9」与
-    「徽标下界-仙舟舰队2」,测试 ``cw_observation/test_board_pairs.py``:徽标与档位链同在的行
-    取徽标、图标被当徽标收下的行改取 X/Y):
-    ① 图标旁徽标数字(画面事实:纯数字 token 且位于名称列左侧 ``_BOARD_BADGE_X_MAX``;
-       左缘落在图标列的纯数字记号是阵营图标的误读,由 ``_is_board_icon_token`` 拒绝——
-       不进徽标,也不进 ②③);
-    ② "X/Y" 正则的 X(斜杠读全时);
-    ③ 斜杠丢失容错还原(``_board_rescue_xy``);
-    ④ 徽标小格放大重读(``_read_badge_cell``,仅兜底行触发;名称行旁 ``_BOARD_ROW_DY`` 像素内
-       有图标列数字记号的行跳过——裁格左界与图标右半重叠,重读会把图标读成数字);
-    ⑤ expected(身份 computed 基础数据;徽标与档位链整体失读的帧 OCR 侧证据穷尽,
-        恒 1 兜底是低估最后一环——此时无画面事实反证,身份推算值优于恒 1)。
-    ①-④ 全 miss 且无 expected → count=1 兜底(动画期只显档位链,至少 1 人在场)。
-
-    第二返回值 honest=**至少一行 OCR 真解析**(①-④)——
-    全靠兜底 = 帧不可信(board_readable 消费);dict 契约不变(键仍在,值是兜底)。
-    """
-    results = _ocr(ctx, screen, _area_rect(ctx, A_BOARD))
-    results.sort(key=lambda r: r.center.y)
-    pairs: dict[str, tuple[int, int]] = {}
-    fallback_rows: list[tuple[str, float, int | None]] = []   # (阵营,名称行 y, expected 兜底值|None)
-    honest = False
-    for i, r in enumerate(results):
-        faction = next((f for f in trait_by_name if f in (r.data or '')), None)
-        if faction is None or faction in pairs:
-            continue
-        badge_cnt: int | None = None
-        xy: tuple[int, int] | None = None
-        rescued: tuple[int, int] | None = None
-        for r2 in results[i + 1:]:
-            dy = r2.center.y - r.center.y
-            if dy > _BOARD_ROW_DY:
-                break
-            if dy <= 0:
-                continue
-            data = (r2.data or '').replace(' ', '')
-            # 图标列数字记号(阵营图标被 OCR 读成数字)不是徽标:先于徽标候选判定拒掉,
-            # 也不落 X/Y 与容错还原分支(行内不留痕迹,第四级按整读区的记号 y 另判)
-            if _is_board_icon_token(r2):
-                x2 = getattr(r2, 'x', r2.center.x)
-                if (data.isdigit() and len(data) <= 2
-                        and _BOARD_BADGE_X_MIN - 2 <= x2 < _BOARD_BADGE_X_MAX):
-                    log.info('备战面板「%s」行的徽标候选左缘 %d 落在图标列(下界 %d,记号 %r)'
-                             '——按图标列数字记号拒绝;真徽标左缘跌破下界时先核帧',
-                             faction, x2, _BOARD_BADGE_X_MIN, data)
-                continue
-            # 徽标计数:纯数字小 token 且在名称列左侧(徽标恒在图标右、名称列左的固定列)
-            if (badge_cnt is None and data.isdigit() and len(data) <= 2
-                    and getattr(r2, 'x', r2.center.x) < _BOARD_BADGE_X_MAX):
-                v = int(data)
-                if 1 <= v <= max(max_count, 1):
-                    badge_cnt = v
-                continue
-            # count 显示为 "X/Y"(X=在场人数,Y=下个 tier 阈值,如 仙舟"1/3")
-            if xy is None:
-                m_xy = re.search(r'(\d+)\s*/\s*(\d+)', r2.data or '')
-                if m_xy:
-                    xy = (int(m_xy.group(1)), int(m_xy.group(2)))
-                    continue
-                # 斜杠丢失容错(仅 X/Y 正则未命中时尝试;注册表 tiers 校验)
-                if rescued is None:
-                    rescued = _board_rescue_xy(faction, data, max_count)
-        if badge_cnt is not None:
-            cnt = badge_cnt
-            honest = True
-        elif xy is not None:
-            cnt = xy[0]
-            honest = True
-        elif rescued is not None:
-            honest = True
-            pairs[faction] = rescued
-            continue
-        else:
-            # OCR 侧证据穷尽(徽标失读/动画帧)→ expected(身份 computed)兜底,恒 1 是
-            # 低估最后一环(见 docstring ⑤);徽标小格重读(④)在后统一翻案。
-            exp = expected.get(faction) if expected else None
-            if exp is not None and 1 <= exp <= max(max_count, 1):
-                nt_exp = next((t for t in trait_by_name[faction].tiers if t > exp), 0) \
-                    if faction in trait_by_name else 0
-                pairs[faction] = (exp, nt_exp)
-            else:
-                exp = None
-                pairs[faction] = (1, 0)
-            fallback_rows.append((faction, r.center.y, exp))
-            continue
-        # sanity:count 1-max_count(默认 9;read_game_state 传 level —— faction count ≤ deployed ≤ level,
-        # count>level 必是 OCR 误读,如 狼狩:7@lv4);next_tier 1-12。越界 → 兜底 count=1。
-        cnt = cnt if 1 <= cnt <= max(max_count, 1) else 1
-        nt = xy[1] if (xy is not None and 1 <= xy[1] <= 12) else 0
-        if nt == 0 and faction in trait_by_name:
-            # 徽标/容错源无 Y → 注册表 tiers 推下一档(>count 的最小档;无更高档 → 0)
-            nt = next((t for t in trait_by_name[faction].tiers if t > cnt), 0)
-        pairs[faction] = (cnt, nt)
-    # 第四级:逐兜底行徽标小格放大重读,只翻兜底行的案(有徽标/X/Y/容错行的帧零额外开销)。
-    # 行旁有图标列数字记号的兜底行跳过:被拒的记号在行内不留痕迹,只能按整读区的记号 y 判。
-    if fallback_rows:
-        icon_ys = [r.center.y for r in results if _is_board_icon_token(r)]
-        for faction, row_y, _exp in fallback_rows:
-            if any(abs(iy - row_y) <= _BOARD_ROW_DY for iy in icon_ys):
-                continue
-            badge = _read_badge_cell(ctx, screen, row_y)
-            if badge is not None:
-                nt = next((t for t in trait_by_name[faction].tiers if t > badge), 0) \
-                    if faction in trait_by_name else 0
-                pairs[faction] = (badge, nt)
-                honest = True
-    return pairs, honest
-
-
-def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
-    """OCR 左面板**可见行** → {羁绊名: 面板数字}(= ``_board_pairs`` 的 X;向后兼容)。
-
-    每个激活阵营一行:阵营名 + 其下的 "X/Y"(X=在场人数,Y=下个 tier 阈值)。详见 ``_board_pairs``。
-
-    ⚠️ v4.7 已定论(实机配对实验,正式局 1-9 干净帧):面板 = 计算全集的
-    **滚动窗口**——可见行数值与 :func:`board_from_deployed` 计算值逐行精确一致,
-    但超出可视窗口的行静默不可见(实验:计算 10 行 vs 面板可视 6 行)。
-    本读数仅作快照参考;**羁绊计数决策面用 board_from_deployed(以算为准)**,
-    证据帧与推导见 research/v47_first_match_observation.md §2.5。
-    """
-    pairs, _honest = _board_pairs(ctx, screen)
-    return {f: c for f, (c, _nt) in pairs.items()}
 
 
 # ===== 商店牌费用徽章数字识别(2星直出缺口闭环;merge_mechanics §2.6/§2.7)=====

@@ -47,7 +47,6 @@ SHOP_SCREEN_NAME: str = '货币战争-备战-开商店'
 PIONEER_SHOP_SCREEN_NAME: str = '货币战争-备战-开拓商店'
 A_GOLD: str = '文本-金币数'
 A_PHASE: str = '区域-阶段'
-A_BOARD: str = '区域-羁绊面板'
 A_SHOP_CARD_PREFIX: str = '商店牌-'        # 商店牌-1..5(点击中心;商店态,读 SHOP_SCREEN_NAME)
 
 # sanity bounds(越界 → 丢弃用默认,防误读级联:gold 读成 500 → 狂买)
