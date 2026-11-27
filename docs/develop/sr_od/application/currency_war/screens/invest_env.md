@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发:id_mark「货币战争-投资环境.标识-投资环境」;处理分支 = `cw_loop.py::CwLoop._dispatch_identity_screen`(`if name == '货币战争-投资环境'` 链),登记清单 = `cw_loop.py::CwLoop.CW_DISPATCH_SCREENS`。分发单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2(新增画面三件套:建档 + 处理分支 + 登记清单)。开场 1-1 前弹一次(后局中事件节点只弹投资策略,两画面不同 handler);中断恢复的对局重入此屏走同分支兜底分流。
+- 阶段一身份分发:id_mark「货币战争-投资环境.标识-投资环境」;处理分支 = `cw_loop.py::CwLoop._dispatch_identity_screen`(`if name == '货币战争-投资环境'` 链),登记清单 = `cw_loop.py::CwLoop.CW_DISPATCH_SCREENS`。分发单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2(新增画面三件套:建档 + 处理分支 + 登记清单)。开场 1-1 前弹一次(后局中事件节点只弹投资策略,两画面不同 handler);中断恢复的对局重入此屏走同分支兜底分流。
 - 链序:分发成功后外循环先跑本 op,再链 `CwScreenWaitOneOne`(等 1-1 备战识别标志就绪,两 op 两对 journal 行);链序代码引用 = `cw_loop.py::CwLoop.loop` 投资环境分支段。
 
 ## 2. 画面形态声明
@@ -88,7 +88,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 状态容器标准名
 
 - `active_env` 写入:动作落地获得链写(`kernel/cw_gain_chain.py::gain_invest_env`,
   写行署名 `GAIN_CHAIN_PRODUCER`;**写时点 = 动作执行时**——动作 op 点完确认
-  立即上报,契约 = [../flow/action_ops.md](../flow/action_ops.md) §1「用户裁定(点完即写)」、
+  立即上报,契约 = [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §1「用户裁定(点完即写)」、
   链式规范权威版本 = kernel/cw_gain_chain.py(原语与模块拆分);链内无效载荷拒绝 = 不写保留证据,权威版本 = kernel/cw_gain_chain.py(链式规范住模块与函数 docstring) §2.1 步 0;本屏不写游戏状态)。
 - portal 效果登记:`gain_invest_env` 链内分支 → `kernel/cw_effect_inventory.py::
   register_portal_from_env`(best-effort,失败保留证据不阻塞;经济判据接登记数据归后续批)。

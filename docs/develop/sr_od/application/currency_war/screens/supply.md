@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-补给.标识-补给阶段」(位置区分 area,防「补给阶段」与「备战阶段」共享「阶段」误匹配)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-补给.标识-补给阶段」(位置区分 area,防「补给阶段」与「备战阶段」共享「阶段」误匹配)。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 - 补给是唯一无结算屏节点:op success 后返回主循环重新判定(无合成结算行)。
 
 ## 2. 画面形态声明

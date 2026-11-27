@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环阶段三特殊规则(无独立画面档):识别标志 = `货币战争-备战.标识-简易装备`(overlay 叠备战,识别标志挂备战画面档;[../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不选 → overlay 持续卡备战,推进是流程义务。
+- 外循环阶段三特殊规则(无独立画面档):识别标志 = `货币战争-备战.标识-简易装备`(overlay 叠备战,识别标志挂备战画面档;[skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2)。不选 → overlay 持续卡备战,推进是流程义务。
 
 ## 2. 画面形态声明
 

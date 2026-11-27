@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(分支号制已停用):id_mark = `货币战争-未达上限警告.标识-未达上限警告`(**位置区分**判据:投资策略屏描述「能量上限」与「未达上限」共享子序列「上限」,全屏 LCS 会误匹配吞投资策略分支——area 位置不同即不命中)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2;建档 = `currency_war_deploy_not_full.yml`。
+- 阶段一身份分发(分支号制已停用):id_mark = `货币战争-未达上限警告.标识-未达上限警告`(**位置区分**判据:投资策略屏描述「能量上限」与「未达上限」共享子序列「上限」,全屏 LCS 会误匹配吞投资策略分支——area 位置不同即不命中)。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2;建档 = `currency_war_deploy_not_full.yml`。
 
 ## 2. 画面形态声明
 

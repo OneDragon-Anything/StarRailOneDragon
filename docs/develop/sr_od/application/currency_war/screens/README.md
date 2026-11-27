@@ -1,7 +1,7 @@
 # 画面 op 层(screens/ · 一画面一文档)
 
 > 本目录 = 画面 op 层设计权威版本:**每个画面 op 一篇**,写「这个画面做什么观察、能发哪些动作 op、哪些动作结束本次访问并返回主循环」。代码根 = `src/sr_od/application/currency_war/operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱)+ `kernel/cw_screen_report/`(每画面观察上报:obs 类 + report 函数一文件);符号名引用 = `文件::符号名`(行号随代码漂移,不作定位依据)。
-> 分工分界:分发判定(两阶段身份分发)的单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2(本目录各篇只写画面特有的排他/穿透形态与身份 id_mark 说明);画面 op 统一规范(两 node 形态/round_wait 循环/终结 op/期望态生命周期/对账边界/report 上报接口)= [op-layer.md](op-layer.md);逐屏形态分类总表(35 屏)= [op-layer.md](op-layer.md) §3;动作执行契约 = [../flow/action_exec.md](../flow/action_exec.md)。
+> 分工分界:分发判定(两阶段身份分发)的单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2(本目录各篇只写画面特有的排他/穿透形态与身份 id_mark 说明);画面 op 统一规范(两 node 形态/round_wait 循环/终结 op/期望态生命周期/对账边界/report 上报接口)= [op-layer.md](op-layer.md);逐屏形态分类总表(35 屏)= [op-layer.md](op-layer.md) §3;动作执行契约 = [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md)。
 > 术语:见下方「术语表」节;路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
 
 ## 0. 术语表
@@ -84,10 +84,10 @@
 | 简报点「下一步」 | 首领出现后约 1s 可点(用户口述) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(阶段一身份行「货币战争-简报」);内嵌词缀效果采集段 `_collect_affix_effects`(逐词缀点采 OCR 效果,对注册表 `src/sr_od/application/currency_war/data/affix_effects_data.py` 比对(注册表住 src 树代码;本文头注 `data/X.md` 短路径约定仅适用于 docs/game 侧,不适用于 src 文件),新名/不一致才截图收集;采集写端 best-effort,OCR 采不到即跳过) | 点推进即终结(空决策形态;点采 tooltip 不终结) |
 | BOSS 简报点空白 | 「点击空白处继续」出现即可点(用户口述) | `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(阶段一身份行「货币战争-BOSS简报」;位面过渡身份帧含 boss 判别片段时排他接管);点掉后返回主循环重新判定——回备战并自动弹店(用户口述,多触发源之一;接管局例外 = 恢复局商店锁死态只能出战,见 [boss_briefing.md](boss_briefing.md) 开放设计注①) | 点空白即终结 |
 | 位面过渡点空白 | 「点击空白处继续」提示出现后动画完结,即可点(用户口述) | `operations/cw_screen/cw_screen_plane_transition.py::CwScreenPlaneTransition`(阶段一身份行「货币战争-位面过渡」) | 点空白即终结 |
-| 位面详情点 X 关闭 | game 侧画面档 = docs/game/screens/货币战争-位面详情.md(检视浮层;用途见 research/plane_schedule_observed.md「位面详情画面」条) | `operations/cw_screen/cw_screen_plane_detail.py::CwScreenPlaneDetail`(阶段一身份行「货币战争-位面详情」,分发判定单一源 = flow/outer_loop.md §2.2;单篇动作清单 = [plane_detail.md](plane_detail.md) §4) | 点 X 即终结(空决策形态) |
+| 位面详情点 X 关闭 | game 侧画面档 = docs/game/screens/货币战争-位面详情.md(检视浮层;用途见 research/plane_schedule_observed.md「位面详情画面」条) | `operations/cw_screen/cw_screen_plane_detail.py::CwScreenPlaneDetail`(阶段一身份行「货币战争-位面详情」,分发判定单一源 = skills/sr-od-dev-currency-war/references/flow/loop.md §2;单篇动作清单 = [plane_detail.md](plane_detail.md) §4) | 点 X 即终结(空决策形态) |
 | 采集位面情报(切位面卡/点 boss 节点为采集内部步) | game 侧画面档 = docs/game/screens/货币战争-位面详情.md(宿主屏与上一行同档;用途见 research/plane_schedule_observed.md「位面详情画面」条——中断恢复的对局补采的运行时源) | `operations/cw_screen/cw_screen_plane_intel.py::CwScreenPlaneIntel`(多屏管线形态 6 node,op-layer §3;非外循环分支直管——调用路 = 备战委派插入位置 `cw_screen_prep.py` 观察 node ∧ 手动调起编排 `operations/cw_entry/cw_entry_plane_intel.py::CwEntryPlaneIntel`,单一源 = [plane_intel.md](plane_intel.md)) | 纯观察采集(无游戏推进动作;切卡/点节点带详情条联动转移证据);管线走完上报后由编排点 X 关屏,关屏成功才返回主循环 |
 | 无动作(开局补给动画无结束标志,就绪等待) | 用户口述:1-1 是唯一不自动开商店、动画最长的开局节点 | `operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne`(外循环投资环境分支链序第二段,非独立分发分支;轮询 id_mark「货币战争-备战.标识-备战阶段」只判备战面板就绪,超时上界 = `cw_flow_const.py::ONE_ONE_MAX_WAIT_S` 兜底) | 无动作(就绪等待,success 即终结;超时存图保留证据 失败结束本次访问,返回主循环) |
-| 点「下一步」(无画面档画面的兜底推进) | 无画面档(能落到本分支 = 该「下一步」不属于任何已建档画面档;入口信号 = 自有 OCR「下一步」同源判定,外循环「下一步」兜底分支,flow/outer_loop.md §2.2) | `operations/cw_screen/cw_screen_next_button.py::CwScreenNextButton`(空决策形态无 report;单篇动作清单 = [next_button.md](next_button.md) §4) | 点「下一步」即终结(复查时 OCR 不命中 = 已离开本画面 success 结束本次访问;推进未落地 失败结束本次访问,返回主循环重新判定) |
+| 点「下一步」(无画面档画面的兜底推进) | 无画面档(能落到本分支 = 该「下一步」不属于任何已建档画面档;入口信号 = 自有 OCR「下一步」同源判定,外循环「下一步」兜底分支,skills/sr-od-dev-currency-war/references/flow/loop.md §2) | `operations/cw_screen/cw_screen_next_button.py::CwScreenNextButton`(空决策形态无 report;单篇动作清单 = [next_button.md](next_button.md) §4) | 点「下一步」即终结(复查时 OCR 不命中 = 已离开本画面 success 结束本次访问;推进未落地 失败结束本次访问,返回主循环重新判定) |
 
 ### 5.2 投资环境(货币战争-投资环境)
 
@@ -127,7 +127,7 @@
 
 投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱选择(货币战争-备战-武装箱选择,`cw_screen_box_pick.py`)。决策 = pick 族八接口 + `decide_box_card`,规格 = skill strategy/ 13 号篇(原选择装备随该屏误判停用删除,2026-09-22)。
 
-**选卡动作执行载体(选卡动作统一迭代起统一;事件屏统一迭代更新)**:12 屏的选卡动作 = 12 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 点完立即按成功写入**:这批画面的选卡动作都是「点完立刻把完整结果写进游戏状态,不等下一帧确认」(旧的先记发出、再等落地证据的两步机制已全部删除;用户裁定 = [../flow/action_ops.md](../flow/action_ops.md) §1「用户裁定(点完即写)」)。写入内容:投资两屏的选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给在动作发出时一次性写入:获得道具、上场的单位及其效果、获得后果链(`kernel/cw_action_report/pick_supply.py`);遭遇在动作发出时立即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划按效果类型分支写入:附带条件分支(代码 branch_type='rider')先行,装备写入与升费(费用档提升)写入含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`)——画面 op 不写游戏状态、点击发出后即结束本次访问,确认未生效由外循环重识别重派。契约权威版本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
+**选卡动作执行载体(选卡动作统一迭代起统一;事件屏统一迭代更新)**:12 屏的选卡动作 = 12 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 点完立即按成功写入**:这批画面的选卡动作都是「点完立刻把完整结果写进游戏状态,不等下一帧确认」(旧的先记发出、再等落地证据的两步机制已全部删除;用户裁定 = [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §1「用户裁定(点完即写)」)。写入内容:投资两屏的选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给在动作发出时一次性写入:获得道具、上场的单位及其效果、获得后果链(`kernel/cw_action_report/pick_supply.py`);遭遇在动作发出时立即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划按效果类型分支写入:附带条件分支(代码 branch_type='rider')先行,装备写入与升费(费用档提升)写入含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`)——画面 op 不写游戏状态、点击发出后即结束本次访问,确认未生效由外循环重识别重派。契约权威版本 = [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §4。
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
@@ -153,7 +153,7 @@
 | 商店 RefreshShop | **访问终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本访问结束返回主循环;重进 = 重走画面分发(命中备战的开商店态)+ 入口观察重建期望态。无 visit 级硬墙(无限刷新环 = 策略 bug,框架不兜底);现实出口 = 未观察跳过熔断(`shop.md` §5) |
 | 商店 CloseShop | **访问终结** | 恒可用终结 op(全函数「无动作可做」的表达);执行位 = 动作 op `CwActionCloseShopOp` 真机械点击(幂等已关出口),返回主循环 |
 | 商店全 unknown 失读窗 | **入口观察停机** | 牌面含 unknown 槽(读链终判)→ 入口观察处 `stop_running` 框架截图保留证据,决策/购买不见残缺牌面;决策侧仅 CloseShop 收工为纵深第二线(`shop.md` §5,guards.md §3) |
-| 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |
+| 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`skills/sr-od-dev-currency-war/references/flow/loop.md` §4) |
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |
 | 备战 OpenBox | **访问终结** | 点「开启」即返回主循环重新观察;武装箱选择画面由外循环按画面分发独立画面 op 选卡([box_pick.md](box_pick.md)),选卡动作不经备战决策循环 |
 | 备战 OpenBookcard | **访问终结** | 开卡 = 专家邀请函弹窗在场 = 新事实,返回主循环按该画面分发选卡(`terminal_wait=1.8`;动作发出点 = 策略器 entry ① prep 实体面卡片分支) |

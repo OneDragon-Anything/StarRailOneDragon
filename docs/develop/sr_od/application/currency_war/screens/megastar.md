@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-盛会之星.标识-盛会之星」(独有标题;全屏「确认选择」词多屏共享、不具排他性)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-盛会之星.标识-盛会之星」(独有标题;全屏「确认选择」词多屏共享、不具排他性)。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 - 触发 = 盛会之星资格集计数**逐次上穿**档位阈值时弹出(非固定节点,判据单一源 = kernel 值回调 `cw_faction_callbacks.py`;逐次上穿即弹,**无簿记去重**——ScreenChanges 侧栏仅 wish/planner/fortune 三族有簿记,巨星不入侧栏)→ dispatch 为 OCR 反应式,何时弹都接得住;选中标记不得跨节点保持。
 
 ## 2. 画面形态声明

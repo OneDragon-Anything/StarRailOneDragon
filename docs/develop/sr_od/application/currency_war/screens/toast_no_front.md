@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发:id_mark = `货币战争-提示-前台无角色.标识-无角色提示`。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2;建档 = `currency_war_toast_no_front.yml`。
+- 阶段一身份分发:id_mark = `货币战争-提示-前台无角色.标识-无角色提示`。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2;建档 = `currency_war_toast_no_front.yml`。
 - **弹窗帧可达性**:出战动作 op 为单击原子形态(点击后世界交回主循环重识别),本弹窗在出战单击后渲染,由主循环阶段一身份分发接住派发本 op——本屏已登记 `CW_DISPATCH_SCREENS`(`kernel/cw_dispatch_tables.py` 单源),身份分发先于备战分支命中,是本弹窗的唯一处理路径。
 
 ## 2. 画面形态声明

@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(分支号制已停用):**双 id_mark 门**——「货币战争-命运卜者强化.标识-命运卜者」∧「货币战争-命运卜者强化.标识-请选择强化效果」同帧命中;dispatch 带 on_fail_retry(失败消费重试池)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(分支号制已停用):**双 id_mark 门**——「货币战争-命运卜者强化.标识-命运卜者」∧「货币战争-命运卜者强化.标识-请选择强化效果」同帧命中;dispatch 带 on_fail_retry(失败消费重试池)。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 
 ## 2. 画面形态声明
 

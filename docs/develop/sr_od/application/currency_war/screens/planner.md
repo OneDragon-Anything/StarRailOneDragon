@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-银狼升星.标识-我来当策划」;dispatch 带 on_fail_retry。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-银狼升星.标识-我来当策划」;dispatch 带 on_fail_retry。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 - 触发 = 银狼**每个费用档**升达 2 星各弹一次(3/4/5 费各一次,非随机事件;判据单一源 = kernel 值回调 `cw_faction_callbacks.py` 银狼星级回调,每费用档簿记 = ScreenChanges.planner_tiers_fired 侧栏)→ 见 [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
 
 ## 2. 画面形态声明
@@ -82,7 +82,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 - 选中点击高度比例(71%)为单次交互实证的经验值,半区归属的充分统计待补。
 - 观察捕获集变化(旧 y 带 → 卡全域 rect)的实机交叉核对待实机窗口。
 - 选择坐标观察上报待修问题(用户裁定 2026-09-22,op-layer.md §1.1「选择坐标
-  观察上报」条款;全域/族级登记 = action_ops.md §4.5「坐标源待修问题」段,
+  观察上报」条款;全域/族级登记 = skills/sr-od-dev-currency-war/references/flow/action-op.md §5「坐标源待修问题」段,
   字段面 = cw_game_state planner_opts/坐标伴随域):
   planner_opts 观察载荷在用形态零坐标(observe 组装 PlannerOption(idx, text)),
   选中点几何位于决策半(_card_point 避开详情钮的点位推导)经 env.target 传入

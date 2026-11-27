@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(分支号制已停用):id_mark = `货币战争-武装箱弹窗.标识-武装箱`(建档 = `currency_war_armory_box_dialog.yml`)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
+- 阶段一身份分发(分支号制已停用):id_mark = `货币战争-武装箱弹窗.标识-武装箱`(建档 = `currency_war_armory_box_dialog.yml`)。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
 
 ## 2. 画面形态声明
 

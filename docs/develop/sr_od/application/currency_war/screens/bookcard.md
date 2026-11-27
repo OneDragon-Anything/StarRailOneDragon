@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(分支号制已停用):id_mark「货币战争-星徽秘典弹窗.标识-星徽秘典」(lcs 0.9);命中即接管,不放行备战分支。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(分支号制已停用):id_mark「货币战争-星徽秘典弹窗.标识-星徽秘典」(lcs 0.9);命中即接管,不放行备战分支。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 
 ## 2. 画面形态声明
 

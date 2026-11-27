@@ -6,7 +6,7 @@
 ## 1. 分发判定
 
 - 外循环战斗窗分支,**双入口**(`cw_loop.py::CwLoop.loop` 战斗窗分支):①出战驻留标志 `_battle_wait_active`(备战分支出战成功置位);②帧判定 `_frame_in_battle_window`(中断恢复的对局/残留结算屏;判定集 = 继续挑战按钮/败局页模板/数据统计/点击空白加速/总伤害/前往结算·返回货币战争——简报「下一步」刻意不列,与终局链共享词形宁缺勿造)。分发时注入宽限计时起点 `self._settle.battle_ts = self._battle_ts`。
-- 位置:阶段二默认分支之后、大厅收尾分支之前(分发结构 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2「战斗窗」行)。外循环只回答「在不在战斗窗口」,单元内部分类(等待/结算页/败局链/过场屏)归本 op 分支链,不进外循环。
+- 位置:阶段二默认分支之后、大厅收尾分支之前(分发结构 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2「战斗窗」行)。外循环只回答「在不在战斗窗口」,单元内部分类(等待/结算页/败局链/过场屏)归本 op 分支链,不进外循环。
 - 完成白名单与外循环分支共用画面识别标志,判定双源分工:`_hit_completion_anchor` 用备战**单个 id_mark** 宽到达判定(「货币战争-备战.备战标识-购买经验」),「按钮-出战」双 id_mark 精判是循环备战分支职责——op 内重复双 id_mark 即双源。白名单含 boss 简报 id_mark + 片段判别与位面过渡 OCR(共享文案「点击空白处继续」不作跨画面判据,排他单一源 = [boss_briefing.md](boss_briefing.md) §1);位面简报不在切换链上,不列。
 
 ## 2. 画面形态声明
@@ -23,7 +23,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无注册表动作 op——继续挑战推进分支(挑战成功结算段) | 宿主采集与结算链(采集钩子 `settle_frame_collect` → 读点前等 1.5s + 重截 → `_record_round_outcome` → 新帧指纹计数)后**委托 `CwOpSettleConfirm`**:点击『货币战争-结算.按钮-继续挑战』→ 停留 ≥`CwOpSettleConfirm.SETTLE_STAY_LONG_PRESS` 轮长按 `SETTLEMENT_NEXT` 兜底 → 遭遇奖励兑现回调(`kernel/cw_encounter_selection.py::claim_encounter_reward`)→ `report_node_advance(trigger='settle_confirm')` 点击即上报;宿主对 op 失败 `round_fail` 退出 | 节点推进上报 settle_confirm([../flow/action_exec.md](../flow/action_exec.md) §2.1;宿主侧无动作上报) | 否(非终结):op `round_success` 返回宿主 `round_wait` 驻留,出口判定 = 宿主 ③段白名单 |
+| 无注册表动作 op——继续挑战推进分支(挑战成功结算段) | 宿主采集与结算链(采集钩子 `settle_frame_collect` → 读点前等 1.5s + 重截 → `_record_round_outcome` → 新帧指纹计数)后**委托 `CwOpSettleConfirm`**:点击『货币战争-结算.按钮-继续挑战』→ 停留 ≥`CwOpSettleConfirm.SETTLE_STAY_LONG_PRESS` 轮长按 `SETTLEMENT_NEXT` 兜底 → 遭遇奖励兑现回调(`kernel/cw_encounter_selection.py::claim_encounter_reward`)→ `report_node_advance(trigger='settle_confirm')` 点击即上报;宿主对 op 失败 `round_fail` 退出 | 节点推进上报 settle_confirm([skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §4;宿主侧无动作上报) | 否(非终结):op `round_success` 返回宿主 `round_wait` 驻留,出口判定 = 宿主 ③段白名单 |
 | 无注册表动作 op——败局链按钮族推进分支(失败结算页/前往结算链) | 画面 op 内置动作(OCR 按钮族「前往结算/下一页/下一步/返回货币战争」命中即点;全 miss 点空白 `BLANK`) | 无自上报(败局补录 `_record_loss_page` = telemetry-only 观察写端) | 否(非终结):发出后 `round_wait` 逐页推进 |
 | 无注册表动作 op——点空白加速分支(结算页1 动画帧) | 画面 op 内置动作(OCR「点击空白加速」命中点空白) | 无自上报(progress/三项暂存 = 观察写端) | 否(非终结):发出后 `round_wait` |
 | 无注册表动作 op——过场屏推进分支 | 画面 op 内置动作(OCR「总伤害」∨「货币战争-结算.标识-数据统计」命中点空白) | 无自上报 | 否(非终结):发出后 `round_wait` |
@@ -81,7 +81,7 @@
 
 ## 9. 遥测与测试面
 
-- journal op 名 = 「战斗等待」(dispatch 包装统一落 `[cw-op]` 行)+ 委托 op「货币战争-结算确认」(日志前缀 `[cw-settle-confirm]`);节点推进上报 = settle_confirm journal 行(actor 归因 = `kernel/cw_game_state.py::_NODE_ADVANCE_ACTORS` → CwOpSettleConfirm;判定语义 = [../flow/action_exec.md](../flow/action_exec.md) §2.1 / kernel `report_node_advance` 注释);缺陷分键 = `phase_round`/`perception_conflict`(reader_source=`settlement_vs_prep_round`);结算观测日志前缀 `[cw-bwait]`,bail 保留证据 `[cw!]` 行;结算屏时序帧采集 = `operations/settle_collect_hooks.py::settle_frame_collect`(临时采集件,文件自声明清单完成后整段可删)。
+- journal op 名 = 「战斗等待」(dispatch 包装统一落 `[cw-op]` 行)+ 委托 op「货币战争-结算确认」(日志前缀 `[cw-settle-confirm]`);节点推进上报 = settle_confirm journal 行(actor 归因 = `kernel/cw_game_state.py::_NODE_ADVANCE_ACTORS` → CwOpSettleConfirm;判定语义 = [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §4 / kernel `report_node_advance` 注释);缺陷分键 = `phase_round`/`perception_conflict`(reader_source=`settlement_vs_prep_round`);结算观测日志前缀 `[cw-bwait]`,bail 保留证据 `[cw!]` 行;结算屏时序帧采集 = `operations/settle_collect_hooks.py::settle_frame_collect`(临时采集件,文件自声明清单完成后整段可删)。
 - 测试:bail 预算测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(测试面目录 = 同目录;战斗等待专属行为测试的重建归属见模块头申报)。
 - game 侧知识:结算时序(用户口述:「继续挑战」按钮出现后约 1.5s 结算数据才渲染完);画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
 

@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环阶段三特殊规则(无独立画面档):双 OCR 条件「消耗品」∧「拖动到」(lcs 0.9),判定留外循环([../flow/outer_loop.md](../flow/outer_loop.md) §2.2);`entry_ok` 与分发判定**同源同参**。无画面档(op 无画面档名属性;关闭钮借道同族「道具详情弹窗」档,见 §4):「消耗品」= 类型 label、「拖动到」= 拖动使用说明(仅消耗品详情 modal 有,备战底部消耗品栏无),两条件合取不误匹配备战。
+- 外循环阶段三特殊规则(无独立画面档):双 OCR 条件「消耗品」∧「拖动到」(lcs 0.9),判定留外循环([skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2);`entry_ok` 与分发判定**同源同参**。无画面档(op 无画面档名属性;关闭钮借道同族「道具详情弹窗」档,见 §4):「消耗品」= 类型 label、「拖动到」= 拖动使用说明(仅消耗品详情 modal 有,备战底部消耗品栏无),两条件合取不误匹配备战。
 
 ## 2. 画面形态声明
 

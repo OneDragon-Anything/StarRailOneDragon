@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(id_mark「货币战争-遭遇节点.标识-遭遇节点」,位置约束 area;全屏 LCS 判据已停用——卡标题 OCR 截断帧会 miss)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(id_mark「货币战争-遭遇节点.标识-遭遇节点」,位置约束 area;全屏 LCS 判据已停用——卡标题 OCR 截断帧会 miss)。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 - 本屏的暗色锁定子态(遭遇锁定)另立锁定子态画面(`CwScreenPrepLockedReturn`,见 §7)。
 
 ## 2. 画面形态声明

@@ -4,12 +4,12 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(分支号制已停用):id_mark「货币战争-备战-武装箱选择.标识-请选择」。入口链 = 备战访问内 `OpenBox` 点开启(**终结化**——开箱即返回主循环)→ 外循环按本画面分发本 op(选卡画面盖备战,历史无身份行时误派备战 op ping-pong);单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(分支号制已停用):id_mark「货币战争-备战-武装箱选择.标识-请选择」。入口链 = 备战访问内 `OpenBox` 点开启(**终结化**——开箱即返回主循环)→ 外循环按本画面分发本 op(选卡画面盖备战,历史无身份行时误派备战 op ping-pong);单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 - 与货币战争-武装箱弹窗(道具获得说明弹窗,`CwScreenArmoryBox` 只关弹窗)是兄弟画面不同职责:前者 = 展示弹窗关闭,本屏 = 选卡画面。
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口识别标志复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 返回主循环重派(重观察语境禁猜,禁盲点首卡;report 不调,状态容器(GameState)不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 选卡决策(无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)→ 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [../flow/action_exec.md](../flow/action_exec.md) §2;点击坐标 = 观察上报状态容器 `box_card_names_xy`(op-layer.md §1.1「选择坐标观察上报」,动作 op 按下标自取))→ round_success 结束本次访问(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 在用值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自状态容器槽;局内 fail-closed:异常保留证据完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态识别标志 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E18)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口识别标志复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 返回主循环重派(重观察语境禁猜,禁盲点首卡;report 不调,状态容器(GameState)不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 选卡决策(无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)→ 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §4;点击坐标 = 观察上报状态容器 `box_card_names_xy`(op-layer.md §1.1「选择坐标观察上报」,动作 op 按下标自取))→ round_success 结束本次访问(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 在用值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自状态容器槽;局内 fail-closed:异常保留证据完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态识别标志 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../skill strategy/13_pick_family.md](../skill strategy/13_pick_family.md) §1 E18)。
 
 ## 3. 观察面
 

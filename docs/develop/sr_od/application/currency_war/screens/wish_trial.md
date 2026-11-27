@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-祈愿试炼.标识-祈愿试炼」。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-祈愿试炼.标识-祈愿试炼」。单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 - 道具详情弹窗分支以「非祈愿屏」排他让路(共用「聘用书」类文案时祈愿识别标志优先),排他判定留外循环。
 
 ## 2. 画面形态声明

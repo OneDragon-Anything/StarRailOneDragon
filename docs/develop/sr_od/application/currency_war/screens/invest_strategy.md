@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分发(阶段一身份行):id_mark「货币战争-投资策略.标识-请选择投资策略」命中即派发。历史「双信号+复探」判据与 OCR 全短语读法已停用(用户裁定:横幅中间态不处理,帧落阶段二守卫等待)。
-- 分发 = 阶段一身份行(标题识别标志);判定不复制分发表,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 分发 = 阶段一身份行(标题识别标志);判定不复制分发表,单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 
 ## 2. 画面形态声明
 
@@ -99,7 +99,7 @@ act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 inves
 
 - 入口复探窗(语义):过渡帧单探测误 fail 防线;超窗 round_retry 不炸 op(节点预算兜底)。
 - 刷新偏移错(文本识别标志漂移)→ 刷新未命中:重读 = 原卡名集、重决策结果天然等价(能力退化非事故);obs 余量权威闸防超刷。
-- 零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)(不做效果验证):访问内刷后不比对、确认后零判效;确认未生效 = 代码 bug(点击链治理),overlay 残留由外循环重识别重派(数据面零回滚零判重,action_ops.md §1「用户裁定(点完即写)」)。
+- 零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)(不做效果验证):访问内刷后不比对、确认后零判效;确认未生效 = 代码 bug(点击链治理),overlay 残留由外循环重识别重派(数据面零回滚零判重,skills/sr-od-dev-currency-war/references/flow/action-op.md §1「用户裁定(点完即写)」)。
 - 空候选/决策无有效输出 = round_fail 显式失败(不发出无依据的动作,fallback 路径已废)。
 - 同帧去重契约(三闸全败重调):重调仍返回刷新 = 策略器未实现去重的 bug 面 →「决策无有效选卡输出」round_fail 显式失败;去重单一源 = 策略器(flow.py::_decide_invest scratch 键),画面 op 只重调一次、重调仍刷新即弃,不成环。
 - 未注册卡名告警(注册表数据缺口可见化,不阻塞)。

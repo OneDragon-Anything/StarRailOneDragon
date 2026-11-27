@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-外循环「下一步」兜底分支:OCR「下一步」(默认 lcs;入口判定留外循环,与 `entry_ok` 同源同参);位置近外循环尾 = 兜底点击位([../flow/outer_loop.md](../flow/outer_loop.md) §2.2——位面简报等先行画面已按各自画面识别标志接管,能落到本分支 = 该「下一步」不属于任何已建档画面档)。无画面档,入口信号 = 自有 OCR「下一步」判定(覆写形态,无 area 识别标志;无「免识别标志、点击即 success」出口)。
+外循环「下一步」兜底分支:OCR「下一步」(默认 lcs;入口判定留外循环,与 `entry_ok` 同源同参);位置近外循环尾 = 兜底点击位([skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2——位面简报等先行画面已按各自画面识别标志接管,能落到本分支 = 该「下一步」不属于任何已建档画面档)。无画面档,入口信号 = 自有 OCR「下一步」判定(覆写形态,无 area 识别标志;无「免识别标志、点击即 success」出口)。
 
 ## 2. 画面形态声明
 

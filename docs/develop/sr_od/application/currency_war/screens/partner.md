@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 阶段一身份分发(旧外循环分支编号已停用):id_mark 识别标志「货币战争-列车同行.标识-选择伙伴」(位置约束 area;全屏 LCS 判据已停用——「选择伙伴」与「请选择投资策略」共享「选择」子序列会误匹配)。
-- 与装备选屏的历史碰撞(共享「请选择1个」副题位)由本屏整行副题识别标志消解,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 与装备选屏的历史碰撞(共享「请选择1个」副题位)由本屏整行副题识别标志消解,单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2。
 
 ## 2. 画面形态声明
 

@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(旧外循环分支编号已停用,本文不引编号):双 id_mark 门——`货币战争-备战-角色详情.按钮-装备推荐` ∧ `货币战争-备战-角色详情.备战标识-购买经验`(建档仅此两 area 挂 `id_mark: true`,判定 = `screen_utils.is_target_screen` 对建档 id_mark 组合全命中,任一 miss 即不识别;分发判定单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2,本屏消费点 = `cw_loop.py::CwLoop._dispatch_identity_screen` 身份行 `if name == '货币战争-备战-角色详情'` → 派发本 op)。「备战标识-购买经验」为底层备战底部条识别标志(阶段二备战两标志成员,outer_loop.md §2.2):本浮层为右侧面板、不遮底部条,底层标志透出可命中——与商店卡牌详情弹窗的「暗色衬底全遮蔽、禁取底层标志」形态相反([shop_card_detail.md](shop_card_detail.md) §1)。
+- 阶段一身份分发(旧外循环分支编号已停用,本文不引编号):双 id_mark 门——`货币战争-备战-角色详情.按钮-装备推荐` ∧ `货币战争-备战-角色详情.备战标识-购买经验`(建档仅此两 area 挂 `id_mark: true`,判定 = `screen_utils.is_target_screen` 对建档 id_mark 组合全命中,任一 miss 即不识别;分发判定单一源 = [skills/sr-od-dev-currency-war/references/flow/loop.md](skills/sr-od-dev-currency-war/references/flow/loop.md) §2,本屏消费点 = `cw_loop.py::CwLoop._dispatch_identity_screen` 身份行 `if name == '货币战争-备战-角色详情'` → 派发本 op)。「备战标识-购买经验」为底层备战底部条识别标志(阶段二备战两标志成员,skills/sr-od-dev-currency-war/references/flow/loop.md §2):本浮层为右侧面板、不遮底部条,底层标志透出可命中——与商店卡牌详情弹窗的「暗色衬底全遮蔽、禁取底层标志」形态相反([shop_card_detail.md](shop_card_detail.md) §1)。
 - op 门覆写申报:本 op 入口观察 `entry_ok` = `按钮-装备推荐` ∨ `装备详情-合成公式`(OR,两半区 = 角色详情/可合成列表两弹窗变体识别标志)。与分发门宽窄关系:同帧蕴含分发门全中 ⇒ op 门必真(`按钮-装备推荐` 为两门共用识别标志),反向不成立——`装备详情-合成公式` 半区不在分发判据内。op 门职责 = 分发后新帧的入口复判与落地复查(见 §2),不构成分发判据;分发后新帧可能两标志均失(弹窗已关的过渡帧)→ op 门 miss = `round_fail` 返回主循环重新判定。
 - 位置约束标志形态:两弹窗变体识别标志(`按钮-装备推荐`/`装备详情-合成公式`,即 op 门标志集)均在右侧面板标志区,与商店卡牌详情弹窗天然互斥(该弹窗底部按钮不在右侧标志区内)——全屏文本判据在本族不可用(与商店卡牌详情弹窗底部按钮文本全等共享)。建档 = `currency_war_battle_prep_equip_detail.yml`。
 

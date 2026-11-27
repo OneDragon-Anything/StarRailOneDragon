@@ -102,7 +102,7 @@ readable/trusted 标记恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消�
   实机零行为变化），后端 `SimBackend.advance` 按 `decl.trigger` 分派状态副本
   过程/画面呈现并按 `decl.next_screen` 等值对账（契约权威版本 =
   [sim-design.md](sim-design.md) §6.3；19 转移动作的声明终值 =
-  [../flow/action_ops.md](../flow/action_ops.md) §4.8）。
+  [skills/sr-od-dev-currency-war/references/flow/action-op.md](skills/sr-od-dev-currency-war/references/flow/action-op.md) §4）。
 - **溢出在场选卡清槽解析槽**：`cw_action_report.set_overflow_pick_resolver`——
   占席件选卡上报清槽在溢出告警在场时的被腾槽终态解析器；sim 装
   `BenchSlot(kind='empty')`（as-built 不归位模型：仅卖出腾槽归位，上阵/点开两
