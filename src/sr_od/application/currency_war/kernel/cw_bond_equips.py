@@ -1,12 +1,10 @@
 """货币战争 羁绊口径单一源(判断层,手维护)。
 
-**board 口径的 per-unit 标签函数**——三处统计实机/派生/检查共用本函数,
-规则同源(一个函数):
+**board 口径的 per-unit 标签函数**——各消费方共用本函数,规则同源(一个函数):
 
-- 实机计算路径:``cw_observation.board_from_deployed``(面板真值对齐);
-- sim/状态派生路径:``cw_state._recount_board``(= ``cw_battle_calib._board_counts_of``,
-  CwActionMoveUnitParam/事务后的 board 维护);
-- 检查镜像:``cw_sim_checks._board_agg_of_deployed_row``(账本行聚合)。
+- 羁绊计数:``_recount_board``(本模块;board 的唯一算法);
+- 状态容器派生:``cw_game_state._row_unit_tags``;
+- 资格判定与部署搜索:``cw_faction_callbacks``、``strategies/impl/mandate_v1/deploy_search.py``。
 
 口径分层(sim-wiring.md「羁绊口径分层」节):
 
@@ -15,8 +13,8 @@
 - **L2 装备羁绊贡献(雏形,本模块落地)**:**星徽 = 额外增加一个羁绊**
   (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述裁定)/
   欢愉卡带与星核猎手卡带 = **计数 +1**
-  (无条件,可双计)——装备贡献是面板真值的一部分(缺计会导致
-  computed_vs_ocr 常态化误报 + 星徽局档位系统性低估);
+  (无条件,可双计)——装备授予的羁绊计入羁绊计数(缺计会让带星徽的
+  对局档位系统性低估);
 - L3 全战力(装备 props 强度/投资环境/档位效果数值)**不在本模块**,
   归 win_model 迭代(分层裁决)。
 """
@@ -28,6 +26,7 @@ from sr_od.application.currency_war.data.cw_chars import (
     get_char,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 
 # 星徽:「装备者加入【X】羁绊。」(装备注册表 22 张星徽 desc 统一句式,
 # cw_equipment_data.py:102-123;数据层 plaza API 溯源)
@@ -107,10 +106,9 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
         单位变成成员;装备者已拥有该羁绊(自报或其他装备已授)时**不重复计数**;
       * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者
         对该羁绊贡献 2 = 自身 1 + 卡 1);
-    - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**(调用方决定兜底:
-      board_from_deployed 整体 bail;_recount_board 回退 faction 字段;
-      状态容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
-      位,漂移由 board 观察覆盖采新收敛(board_derived_adopt))。
+    - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**:该单位对任何羁绊
+      零贡献(``_recount_board`` 不计它,也不回退别的字段;状态容器派生
+      ``cw_game_state._row_unit_tags`` 同口径——Unit 无 faction 位)。
 
     duck-typed:凡带 char_id/equips 属性(Unit 或
     SimpleNamespace shim)皆可——实机/sim/检查三侧同函数。
@@ -141,37 +139,51 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
 
 
 # ============================================================
-# 板面计数派生
-# _recount_board(构建于本模块 unit_bond_tags 单一源之上,同域定居)。
+# 羁绊计数(board)
+# _recount_board:构建于本模块 unit_bond_tags 之上,board 的唯一算法。
 # ============================================================
 
+# 羁绊注册表 Trait.count_mode 的取值之一:「只数三星」。取值由生成器
+# skills/sr-od-dev-currency-war/scripts/gen_traits.py 的覆盖表产出;注册表文件
+# 是生成器整文件重写的产物,常量不放那边(手加的下次重跑生成就没了)。
+_COUNT_MODE_STAR3: str = 'STAR3'
 
 
 def _recount_board(deployed: list) -> dict[str, int]:
-    """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
-    board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
+    """上阵单位的羁绊计数(board 的唯一算法,读时现算)。
 
-    口径(口径统一):**羁绊全集 + 星徽装备贡献**——
-    factions+schools+independent,装备羁绊(星徽/卡带)
-    计入;与实机 ``board_from_deployed``(= 游戏左面板真值口径)同源,
-    per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
-    未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
-    单标签(空/'?' 不计,生产 OCR 空板同形;Unit 无 faction 位,该兜底
-    仅 faction 载体鸭子输入可达)。值漂移由 checks 的
-    board↔deployed 一致性测试双向暴露。"""
-    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
+    输入 = **不截断的平铺列表**:前排单位 + 后排单位的全子表
+    (``cw_game_state.deployed_rows_of_view`` 返回的两段拼起来)。后排第 7–9
+    格的单位必须在表里——传定长 10 格工作表(``deployed_indexed_of_view``)
+    会把它们截掉,计数随之偏少。空表或 None → ``{}``,表内的空槽(None)跳过。
+
+    口径:
+
+    - 单位标签 = :func:`unit_bond_tags`(出身羁绊 + 装备授予的羁绊);
+    - **按羁绊注册表的计数方式数**(``data/cw_traits_data.py`` 的
+      ``trait_by_name[羁绊名].count_mode``):「只数三星」的羁绊只计星级
+      不低于 3 的单位,其余羁绊与不在注册表的标签按上场人数计;
+    - 星级门对该羁绊的全部标签一视同仁:出身标签、星徽与卡带授予的标签
+      都设门。依据 = 官方原文「每上场 1 位 3 星【千星商会】角色,将激活
+      1 级羁绊效果」讲的是这个羁绊怎么数,读不出只限出身成员;
+    - 用「不低于 3」而非「等于 3」:该羁绊高档位的官方效果会把商店角色
+      升到 4 星,升星反而丢计数与效果自相矛盾;
+    - 单位没有星级属性时,「只数三星」的羁绊不计;
+    - **未知身份的单位不计**(char_id 空 / '?' / 不在注册表 → 零贡献),
+      同表其余单位照计。
+    """
     out: dict[str, int] = {}
     for d in (deployed or []):
         if d is None:
             continue
-        tags = unit_bond_tags(d)
-        if tags:
-            for t in tags:
-                out[t] = out.get(t, 0) + 1
-            continue
-        # 身份未知兜底:faction 字段单标签(旧主阵营口径的未知路径,保留)
-        f = getattr(d, 'faction', '') or ''
-        if f and f != '?':
-            out[f] = out.get(f, 0) + 1
+        star = getattr(d, 'star', None)
+        star3_ok = star is not None and int(star) >= 3
+        for t in unit_bond_tags(d):
+            trait = trait_by_name.get(t)
+            if (trait is not None
+                    and trait.count_mode == _COUNT_MODE_STAR3
+                    and not star3_ok):
+                continue
+            out[t] = out.get(t, 0) + 1
     return out
 
