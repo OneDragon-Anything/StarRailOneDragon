@@ -12,8 +12,8 @@ GameState(正名前暂名 BoardState,后果节+ 待裁决7)= 当前仍为真的�
 同吃状态容器。旧推演内核帧与帧→状态容器合成口已停用(benchchar-retirement P5)——生产写入 = **写入口直写**(sim 状态副本写入分支
 obs 写点与动作分支 logic_action 上报函数族,统一经渠道签名写入口落字,
 渠道族封闭集见下文遥测段);
-测试种子 = 测试仓 builder 直写状态容器域(与观察链同写入口)。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board
-下档阈值)是计算函数不存储;识别质量位是写入闸门不存储(失读统一口径 =
+测试种子 = 测试仓 builder 直写状态容器域(与观察链同写入口)。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/羁绊计数
+board/羁绊下档阈值)是计算函数不存储(board 读时按上阵行现算,见 :attr:`GameState.board`);识别质量位是写入闸门不存储(失读统一口径 =
 carried/机制性 None)。
 
 **两个关键结构**(设计 §2.4;预期条目表已废,勿复活):
@@ -198,8 +198,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # 合卷为 deployed 单字段(状态容器合并,
                             # 空槽 None 显式、位置 = 子表下标派生);版本 1 = 紧凑行域两字段)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost
-    'match_facts': 7,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列/board
-                            # (域版本 7 = 新增
+    'match_facts': 8,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列
+                            # (域版本 8 = board 字段退役为读时现算,快照
+                            # values.board 保留为现算键;域版本 7 = 新增
                             # yingyue_cost_tier 飞光·映月策略赋予型景元当前
                             # 费用档;域版本 6 = 新增
                             # pending_item_grants 定时道具发放队列;域版本 5 =
@@ -964,8 +965,10 @@ class ExpertInvitePayload:
 
     [索引定义] card_bonds = 四卡区羁绊解析,坐标系 = 画面「卡-1..卡-4」
     物理区序(0 基下标即判据返回的卡下标,恒稳);取值时机 = 弹窗帧
-    OCR 解析期快照,写入端 = CwScreenExpertInvite。board = 弹窗帧羁绊
-    面板现读计数;读数失败 = {}(判据侧据此落现金为王兜底,语义复刻)。"""
+    OCR 解析期快照,写入端 = CwScreenExpertInvite。board = 弹窗帧时点的
+    上阵阵容羁绊计数(与 :attr:`GameState.board` 同一个量,上报时点的
+    一次快照——弹窗开着时上阵行不变,快照与现算值相等);空表 = 判据侧
+    落现金为王兜底,语义复刻。"""
     card_bonds: list[str | None] = field(default_factory=list)
     board: dict[str, int] = field(default_factory=dict)
     # [索引定义] card_points = 四卡区点击坐标,坐标系 = 「卡-1..卡-4」区序
@@ -1167,7 +1170,7 @@ _MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine', SIM_SYNTHESIZED)
 
 
 def _rows_unit_key(u: Any) -> tuple[str, int, tuple[str, ...]]:
-    """行写端单位多重集键(board 派生重算与纯重排吸收共用;键 =
+    """行写端单位多重集键(纯重排吸收用;键 =
     (char_id, star,装备集排序元组)。槽位号/行内顺序**不在键内**——
     游戏侧行内重排只改 slot 信息位,键相等 = 同单位多重集;装备集入键 =
     穿戴变化(星徽/卡带贡献面)不算纯重排,返回主循环真失配分流。"""
@@ -1177,16 +1180,13 @@ def _rows_unit_key(u: Any) -> tuple[str, int, tuple[str, ...]]:
 
 
 def _row_unit_tags(u: Any) -> tuple[str, ...]:
-    """行内单位的羁绊标签(board 派生重算单一源;标签函数单一源 =
-    ``cw_bond_equips.unit_bond_tags``)。
+    """行内单位的羁绊标签(只服务 sim 后端的盛会之星判定;标签函数单一源 =
+    ``cw_bond_equips.unit_bond_tags``)。羁绊计数 board 不走本函数,读口 =
+    :attr:`GameState.board`。
 
     **未知身份零贡献(刻意,禁 faction 兜底)**:身份不在注册表(注册表
-    外单位如狸狸/姵姵,或 OCR 误读名)时标签为空,状态容器派生路径**不回退
-    faction**——Unit 不存阵营(防注册表双源),shim 复活 faction 位 =
-    双源复活。「未知身份回退 faction」口径的单一源 =
-    ``cw_bond_equips._recount_board``(faction 字段载体,装备授予/
-    sim 代理面);状态容器侧的对应漂移由 board 观察覆盖采新收敛
-    (:meth:`GameState._absorb_board_derived`)。"""
+    外单位如狸狸/姵姵,或 OCR 误读名)时标签为空——Unit 不存阵营(防注册表
+    双源),shim 复活 faction 位 = 双源复活。"""
     from types import SimpleNamespace
 
     from sr_od.application.currency_war.kernel.cw_bond_equips import (
@@ -1237,7 +1237,7 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
     外送钩子异常不阻塞观察主链。抑制登记面见
     :data:`_MISMATCH_SUPPRESS_PREFIXES`(路由层
     :func:`_route_logic_mismatch` 与本发出口双重消费——吸收族
-    (board 派生/纯重排/外部授予/边界金/备战环收入)不经路由层,
+    (纯重排/外部授予/边界金/备战环收入)不经路由层,
     发出口兜底保证 sim 证据行无论如何不入生产台账;豁免行除外,
     其落行处置序归路由层(豁免→抑制→真失配)。
 
@@ -1361,12 +1361,11 @@ def bench_is_full(gs: GameState) -> bool | None:
 
 
 def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
-    """board 下档阈值派生(准入③:计算函数不存储)。
+    """羁绊计数的下档阈值派生(准入③:计算函数不存储)。
 
-    语义 = 左面板「X/Y」的 Y:对注册表 ``trait_by_name[].tiers`` 取 >当前人数
-    的最小档,无更高档不计入。**本函数 = 该推导的 kernel 单一源**——
-    迁移批次二起,obs computed 支(cw_observation read_game_state)
-    委托至此,禁第三份推导。
+    语义:对每个羁绊取「比当前人数高的最小档位人数」。档位查羁绊注册表
+    ``trait_by_name[羁绊名].tiers``;没有更高档、或羁绊不在注册表的,不计入。
+    入参 = 羁绊计数(来源 = :attr:`GameState.board` 的值)。
     """
     from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
     out: dict[str, int] = {}
@@ -1376,6 +1375,21 @@ def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
         if _nt:
             out[_f] = _nt
     return out
+
+
+@dataclass(frozen=True)
+class _BoardValue:
+    """羁绊计数的读口载体(:attr:`GameState.board` 的返回值,只带 ``value``)。
+
+    故意不带 ``source`` / ``evidence``:羁绊计数不是状态容器的字段,没有
+    自己的来源标记——它的可信度与上阵字段 ``deployed`` 相同,要用它做确定
+    决策就查 ``deployed`` 的来源(:meth:`GameState.logic_rand_fields`)。
+    没有这两个属性的后果:写入口 :meth:`GameState.carry` 与
+    :meth:`GameState.write_logic` 先读来源属性,对它抛 ``AttributeError``
+    (``write_logic_rand`` 不走那一步来源判定);其余写入口按字段名找不到它,
+    抛 ``KeyError``。各入口报错的种类不同,写不进去这一点相同。
+    """
+    value: dict[str, int]
 
 
 # ============================================================ 双 ShopCard 映射单一源(类型去重)
@@ -2177,9 +2191,9 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   (语义源 = simulate 对应分支逐分支平移,由 test_gain_chain 直接校验
 #:   卖/换上报 v2 族契约节钉住);
 #:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
-#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 分支与合成连锁全场域写回)、
-#:   board(**派生量**:行写端挂钩 ``_resync_board_delta``
-#:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收分支);
+#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 分支与合成连锁全场域写回;
+#:   羁绊计数 board 是 deployed 的读时派生量,不是独立写入域,见
+#:   :attr:`GameState.board`)、equips(卖出回收分支);
 #: - 域集扩(2026-09-18):level(买经验上报升档直写;语义源 = prep 分支
 #:   买经验上报(report_action_level_up_param)同款,推进单一源 =
 #:   ``cw_economy.xp_apply_clicks`` 跨级连跳含内)。依据 = 等级滞留使
@@ -2500,9 +2514,8 @@ def seed_opening_state(gs: GameState) -> None:
     (不进失配三分流);决策可信位消费不认(先例 = hp 可信位只认
     observation/carried)。种子值 = 状态容器建立时点的开局真值或基线,逐字段
     语义见各字段注释「开局初始值」;B/C 类字段(None 为设计语义或无
-    观察源)一个不种。写序契约:行域(deployed)先写,board
-    派生行经行域挂钩(:meth:`GameState._resync_board_delta`)随动自动落
-    ——种子空视图零差且板未读无派生基座,种子面不产 board 行,禁双写。
+    观察源)一个不种。羁绊计数 board 不落字段(读时按上阵行现算,见
+    :attr:`GameState.board`),种子面不产 board 行。
     """
     # 常量引用单一源(函数级懒 import 防模块环,同本模块惯例)
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -2518,7 +2531,7 @@ def seed_opening_state(gs: GameState) -> None:
         gs.write_logic_rand(target, value, produced_by=_SEED_ACTOR,
                             evidence=_SEED_EVIDENCE, sig=sig)
 
-    # —— 行域先写(board 派生行随动自动落)——
+    # —— 上阵行(空初始值为建立时点真值)——
     _seed(gs.deployed, DeployedView(
         front_slots=[None] * DEPLOYED_FRONT_CAPACITY_DEFAULT,
         back_slots=[None] * DEPLOYED_BACK_CAPACITY_DEFAULT))
@@ -2817,7 +2830,7 @@ class GameState:
 
     字段集 =目标 dataclass +缺口域(迁移批次一补齐):
     开局初值域/十事件屏 chosen_*/商店刷新计数组/
-    节点屏刷新计数组/持久账本组/board/
+    节点屏刷新计数组/持久账本组/
     level_up_cost/back_layout/spheres/分类子态
     /对局类型/节点序列台账/hp 保底事件位。
     """
@@ -2896,7 +2909,7 @@ class GameState:
     # 'deploy_cap' 键,防抖核 = cw_observation._debounce_cap 单一源)。
     # 定案入状态容器(W5-透传域建模方案 §2.3;设计权威版本 §3.2.7「现场实时
     # 读值豁免」已登记前提已被推翻,权威版本更新义务见方案稿 §2.3):与 back_layout 双存
-    # 属 §8.8 已登记例外形态(识别口径 vs 推导口径各有消费面,先例 = board、
+    # 属 §8.8 已登记例外形态(识别口径 vs 推导口径各有消费面,先例 =
     # level_up_cost)——cap=识别源(采信门输出),back_layout=三信号裁决结果
     # (cw_back_layout);理论关系 back_layout ≈ 6+(cap−level) 仅域内成立,
     # 域外态(>9)back_layout 是 8 格超集,反推会把近似当真值,故不派生改双存。
@@ -3156,7 +3169,6 @@ class GameState:
     # 与队列不一致 = 留证不纠偏(离线校准对账,校准批已定案)。开局种子
     # 基础 = ()(A 类)。
     giftbox_sight: Field[tuple[int, ...]] = field(default_factory=Field)
-    board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(下档阈值=派生不存储;开局初始值不直写,随行域空行种子派生,禁双写)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(现场 OCR;免费帧不写,None≠0;开局初始值=刷新基价)
     # [字段定义] shop_locked = 整店锁(锁定后节点切换不自动全刷)。取值时机 =
     # 恒稳局级事实;sim 写端 = 恒 False(裁定:动作词表无锁通道,首版恒
@@ -3875,6 +3887,29 @@ class GameState:
         else:
             raise RuntimeError('Field 必须保持 frozen(§2.4 帧替换语义被破坏)')
 
+    # —— 只读属性(读时现算的派生量,不落字段)——
+
+    @property
+    def board(self) -> _BoardValue:
+        """上阵羁绊计数(羁绊名 → 人数),**读时按上阵行现算,不落字段**。
+
+        - 算法单一源 = ``cw_bond_equips._recount_board``;输入 = 前排单位 +
+          后排单位的全子表(:func:`deployed_rows_of_view`,后排第 7–9 格在内);
+        - 没有写者:本属性没有 setter,也不是数据类字段,写入口按字段名找
+          不到它。可算出来的不存储——存一份副本就得有写者去维护;
+        - 上阵字段没写过时返回 ``{}``;
+        - 取值时机 = 每次读都重算,没有缓存。board 自己没有来源标记,要用它
+          做确定决策先查 ``deployed`` 的来源。
+        """
+        from sr_od.application.currency_war.kernel.cw_bond_equips import (
+            _recount_board,
+        )
+        view = self.deployed.value
+        if view is None:
+            return _BoardValue(value={})
+        front, back = deployed_rows_of_view(view)
+        return _BoardValue(value=_recount_board([*front, *back]))
+
     # —— 写入 API(op 层经此写,不直接摸字段)——
 
     def _field_name(self, target: Field) -> str:
@@ -3975,7 +4010,9 @@ class GameState:
     def full_state_snapshot(self) -> dict:
         """写入后完整 state 快照(自足行的行内 state;JSON 安全化 +
         序列化规范化——effects 按 spec id 排序,同态同形)。含 values(非 None
-        字段值)/ prov(非默认来源注记)/ effects(就地可变域整窗)/ 工程结构。
+        字段值;另有现算键 ``board`` = 按同一快照里上阵行算出的羁绊计数,
+        上阵字段有值时才带)/ prov(非默认来源注记;不含 board,它没有
+        来源标记,来源看 ``deployed``)/ effects(就地可变域整窗)/ 工程结构。
 """
         values: dict[str, object] = {}
         prov: dict[str, dict] = {}
@@ -3987,6 +4024,10 @@ class GameState:
                 values[f.name] = _json_safe(val.value)
             if val.source != 'observation' or val.evidence is not None:
                 prov[f.name] = {'source': val.source, 'evidence': val.evidence}
+        if 'deployed' in values:
+            # 羁绊计数不是字段,快照里带一份现算值:行行自足(读这一行的人
+            # 不用自己重算),读快照的通用口照 values[名字] 取。
+            values['board'] = dict(self.board.value)
         effects = sorted(
             ({
                 'spec_id': str(getattr(e.spec, 'id', '')),
@@ -4054,9 +4095,6 @@ class GameState:
             if self._absorb_slot_reorder(name, target, value,
                                          evidence, sig):
                 pass   # 行内纯重排吸收已落台账行,覆盖照常 = 采新
-            elif self._absorb_board_derived(name, target, value,
-                                            evidence, sig):
-                pass   # board 派生漂移观察覆盖采新已落台账行,跳过三分流
             else:
                 _route_logic_mismatch(field_name=name, expected=target.value,
                                       actual=value, observed_evidence=evidence,
@@ -4104,114 +4142,6 @@ class GameState:
                  '排列差异采新(游戏侧行内重排无逻辑写端,'
                  'deploy_slot_reorder 留证)')
         return True
-
-    def _absorb_board_derived(self, field_name: str, target: Field,
-                              value: Any, observed_evidence: str | None,
-                              sig: ChannelSig) -> bool:
-        """board 派生漂移观察覆盖采新(observe() 失配分支前置,与纯重排/
-        外部授予吸收族同列):board 是上阵单位集合的**派生量**,其对账
-        语义区别于独立字段——独立字段失配 = 动作推算被实读证伪(修推算
-        代码),board 失配的三种已知形态全是「观察层读数噪声/建模结构
-        缺口」类,不是动作推算 bug:
-
-        - 环境卡星徽等装备羁绊贡献只显于面板、状态容器行未建模(增量口径
-          刻意保留的基座),佩戴者被移出后派生侧无从减除 → 幽灵计数
-          (20260918-reconcile 第 5 例停局族,run_20260918_045918);
-        - 注册表外/OCR 误读身份单位入行:Unit 不存阵营(禁注册表双源),
-          状态容器派生路径对其零贡献(:func:`_row_unit_tags`),面板照显其
-          羁绊;
-        - badge OCR 单帧误读(第 5 例定案:坏读数在观察侧)。
-
-        「上阵单位集合」这一真不变量由 deployed 自身的失配/
-        纯重排吸收面独立把守,board 对动作推算 bug 无独立检出力 → 命中
-        即落 ``board_derived_adopt`` 台账行(无告警无停机,豁免 ≠ 消失
-        同纪律)后覆盖照常采新:派生量以观察为真值源,坏读数暴露于台账
-        与观察侧 obs_conflict 留存证据链、由下一帧观察自愈(与 obs→obs 直采
-        语义同向)。适用范围 = evidence 前缀 ``proj_board_resync``(派生挂钩
-        唯一合法写端,单一源 = :meth:`_resync_board_delta`):独立手写
-        board = 越格契约违反,照真失配告警(本吸收面不得沦为 board 全面
-        赦免)。返回 True = 已吸收(调用方跳过三分流)。"""
-        if field_name != 'board':
-            return False
-        if target.evidence is None or \
-                not target.evidence.startswith('proj_board_resync'):
-            return False
-        _emit_defect(field_name=field_name, expected=target.value,
-                     actual=value, evidence=observed_evidence, sig=sig,
-                     logic_evidence=target.evidence,
-                     kind='board_derived_adopt')
-        log.info(f'[cw][gs] board 派生漂移观察覆盖采新:board '
-                 f'{target.value} → 实读 {value}(派生量以观察为真值源,'
-                 f'board_derived_adopt 留证;单位集合不变量由行域失配面'
-                 f'独立把守)')
-        return True
-
-    def _resync_board_delta(self, field_name: str, old_value: Any, *,
-                            produced_by: str, sig: ChannelSig,
-                            rand: bool = False) -> None:
-        """board 派生重算单一源(deployed 逻辑写端挂钩;本方法
-        是「羁绊/阵营计数 = 上阵单位集合的派生量」的实现位,写入口 =
-        :meth:`_write_logic_frame` 行域写后自动触发(write_logic/
-        write_logic_rand 共用),禁绕过手写 board)。rand = 继承行域写入
-        来源:行域为随机态时 board 派生写同标随机态(行域真值形态随采样
-        奖励而变,board 为其派生,污染沿派生链传递)。
-
-        语义 = **观察基座 + 行变更增量**:board 现值为 None(板未读过)
-        时无派生基座,跳过等观察首读;否则对本次 deployed 写做**逐子表**
-        单位多重集差(键 = :func:`_rows_unit_key`;前排/后排各算各的差),
-        新增单位逐个加其羁绊标签
-        (:func:`_row_unit_tags`,L1 全集+装备贡献),移除单位逐个减、
-        减至 0 摘键(面板语义:无成员不显行),差为零不写。增量口径
-        (非全量重算)的依据:观察基座含左面板真值的装备羁绊贡献,而
-        状态容器行单位未必携带穿戴建模(实机 2026-09-18 run_20260918_045918:
-        环境卡授予的星徽穿戴只出现在面板,行单位 equips 为空)——全量
-        重算会把基座真值抹掉,增量只施加本次动作的差,基座贡献保留。
-        派生漂移由下一备战帧观察覆盖收敛,注释与接入调用一致:失配经
-        :meth:`_absorb_board_derived` 采新留存证据(``board_derived_adopt``,
-        失配告警不响)——派生量以观察为真值源,观察侧坏读数暴露于台账与
-        obs_conflict 留存证据链、由下一帧观察自愈。"""
-        board = self.board.value
-        if board is None:
-            return
-        new_view = getattr(self, field_name).value
-        old_view = old_value
-        sub_tables: list[tuple[list, list, Counter, Counter]] = []
-        for sub in ('front_slots', 'back_slots'):
-            old_units = [u for u in (getattr(old_view, sub, None) or [])
-                         if u is not None]
-            new_units = [u for u in (getattr(new_view, sub, None) or [])
-                         if u is not None]
-            old_counter = Counter(map(_rows_unit_key, old_units))
-            new_counter = Counter(map(_rows_unit_key, new_units))
-            sub_tables.append((old_units, new_units, old_counter, new_counter))
-        new_board = dict(board)
-        for old_units, new_units, old_counter, new_counter in sub_tables:
-            added = new_counter - old_counter
-            removed = old_counter - new_counter
-            if not added and not removed:
-                continue
-            for u in new_units:
-                k = _rows_unit_key(u)
-                if added.get(k, 0) > 0:
-                    added[k] -= 1
-                    for t in _row_unit_tags(u):
-                        new_board[t] = new_board.get(t, 0) + 1
-            for u in old_units:
-                k = _rows_unit_key(u)
-                if removed.get(k, 0) > 0:
-                    removed[k] -= 1
-                    for t in _row_unit_tags(u):
-                        v = new_board.get(t, 0) - 1
-                        if v > 0:
-                            new_board[t] = v
-                        else:
-                            new_board.pop(t, None)
-        if new_board == dict(board):
-            return
-        write = self.write_logic_rand if rand else self.write_logic
-        write(self.board, new_board, produced_by=produced_by,
-              evidence='proj_board_resync', sig=sig)
-
 
     def settle_truth(self, target: Field, value: Any, sig: ChannelSig) -> None:
         """结算屏真值收束(金币专用;无条件以实际观察为准,不走失配三分流)。
@@ -4348,8 +4278,7 @@ class GameState:
         不再依赖逐写端接线)。边界:gold 结算屏真值收束
         (:meth:`settle_truth`)不经随机面,logic_rand gold 与结算真值的
         差不落 boundary_income 行。其余契约(produced_by/evidence/sig/
-        note、域级跳写、行域 board 派生挂钩继承随机态)与 write_logic
-        同一条。
+        note、域级跳写)与 write_logic 同一条。
         """
         _validate_sig(sig, ('logic_action', 'logic_hook'))
         self._write_logic_frame(target, value, source='logic_rand',
@@ -4364,11 +4293,6 @@ class GameState:
         source 由调用方定,family 校验已在其各自入口完成)。
 
         - 行域写旧值快照必须在换帧前取(禁就地改);
-        - board 派生重算单一源(行域写后自动触发;羁绊/阵营计数 = 上阵
-          单位集合的派生量,独立手写 board = 越格,见方法注)。派生写
-          **继承行域写入来源**:行域随机态时 board 派生行同标随机态
-          (行域真值形态随采样奖励而变,board 为其派生,污染沿派生链
-          传递);行域确定 logic 时 board 仍 logic;
         - deployed 逻辑写尾挂值域回调级联(契约 C-回调:
           按名分解 diff → 事件/资格集/星级回调;观察写不经本方法 =
           零回调。logic/logic_rand 两通道同经,获得链递归每步语义完整);
@@ -4406,9 +4330,6 @@ class GameState:
         self._swap(name, Field(value=value, source=source, evidence=evidence),
                    sig=sig, note=note)
         if name == 'deployed':
-            self._resync_board_delta(name, old_row_value,
-                                     produced_by=produced_by, sig=sig,
-                                     rand=(source == 'logic_rand'))
             from sr_od.application.currency_war.kernel.cw_faction_callbacks import (
                 on_deployed_logic_write,
             )
@@ -5804,7 +5725,7 @@ def scalar_projection_state(gold: int, level: int, plane: int,
       back_layout = 机制基线 6(旧帧 back_max 缺省);bench = 全空视图
       (旧帧 pad 缺省);shop/encounter/supply = 离屏;shop_refresh_cost =
       刷新基价(旧帧字段缺省,单一源 = cw_economy.REFRESH_COST_BASE);
-      active_strategies 非空才写;xp/streak/deploy_cap/board/plane_bosses/
+      active_strategies 非空才写;xp/streak/deploy_cap/plane_bosses/
       enemy_affixes/active_env/equips/level_up_cost/selected_difficulty =
       不写(保持 None);
     - 一次性视图禁向状态流水落行(行 = 改了什么的局内账,投影非局内

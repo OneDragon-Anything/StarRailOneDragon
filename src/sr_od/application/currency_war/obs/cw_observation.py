@@ -1,10 +1,12 @@
 """货币战争 **备战屏**观测:备战截图 → 状态容器直写 + 轻量回执(``read_game_state``)。
 
-本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
+本模块只管**备战屏** reads(gold/hp/level/phase_round/shop/bench_full)+ 组合入口
 ``read_game_state``。简报 reads 在 ``cw_briefing_obs``、结算 reads 在 ``cw_settlement_obs``、
 共享 helper/常量在 ``cw_obs_core``(消费方一律直连 owner 模块 import,本模块不再 re-export)。
+羁绊计数(board)不是本模块的读数:状态容器按上阵行读时现算
+(``cw_game_state.GameState.board``),本模块只把它带进回执。
 
-备战字段采集按 doc 06(``strategy/06_input_model.md``)逐簇推进(board tier 已接,余待采:
+备战字段采集按 doc 06(``strategy/06_input_model.md``)逐簇推进(余待采:
 active_strategies/enemy_difficulty/level_up_cost/inventory 等;icon/身份类阻塞于 vision/SIFT 库)。
 
 **区域单一真相源 = screen_info**(用户口径):``assets/game_data/screen_info/currency_war_battle_prep.yml``
@@ -71,7 +73,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _area_rect,
     _first_int,
     _ocr,
-    is_prep_like_frame,
 )
 from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
 from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
@@ -1890,59 +1891,6 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
     return {f: c for f, (c, _nt) in pairs.items()}
 
 
-def board_from_deployed(dep: list) -> dict[str, int] | None:
-    """从主域 deployed 工作表(身份可靠时)**计算** board 羁绊计数
-    (用户定:以算为准;基线从 tracked
-    第二账改主域派生,函数更名 board_from_tracked → board_from_deployed)。
-
-    OCR 左面板的坑:激活阵营多时**一页显示不全要滚动** → OCR 只读可视区,滚出屏的静默漏
-    (board 是 form_progress/pivot/economy 的地基,漏阵营 = 半成型误判)。角色注册表
-    (``cw_chars.CHARACTERS``)已有全量阵营数据 → 每个已上场已知身份角色贡献其全部阵营,
-    计数天然是全集,不受滚动/遮挡/OCR 误读影响。
-
-    口径(迁移审计):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
-    ——L1 全集(factions+schools+independent)**+ L2 星徽装备
-    羁绊贡献**(``deployed[].equips``,deploy_bench 读回在案):
-    星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
-    该羁绊行 +1,是面板真值的一部分(迁移审计§2:此前缺维度 → computed_vs_ocr
-    常态化误报 + 星徽局档位系统性低估)。
-
-    Returns:
-        {羁绊: 在场人数};**表空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
-        (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突保留证据会暴露
-        混合频率)。**无阵营已知角色不 bail**:白厄「救世主」复制效果不计人数
-        (官方 trait 3005)→ 跳过零贡献即精确;
-        独立羁绊行计入(与左面板显示同口径)。
-
-    入参形状 = 主域派生下标工作表(list[Unit | None],cw_game_state.
-    deployed_indexed_of_view)。
-    """
-    _occ = [(i, u) for i, u in enumerate(dep or [])
-            if u is not None]   # 槽位表滤 None
-    if not _occ:
-        return None
-    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
-    counts: dict[str, int] = {}
-    for _i, bc in _occ:
-        tags = unit_bond_tags(bc)
-        if tags:
-            for t in tags:
-                counts[t] = counts.get(t, 0) + 1
-            continue
-        # 零标签:区分「合法零贡献」与「身份不可算」——
-        cid = getattr(bc, 'char_id', '') or ''
-        if not cid or cid == '?':
-            return None
-        ch = get_char(cid)
-        if ch is None:
-            return None   # 注册表无此角色:阵营贡献算不出,保守退 OCR
-        if ch.factions or ch.schools or ch.independent:
-            continue      # 防御:有角色标签则 tags 非空,理论不可达
-        # 三者皆空且装备无贡献 = 注册表数据异常(旧版同判)→ 保守退 OCR
-        return None
-    return counts
-
-
 # ===== 商店牌费用徽章数字识别(2星直出缺口闭环;merge_mechanics §2.6/§2.7)=====
 # 依据:商店每张牌底部名字条右端有金色费用徽章,徽章内白色数字(1-3 位) =
 # 该牌当前星级的实付费用(费用倍数体系 merge_mechanics §2.6:费用 = 原费用 ×
@@ -2485,11 +2433,11 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
     PHASE_PREP_CLEAN: frozenset({
         'gold', 'phase_round', 'hp', 'node_type', 'xp', 'level',
         'deploy_cap', 'deployed_count', 'enemy_difficulty',
-        'level_up_cost', 'streak', 'board',
+        'level_up_cost', 'streak',
     }),
     PHASE_PREP_SHOP_OPEN: frozenset({
         'gold', 'phase_round', 'xp', 'level', 'level_up_cost',
-        'board', 'shop_cards', 'refresh_probs',
+        'shop_cards', 'refresh_probs',
     }),
     PHASE_BATTLE_OR_TRANSIT: frozenset({'phase_round'}),
 }
@@ -2506,7 +2454,9 @@ class GameStateReadReceipt:
     shop 帧读、动作行 plane/round 基准)。语义 = 旧帧形态逐字段口径:
     gold 失读 raw 0(gold_readable=False)、hp = 对账层决策
     值(hp_readable/hp_trusted 位不变)、level 三源解析值(level_readable
-    阶段跳过帧按旧帧缺省 True)、board = 徽标裁决后计数、shop = 原始
+    阶段跳过帧按旧帧缺省 True)、board = 状态容器按现有上阵行算出的羁绊
+    计数(**不是本帧读数**:本漏斗不读羁绊面板,也不写上阵行,所以它可能
+    滞后本帧画面;没有对局上下文 = 空表,各阶段同一规则)、shop = 原始
     读牌列表(遗留 ShopCard 形态,与旧帧 shop 域同源)。读数域 None
     (离屏/店未开,三态契约)在本回执域归并为空载荷——回执只携带
     旧帧形态,三态区分归状态容器域 gs.shop.value。
@@ -2777,82 +2727,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                              source='settlement_vs_prep', plane=plane, round_num=round_num)
     else:
         streak_val = (read_streak(ctx, screen) or 0) if _w('streak') else 0
-    # board 双源(用户定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
-    # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集基础数据**,不受滚动/遮挡影响;
-    # 迁移审计裁决翻转):computed(tracked 全已知身份)仍是全集基础数据(滚出屏的阵营只有它
-    # 知道);但**可视区徽标行(左栏 OCR)是画面事实 —— 可视行计数与 computed 不等时以徽标为准
-    # 覆写**(迁移审计抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
-    # (overlay 遮挡/动画过渡,迁移审计overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
-    # 不裁不覆,保 computed 基础数据 + 保留证据(等下一帧备战帧再裁)。
-    # - OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号):备战帧同样采徽标覆入;
-    #   非备战帧保留证据不覆。
-    # - computed 有而 OCR 不可见 = 滚动截断(正常,不算错)。
-    # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_indexed_of_view,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of as _gso_board,
-    )
-    _gs_session = getattr(_match, 'session', None) if _match is not None \
-        else None
-    # computed 基础数据 = 主域 deployed 派生工作表(
-    # tracked 第二账停用,基础数据改主域派生;排归属由下标派生)。
-    _dep_work = (deployed_indexed_of_view(_gso_board(_gs_session).deployed.value)
-                 if _gs_session is not None else None)
-    _computed = board_from_deployed(_dep_work)
-    # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
-    # → 有 tracked 时保 computed 基础数据、无 tracked 时空板(与「OCR 全 miss」同语义)。
-    _bp, _board_honest = (
-        _board_pairs(ctx, screen, level, expected=_computed)
-        if _w('board') else ({}, False))
-    _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
-    board_val: dict[str, int]
-    if _computed is not None:
-        _needs_arbitration = any(_computed.get(_f) != _c for _f, _c in _ocr_board.items())
-        _prep_like = is_prep_like_frame(ctx, screen) if _needs_arbitration else True
-        # 裁决迁仲裁注册面(15 号稿本批;注册键 board_faction_count,标称类
-        # 帧态门):内核只产决策,保留证据行仍在此处按决策发出——行数/field/
-        # 新旧值/verdict 文本逐字节不变(零行为验收交叉核对)。
-        from sr_od.application.currency_war.obs.cw_arbitration import (
-            combine_board_frame_gated,
-        )
-        _merged, _decisions = combine_board_frame_gated(
-            badge_ocr=_ocr_board, computed=_computed,
-            prep_like=_prep_like, board_honest=_board_honest)
-        for _f, _kind, _take in _decisions:
-            _ocr_c = _ocr_board[_f]
-            _calc_c = _computed.get(_f)
-            if _kind == 'ocr_only':
-                if _take:
-                    obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed},
-                                 f'OCR有computed无:{_f}',
-                                 screen, verdict=('采新-badge(备战帧徽标=画面事实,tracked漏该阵营;'
-                                                  'W287 裁决翻转:徽标覆入 board;'
-                                                  '频发 >10 行/时→排查 tracked 身份漏认(_reconcile 漂移源)'),
-                                 source='computed_vs_ocr', faction=_f)
-                else:
-                    obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed},
-                                 f'OCR有computed无:{_f}',
-                                 screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
-                                                  '均不采信(W285 overlay 干扰 2/6 实证防新错);'
-                                                  '保 computed 基础值,留等备战帧再裁'),
-                                 source='computed_vs_ocr')
-            elif _take:
-                obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
-                             screen, verdict=('采新-badge(备战帧可视行徽标=画面事实,优先于身份'
-                                              ' computed;W287 裁决翻转(旧采 computed,W285 board '
-                                              '3/6 采错实证);频发 >10 行/时→排查对账纠漂链'),
-                             source='computed_vs_ocr', faction=_f)
-            else:
-                obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
-                             screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
-                                              '均不采信(W285 overlay 干扰 2/6 实证防新错);'
-                                              '保 computed 基础值,留等备战帧再裁'),
-                             source='computed_vs_ocr', faction=_f)
-        board_val = _merged
-    else:
-        board_val = _ocr_board
+    # 羁绊计数(board)不是本帧读数:状态容器按它现有的上阵行读时现算,各阶段
+    # 同一规则(本漏斗不读羁绊面板、不做仲裁、不写 board)。本漏斗不写上阵行,
+    # 所以它可能滞后本帧画面;没有对局上下文(局外/离线)= 空表。
+    board_val: dict[str, int] = (
+        dict(_caps_gs.board.value) if _caps_gs is not None else {})
     # active 双字段单一源 = gs(终态契约 §B:选择写点直写状态容器,session 份停用)。
     active_strategies_val: list[str] = []
     active_env_val = ''
@@ -3012,11 +2891,6 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             if _w('streak') and streak_val is not None:
                 gs.carry(gs.streak, frame=frame,
                          sig=_sig_carry)   # 结算带符号真值的跨帧沿用
-            if _w('board'):
-                if _board_honest and board_val:
-                    gs.observe(gs.board, dict(board_val), sig=_sig_read)
-                else:
-                    gs.carry(gs.board, frame=frame, sig=_sig_carry)
             if _w('shop_cards'):
                 if shop_val is not None:
                     # 定长 5 槽直写(三态裁定:read 产物即槽数组;买光=
@@ -3123,8 +2997,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 失读 unknown)的权威承载 = 状态容器域 gs.shop.value(上方 observe/carry/
     # leave_screen 写端已按三态适配);回执 = 旧帧形态逐字段镜像,
     # shop 域遗留形态本就是紧缩 [](空表 = 不在商店真值),消费方全为列表
-    # 真值/迭代语义,整合不丢语义。board 值域恒 dict(徽标裁决合并或 OCR
-    # 基础数据),or 同判 = 同口径防御。
+    # 真值/迭代语义,整合不丢语义。board 值域恒 dict(状态容器现算值,
+    # 没有对局上下文 = 空表),or 同判 = 同口径防御。
     return GameStateReadReceipt(
         gold=gold_val, gold_readable=gold_readable,
         hp=hp_val, hp_readable=hp_readable, hp_trusted=hp_trusted,

@@ -181,11 +181,6 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '走 observe 覆盖转正,T-45)+ 获得链删除分支(敌后破坏失效'
               '删除 + 退化形态的只供策略算分的实现分支取尾删除,均经 _select_write 择道随机态)'
               '+ 观察覆盖'),
-    'board': ProjectionAuditRow(
-        status=AUDIT_ABSORB_RULE,
-        basis='派生量:deployed 写端挂钩 _resync_board_delta'
-              ' 自动重算,禁独立手写 + 派生漂移观察覆盖采新'
-              '(board_derived_adopt,安灯不响);观察侧 badge OCR 双源仲裁'),
     'shop_refresh_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='刷新费现场 OCR(live)+ sim 开店呈现写回(观察通道,'
@@ -712,7 +707,6 @@ _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'bench': ('star_two_frame_gate',),
     'gold': ('settle_truth',),
     'deployed': ('deploy_slot_reorder', 'star_two_frame_gate'),
-    'board': ('_resync_board_delta', 'board_derived_adopt'),
     'node': ('_shop_panel_type_target',),
 }
 

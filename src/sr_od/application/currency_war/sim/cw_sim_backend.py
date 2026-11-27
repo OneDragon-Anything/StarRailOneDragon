@@ -2397,8 +2397,7 @@ class SimBackend:
         refresh_shop_randomized_pending_stamp(self.gs)
 
     # (事实事件订阅入口已停用删除:
-    #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
-    #  advance 步界 _observe_board_truth。)
+    #  懒呈现位 = screen_identity 问询时点检查。)
 
     # ------------------------------------------------------ 声明驱动推进
 
@@ -2487,7 +2486,6 @@ class SimBackend:
             # 承载,呈现走本分支尾的 pending 呈现检查。
             self._dismiss_modal()
         self._reconcile_next_screen(decl)
-        self._observe_board_truth()   # 步界板面真值观察(等值零写)
         # 步界装备库存坐标伴随域占位同步(环境快照通道;本步全部名单写
         # 落定后同步,下一决策帧发出面恒可得占位坐标——穿装参数面迁移
         # 申报 sim 占位同步必做面)。
@@ -5098,7 +5096,7 @@ class SimBackend:
         # 败局待办登记之前,胜败两态共同路径——卡面无「胜利」限定 =
         # 败局存活也武装;死亡局在本函数提前 return 处已出局,不武装)。
         # 条件单一源 = kernel check_strategy_bond_battle_grants(持卡 ∩
-        # 登记表 STRATEGY_BOND_BATTLE_GRANTS,激活羁绊数板面真值评估,
+        # 登记表 STRATEGY_BOND_BATTLE_GRANTS,激活羁绊数按上阵单位现算评估,
         # 达标写武装标记;采样与发放归下一节点窗开拍——desc「进入节点时
         # 获得」= 发放时点在节点窗非结算拍);sig = logic_sig('sim:strategy')
         # 沿策略战后发放效果条目同组;零 rng(武装拍零采样);幂等零新增守卫 =
@@ -5233,7 +5231,7 @@ class SimBackend:
         # logic 族签名由函数内构(observe/write_logic 渠道族互斥,
         # 详见常量注释);0 值金笔照发且一次性标志位照落(空场空席结构可达,
         # 一次性标志位与金笔同窗 = 「下一个」恰一次的载体);零 rng(条件全真值
-        # + 板面现读);幂等零新增守卫 = 本函数 _settled_key(同节点
+        # + 羁绊计数按上阵行现算);幂等零新增守卫 = 本函数 _settled_key(同节点
         # 重放整段跳过);live 零写观察覆盖(金由游戏自发入账,结算
         # 屏真值覆盖收束)。
         if won and kind == 'boss':
@@ -5316,37 +5314,6 @@ class SimBackend:
     # (巨星/planner 触发评估器与银狼全域星基线已停用:判据 = 状态容器值回调[cw_faction_callbacks],簿记 =
     #  ScreenChanges sidecar,呈现 = pending 检查。)
 
-    # ---------------------------------------------------------- 板面真值观察
-
-    def _observe_board_truth(self) -> None:
-        """板面真值观察(与实机「每备战帧面板观察」同契约;标签单一源
-        = kernel ``_row_unit_tags``,状态容器行全量重算)。
-
-        sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
-        派生挂钩跳过——步界全量重算真值观察 board(等值零写):承担
-        派生基座首读;sim 备战观察只写 node_path 无板面 obs 通道行写,
-        全域写路径现均经 write_logic(装备穿戴分支含)使派生挂钩常态
-        覆盖,本观察的漂移覆盖职责当前为防御性(基座首读为主要现役
-        职能)。失配经状态容器吸收面(``_absorb_board_derived``,sim 证据
-        前缀命中抑制面)以实际观察为准采新。触发点 = advance 步界(等值零写
-        幂等,sim 板面观察的唯一步界)。"""
-        truth: dict[str, int] = {}
-        _view = self.gs.deployed.value
-        for sub in (_view.front_slots if _view is not None else (),
-                    _view.back_slots if _view is not None else ()):
-            for unit in (sub or []):
-                if unit is None:
-                    continue
-                for tag in _row_unit_tags(unit):
-                    truth[tag] = truth.get(tag, 0) + 1
-        gs = self.gs
-        plane, r = self._node_pos()
-        if gs.board.value is not None and gs.board.value == truth:
-            return
-        gs.observe(gs.board, truth,
-                   evidence=sim_evidence(f'board:p{plane}r{r}'),
-                   sig=obs_sig(group_id='sim:board'))
-
     def _sync_owned_equip_xy_placeholders(self) -> None:
         """装备库存坐标伴随域占位同步(环境快照通道,写通道 = gs.observe,
         禁 write_logic——会把伴随域写成逻辑态,破坏 observe-vs-logic 失配
@@ -5391,7 +5358,7 @@ class SimBackend:
                 updated.setdefault(name, []).append((-1000 - k, -1000))
                 appended = True
         if not appended:
-            return   # 等值零写幂等(与板面真值观察同纪律)
+            return   # 等值零写幂等
         self.gs.observe(self.gs.owned_equip_xy, updated,
                         evidence=sim_evidence('equip_xy:placeholder'),
                         sig=obs_sig(group_id='sim:equip_xy'))

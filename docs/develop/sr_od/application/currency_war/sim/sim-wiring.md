@@ -22,7 +22,7 @@
 | 通道 | 适用面 | 载体 |
 |---|---|---|
 | obs（外部事件/状态副本里的值） | 状态副本分支 + 呈现分支的状态事实 | ①后端直接 obs 写点（`sim/cw_sim_base.py::sim_evidence` 证据族，`sim:` 前缀）；②观察生成器产物经 `kernel/cw_screen_report/report_screen_<snake>_obs` 落状态容器（与实机观察上报同一写通道） |
-| logic_action（动作应用） | 动作的字段转移全集，登记面 = 上报函数族域覆盖（gold/bench/shop/xp/level/deployed/board/equips;原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除,全集见各上报函数 docstring） | 动作 op 组装后直调 `kernel/cw_action_report/report_action_<snake>_param`（sim 与实机同一段 op 代码，零私有动作语义）；带随机的动作随机采样分支 rng 经 `install_backend` 注入（键形 `action/<tool>/<序号>`） |
+| logic_action（动作应用） | 动作的字段转移全集，登记面 = 上报函数族域覆盖（gold/bench/shop/xp/level/deployed/equips;原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除,全集见各上报函数 docstring） | 动作 op 组装后直调 `kernel/cw_action_report/report_action_<snake>_param`（sim 与实机同一段 op 代码，零私有动作语义）；带随机的动作随机采样分支 rng 经 `install_backend` 注入（键形 `action/<tool>/<序号>`） |
 | 节点推进 | 终结动作上报 | kernel `report_node_advance`（trigger 封闭集 {settle_confirm, supply_finish}），sim 与实机同源 |
 
 后端私有簿记（**不写状态容器**）：offer 去重集、overlay 队列、触发水位标志、随机流键坐标簿记、待授予候选下标、幂等守卫键、局结果面（`hp_trail`/`disclosures`）——实机不可观察的采样簿记按状态容器字段判据留后端私有（sim-design §5.1）。
@@ -40,7 +40,7 @@
 | pending_loss | 状态副本分支：`loss:pending` 战斗结算失败分支写；轮首败局补偿支消费后清账（`clear_pending_loss`） | 轮首收入败局补偿支输入 |
 | bench | 状态副本分支：opening 播种（M06 派生池首个写端）；动作分支：BuyCard 落位/合成连锁/SellBench 同实机 | 读口 `bench_view_slots_of`/`bench_entries_of`/`bench_units_of` + 派生 `bench_free_slots`/`bench_is_full` |
 | deployed | 动作分支：上报族 deployed 视图整值替换（同实机,一次写 = 一次完整语义快照）；状态副本分支无整值写点 | 读口 `deployed_rows_of`/`deployed_count_of` 等 |
-| board | 动作分支：v2 重算同实机；状态副本分支：后端板面真值观察（`SimBackend._observe_board_truth`，advance 步界等值零写） | 围栏判据/策略；overlay 判据计数真值（现役判据读 deployed 行，不读 board） |
+| board | 不写：board 是读时现算的派生值（`kernel/cw_game_state.py` 的 `board` 属性，按上阵行用 `kernel/cw_bond_equips.py::_recount_board` 现算），sim 与实机走同一段代码，没有注入点 | 围栏判据/策略；overlay 判据计数真值（现役判据读 deployed 行，不读 board） |
 | equips | 动作分支：穿戴/卖出同实机；状态副本分支：开箱选定走 kernel `gain_equipment`（producer = `SimBackend`，证据 `sim:box_pick`）+ 环境条件发放：结算分支连胜触发（`check_env_streak_grants`，`logic_sig('sim:env')`，库存尾追加 `write_logic_rand`，证据 `env_grant#<环境>#streak<阈值>`） | 装备分配消费面 |
 | shop | 状态副本分支：`shop:deal` 节点切换自动全刷（kernel `sample_shop_deal` 单一源，整店锁跳过）；动作分支：刷新采样/买牌槽置换/CloseShop 离屏同实机 | 策略决策面（payload.cards 三态消费） |
 | shop_locked | 状态副本分支：reset 初值恒 False（`shop_lock:v1_unlocked`；v1 无锁动作通道，字段先行 + 披露） | M05 全刷跳过判据 |
@@ -72,7 +72,7 @@ gold 未读 = 0、back_layout 未读 = 机制基线 6），禁消费点自写兜
 
 表示申报：阵营不入状态容器——Unit 只存 char_id，阵营经角色注册表派生
 （Unit 只存 char_id,阵营不入状态容器）；后端围栏记账（巨星评估器计数等）用的
-阵营计数在本地由槽表现算，状态容器 board 域写经重算单一源，细节归代码注释。
+阵营计数在本地由槽表现算；状态容器的 board 同样是按上阵行现算的派生值，没有写入点。
 
 ## 四、保真标记（状态容器语义吸收）
 
@@ -112,8 +112,7 @@ readable/trusted 标记恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消�
 
 不引发画面转移的状态副本变化不经订阅通道：overlay 判据 = kernel 值回调
 （`kernel/cw_faction_callbacks.py`，deployed 逻辑写尾内联，sim/实机同源，
-见 [sim-design.md](sim-design.md) §4.1）；板面真值观察 =
-`SimBackend._observe_board_truth`（advance 步界，等值零写）。
+见 [sim-design.md](sim-design.md) §4.1）。board 是读时现算的派生值，后端不注入。
 
 ## 羁绊口径分层（board 统计语义单一源声明）
 
@@ -121,6 +120,6 @@ readable/trusted 标记恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消�
 
 | 层 | 内容 | 消费方 | 状态 |
 |---|---|---|---|
-| L1 纯羁绊全集 | 角色标签：factions+schools+independent，开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | 两侧同源（实机 `obs/cw_observation.py::board_from_tracked` 与 kernel `cw_bond_equips._recount_board`/`unit_bond_tags` 单一源标签；后端板面基座与巨星评估器消费同源重算） |
-| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」（净效果无条件 +1） | board_from_tracked（实机）、Unit.equips（sim 同款字段）、win_features faction_counts | 落地（equips 消费链通，穿戴/获得动作分支同实机回写） |
+| L1 纯羁绊全集 | 角色标签：factions+schools+independent，开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | 两侧同源（kernel `cw_bond_equips._recount_board`/`unit_bond_tags` 单一源标签；后端围栏与巨星评估器消费同源重算） |
+| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」（净效果无条件 +1） | `_recount_board`（经 `unit_bond_tags` 把装备授予的羁绊计入；实机与 sim 同一段代码）、Unit.equips、win_features faction_counts | 落地（equips 消费链通，穿戴/获得动作分支同实机回写） |
 | L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | 战力模型特征面 | 未建（需求件 = sim-power-model.md） |

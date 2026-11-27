@@ -33,22 +33,21 @@ gs.owned_equip_xy 为单一坐标源,字段注释逐类声明)。
 
 字段多由测试构造/重放档案填充;未填(None/默认)时决策安全降级。
 
-**board 模型**(口径统一):
-- ``board`` = 已上阵羁绊计数(**全集口径**:factions+schools+independent+星徽装备
-  贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;观察真值 =
-  游戏左面板,观察侧双源仲裁;口径 = 羁绊全集,非主阵营单标签)。
-- 状态容器 GameState 中 board = **派生量**(禁独立手写):front_row/back_row
-  行写端挂钩 ``GameState._resync_board_delta`` 增量重算;派生漂移由观察
-  覆盖采新(board_derived_adopt,失配告警不响——派生量以观察为真值源)。
-  未知身份单位(注册表外/OCR 误读)在状态容器派生路径**零贡献**(Unit 不存
-  阵营,禁 faction 双源),其面板羁绊经观察覆盖采新入账;
-  ``cw_bond_equips._recount_board`` 的 faction 兜底归其 faction 字段
-  载体(装备授予/sim 后端板面基座刷新),非状态容器路径口径。
+**board 模型**(羁绊计数,口径统一):
+- ``board`` = 已上阵羁绊计数(**全集口径**:factions+schools+independent+装备
+  授予的羁绊,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;计数方式
+  查羁绊注册表,「只数三星」的羁绊只计三星及以上的单位;口径 = 羁绊全集,
+  非主阵营单标签)。
+- 状态容器 GameState 中 board **不落字段,读时按上阵行现算**:读口 =
+  ``GameState.board``(只读属性,``.value`` 取值),算法单一源 =
+  ``cw_bond_equips._recount_board``,输入 = 前排单位 + 后排单位的全子表。
+  没有写者,也没有画面读数;未知身份单位(char_id 空 / '?' / 不在注册表)
+  **零贡献**(Unit 不存阵营,禁 faction 双源)。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
-  已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
+  已上阵的优先角色 + 站位分流。deployed 按 ``unit_bond_tags`` 聚合就是 board。
 - CwActionMoveUnitParam 更新 deployed(统一拖动:bench/场上全域,槽位
-  落位 = 载荷直落,目标槽有人 = 交换交互);board 不独立写(状态容器侧
-  随行写端挂钩重算)。
+  落位 = 载荷直落,目标槽有人 = 交换交互);board 随 deployed 读时现算,
+  没有独立的写入。
 - CwActionBuyCardParam 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations

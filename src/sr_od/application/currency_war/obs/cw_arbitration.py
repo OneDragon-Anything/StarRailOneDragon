@@ -9,7 +9,7 @@
 注册表 defect_kind 字段退役;分歧证据现役归宿 = obs_conflict 证据行。)
 
 **本批严格零行为变更**:迁移语义不变性由交叉核对测试(注册面语义/迁移
-交叉核对:deployed 全格交叉核对 + board 分歧帧×帧态矩阵)钉死;裁决值/schema
+交叉核对:deployed 全格交叉核对)钉死;裁决值/schema
 锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,交叉核对不校验)。
 
 量纲四类:count(计数,朝声明方向取值或弃权)/nominal(标称,优先级+
@@ -91,41 +91,7 @@ def combine_deployed_count(paddle_x: int | None,
     return min(paddle_x, cv_occupied), abs(paddle_x - cv_occupied) > 1
 
 
-def combine_board_frame_gated(badge_ocr: dict[str, int],
-                              computed: dict[str, int],
-                              prep_like: bool,
-                              board_honest: bool) -> tuple[dict[str, int], list[tuple[str, str, bool]]]:
-    """board 阵营计数帧态门仲裁内核(标称类②画面事实优先 + 帧态门,行 8)。
-
-    - computed(tracked 身份全集)= 基础数据;badge_ocr(可视区徽标 OCR)= 画面
-      事实,分歧时备战帧覆写(裁决翻转);
-    - 非备战帧/动画帧(``prep_like``/``board_honest`` 任一为假):双源皆不
-      可信 → 不裁不覆保基础数据(overlay 干扰 2/6 实证防新错);
-    - badge 有 computed 无 = tracked 漏阵营(强信号),备战帧同样覆入。
-
-    :return: ``(merged, decisions)``;decisions = ``[(faction, kind, take_badge)]``
-        按 badge_ocr 迭代序,kind ∈ ``'ocr_only'``(badge 有 computed 无)/
-        ``'count_mismatch'``(计数不等),take_badge = 该分歧是否覆写。
-        保留证据(obs_conflict)由调用方按 decisions 发出(本内核纯裁决零副作用)。
-    """
-    merged = dict(computed)
-    decisions: list[tuple[str, str, bool]] = []
-    for faction, ocr_c in badge_ocr.items():
-        calc_c = computed.get(faction)
-        if calc_c is None:
-            take = prep_like and board_honest
-            decisions.append((faction, 'ocr_only', take))
-            if take:
-                merged[faction] = ocr_c
-        elif calc_c != ocr_c:
-            take = prep_like and board_honest
-            decisions.append((faction, 'count_mismatch', take))
-            if take:
-                merged[faction] = ocr_c
-    return merged, decisions
-
-
-# ===== 注册表(本批迁移两量;fail_closed_side 依据均为已定案实证)=====
+# ===== 注册表(fail_closed_side 依据均为已定案实证)=====
 
 register(ArbitrationRule(
     key='deployed_count',
@@ -141,30 +107,6 @@ register(ArbitrationRule(
                       '例外:超限态(paddle>cap)采 paddle——Δ=占 2 光环持有者的额外占用,'
                       'CV 看不见规模;cap 未知退回取低值(cap 为辅助输入不入 sources)'),
 ))
-
-register(ArbitrationRule(
-    key='board_faction_count',
-    dim_class=DIM_NOMINAL,
-    sources=['badge_ocr', 'computed'],
-    combine=lambda badge_ocr, computed, prep_like, board_honest:
-        _board_rule_combine(badge_ocr, computed, prep_like, board_honest),
-    band=0,
-    obs_field='board',
-    fail_closed_side=('非备战帧/动画帧双源弃权,保 computed 基础值(帧态门;'
-                      'W285 overlay 干扰 2/6 实证);备战帧徽标覆写'
-                      '(W287 裁决翻转:徽标=画面事实)'),
-))
-
-
-def _board_rule_combine(badge_ocr: dict[str, int], computed: dict[str, int],
-                        prep_like: bool, board_honest: bool,
-                        ) -> tuple[dict[str, int], bool]:
-    """:func:`combine_board_frame_gated` 的 (value, divergent) 投影
-    (arbitrate 三元组形态用;decisions 细节 = 同一 ``combine_board_frame_gated``
-    调用的第二返回值)。divergent = 存在任一分歧 faction(无论是否覆写)。"""
-    merged, decisions = combine_board_frame_gated(
-        badge_ocr, computed, prep_like, board_honest)
-    return merged, bool(decisions)
 
 
 # ===== 统一裁决入口=====

@@ -12,6 +12,12 @@
   去重(与上一帧相同则跳过)。战斗过场/动画帧不采(无法结构化提取)。
 - **结构化提取**:命中帧立即调 ``read_game_state`` + SIFT 身份(``read_deployed_rows`` /
   ``read_bench_view``)→ 一条 JSONL(帧文件名 + 全部字段);离线分析不用再跑识别。
+- **羁绊计数(`board`)**:只在备战族关键帧记录(识别标志「备战阶段」或「收起」,见
+  :data:`PREP_ANCHORS`),值 = 用本帧 SIFT 读出的上阵行现算
+  (``cw_bond_equips._recount_board``,与状态容器的 ``GameState.board`` 同一个算法)。
+  **商店开着时(标志「收起」)不可靠**:上阵行被牌行遮挡,board 与同一条记录的
+  ``deployed`` 一样只是被遮挡的子集算出来的值;上阵行没读出来的帧记空表。
+  其余关键帧(结算/团灭/补给/刷新概率/简报)一律记空表。
 - 帧文件与 JSONL 同目录(``.debug/temp/currency_war/recording/<session>/``)。
 
 用法(项目根, uv run):
@@ -29,6 +35,9 @@ from pathlib import Path
 
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_bond_equips import (
+    _recount_board,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
@@ -56,6 +65,10 @@ KEY_ANCHORS: tuple[str, ...] = (
     '敌人难度',      # 简报(难度值)
 )
 
+#: 备战族关键帧的识别标志(= KEY_ANCHORS 里的「备战阶段」「收起」两项):羁绊计数
+#: board 只在这些帧按本帧上阵行现算,其余关键帧记空表。
+PREP_ANCHORS: tuple[str, ...] = ('备战阶段', '收起')
+
 _REC_ROOT = Path('.debug/temp/currency_war/recording')
 
 
@@ -71,8 +84,12 @@ def match_anchor(texts: str) -> str | None:
     return None
 
 
-def extract_frame(ctx, img, templates) -> dict:
-    """关键帧 → 结构化记录(识别全量;失败字段安全默认,不抛)。"""
+def extract_frame(ctx, img, templates, anchor: str | None = None) -> dict:
+    """关键帧 → 结构化记录(识别全量;失败字段安全默认,不抛)。
+
+    :param anchor: 本帧命中的关键识别标志(:func:`match_anchor` 的返回值)。
+        羁绊计数 ``board`` 只在备战族标志(「备战阶段」「收起」)下记录,其余记空表。
+    """
     rec: dict = {'ts': datetime.now().isoformat(timespec='seconds')}
     try:
         # round_caps = 场字段现值(实时态语料接入调用:修饰局 r10/r8
@@ -109,10 +126,11 @@ def extract_frame(ctx, img, templates) -> dict:
                        level=st.level,
                        # level 保真位透传(False=纯 _expected_level 启发式兜底,非真读)
                        level_readable=bool(getattr(st, 'level_readable', True)),
-                       board=dict(st.board),
                        bench_full=bool(bench_is_full(_gs)) if _gs is not None else False)
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')
+    front_hits: list = []
+    back_hits: list = []
     try:
         front_hits, back_hits = read_deployed_rows(ctx, img, templates)
         rec['deployed'] = [
@@ -122,6 +140,12 @@ def extract_frame(ctx, img, templates) -> dict:
         rec['deployed_n'] = len(rec['deployed'])
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] deployed 提取失败: {e}')
+    # 羁绊计数按本帧读出的上阵行现算(不取回执的 board:采集器独立进程、没有对局
+    # 上下文,回执里是空表)。只在备战族关键帧算;上阵行没读出来 = 空表。
+    rec['board'] = (
+        _recount_board([u for hits in (front_hits, back_hits)
+                        for _s, u in hits])
+        if anchor in PREP_ANCHORS else {})
     try:
         view = read_bench_view(ctx, img, templates)
         rec['bench'] = [] if view is None else (
@@ -181,7 +205,7 @@ def record_live(session: str = '', interval: float = 0.8) -> None:
                 ts = datetime.now().strftime('%H%M%S')
                 fname = f'{ts}_{anchor}.png'
                 cv2_utils.save_image(img, str(out / fname))
-                rec = extract_frame(ctx, img, templates)
+                rec = extract_frame(ctx, img, templates, anchor)
                 rec['frame'] = fname
                 rec['anchor'] = anchor
                 with jsonl.open('a', encoding='utf-8') as f:
@@ -219,7 +243,7 @@ def replay_dir(dir_path: Path) -> None:
             img = cv2_utils.read_image(str(p))
             texts = _ocr_texts(ctx, img)
             anchor = match_anchor(texts) or 'unknown'
-            rec = extract_frame(ctx, img, templates)
+            rec = extract_frame(ctx, img, templates, anchor)
             rec['frame'] = p.name
             rec['anchor'] = anchor
             f.write(json.dumps(rec, ensure_ascii=False) + '\n')

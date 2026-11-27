@@ -10,7 +10,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无画面 op——部署 = 备战决策环动作 `CwActionDeployMoveOp`(`CwActionDeployMoveParam`,注册表已登记行;备战访问执行面经注册表 `action_op_for` 分派,原 `prep_actions.py::PrepActionExecutor._deploy_move` 薄委托已随死代码清偿移除) | 动作发出核 = `strategies/impl/mandate_v1/mandate.py` R2〔原子部署〕步的动作发出点逐帧发序 | 自上报 `report_action_deploy_move_param`(`kernel/cw_action_report/deploy_move.py`;bench→deployed 槽位平移 + board 维护) | 否(非终结,`terminal=False`):部署序在备战决策环内消化,机械执行零判效,落地归下一帧观察对账、拖拽静默未生效由决策循环按新观察自然重派;本访问不因部署终结,结束本次访问由备战画面 op(`CwScreenPrep`)自身出口承载 |
+| 无画面 op——部署 = 备战决策环动作 `CwActionDeployMoveOp`(`CwActionDeployMoveParam`,注册表已登记行;备战访问执行面经注册表 `action_op_for` 分派,原 `prep_actions.py::PrepActionExecutor._deploy_move` 薄委托已随死代码清偿移除) | 动作发出核 = `strategies/impl/mandate_v1/mandate.py` R2〔原子部署〕步的动作发出点逐帧发序 | 自上报 `report_action_deploy_move_param`(`kernel/cw_action_report/deploy_move.py`;bench→deployed 槽位平移) | 否(非终结,`terminal=False`):部署序在备战决策环内消化,机械执行零判效,落地归下一帧观察对账、拖拽静默未生效由决策循环按新观察自然重派;本访问不因部署终结,结束本次访问由备战画面 op(`CwScreenPrep`)自身出口承载 |
 
 部署拖点坐标全部来自备战建档(`货币战争-备战.备战栏-N` → `货币战争-备战.前排-N`/`货币战争-备战.后排-N` 中心,`DragCwChar.drag_char` 中心拖 + hold0)。
 
@@ -20,7 +20,7 @@
 | 围栏常量与共用判定谓词 | `kernel/cw_deploy_logic.py`(`recipe_floor_holds`/`select_swap_plan`/`residual_fill_plan`) |
 | 动作类型清单 | `kernel/cw_vocab.py::CwActionDeployMoveParam`(槽位表下标 0 基) |
 | 拖拽执行 | `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(原语 = `operations/dev/drag_cw_char.py::DragCwChar.drag_char`,中心拖 + hold0) |
-| 部署逻辑态 | `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench→deployed 槽位平移 + board 维护) |
+| 部署逻辑态 | `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench→deployed 槽位平移) |
 | 落地对账 | 备战环下一帧入口观察(以实际观察为准;星级抖动门/两态仲裁驻 `kernel/cw_reconcile.py`) |
 | 后排布局选档 | `obs/cw_back_layout.py::select_back_layout`(cap 差公式;未知态写类冻结) |
 | deployed 计数双源仲裁 | `obs/cw_observation.py::arbitrate_deployed_count`(取低值 fail-closed;cap 已知且 X > cap 的超限态不取低值、直接采 X——X 是团队规模占用数,CV 只数单位看不见规模;cap 未知退回取低值;内核 `obs/cw_arbitration.py::combine_deployed_count`) |
