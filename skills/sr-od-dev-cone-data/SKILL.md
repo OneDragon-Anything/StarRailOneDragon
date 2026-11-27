@@ -34,9 +34,12 @@ description: 维护崩坏:星穹铁道「光锥数据」全流程的单一入口
 | 代码文件 | 方式 | 操作 | 验证判据 |
 |---|---|---|---|
 | `src/sr_od/mys/sr_light_cones.py` | 脚本生成 | `uv run python skills/sr-od-dev-cone-data/scripts/build_light_cones.py`（读两个 wiki 缓存 + 现模块冻结文本,直产常量模块） | `resolve_light_cone('<新光锥名>')` 命中且 id/星级/命途正确；ruff 不新增违规 |
+| `src/sr_od/config/light_cone_ascension_const.py` | 脚本生成 | `uv run python skills/sr-od-dev-cone-data/scripts/generate_light_cone_ascension_const.py`（BWIKI 逐光锥页逐页抓取，约几分钟） | 内置锚点校验与解析数下限，不符即拒绝生成；生成后过目 diff |
+| `src/sr_od/config/light_cone_material_const.py` | 脚本生成 | BWIKI「光锥晋阶材料一览」页 HTML 先存 `.debug/temp/bwiki_lc_materials.html`（EdgeOne 反爬，重拉需浏览器级请求），再 `uv run python skills/sr-od-dev-cone-data/scripts/generate_light_cone_material_const.py` | 生成后过目 diff |
 | `sr-od-test/test/sr_od/mys/test_sr_light_cones.py` | 手动 | 总数、空 id 白名单、基准值（含 id 基准）随版本同步改 | 相关测试全量通过 |
 
 - 生成器纪律：常量数据块**禁手改**（修正走重新生成）；生成后**人工审阅 diff**——新增词条逐条过目，文本漂移报告确认冻结语义符合预期。
+- 养成材料两表源 = BWIKI（官方 wiki 无结构化突破数据，实证在 `generate_light_cone_ascension_const.py` docstring），版本更新后同样重跑刷新。
 - 实机验证：账号抽到新光锥后，在装备替换列表/详情页识别验证（识别手法归装备域）；未抽取则提交信息注明。
 
 ## 3. 图标获取与归档
