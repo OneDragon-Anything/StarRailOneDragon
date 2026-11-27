@@ -21,7 +21,12 @@
 不按位置落到变更后画面(旧数据 screen=目标画面语义 → 位置归属回退);
 章内状态差分因果归属 = ``logic_action`` 家族写入行挂其后最近回执的
 动作节(动作的效果写入先于其回执落盘;组尾无回执认领 → 章内变化块;
-非 logic_action 非 obs 写入挂组内最近动作节);章内
+非 logic_action 非 obs 写入挂组内最近动作节);board 写入行自己不入变化表
+——变化表里的 board 行是派生行:后值 = 写入行快照的 ``values.board``,前值
+= 基线(流水里上一条带快照的写入行的 board),两者不同才出行,注记
+「(派生)」;进了变化表的写入行,派生行紧跟该行;非观察族的 board 写入行
+(动作效果挂钩行)的派生行回挂到它前面最近一条进表的写入行后面(见
+:class:`_BoardDeriver`);章内
 「0 观察 = 开章快照 ∩ 注册键集(表格型键出独立表:备战章上阵表
 紧贴备战席表前,余同备战席/商品牌面/选项面)+ 本章观察道写入动态
 显影(画面 op 观察到什么本章显什么,首写定帧值;注册键回读与观察
@@ -1195,6 +1200,106 @@ def _precompute_prevs(rows: list[dict[str, Any]]) -> dict[int, Any]:
 
 
 # ---------------------------------------------------------------------------
+# board 派生行(变化表里 board 行的唯一来源)
+# ---------------------------------------------------------------------------
+
+
+def _board_table(v: Any) -> dict[str, Any]:
+    """board 快照值 → 羁绊计数表(缺键/非字典 = 空表)。"""
+    return v if isinstance(v, dict) else {}
+
+
+def _board_in(row: dict[str, Any]) -> dict[str, Any] | None:
+    """带快照的写入行 → 快照里的 board(快照在上阵字段有值时才带 board 键;
+    缺键 = 空表);不带快照的行 → None(它的 board 不可知,不动基线)。"""
+    st = row.get('state')
+    if not isinstance(st, dict) or not isinstance(st.get('values'), dict):
+        return None
+    return _board_table(st['values'].get('board'))
+
+
+def _precompute_prev_boards(
+        rows: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """全局 ts 序单遍:带快照的写入行 idx → 基线(本行之前最近一条带快照的
+    写入行,其快照里的 board;之前没有 = 空表)。
+
+    观察族和逻辑族都算,进没进变化表都算:基线是流水的行间差分基准,与显示
+    无关。不带快照的行不动基线。
+    """
+    prev_of: dict[int, dict[str, Any]] = {}
+    base: dict[str, Any] = {}
+    for i, r in enumerate(rows):
+        if row_kind(r) != ROW_WRITE:
+            continue
+        board = _board_in(r)
+        if board is None:
+            continue
+        prev_of[i] = base
+        base = board
+    return prev_of
+
+
+class _BoardDeriver:
+    """board 派生行生成器(变化表里 board 行的唯一来源)。
+
+    board 是上阵单位的派生值(读时现算,口径见 skill
+    ``references/game-state.md``)。board 写入行自己不出变化行,变化表里的
+    board 行一律由行间差分得出:后值 = 本行快照 board,前值 = 基线
+    (:func:`_precompute_prev_boards`),两者不同才出行,说明列「(派生)」。
+    - 进了变化表的写入行::meth:`attach`,派生行紧跟该行;
+    - 被排掉的非观察族 board 写入行(动作效果的挂钩行,快照 board 比它的
+      因果行晚一步才变)::meth:`attach_dropped`,派生行回挂到它前面最近一条
+      进了变化表的写入行后面;锚点失效 → 当前章的章内变化块;
+    - 被排掉的观察族 board 写入行:只推进基线(预计算已计),不出行。
+    """
+
+    def __init__(self, prev_of: dict[int, dict[str, Any]]) -> None:
+        self._prev_of = prev_of
+        #: 回挂锚点 = (所在列表, 那条变化行);列表内容被整体搬走后按身份
+        #: 找不到那条变化行 = 锚点失效
+        self._anchor: tuple[list[Delta], Delta] | None = None
+
+    def forget_anchor(self) -> None:
+        """新章组开始时调用:回挂锚点只在因果行所在的章组内有效(挂钩行在
+        流水里紧跟因果行,两者同组;跨组还留着锚点,派生行会插进别的组的表)。"""
+        self._anchor = None
+
+    def attach(self, sink: list[Delta], delta: Delta, row: dict[str, Any],
+               idx: int) -> None:
+        """进入变化表的写入行:变化行入它的容器(动作节变化行列表 / 待认领效果
+        缓冲 / 章内变化块,三者都按追加序落表)并成为锚点;快照 board ≠ 基线
+        → 紧跟一条 ``(派生)`` 行。"""
+        sink.append(delta)
+        self._anchor = (sink, delta)
+        board = _board_in(row)
+        prev = self._prev_of.get(idx, {})
+        if board is None or board == prev:
+            return
+        sink.append(Delta(field='board', before=prev, after=board,
+                          note='(派生)'))
+
+    def attach_dropped(self, scr: Screen, row: dict[str, Any],
+                       idx: int) -> None:
+        """被排掉的非观察族 board 写入行:快照 board ≠ 基线 → 派生行插到锚点
+        后面(同一个列表、紧跟那一条);锚点不在 → 追加到当前章的章内变化块。"""
+        board = _board_in(row)
+        prev = self._prev_of.get(idx, {})
+        if board is None or board == prev:
+            return
+        derived = Delta(field='board', before=prev, after=board,
+                        note='(派生)')
+        sink, at = scr.trailing_changes, len(scr.trailing_changes)
+        if self._anchor is not None:
+            lst, obj = self._anchor
+            pos = next((i for i, d in enumerate(lst) if d is obj), None)
+            if pos is not None:
+                sink, at = lst, pos + 1
+        sink.insert(at, derived)
+        # 锚点改指这条派生行:连续多条挂钩行时,后一条的派生行排在前一条后面
+        self._anchor = (sink, derived)
+
+
+# ---------------------------------------------------------------------------
 # 画面章切分 + 章内动作差分(pipeline §4/§5,单遍构建)
 # ---------------------------------------------------------------------------
 
@@ -1294,10 +1399,12 @@ def _action_title(receipt: dict[str, Any]) -> str:
 
 
 def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
-                 prev_of: dict[int, Any], idx: int, sec: Section) -> None:
+                 prev_of: dict[int, Any], idx: int, sec: Section,
+                 board: _BoardDeriver) -> None:
     """单行入章:动作基准 / 状态变化 / 尾注(pipeline §5;render-spec §5)。
 
-    ``sec`` = 所属章组(动作节章归属回搜与效果差分缓冲的承载面)。
+    ``sec`` = 所属章组(动作节章归属回搜与效果差分缓冲的承载面);
+    ``board`` = board 派生行生成器(进入变化表的写入行在此派生 board 行)。
     """
     kind = row_kind(row)
     if kind == ROW_OBS_EVENT:
@@ -1401,6 +1508,15 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
             scr._obs_seen.add(key)
             scr.annots.append(f'观察: {field_cn(f)}={brief}')
         return
+    if f == 'board':
+        # board 写入行自己不进变化表(变化表里的 board 行只由行间差分派生)。
+        # 走到这里的都是非观察族(观察族已在上面返回)= 动作效果的挂钩行,
+        # 它的快照 board 比因果行晚一步才变 → 派生行回挂到锚点后面。
+        # 未注册画面 op 的行不回挂:它的因果行(同一个 op 写的上阵行)本来就不
+        # 进变化表(下方 unreg 分支),回挂只会把羁绊变化挂到不相干的行后面
+        if not unreg:
+            board.attach_dropped(scr, row, idx)
+        return
     prev_pack = prev_of.get(idx)
     if isinstance(prev_pack, tuple):
         before, from_chain = prev_pack
@@ -1424,7 +1540,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
     if f == 'settlement':
         # 结算走章内变化块(render-spec §3 战斗章注册行:结算不入 0 观察,
         # 也不作动作效果挂动作节——它是结算读数)
-        scr.trailing_changes.append(delta)
+        board.attach(scr.trailing_changes, delta, row, idx)
         return
     if unreg:
         # 未注册画面 op 的非 obs 行:一律走尾注显示(pipeline §4「挂当前
@@ -1434,14 +1550,14 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         # 动作效果因果归属:效果写入先于其回执落盘 → 缓冲,待该动作回执
         # 行到达时入其动作节(修「效果显影滞后一节」);组尾无回执认领的
         # 由 _build_section 尾扫入章内变化块
-        sec._pending_deltas.append(delta)
+        board.attach(sec._pending_deltas, delta, row, idx)
         return
     # 非 logic_action 非 obs 写入(效果钩子等派生事实):非动作因果 →
     # 挂组内最近动作节(无则章内变化块)
     if sec._last_action is not None:
-        sec._last_action.deltas.append(delta)
+        board.attach(sec._last_action.deltas, delta, row, idx)
     else:
-        scr.trailing_changes.append(delta)  # 章内变化块(无归属前缀写入行)
+        board.attach(scr.trailing_changes, delta, row, idx)  # 章内变化块(无归属前缀写入行)
 
 
 def _opening_note(row: dict[str, Any]) -> str:
@@ -1462,7 +1578,8 @@ def _opening_note(row: dict[str, Any]) -> str:
     if kind != ROW_WRITE:
         return ''
     f = str(row.get('field') or '—')
-    if f == 'receipts' or row.get('same_value') is True:
+    if f in ('receipts', 'board') or row.get('same_value') is True:
+        # board 写入行不入桶,同变化表:board 行只由快照差分派生(_BoardDeriver)
         return ''
     if row.get('after') in (None, ''):
         # 空值/空串不入账(空值跳过防御:sim 广播对 prev_screen 首行
@@ -1493,14 +1610,16 @@ def _is_opening_unattributed(row: dict[str, Any]) -> bool:
 
 def _build_section(kind: str, node: NodeInfo | None,
                    rows: list[tuple[int, dict[str, Any]]],
-                   prev_of: dict[int, Any]) -> Section:
+                   prev_of: dict[int, Any],
+                   board: _BoardDeriver) -> Section:
     """一个组的画面切分 + 章内容构建(组首行恒开章,基线 = 组边界)。
 
     rows 元素 = (全局行序 idx, 行)——idx 是 _precompute_prevs 前值链的键。
     开局组(kind='open')的无画面归属行落组级注记桶(pipeline §3 修订),
-    不参与画面章切分。
+    不参与画面章切分。``board`` = 跨组共用的 board 派生行生成器。
     """
     sec = Section(kind=kind, node=node)
+    board.forget_anchor()
     opening = kind == 'open'
     base: Screen | None = None
     cur: Screen | None = None
@@ -1523,12 +1642,14 @@ def _build_section(kind: str, node: NodeInfo | None,
         if opened:
             sec.screens.append(cur)
         cur.annots.extend(notes)
-        _consume_row(r, cur, opened, prev_of, idx, sec)
+        _consume_row(r, cur, opened, prev_of, idx, sec, board)
     # 组尾扫尾:无回执认领的挂起效果写入(组末动作的效果在组边界前落盘、
     # 回执随节点翻转行归入下一组等形态)→ 最后画面章章内变化块(防静默
-    # 丢行);挂起区跨章时归最后章(罕见形态,可见性优先于章精确)
+    # 丢行);挂起区跨章时归最后章(罕见形态,可见性优先于章精确)。
+    # 搬走即清空,与回执认领两处同纪律:board 回挂锚点指向这里时随之失效
     if sec._pending_deltas and sec.screens:
         sec.screens[-1].trailing_changes.extend(sec._pending_deltas)
+    sec._pending_deltas.clear()
     for s in sec.screens:
         # 未注册画面 op 聚合尾注(pipeline §4「挂尾注 + 记缺口」;同章同
         # actor 一条带计数,按 actor 名排序保确定性)
@@ -1737,6 +1858,7 @@ def build_report(rows: list[dict[str, Any]], stats: JournalReadStats, *,
             _join_strategy_telemetry(report, strategy)   # 无章可归属 → 全量未归属
         return report
     prev_of = _precompute_prevs(ordered)
+    board = _BoardDeriver(_precompute_prev_boards(ordered))
     first_node_idx = len(ordered)
     for i, r in enumerate(ordered):
         if node_key_of(r) is not None:
@@ -1758,17 +1880,17 @@ def build_report(rows: list[dict[str, Any]], stats: JournalReadStats, *,
             report.annex_unattached.append(_annex_brief(r))
     if open_rows:
         report.sections.append(
-            _build_section('open', None, open_rows, prev_of))
+            _build_section('open', None, open_rows, prev_of, board))
     for key in sorted(node_map):
         grp = node_map[key]
         kind_raw = node_kind_of(grp[0][1])  # kind 钉死组内首行(pipeline §2)
         node = NodeInfo(plane=key[0], round=key[1],
                         kind_cn=NODE_KIND_CN.get(kind_raw, kind_raw or '?'))
         report.sections.append(
-            _build_section('node', node, grp, prev_of))
+            _build_section('node', node, grp, prev_of, board))
     if unattached:
         report.sections.append(
-            _build_section('unattached', None, unattached, prev_of))
+            _build_section('unattached', None, unattached, prev_of, board))
     if strategy is not None:
         report.strategy = strategy
         _join_strategy_telemetry(report, strategy)
@@ -1817,9 +1939,8 @@ def _entry_lines(entry: list[tuple[str, Any]],
                 out.extend(_deployed_lines(v))
             continue
         if f == 'board':
-            if isinstance(v, dict) and v:
-                out.append(f"- {field_cn('board')} "
-                           + '、'.join(f'{k}×{n}' for k, n in v.items()))
+            if isinstance(v, dict):
+                out.append(f"- {field_cn('board')} {_board_brief(v)}")
                 continue
         if f == 'spheres':
             line = _spheres_line(v)

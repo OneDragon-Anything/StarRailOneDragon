@@ -609,6 +609,10 @@ class OutcomeRecord:
     # 板深粗代理 = Σ人数(下界),精确在场数 = state.deployed 占用数
     # (decisions 帧)。读端拿它做板深校准时按人次口径降权
     # (telemetry-reading「已知缺口」同一判据)。
+    # 口径断点(数据格式说明):提交 3a59ab4c9 起,对局记录里的 board 取自状态
+    # 容器按上阵行现算的羁绊计数(快照键 ``state.values.board``;逐轮表的
+    # board 列与本字段同源);此前的记录是画面面板读数与计算值合并后的值。
+    # 跨这个断点比对或混用数据时要知道口径不同。
     board_before: dict[str, int] = field(default_factory=dict)   # 战前 {阵营:人数}
     bench_count: int = 0               # 战前 bench 数(板深第二维;占用数口径)
     # —— 迁移审计(行来源标记,镜像 RunSummary.source/惯例):''=结算屏真值行;

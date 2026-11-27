@@ -30,8 +30,8 @@ uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [
 ### 阵容质量(三维,缺一即盲判)
 | 字段 | 标记点 | 复盘问题 |
 |---|---|---|
-| board | journal `board` 写入行(羁绊计数「名×计数」) | 羁绊档位构成;配方成型进度 |
-| board_next_tier | 无独立键(按 `board` 行间差分自算) | 距下档几人(差一人没凑上=供给问题) |
+| board | 快照 `state.values.board` 的行间差分(每条写入行的快照都带这个键;羁绊计数「名×计数」,按上阵行算出、不读画面;状态流水里没有 `board` 写入行) | 羁绊档位构成;配方成型进度 |
+| board_next_tier | 无独立键(按 `board` 快照的行间差分自算) | 距下档几人(差一人没凑上=供给问题) |
 | deployed(char_id/star/equips/槽位) | journal `deployed` 写入行(前排/后排分列,单位「名★级」+装备) | 核心在场吗(空壳档位);星级演进(核心 2★ 何时到);装备归属(carry 拿 key_equips 了吗/乱穿);**站位**(前排数 vs 设计) |
 | bench | journal `bench` 写入行(槽位表) | bench 囤什么(压缩件/final 囤件/滞留件);席满管理 |
 | equips(owned) | journal `equips`/`occupied_equips` 写入行 | 装备滞留/合成材料囤积 |
@@ -117,7 +117,7 @@ uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [
 0. **判读前先确定标准——两种判读两套标准,别混**:**单局复盘**(打得对不对)用玩法恒常标准(配方纪律/经济纪律/响应纪律/已证命题,协议=[match-review.md](match-review.md));**验证当期改动(A/B)**用当期进度追踪文件目标行判据(没写判据=先补写再判读)+ strategy-work「验证」——**HP 从来不是验收指标,拿 HP 当验收=目标函数错**;
 1. **局后判读一律读状态流水/档案直读**:`--recent N` 概览 → `--match <game_id>` 锁定目标局看视图;`--run` 流查询仅局中实时定位用(早停/哨兵/卡死——游戏还在跑,档案未生成)。**结束值以 match_final 行(局终行)为准:中途行快照的血量不是结束值,那之后还打了仗**;
 2. **hp 视图**看轨迹(journal `hp` 写入行序列;注定不达标的局按早停纪律反思为什么没早停);存量旧档案 hp 真值序列(hp_pay 事件行/段界重锚/终局兜底)的 schema 9 判读口径见上节——新局该派生序列为空,数据面现状注见节首;
-3. **阵容三维扫一遍**(羁绊档位×角色构成×装备分配):journal `board`/`deployed`/`bench`/`equips` 写入行直读(渲染报告 0 观察/章内变化同数据;CLI 无独立 tiers 视图,已随旧视图族拆除);
+3. **阵容三维扫一遍**(羁绊档位×角色构成×装备分配):`board` 读各条写入行快照里的 `state.values.board`、行间差分,`deployed`/`bench`/`equips` 读 journal 写入行(渲染报告 0 观察/章内变化同数据;CLI 无独立 tiers 视图,已随旧视图族拆除);
 4. **gold 视图**看滞留/收入核对(金币行间差分);**购买对错**读 journal `shop` 写入行(全波牌面,商店章牌面表)+ `BuyCard` 回执行(实付动作;渲染动作节已带金差分)——旧 `shop_snapshots`/`actions` 流已停写;
 5. **events** 视图观察事件行(obs_event)逐条定位根因（定位不了不进下一局）——旧 anomalies 视图已随旧流拆除；冲突/异常证据面 = journal 行型 2 直读（obs_conflicts 历史行 = 冻结档案只读）；
 6. 视图外维度按需取:优先 journal 行间差分(行行自足,直查 `state/journal.jsonl`);「决策流程明细」(pair/意向/姿态)旧流已停写、新数据面未落地,暂只能从回执 `reason`/`detail` 与状态变化时序侧面读;仍不够的「为什么/如果」问题走**回放**(用当期代码对档案状态现算,单帧测试同款机制)——不为此读流;
