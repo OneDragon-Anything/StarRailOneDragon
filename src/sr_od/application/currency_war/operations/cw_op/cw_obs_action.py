@@ -13,7 +13,7 @@
 
 ⚠️ 读屏点规范的已登记例外:op-layer §1.1「显式读屏只在观察 node」自本 op
 起增设动作通道例外——决策环内仅策略显式发出 CwActionObs 才触发读屏,
-其余路径仍零读屏(循环内零读屏不变量改述见 flow/action_exec.md §3)。
+其余路径仍零读屏(循环内零读屏不变量改述见 skills/sr-od-dev-currency-war/references/flow/action-op.md §1)。
 非终结。
 """
 from __future__ import annotations
@@ -80,7 +80,7 @@ class CwActionObsOp(CwOperation):
         if self.param.scope not in OBS_SCOPES:
             # scope 值域闭集校验(单一源 = cw_vocab.OBS_SCOPES;outer_loop
             # 口径在决策循环入口分支拦截,到不了本 op——此处拦派发路径的
-            # 拼错值),守卫断言响亮暴露(flow/action_ops.md §1 决策侧参数
+            # 拼错值),守卫断言响亮暴露(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数
             # 现算契约)。
             raise AssertionError(
                 f'CwActionObsParam scope={self.param.scope!r} 非法'

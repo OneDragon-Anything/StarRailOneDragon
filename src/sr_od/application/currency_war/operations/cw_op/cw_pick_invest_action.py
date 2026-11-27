@@ -54,7 +54,7 @@ class CwActionPickInvestOp(CwOperation):
     裁决词 = '投资环境'/'投资策略' 组装面),op 类体内零决策(瞄准定位
     查找非决策,屏名按宿主 ``env.op`` 屏类解析)。
 
-    **即时上报**(action_ops.md §1 用户裁定):机械链发出后
+    **即时上报**(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 用户裁定):机械链发出后
     立即按 param 类型自上报完整结果并写入 game state(策略 →
     ``gain_invest_strategy`` 整链;环境 → ``gain_invest_env`` 整链);
     无分步、无落地证据等待——确认未生效 = 代码 bug,归点击链可靠性

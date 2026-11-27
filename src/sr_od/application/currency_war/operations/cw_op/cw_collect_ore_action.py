@@ -65,7 +65,7 @@ class CwActionCollectOreOp(CwOperation):
         env = self.env
         ex = env.executor
         if not action.points:
-            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 参数违法由 op 自判(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算
             # 契约):空载荷 = 挑选面无对象(挑选归决策侧 kernel 单一源),
             # 守卫断言响亮暴露零点击。
             raise AssertionError(

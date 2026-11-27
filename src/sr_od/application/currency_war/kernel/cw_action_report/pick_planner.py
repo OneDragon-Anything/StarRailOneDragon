@@ -1,7 +1,7 @@
 """货币战争动作上报:银狼策划「我来当策划」选择(report_action_pick_planner_param)。
 
-**即时单相上报**(行为权威版本 = `flow/action_ops.md` §4.5 PickPlanner 行;
-用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
+**即时单相上报**(行为权威版本 = `skills/sr-od-dev-currency-war/references/flow/action-op.md` §5 PickPlanner 行;
+用户裁定 2026-09-21 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1 增补 2:动作 op
 点完就立即上报,按成功把结果写进 game state):``CwActionPickPlannerOp``
 确认点击后一口写完整效果逻辑态,无发出/落地两相、无证据标志。写序:
 
@@ -65,7 +65,7 @@ _PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
 _LV999_ID: str = '银狼LV.999'   # 变换窗/级联/档行身份名(cw_chars 规范名)
 
 def _decl(gs: GameState) -> WorldDecl:
-    """银狼策划声明构造(正本 = flow/action_ops.md §4.8 声明终值表 #11;next_screen = 当前节点屏,
+    """银狼策划声明构造(正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §4 声明终值表 #11;next_screen = 当前节点屏,
     推导单一源 = ``node_screen_now``;trigger 封闭集单一源 = sim 后端
     advance 分派表键集,值零新词沿用现役动作名)。"""
     return WorldDecl(next_screen=node_screen_now(gs),

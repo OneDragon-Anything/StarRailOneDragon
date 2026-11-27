@@ -4,7 +4,7 @@
 退出残留/开局自动弹出等一切来源的位面详情 → 点 X 验标题消失。此前不在
 分发名单的教训(残局恢复局,「新增画面忘进名单」结构性缺口):
 结构性收敛的现役落点 = kernel/cw_overlay_registry.py 模块头(单一枚举点);
-分发侧操作纪律 = flow/outer_loop.md §2.2(新增画面 = 建档 + 处理器分支 +
+分发侧操作纪律 = skills/sr-od-dev-currency-war/references/flow/loop.md §2(新增画面 = 建档 + 处理器分支 +
 CW_DISPATCH_SCREENS 登记,三处缺一不可)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;

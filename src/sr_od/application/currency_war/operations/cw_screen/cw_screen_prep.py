@@ -1170,7 +1170,7 @@ class CwScreenPrep(CwOperation):
                 return self.round_success('本帧无动作(Obs:outer_loop),交回外循环重观察', wait=1.0)
             action = result
             # 参数守卫 = 各动作 op 内守卫断言(集中式 validate 已退役,
-            # flow/action_ops.md §1 决策侧参数现算契约):违法经执行异常
+            # skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算契约):违法经执行异常
             # 通道(:817 except → round_fail)上抛,拒绝语义同由断言消息
             # 在日志里暴露,本环零前置校验分支。
             key = action_key(action)
@@ -1323,7 +1323,7 @@ class CwScreenPrep(CwOperation):
         if op_cls is CwActionOpenShopOp:
             # 显式开店路径在本执行体内完成完整商店访问(开→访问→收店)
             # 后已回备战帧;仅访问失败路径店开态返回主循环重新识别
-            # (正本 = flow/action_ops.md §4 OpenShop 行:受限仲裁路径已停用,开店 = 唯一普通形态)。
+            # (正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §5 OpenShop 行:受限仲裁路径已停用,开店 = 唯一普通形态)。
             return self.round_success(f'{key} ✓,交回外循环重识别',
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionOpenBoxOp:
@@ -1338,7 +1338,7 @@ class CwScreenPrep(CwOperation):
         if op_cls is CwActionOpenBookcardOp:
             # 开卡终结(用户裁定 2026-09-19 动作发出点迁策略器 entry ① 卡片分支,
             # 原画面 op 入口清场代返回通道撤销):弹专家邀请函 = 新事实 →
-            # 本访问交回,外循环按画面分发 CwScreenExpertInvite 选卡(分发判定单一源 = flow/outer_loop.md §2.2)。
+            # 本访问交回,外循环按画面分发 CwScreenExpertInvite 选卡(分发判定单一源 = skills/sr-od-dev-currency-war/references/flow/loop.md §2)。
             return self.round_success(f'{key} ✓(交回:专家邀请函弹窗分发)',
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionSynthesisConfirmOp or op_cls is CwActionSynthesisCancelOp:
@@ -1383,7 +1383,7 @@ class CwScreenPrep(CwOperation):
                     f'透传):{_detail_lbu}', wait=1.0)
             return None
         if isinstance(action, CwActionOpenShopParam):
-            # 开店 = 唯一普通形态(正本 = flow/action_ops.md §4 OpenShop 行:受限访问截流分支
+            # 开店 = 唯一普通形态(正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §5 OpenShop 行:受限访问截流分支
             # 已停用;受限会话进出店 = 本普通路径,访问内消费由策略
             # 侧自限)。
             _, detail = self._open_shop_phase()
@@ -1611,7 +1611,7 @@ class CwScreenPrep(CwOperation):
         (两 node 规范形态)节点函数直驱(观察 node 恰一次 → 决策动作
         node round_wait 循环至终结;不经框架 execute 循环——轮间零截图,
         决策循环零读屏纪律)。出参交接契约(正本 =
-        flow/action_ops.md §2.1):失败判定 =
+        skills/sr-od-dev-currency-war/references/flow/action-op.md §1):失败判定 =
         轮结果 ``is_success``(False = 未识别卡停机/未观察熔断的
         round_fail);执行账 = ``op.ledger.total_*``。节点行观察已归备战
         观察域(正本 = flow/projection_contract.md 备战观察行,本备战环 heavy 观察消费),访问返回主循环,零额外动作。

@@ -270,7 +270,7 @@ class CwLoop(CwOperation):
     起点:货币战争-备战画面(对局已开始);终点:对局结束(结算完成回大厅/大厅入口)。
 
     每轮分发(两阶段形态,as-built =
-    flow/outer_loop.md §2):
+    skills/sr-od-dev-currency-war/references/flow/loop.md §2):
     阶段一 画面身份分发(get_match_screen_name 清单形态,判据 = 各画面
     建档 id_mark 组合)→ _dispatch_identity_screen 精确键派发;
     阶段三 特殊规则(无独立画面档/身份不可表达:道具详情/消耗品浮层/
@@ -1534,7 +1534,7 @@ class CwLoop(CwOperation):
             # kind('bookcard')进状态容器 bench 字段,开卡动作由策略器 entry ① 卡片分支
             # 发出(终结动作,结束本次访问语义不变);外循环只保留画面识别分派
             #(书册卡开出的专家邀请函弹窗选卡 = 阶段一身份行「货币战争-备战-专家邀请函」分发
-# CwScreenExpertInvite,分发判定单一源 = flow/outer_loop.md §2.2)。
+# CwScreenExpertInvite,分发判定单一源 = skills/sr-od-dev-currency-war/references/flow/loop.md §2)。
             # (「试用角色揭示卡」= 动画帧误判的幻影机制 定案撤销,
             # 已证伪标记见 cw_identity_obs;勿再为它接入调用。)
             def _on_prep_round(ok: bool, res: Any) -> None:

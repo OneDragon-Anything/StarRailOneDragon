@@ -1,6 +1,6 @@
 """货币战争动作上报:投资策略选择(report_action_pick_invest_strategy_param)。
 
-即时上报形态(action_ops.md §1 用户裁定增补 2:选择动作执行按成功处理,
+即时上报形态(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 用户裁定增补 2:选择动作执行按成功处理,
 点完立即上报把结果写进 game state):动作 op 机械链(点选中 → 点确认)
 发出后调用本函数,一次调用 = 完整结果写入——整支走获得链
 ``gain_invest_strategy``(无效载荷拒绝 → active_strategies 按名字去重
@@ -29,7 +29,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
-#: 投资策略声明的推进分派类别(正本 = flow/action_ops.md §4.8 声明终值表 #8;封闭集单一源 = sim 后端
+#: 投资策略声明的推进分派类别(正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §4 声明终值表 #8;封闭集单一源 = sim 后端
 #: advance 分派表键集,值零新词沿用现役动作名)。
 _DECL_TRIGGER: str = 'pick_invest_strategy'
 

@@ -110,7 +110,7 @@ class CwActionSellBenchOp(CwOperation):
         # —— 点位现读(screen_info 静态档;零截图零识别零 gs)——
         pts = row_area_centers(self.ctx, '备战栏', screen_name=_screen_name)
         if not (0 <= idx < len(pts)):
-            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 参数违法由 op 自判(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算
             # 契约):越界 = 决策逻辑 bug,守卫断言响亮暴露零拖拽(禁兜底
             # 坐标/禁负下标回环);len(pts)==0 = 画面档缺失/档案损坏
             # (建档漂移哨,同断言响亮暴露)。

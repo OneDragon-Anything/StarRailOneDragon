@@ -13,7 +13,7 @@ round_fail 显式失败交外循环重派,fallback 盲发路径废除——裁�
 ``CwActionPickInvestOp`` 派发(pick-op-unify 批机械链迁入动作 op;
 派发实例携归一名,词表 = CwActionPickInvestStrategyParam 屏别独立类)
 → **round_success 结束本次访问**(选完即返回主循环,用户裁定;确认未生效
-= 代码 bug,归点击链可靠性治理,不设防重复/等待——action_ops.md §1
+= 代码 bug,归点击链可靠性治理,不设防重复/等待——skills/sr-od-dev-currency-war/references/flow/action-op.md §1
  即时上报契约)。
 
 逐卡刷新 = 终结动作(用户裁定,照投资环境屏同款形态):
@@ -238,7 +238,7 @@ class CwScreenInvestStrategy(CwOperation):
 
         选卡链派发后本访问即终结返回主循环(选完即结束本次访问,用户裁定
     ;确认未生效 = 代码 bug,overlay 残留由外循环按当前
-        画面重识别重派,修法 = 点击链可靠性,action_ops.md §1)。"""
+        画面重识别重派,修法 = 点击链可靠性,skills/sr-od-dev-currency-war/references/flow/action-op.md §1)。"""
         obs = self._obs
         return self._decide_and_act(obs)
 

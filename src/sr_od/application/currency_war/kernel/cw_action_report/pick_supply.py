@@ -1,7 +1,7 @@
 """货币战争动作上报:补给节点选择(report_action_pick_supply_param)。
 
-**即时单相上报**(行为权威版本 = `flow/action_ops.md` §4.5 PickSupply 行;
-用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
+**即时单相上报**(行为权威版本 = `skills/sr-od-dev-currency-war/references/flow/action-op.md` §5 PickSupply 行;
+用户裁定 2026-09-21 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1 增补 2:动作 op
 点完立即上报完整结果):``CwActionPickSupplyOp`` 确认点击后一口写全部
 效果逻辑态,无发出/落地两相、无证据标志。写序:
 

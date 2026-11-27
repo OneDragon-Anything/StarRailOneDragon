@@ -1,6 +1,6 @@
 """货币战争-开商店 动作原语(直调体;动作 op 规范形态)。
 
-规范 = flow/action_ops.md §1 裁定原文:动作 op 是机械执行——把动作
+规范 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1 裁定原文:动作 op 是机械执行——把动作
 发出去 + 如实上报动作事实,禁验证、禁重试、禁判断。生产路径 =
 ``cw_screen_prep._open_shop_phase`` 直调 :func:`open_shop`(宿主 op
 复用其 round_by_* 判定与测试替身桩;返回值弃置,调用方不问成败)。
@@ -57,7 +57,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
     sim 下点击经端口 click_answer 受理即已发出(状态副本推进通道,见分支内注),
     恒按已发出簿记(reason='')。
     """
-    # 动作 op 规范(action_ops.md 裁定原文):机械执行 + 发出即记账,禁验证/重试。
+    # 动作 op 规范(skills/sr-od-dev-currency-war/references/flow/action-op.md 裁定原文):机械执行 + 发出即记账,禁验证/重试。
     clicked = op.round_by_find_and_click_area(
         op.screenshot(), '货币战争-备战', '按钮-商店').is_success
     if cw_sim_ports.mechanical_io_allowed():

@@ -1,9 +1,9 @@
-"""货币战争 结算确认动作 op(规范 = flow/action_exec.md §2.1 触发点 1;
+"""货币战争 结算确认动作 op(规范 = skills/sr-od-dev-currency-war/references/flow/action-op.md §4 触发点 1;
 screens/op-layer.md §2.1 画面框 op 形态;跃迁判定 = kernel
 report_node_advance)。
 
 非策略动作面(不经动作注册表、无 CwAction param;画面框 op 惯例形态,
-动作 op 规范 = flow/action_ops.md §1)。职责 = 点击「货币战争-结算/按钮-继续挑战」
+动作 op 规范 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1)。职责 = 点击「货币战争-结算/按钮-继续挑战」
 (含长按兜底的点击力学)→ ``report_node_advance(
 trigger='settle_confirm')`` → 返回。
 

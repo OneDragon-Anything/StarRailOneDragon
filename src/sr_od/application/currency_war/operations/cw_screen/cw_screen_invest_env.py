@@ -9,12 +9,12 @@
 ``report_screen_invest_env_obs`` 落状态容器(候选 ``invest_env_opts`` 值域 =
 标准注册名 + ``env_refresh_left`` 观察写端)→ obs 挂实例属性。决策动作
 node = 零参决策(候选自状态容器槽;空候选/无有效输出 = round_fail 显式失
-败,零盲发 = op-layer.md §1.1 + action_ops.md §1)→ 环境帧刷新
+败,零盲发 = op-layer.md §1.1 + skills/sr-od-dev-currency-war/references/flow/action-op.md §1)→ 环境帧刷新
 判据可发整组重掷(结束本次访问)∨ 点**最优**卡底 + 确认链经
 ``CwActionPickInvestOp`` 派发(上报纯 idx,名字自状态容器标准名单一源)→
 **round_success 结束本次访问**(选完即结束本次访问 = op-layer.md §1.1;确认未生效
 = 代码 bug,overlay 残留由外循环按当前画面重识别重派,修法 = 点击链
-可靠性——action_ops.md §1  即时上报契约)。
+可靠性——skills/sr-od-dev-currency-war/references/flow/action-op.md §1  即时上报契约)。
 
 环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须返回主循环重新观察;
 结构语义 = screens/op-layer.md §1.4):决策返回 ``refresh_slots`` 非空 ∧
@@ -239,7 +239,7 @@ class CwScreenInvestEnv(CwOperation):
 
         选卡链派发后本访问即终结返回主循环(选完即结束本次访问 = op-layer.md
         确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
-        识别重派,修法 = 点击链可靠性,action_ops.md §1)。"""
+        识别重派,修法 = 点击链可靠性,skills/sr-od-dev-currency-war/references/flow/action-op.md §1)。"""
         obs = self._obs
         return self._decide_and_act(obs)
 
@@ -264,7 +264,7 @@ class CwScreenInvestEnv(CwOperation):
         门已保证值域 = 标准注册名)→ 环境刷新终结动作(obs 余量授权 +
         状态容器 env_refresh_left)→ 点最优卡底 → 确认链派发(动作 op 内
         即时上报)→ round_success 结束本次访问。空候选/决策无有效输出 =
-        round_fail 显式失败(零盲发 = op-layer.md §1.1 + action_ops.md
+        round_fail 显式失败(零盲发 = op-layer.md §1.1 + skills/sr-od-dev-currency-war/references/flow/action-op.md
         「没有选到就是代码 bug」);无 match 局外不设早退支
         (画面 op 不支持局外单独调用——op-layer.md §1.1;用户裁决
         全族删门)。"""

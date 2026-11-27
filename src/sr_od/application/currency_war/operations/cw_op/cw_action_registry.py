@@ -243,7 +243,7 @@ def action_op_class_for(action: Action) -> type[SrOperation]:
 
     消费面 = 终结判定与 ``terminal``/``terminal_wait`` 类属性读取
     (消费点经注册表读类属性,禁消费点私表)与执行器/商店落地门的
-    (ctx, param, env) 组装构造(op 形态权威版本 = action_ops.md §1);
+    (ctx, param, env) 组装构造(op 形态权威版本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1);
     行序语义同构造 helper。
     词表外类型 AssertionError 响亮暴露(语义:非法返回
     = 策略器 bug,禁静默跳过;文案中性,注册表现跨域共用)。"""
@@ -260,7 +260,7 @@ def action_op_for(action: Action, ctx: SrContext, env: object) -> SrOperation:
     (ctx, param, env) 组装,新壳构造签名)。
 
     消费面 = overlay act 段(经工厂分派保持「意图类型 → 点击链」单一
-    映射);执行器/商店落地门按 op 形态权威版本(action_ops.md §1)直接走
+    映射);执行器/商店落地门按 op 形态权威版本(skills/sr-od-dev-currency-war/references/flow/action-op.md §1)直接走
     ``action_op_class_for(action)(ctx, action, env=...)``。env 形参 =
     域执行环境结构化包(运行时不检查,项目既有风格)。词表外类型
     AssertionError 响亮暴露(语义同上)。"""

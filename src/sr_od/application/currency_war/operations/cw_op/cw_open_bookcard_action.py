@@ -24,7 +24,7 @@ detail——拒单 = 腾位账未落但点击已发生,**禁补点**(补点会�
 终结动作(开卡时机归策略器,动作发出点 = entry ① prep 实体面卡片分支,
 screens/README §5.5):点完开启即引入新事实(专家邀请函弹窗在场)→
 本动作终结返回主循环,弹窗由外循环按画面分发 ``CwScreenExpertInvite``
-选卡(分发判定单一源 = flow/outer_loop.md §2 阶段一身份分发)。
+选卡(分发判定单一源 = skills/sr-od-dev-currency-war/references/flow/loop.md §2 阶段一身份分发)。
 """
 from __future__ import annotations
 

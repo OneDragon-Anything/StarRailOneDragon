@@ -13,7 +13,7 @@
 生产调用点(0n 转交与显式开店同口 ``cw_screen_prep.visit_open_shop``、
 ``run_operation`` 单跑)构造本类并节点函数直驱(不经框架 execute 循环,
 决策循环轮间零截图)。出参交接契约(正本 =
-flow/action_ops.md §2.1):失败判定 = 轮结果
+skills/sr-od-dev-currency-war/references/flow/action-op.md §1):失败判定 = 轮结果
 ``is_success``;执行账 = 实例 :attr:`CwScreenShop.ledger`(run 完成
 后有效)。节点行观察已归备战观察域(正本 =
 flow/projection_contract.md 备战观察行,宿主 =
@@ -531,7 +531,7 @@ class CwScreenShop(CwOperation):
         """单动作 round_wait 循环(每轮恰一动作;循环内零读屏,帧不消费)。
 
         全动作统一路径零特例拦截零闸:受限消费政策 = 策略侧自限
-        (正本 = flow/action_ops.md §4 OpenShop 行,决策入口提案后经谓词检);本循环零政策闸。
+        (正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §5 OpenShop 行,决策入口提案后经谓词检);本循环零政策闸。
         """
         from sr_od.application.currency_war.kernel.cw_vocab import (
             CwActionCloseShopParam,

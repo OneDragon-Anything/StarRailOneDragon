@@ -1,6 +1,6 @@
 """货币战争动作上报:投资环境选择(report_action_pick_invest_env_param)。
 
-即时上报形态(action_ops.md §1 用户裁定增补 2):动作 op 机械链发出后
+即时上报形态(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 用户裁定增补 2):动作 op 机械链发出后
 调用本函数,一次调用 = 完整结果写入——整支走获得链 ``gain_invest_env``
 (active_env 注册 + portal 登记 + ``on_env_gained`` 环境赠卡效果枚举,
 权威版本 = kernel/cw_gain_chain.py 模块 docstring)。
@@ -38,7 +38,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
-#: 投资环境声明的推进分派类别(正本 = flow/action_ops.md §4.8 声明终值表 #7;封闭集单一源 = sim 后端
+#: 投资环境声明的推进分派类别(正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §4 声明终值表 #7;封闭集单一源 = sim 后端
 #: advance 分派表键集,值零新词沿用现役动作名)。
 _DECL_TRIGGER: str = 'pick_invest_env'
 

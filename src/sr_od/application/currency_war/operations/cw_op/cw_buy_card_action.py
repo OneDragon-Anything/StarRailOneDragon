@@ -71,7 +71,7 @@ class CwActionBuyCardOp(CwOperation):
         action: CwActionBuyCardParam = self.param
         env = self.env
         op, ledger, state = env.op, env.ledger, env.state
-        # 点击定位解析恰两档 = 契约(action_exec.md §4 / action_ops.md
+        # 点击定位解析恰两档 = 契约(skills/sr-od-dev-currency-war/references/flow/action-op.md §5 / skills/sr-od-dev-currency-war/references/flow/action-op.md
         #同口径):①payload 定长槽阵列身份同一性(action 由决策核自
         # payload 产出,`is` 匹配)②(name, star) 退化。槽号主源 = payload
         # 定长槽阵列位置(三态模型:数组下标+1 = 物理槽)。card.slot 旧档
@@ -101,7 +101,7 @@ class CwActionBuyCardOp(CwOperation):
         _slot_no = _slot_no_matched
         if _slot_no is None:
             # 槽解析失败(①②双未命中)= payload 无此牌 = 提案数据 bug:
-            # 参数违法由 op 自判(action_ops.md §1 决策侧参数现算契约 /
+            # 参数违法由 op 自判(skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算契约 /
             # 坐标裁定域),守卫断言响亮暴露,零兜底点击。
             raise AssertionError(
                 '商店牌槽解析失败:slot_no=None'

@@ -7,7 +7,7 @@
 
 统一拖动(部署统一批,用户指令 2026-10-30):四元组全域移动,
 字段写侧按「源域 × 目标域 × 目标槽占用态」写分支(推演矩阵正本 =
-flow/action_exec.md §1 统一动作清单「MoveUnit」行):
+skills/sr-od-dev-currency-war/references/flow/action-op.md §2 统一动作清单「MoveUnit」行):
 - bench→场上空槽 = 直落(锁校验 + 银狼变换窗 + 开拓者形态);
 - bench→场上被占槽 = 交换(被占者回 bench 源槽;锁校验辖上场者);
 - 场上→场上 = 纯换位(目标被占 = 场上互换;**无锁无变换**);

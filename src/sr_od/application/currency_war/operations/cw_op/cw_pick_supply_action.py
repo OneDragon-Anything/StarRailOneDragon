@@ -75,7 +75,7 @@ class CwActionPickSupplyOp(CwOperation):
     刷新圆钮机械点击留在画面 op(刷新链 = 刷新建议动作
     ``CwActionRefreshSupplyParam`` 的执行半)——pick execute 语义 =
     点卡选中 → 确认,不含刷新分支。
-    **即时上报**(契约单一源 = `flow/action_ops.md` §1  与
+    **即时上报**(契约单一源 = `skills/sr-od-dev-currency-war/references/flow/action-op.md` §1  与
     PickSupply 行):确认点击后立即一口写全部效果逻辑态(owned 规范名
     + 单位入账分支 + 装备后果分支),无到账登记、无落地证据标志——确认未生效 =
     代码 bug,overlay 残留由外循环按当前画面重识别重派。"""

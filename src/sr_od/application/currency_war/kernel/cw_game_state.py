@@ -1497,7 +1497,7 @@ def note_action_receipt(gs: GameState, *, op: str,
       已退役族(terminal-fail-status 批):``未生效:*``(弹窗收尾检查
         删除,直接使用自然异常)、``槽解析失败``/``槽号越界``(visit
         落地门整表退役)——参数违法类改 op 内守卫断言 AssertionError
-        (action_ops.md §1 决策侧参数现算契约),不产回执。
+        (skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算契约),不产回执。
       「已开幂等」类目无现役供给点(零供给,再现先登记词表再使用);
       detail = 机械执行摘要(做了什么的人读面,恒透传);extra = 执行面
       结构化字段(plan_truncated/refresh_skipped/blocked 等,
@@ -4803,7 +4803,7 @@ _NODE_ADVANCE_ACTORS: dict[str, str] = {
     'supply_finish': 'CwActionStartBattleParam',
 }
 
-#: node_advance 声明的推进分派类别(正本 = flow/action_ops.md §4.8 声明终值表 #1/#2;
+#: node_advance 声明的推进分派类别(正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §4 声明终值表 #1/#2;
 #: 值零新词沿用归并过程名,封闭集单一源 = sim 后端 advance 分派表键集)。
 _NODE_ADVANCE_DECL_TRIGGER: str = 'node_advance'
 

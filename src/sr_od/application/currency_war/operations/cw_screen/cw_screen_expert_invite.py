@@ -9,7 +9,7 @@ prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 
 或 +4 金 → 弹窗关回备战。
 
 处理链(开卡半 = 备战词表 ``CwActionOpenBookcardParam`` 链承接;弹窗由外
-循环阶段一身份分发进本 op,分发判定单一源 = ``flow/outer_loop.md`` §2.2):
+循环阶段一身份分发进本 op,分发判定单一源 = ``skills/sr-od-dev-currency-war/references/flow/loop.md`` §2):
   弹窗在场门 → 选卡(读板面阵营 → 默认策略选卡)→ 机械部分完成即结束本次访问(落地复查收案)。
   交互事实来源 = 2026-08-30 实机人工处理实录(点槽开弹窗;点停云卡 → 弹窗关、
   回备战、停云入商店)。
@@ -115,7 +115,7 @@ class CwScreenExpertInvite(CwOperation):
     起点:货币战争-专家邀请函弹窗出现;终点:选卡且弹窗已关闭(返回主循环)。
 
     入口态单一 = 弹窗已开(外循环阶段一身份分发,分发判定单一源 =
-    ``flow/outer_loop.md`` §2.2;开卡半 = 备战词表
+    ``skills/sr-od-dev-currency-war/references/flow/loop.md`` §2;开卡半 = 备战词表
     ``CwActionOpenBookcardParam``,见模块 docstring)。
     """
 

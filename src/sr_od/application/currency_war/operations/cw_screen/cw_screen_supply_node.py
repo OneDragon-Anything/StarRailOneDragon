@@ -70,7 +70,7 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 落状态容器 ``supply``(空 = 读缺零点击终结路径,闸在 report 内)→ obs 挂
 实例属性进决策 node。决策动作 node = 空候选零点击终结 / 刷新终结 /
 选卡派发,全部出口终结本访问(点击发出后即结束本次访问权威版本 =
-`screens/op-layer.md` §1.1、`flow/action_ops.md` §4.5:动作 op 确认
+`screens/op-layer.md` §1.1、`skills/sr-od-dev-currency-war/references/flow/action-op.md` §5:动作 op 确认
 点击后立即上报完整结果,零落地复查、零旧机制补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏 sim 分支 =
 观察分支(生成器产物经同名 report 落状态容器)+ 决策链(obs 载体两态同构)+
@@ -301,7 +301,7 @@ class CwScreenSupplyNode(CwOperation):
         节点完成)→ success 交还外层。动作出口两态全终结:空候选零点击
         终结交回;刷新点钮后结束本次访问(外循环重进 = 入口重建);选卡
         经动作 op 确认点击后立即上报完整结果,派发即 round_success 终结
-        (权威版本 = `screens/op-layer.md` §1.1、`flow/action_ops.md` §4.5,
+        (权威版本 = `screens/op-layer.md` §1.1、`skills/sr-od-dev-currency-war/references/flow/action-op.md` §5,
         零重入裁决、零旧机制补写面);对照闸拒绝防线 = 实机 round_fail /
         sim 零点击终结。"""
         if not self._in_node(self.last_screenshot):

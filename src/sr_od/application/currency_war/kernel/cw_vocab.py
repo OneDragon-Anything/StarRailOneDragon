@@ -329,7 +329,7 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     clicks: int = 1
-    # 本动作携带的购买击数(整批发出形态;正本 = flow/action_ops.md §4 BuyCard 行
+    # 本动作携带的购买击数(整批发出形态;正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §5 BuyCard 行
     # 单帧原子:判据同帧重评后一次发整批,实付上界 = 发射时授权值)。
     # 缺省 1 = 单击形态(逐帧单击发出的兼容值;执行器按本字段连点)。
     auth_basis: str = ''
@@ -1138,7 +1138,7 @@ class CwActionPickSupplyParam:
     装备布局,既有构造点零变化)。
     三字段不入动作实例键(归因载荷不改变动作身份,``route_tag`` 先例);
     动作 op 确认点击后立即上报,按实际开出内容应用(单位入账分支 + 装备入账分支
-    0..n 件 + 后果链,即时单相;正本 = flow/action_ops.md §1「点完即写」)。
+    0..n 件 + 后果链,即时单相;正本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1「点完即写」)。
     """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽

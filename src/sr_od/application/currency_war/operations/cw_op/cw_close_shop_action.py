@@ -3,7 +3,7 @@
 执行体 = 机械关店(找「按钮-收起」:miss = 定位缺失,动作未发出;
 命中 = 点击 + 固定等待)+ 自上报 ``report_action_close_shop_param``
 (leave_screen 结构离屏清场,两出口同调)。零转移验证,落地归下一帧
-观察侧对账(flow/action_ops.md §1)。
+观察侧对账(skills/sr-od-dev-currency-war/references/flow/action-op.md §1)。
 """
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ class CwActionCloseShopOp(CwOperation):
         备战);round data 携带声明(journal 记账面)。
         """
         # 「按钮-收起」融合判定点击(动作 op 体内点击目标定位 = 瞄准,
-        # flow/action_ops.md §1 已登记允许形态)。
+        # skills/sr-od-dev-currency-war/references/flow/action-op.md §1 已登记允许形态)。
         if not self.round_by_find_and_click_area(
                 self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             _note_receipt(self, '定位缺失(按钮-收起)')

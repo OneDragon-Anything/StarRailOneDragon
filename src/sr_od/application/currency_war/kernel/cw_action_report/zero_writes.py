@@ -246,7 +246,7 @@ def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -
 # 不在零写族(移具名模块):pick_equip / pick_supply = 分步→即时实现
 # (同包具名模块);pick_invest 拆为
 # pick_invest_strategy / pick_invest_env(即时上报形态:机械链发出即按
-# 成功写完整结果,action_ops.md §1 增补 2;策略支整支走获得链
+# 成功写完整结果,skills/sr-od-dev-currency-war/references/flow/action-op.md §1 增补 2;策略支整支走获得链
 # gain_invest_strategy,环境支走 gain_invest_env);pick_encounter 在同包
 # pick_encounter.py(发出即写 chosen_encounter,选择事实 =
 # 动作执行时产生,用户裁定 2026-09-21)。包级 ``__getattr__`` 命名规约

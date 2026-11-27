@@ -23,7 +23,7 @@ cw_equip_env(第 6/7 步只承载调用时机)。
 
 ``mandate.run_mandate`` 为测试面已登记函数(生产调用走本模块 emit)。
 ``truncate_frame_stable``(帧稳定截断动作发出器,词表权威版本 =
-flow/action_exec.md §1)与 ``_ore_bench_free`` 等公共骨架——
+skills/sr-od-dev-currency-war/references/flow/action-op.md §2)与 ``_ore_bench_free`` 等公共骨架——
 bridge 与测试面在产消费。
 
 晶矿第 3 步 = 垫件纯判断(无试错计数)。占席颜色→内容映射为待实机
@@ -141,7 +141,7 @@ def _ore_bench_free(gs: GameState) -> int:
 ORE_CLICK_BATCH_MAX_K: int = 3
 
 # ===== 帧稳定截断分类(契约 v2 §3.2 备战线域逐类;词表 as-built 权威
-# ===== = flow/action_exec.md §1,动作发出器增补条目须回契约改版,禁只改代码)=====
+# ===== = skills/sr-od-dev-currency-war/references/flow/action-op.md §2,动作发出器增补条目须回契约改版,禁只改代码)=====
 
 #: 截断点(该动作可作序列最后一个动作发出,其后截断)。武装箱选卡 = 画面
 #: op 分发,非动作词表成员。穿戴/工具原子 = 截断点:穿戴即合成/网格
@@ -160,7 +160,7 @@ _CONTINUABLE: tuple[type, ...] = (
     # 重观察动作(in_place = 当前画面环内重观察):零迁移/零坐标,满足
     # 「可续」语义;现役发出面 = 备战决策环无动作可发帧(计划前置步
     # 无进展帧/空序列兜底)——单一动作级发出,序列续发面为零。登记
-    # 义务(动作发出器增补条目须回契约改版,flow/action_exec.md §1)
+    # 义务(动作发出器增补条目须回契约改版,skills/sr-od-dev-currency-war/references/flow/action-op.md §2)
     # 由此声明;分类表契约改版随部署统一批(D5-1)统一回权威版本。
     CwActionObsParam,
 )

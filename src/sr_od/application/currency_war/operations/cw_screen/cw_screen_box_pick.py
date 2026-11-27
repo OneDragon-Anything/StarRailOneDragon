@@ -1,7 +1,7 @@
 """货币战争 备战-武装箱选择 四选一画面 op。
 
 武装箱 4 选 1 的访问面 = **独立建档画面**「货币战争-备战-武装箱选择」,
-外循环阶段一身份分发进本 op(分发判定单一源 = ``flow/outer_loop.md``
+外循环阶段一身份分发进本 op(分发判定单一源 = ``skills/sr-od-dev-currency-war/references/flow/loop.md``
 武装箱选卡不属备战动作词表(单选族例外:选卡即终结,判据 =
 ``screens/README.md`` §3)。链路:备战环 ``CwActionOpenBoxParam`` 点开启
 (**终结化**——开箱即结束本次访问)→ 外循环按本画面分发本 op → OCR 卡名 →
@@ -44,7 +44,7 @@ miss 未发 = round_fail 返回主循环按画面重分发)+ OCR 卡名行读数
 一并上报入状态容器(同门双写,坐标单一真相源 = 观察上报,op-layer.md
 35);决策动作 node 零坐标现算。决策动作 node = 选卡决策
 (``_decide_card_index`` 局内专用,fail-closed 契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选中即确认 +
-动画等待 + 自上报住动作 op,机械链契约 = ``flow/action_exec.md`` §2;
+动画等待 + 自上报住动作 op,机械链契约 = ``skills/sr-od-dev-currency-war/references/flow/action-op.md`` §4;
 点击坐标 = 状态容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
 结束本次访问(单选族例外,判据 = ``screens/README.md`` §3;选卡落地由下一帧
 观察覆盖,无落地复查旗标)。
@@ -191,7 +191,7 @@ class CwScreenBoxPick(CwOperation):
         """选卡决策 → 选卡链经工厂派发 → 选卡即终结,返回主循环。
 
         点卡选中即确认 + 动画等待 + 自上报住 ``CwActionPickBoxCardOp``
-        (机械链契约 = flow/action_exec.md §2;点击坐标 = 状态容器
+        (机械链契约 = skills/sr-od-dev-currency-war/references/flow/action-op.md §4;点击坐标 = 状态容器
         ``box_card_names_xy[idx]`` 动作 op 自取,选卡落地归下一帧观察
         覆盖);本 op 只决策(局内;fail-closed 契约)与返回主循环;无 match
         局外不设早退支(op-layer.md §1.1;用户裁决 全族删门)。

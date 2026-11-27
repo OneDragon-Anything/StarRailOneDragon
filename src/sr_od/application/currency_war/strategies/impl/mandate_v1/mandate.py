@@ -806,7 +806,7 @@ def run_mandate(frame: MandateFrame,
     # 一致;(a) 先于全部买面动作求值(Z1 分支序:义务分支之外的先手)。
     # 载体 = Emitted(CwActionSellBenchParam, True):发出载体 reason 归因面已随
     # 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标;契约条目 =
-    # flow/action_exec.md §1)。
+    # skills/sr-od-dev-currency-war/references/flow/action-op.md §2)。
     # exclude = sell_exclusions(session, k, channel='interest',
     # current_round=frame.round_num):装配 A 全量形态(单一入口
     # sell_gate)。身份段(义务基座 ∪ 保护集 ∪ registry 核心)已随统一

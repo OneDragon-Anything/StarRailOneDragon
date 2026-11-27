@@ -11,7 +11,7 @@ overlay,无验效(回 overlay 由下轮外循环重判)。一份 op 类服务两
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口识别标志门(命中的返回按钮识别标志,与外循环阶段一身份分发判定同源同参(分发判定单一源 = flow/outer_loop.md §2.2);miss 未发 =
+入口识别标志门(命中的返回按钮识别标志,与外循环阶段一身份分发判定同源同参(分发判定单一源 = skills/sr-od-dev-currency-war/references/flow/loop.md §2);miss 未发 =
 round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零状态容器写点,obs 类住
 kernel/cw_screen_report/prep_locked_return.py,import 构造即可)。决策

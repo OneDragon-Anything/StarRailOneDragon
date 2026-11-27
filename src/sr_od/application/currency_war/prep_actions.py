@@ -22,7 +22,7 @@ retry 网承接。
 reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 ``execute`` 无返回,发出即职责完成)。失败路径(修订):
 - 参数非法 → 对应动作 op 内守卫断言 AssertionError(集中式 validate
-  已退役进各 op,flow/action_ops.md §1 决策侧参数现算契约;异常上抛
+  已退役进各 op,skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算契约;异常上抛
   通道 = 执行异常同款);
 - 执行前输入契约拒绝(晶矿/箱/按钮等目标不在,执行前观察,M6 边界面)→
   本动作未发出,机械部分完成后返回主循环重观察重决策;
@@ -360,7 +360,7 @@ class PrepActionExecutor:
         self._last_skip_substate: bool = False
 
     # ===== 执行入口(机械执行,无返回;参数守卫已收拢各动作 op 内
-    #       守卫断言,flow/action_ops.md §1 决策侧参数现算契约)=====
+    #       守卫断言,skills/sr-od-dev-currency-war/references/flow/action-op.md §1 决策侧参数现算契约)=====
 
     def execute(self, action: CwAction) -> None:
         """机械执行一个动作(无返回;发出即职责完成,落地判定归
@@ -395,7 +395,7 @@ class PrepActionExecutor:
             # CwActionStartBattleOp 单击(单击原子,op 内零收尾零验证),
             # round 结果成功态即发出事实
             # (round_fail = 找不到按钮/area 缺失,已登记例外 =
-            # action_ops.md §2.3);
+            # skills/sr-od-dev-currency-war/references/flow/action-op.md §3);
             # 执行缝(假环境)不经真分派 = round 成功态原值透传。
             self.last_launch_ok = op_success
         # (S1 清键执行侧落地门已停用删除
@@ -459,7 +459,7 @@ class PrepActionExecutor:
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
         """动作分派(经注册表类级解析 + (ctx, param,
         env) 组装新壳 op ``CwActionXxxOp(SrOperation)``,执行取 round
-        结果;op 形态权威版本 = flow/action_ops.md §1)。
+        结果;op 形态权威版本 = skills/sr-od-dev-currency-war/references/flow/action-op.md §1)。
 
         返回 ``(机械执行摘要, 是否实际发出)``。op_success = round 结果成功态
         (``round_success`` = 已发出;``round_fail`` = 定位失败等未发出

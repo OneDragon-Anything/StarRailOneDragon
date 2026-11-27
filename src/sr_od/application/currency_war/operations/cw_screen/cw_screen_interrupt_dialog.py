@@ -15,7 +15,7 @@ exogenous popup 行随 op 迁移(测量链:误触弹窗是外生事件
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口识别标志门(「标识-中断挑战」,与阶段一身份分发判定同源同参,分发判定单一源 = flow/outer_loop.md §2.2;miss 未发 =
+入口识别标志门(「标识-中断挑战」,与阶段一身份分发判定同源同参,分发判定单一源 = skills/sr-od-dev-currency-war/references/flow/loop.md §2;miss 未发 =
 round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零状态容器写点,obs 类住
 kernel/cw_screen_report/interrupt_dialog.py,import 构造即可)。决策动作

@@ -25,7 +25,7 @@
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
 零参决策 → ``classify_planner_branch``
 分支类型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结返回主循环
-(``flow/action_ops.md`` §1 与 §4.5 PickPlanner 行:动作 op 确认
+(``skills/sr-od-dev-currency-war/references/flow/action-op.md`` §1 与 §5 PickPlanner 行:动作 op 确认
 点击后立即上报完整效果分支,零落地复查、零落地补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
 本屏 sim 分支 = 后端呈现本屏模态时合成两卡候选写槽
@@ -180,7 +180,7 @@ class CwScreenYinLang(CwOperation):
         """零参决策 → 分支类型判定 → 组装 env → 派发即 ``round_success`` 终结。
 
         动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果分支
-        (单相即时上报,权威版本 = ``flow/action_ops.md`` §1  与
+        (单相即时上报,权威版本 = ``skills/sr-od-dev-currency-war/references/flow/action-op.md`` §1  与
         PickPlanner 行)——本 op 派发即终结返回主循环重新观察,零重入
         裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
         当前画面重识别重派)。"""
