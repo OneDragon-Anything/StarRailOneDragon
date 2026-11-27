@@ -40,7 +40,7 @@
 
 ### 3.1 角色域
 
-- 入口:`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py`(产出:注册表段片段 `registry_chars_v<版本>.py` / 人读角色文档 / 立绘模板 `character_avatar/` / 掉出名单 diff 报告 / `--check-only` 对拍;`--config <快照>` 离线读缓存、`--skip-templates` 跳过模板两步——只重跑数据面时用)。
+- 入口:`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py`(产出:注册表段片段 `registry_chars_v<版本>.py` / 立绘模板 `character_avatar/` / 掉出名单 diff 报告 / `--check-only` 对拍;`--config <快照>` 离线读缓存、`--skip-templates` 跳过模板两步——只重跑数据面时用)。
 - 注册表 = `src/sr_od/application/currency_war/data/cw_chars.py`。官方段生成片段按两侧标记注释**整段替换**接入(标记与 `cw_chars.py` 官方段标记逐字一致,零人工补逗号;每条 `skills=(...)` 技能块一并重灌);`SYSTEM_UNITS` 系统单位段为实机采集人工维护,生成器不触碰。字段全官方镜像(cost/position/category_tags/羁绊三字段/is_expert/is_hide/skills 从配置照抄;skills = `CharacterSkill` 名/前台后台/分类标签/原文,各星级段原文相同只存一份),角色名经 `canon()` 归一(U+2022→U+00B7;产出段含 • 直接报错)。
 - 验收:`--check-only` 片段 vs config 对拍归零(含 skills)——无需例外清单(注册表为官方多条 1:1 镜像);`DISTINCT_CARDS_PER_COST` 从注册表派生自动跟上;`cw_char_lookup` 任一角色能返回 `skills`(重启 server 后实调)。
 

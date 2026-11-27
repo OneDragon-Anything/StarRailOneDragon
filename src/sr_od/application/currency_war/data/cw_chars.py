@@ -2,8 +2,7 @@
 
 **来源**:纯角色 = 攻略广场 game/config API role_list 官方镜像(63 条,含同名多档;
 重生成与版本更新工序 = ``skills/sr-od-dev-currency-war/references/version-update.md``);
-系统单位 = 实机采集人工登记(官方无数据)。人读角色文档 =
-``docs/game/currency_war/data/characters/``(生成器产,与注册表同源)。
+系统单位 = 实机采集人工登记(官方无数据)。
 
 **库形态**(为什么建模):核心实体(角色/阵营/策略/环境/装备)应是**正规 model 类 +
 注册表**(可查询、可校验、有类型关系),而非字符串散落各处。本模块是角色域:

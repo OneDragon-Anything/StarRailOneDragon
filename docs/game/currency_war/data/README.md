@@ -1,7 +1,7 @@
-# 货币战争 · 基础资料索引(注册表已建模的数据 doc 已删;本目录存未建模唯一源 + 生成器快照 characters/)
+# 货币战争 · 基础资料索引(注册表已建模的数据 doc 已删;本目录存未建模唯一源 + 生成器产出 plaza_meta.md)
 
 > **用途**:策略配置地基 + 理解攻略术语。**只存原始数据**,不含策略代码。
-> **数据基准**:V4.4 赛季(数据抓取日 2026-08-03);characters/ 档案 version 4.7(`gen_plaza_chars.py` 生成)。
+> **数据基准**:V4.4 赛季(数据抓取日 2026-08-03)。
 > **主来源**:米游社百科「货币战争图鉴」`channel/map/209`(权威)。全部标 🟢 米游社原文 / 🟡 攻略一致 / 🔴 未找到。
 
 ---
@@ -16,7 +16,7 @@
 
 ## 文件说明
 
-**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_traits_data.TRAITS`,29 条,`skills/sr-od-dev-currency-war/scripts/gen_traits.py` 生成勿手编)/角色(`cw_chars.CHARACTERS`,63 条含同名多档,含技能原文 `Character.skills`)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,116)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(61 档 = 61 名角色,同名多档合并成档,`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_traits_data.TRAITS`,29 条,`skills/sr-od-dev-currency-war/scripts/gen_traits.py` 生成勿手编)/角色(`cw_chars.CHARACTERS`,63 条含同名多档,含技能原文 `Character.skills`)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,116)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。其余仅存**未建模的唯一源**:
 
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|
