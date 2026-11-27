@@ -4,7 +4,7 @@
   .debug/game_data/character/wiki/hoyowiki_en_names.json
     { "归一化中文名": {"en": 官方英文名, "en_normalized": 小写去符号, "hoyowiki_page_id": "<entry_page_id>"} }
 
-归一化口径:•/·/・统一为 ·、去全部空白、lower——与 finalize_map.py / gen_candidates.py 的 cn 连表键一致。
+归一化口径:•/·/・统一为 ·、去全部空白、lower。
 接口依据:sr-od-official-api 的 references/国际服wiki/wiki-角色.md;条目不含 avatarId,zh/en 条数不等(88/93),
 交集才是可连表的。国际版域名可能需代理:urllib 自动读 HTTP_PROXY/HTTPS_PROXY 环境变量
 (本机 Clash http://127.0.0.1:7890,不通就直连)。仅标准库,项目根目录运行:
