@@ -1,11 +1,10 @@
 """专家邀请函屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
-观察面 = 弹窗门判定 + 四卡区羁绊解析 + 羁绊面板现读计数(弹窗帧一次
-读)。report 摄入点 = operations/cw_screen/cw_screen_expert_invite.py::
+观察面 = 弹窗门判定 + 四卡区羁绊解析 + 上阵阵容的羁绊计数(取自状态
+容器 :attr:`GameState.board`)。report 摄入点 = operations/cw_screen/cw_screen_expert_invite.py::
 ``CwScreenExpertInvite.observe``(观察 node);适用范围边界:动作事实
-``chosen_expert`` 不并入,留在落地复查点;羁绊面板读数 helper 住
-obs/ 桶,归观察侧,kernel 禁直依。
+``chosen_expert`` 不并入,留在落地复查点。
 """
 from __future__ import annotations
 
@@ -26,8 +25,9 @@ class CwScreenExpertInviteObs:
 
     [索引定义] ``card_bonds`` = 四卡区羁绊解析;[索引定义] 下标 = 画面
     「卡-1..卡-4」物理区序(0 基,与判据返回的卡下标同坐标系,恒稳);
-    取值时机 = 弹窗帧 OCR 解析期快照。``board`` = 弹窗帧羁绊面板现读计数;
-    读数失败 = {}(现金为王兜底语义由观察侧原样携带)。
+    取值时机 = 弹窗帧 OCR 解析期快照。``board`` = 上报时点的上阵羁绊计数
+    (取自状态容器 :attr:`GameState.board`,不是画面读数);没有对局对象
+    = {}(现金为王兜底语义由观察侧原样携带)。
 
     [索引定义] ``card_points`` = 四卡区点击坐标,与 ``card_bonds`` 同序等长
     (坐标系 = 「卡-1..卡-4」区序,0 基下标 = ``card_bonds`` 同一卡下标
@@ -65,7 +65,7 @@ def report_screen_expert_invite_obs(gs: GameState,
     写点定位 = cw_screen_expert_invite.py::``CwScreenExpertInvite.observe``
     (观察 node;``ExpertInvitePayload`` 四字段同门一并写——card_bonds/
     board/card_points/cash_point,op-layer.md §1.1 :35 坐标随观察一并入
-    状态容器;board 读数失败 = {} 的现金为王兜底语义由观察侧原样携带);
+    状态容器;board 为空表 = 现金为王兜底语义由观察侧原样携带);
     ``chosen_expert`` 留在落地复查点(动作事实边界)。
     """
     if sig is None:

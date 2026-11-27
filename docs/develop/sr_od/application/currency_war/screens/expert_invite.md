@@ -15,13 +15,13 @@
 
 观察 node = 弹窗在场门(「标识-专家邀请函」;miss = round_fail 返回主循环重识别自愈)+ 弹窗载体一次读(每访问恰一次,决策轮复用实例载体):
 
-- 板面阵营 `obs/cw_observation.py::read_board`(弹窗帧左侧羁绊面板透出可读;读数失败 = 空 dict 走现金为王兜底,告警不阻塞);
+- 上阵羁绊计数 board:取自状态容器(`GameState.board`,按上阵行读时现算),不读画面上的羁绊面板;没有对局对象 = 空 dict 走现金为王兜底;
 - 卡羁绊解析 `_resolve_card_bonds`(逐卡 area 约束 OCR):文本精确命中 `data/cw_factions.py::FACTIONS` 键 → 文本含键(OCR 噪声容错)→ 文本 = `data/cw_chars.py::get_char` 角色名命中取其首个羁绊(factions 优先,空则 schools)→ 全未命中 = None(策略层走兜底);
 - 选卡坐标解算(坐标随观察上报,[op-layer.md](op-layer.md) §1.1「选择坐标观察上报」):四卡区中心(`CARD_AREAS` 逐区 `area_center`)+「卡-现金为王」区中心,观察期一次解算,值形状 = 1080p 平铺元组,随 payload 同门一并上报;坐标单一真相源 = 观察上报,决策半零现算(动作 op 自状态容器按下标取,见 §4)。
 
 观察 payload = `CwScreenExpertInviteObs`(`on_screen`/`card_bonds`/`board`/`card_points`/`cash_point`/`screen`,住 `kernel/cw_screen_report/expert_invite.py`);report = `report_screen_expert_invite_obs` 载体写状态容器 `expert_invite` 槽(`ExpertInvitePayload` card_bonds/board/card_points/cash_point 四字段同门一并写,恒写;match/gs 缺席的局外兜底路径跳过)。
 
-**转换成功性边界(观察标准化门条款下登记的待修问题)**:本屏名字域转换失败在用语义 = 照报不早退——单卡解析全不中 → 该卡 None 照报(`_resolve_card_bonds` 三级解析全未命中)、板面读数失败 → `{}` 照报(`read_board` 异常吞为空),两态进状态容器照常决策(kernel 判据无依据 → -1 现金为王);与 [op-layer.md](op-layer.md) §1.1 观察标准化门「转换失败 = 观察失败 round_fail 不写不上报」不一致面已登记为待修问题形态。坐标域随同门:任一卡区建档缺失 → `card_points` 整域 None 照报(禁部分列表——错位 idx 坐标系);report 组装处等长守卫 `len(card_points) == len(card_bonds)`(定长 4,卡 i ↔ card_points[i] 同序)。收敛方向 = 转换失败 round_fail 不写不上报或维持屏契约边界,名字与坐标同门一次落净(该待修问题的修复由专门批次裁决),修复前零行为改动。
+**转换成功性边界(观察标准化门条款下登记的待修问题)**:本屏名字域转换失败在用语义 = 照报不早退——单卡解析全不中 → 该卡 None 照报(`_resolve_card_bonds` 三级解析全未命中)、board 为空(没有对局对象)→ `{}` 照报,两态进状态容器照常决策(kernel 判据无依据 → -1 现金为王);与 [op-layer.md](op-layer.md) §1.1 观察标准化门「转换失败 = 观察失败 round_fail 不写不上报」不一致面已登记为待修问题形态。坐标域随同门:任一卡区建档缺失 → `card_points` 整域 None 照报(禁部分列表——错位 idx 坐标系);report 组装处等长守卫 `len(card_points) == len(card_bonds)`(定长 4,卡 i ↔ card_points[i] 同序)。收敛方向 = 转换失败 round_fail 不写不上报或维持屏契约边界,名字与坐标同门一次落净(该待修问题的修复由专门批次裁决),修复前零行为改动。
 
 ## 4. 动作面
 
@@ -38,8 +38,8 @@ board/card_bonds = 观察轮 obs 载体
 pick = decide_expert_invite()(零参;候选读状态容器 expert_invite 槽;
   判据本体 = kernel choose_expert_index;屏内无兜底)
   ① 主力阵营(在场计数最大,并列取名字序首个保证确定性)同线卡优先;
-  ② 次选与任一在场阵营(board 计数 >0)同线卡(羁绊面板口径 = factions∪schools
-    并计,卡上标签同属一个羁绊命名空间);
+  ② 次选与任一在场阵营(board 计数 >0)同线卡(board 按上阵单位的全部羁绊
+    标签 factions∪schools 并计,卡上标签同属一个羁绊命名空间);
   ③ 全无同线 / board 空 / card_bonds 空 → -1(现金为王:选卡无依据时
     经济兜底优于盲选)
 + 守卫①(pick 非 CwActionPickExpertInviteParam → round_fail 含原值,
@@ -80,7 +80,7 @@ pick = decide_expert_invite()(零参;候选读状态容器 expert_invite 槽;
 
 ## 8. 守卫与防线
 
-- 板面读数失败 → 现金为王兜底(kernel 判据侧合法缺省 = `choose_expert_index` board 空返 -1,观察域语义,非流程侧决策兜底;决策出口处置见守卫两条)(观察读数转换失败态 = None/{} 照报,在用为 [op-layer.md](op-layer.md) §1.1 观察标准化门下登记的待修问题;收敛方向 = 转换失败 round_fail 不写不上报或屏契约登记转换成功性边界——本屏现按后者登记,见 §3 转换成功性边界)。
+- board 为空(没有对局对象,或上阵行还没写过)→ 现金为王兜底(kernel 判据侧合法缺省 = `choose_expert_index` board 空返 -1,观察域语义,非流程侧决策兜底;决策出口处置见守卫两条)(卡羁绊解析失败态 = None 照报,在用为 [op-layer.md](op-layer.md) §1.1 观察标准化门下登记的待修问题;收敛方向 = 转换失败 round_fail 不写不上报或屏契约登记转换成功性边界——本屏现按后者登记,见 §3 转换成功性边界)。
 - 决策返回契约守卫:decide_expert_invite 返回 None/动作类型清单外的值 = 具名 round_fail,不发出无依据的动作、策略异常自然传播(原「决策链异常降级同直调」停用申报)。
 - 值域守卫:pick idx 域外 = 守卫断言 AssertionError,域 = 0..3 ∨ -1(原「idx<0 静默并入现金分支」停用申报)。
 - 选卡坐标缺席/越界 = 动作 op 状态容器取点守卫断言 AssertionError(坐标单一真相源 = 观察上报,[op-layer.md](op-layer.md) §1.1「选择坐标观察上报」,动作 op 按下标自状态容器 `expert_invite` 取,禁现算回退;原「决策半 area 缺坐标 round_fail」随坐标收敛迁出)。

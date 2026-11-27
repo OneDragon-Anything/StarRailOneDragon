@@ -10,18 +10,18 @@ prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 
 
 处理链(开卡半 = 备战词表 ``CwActionOpenBookcardParam`` 链承接;弹窗由外
 循环阶段一身份分发进本 op,分发判定单一源 = ``skills/sr-od-dev-currency-war/references/flow/loop.md`` §2):
-  弹窗在场门 → 选卡(读板面阵营 → 默认策略选卡)→ 机械部分完成即结束本次访问(落地复查收案)。
+  弹窗在场门 → 选卡(按上阵阵容的羁绊计数 → 默认策略选卡)→ 机械部分完成即结束本次访问(落地复查收案)。
   交互事实来源 = 2026-08-30 实机人工处理实录(点槽开弹窗;点停云卡 → 弹窗关、
   回备战、停云入商店)。
 
 默认策略判据(普查迁移 并入 kernel:单一源 =
 ``kernel/cw_events.choose_expert_index``,三级语义原样=在场浓度版):
-读当前羁绊面板(``read_board``,弹窗帧左侧面板透出可读)→ ①选与**主力
+用状态容器的上阵羁绊计数(board,按上阵行读时现算;没有对局对象 = 空表)→ ①选与**主力
 阵营**(在场计数最大)同线的卡;②无主力同线 → 选与任一在场阵营同线的卡
 (凑档边际仍正);③全无同线 → 现金为王(经济兜底,不引入板外新阵营)。
 实机首例:board 仙舟3 → 四选一人工选停云(仙舟),与本判据一致。
 消费唯一入口 = 策略器零参 ``decide_expert_invite()``,
-写槽(弹窗载体 = 卡羁绊解析 + 板面计数)→ 零参决策,handler 零判据实现。
+写槽(弹窗载体 = 卡羁绊解析 + 上阵阵容的羁绊计数)→ 零参决策,handler 零判据实现。
 行为分叉申报:E9 在案规格(13_pick_family.md §2,目标线成员优先 → 池
 浓度)与实码(在场计数版)分叉,已登记待办:独立行为变更(迁移报告),
 迁移保持实码行为。
@@ -29,8 +29,8 @@ prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 
 形态(screens/op-layer.md 两 node 形态):观察 node + 决策动作 node 两
 段直继承 SrOperation。观察 node = 弹窗在场门(标识-专家邀请函,miss =
 round_fail 返回主循环重新识别)+ 弹窗载体一次读(四卡区羁绊解析 + 四卡区
-中心与现金为王点解算 + 羁绊面板现读计数,入口帧一次读,与现役决策体读
-同帧等价)→
+中心与现金为王点解算 + 上阵阵容的羁绊计数(取自状态容器,不读画面),
+入口帧一次读)→
 ``report_screen_expert_invite_obs`` 落状态容器 ``expert_invite``(payload 打包:
 card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
 选择坐标观察上报)→ obs 挂实例属性进决策 node。决策动作 node = 重入
@@ -125,8 +125,8 @@ class CwScreenExpertInvite(CwOperation):
         # 落地复查由决策动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写
         # chosen_expert + 到账登记;弹窗仍在 = 点击未落地 → 重走。
         self._pick_pending: tuple[int, list[str | None]] | None = None
-        # 观察结果(观察 node 产物,决策动作 node 消费;card_bonds/board =
-        # 弹窗帧一次读)。
+        # 观察结果(观察 node 产物,决策动作 node 消费;card_bonds = 弹窗帧一次读,
+        # board = 状态容器的上阵羁绊计数)。
         self._obs: CwScreenExpertInviteObs | None = None
 
     @operation_node(name='观察', is_start_node=True)
@@ -136,7 +136,8 @@ class CwScreenExpertInvite(CwOperation):
         门 miss = round_fail 早退(与现役首闸同 status:弹窗不在(已被处理 /
         门外帧弹窗已消失)→ 返回主循环重新识别,外循环按下一帧画面重分发自愈;
         开卡缺位由备战词表 CwActionOpenBookcardParam 链承接,与本 op 无关)。
-        门后载体一次读(板面读数失败 = {} 的现金为王兜底语义原样携带;四卡
+        门后载体一次读(board = 状态容器按上阵行现算的羁绊计数,没有对局对象
+        = {} 的现金为王兜底语义原样携带;四卡
         区中心与现金为王点观察期解算,坐标随 payload 同门一并上报,
         op-layer.md §1.1 :35)→ ``report_screen_expert_invite_obs``;match/gs
         缺席的局外兜底路径跳过 report(无 match 局外不设早退支,用户裁决
@@ -146,12 +147,11 @@ class CwScreenExpertInvite(CwOperation):
                 screen, INVITE_SCREEN, INVITE_MARK_AREA,
                 crop_first=False).is_success:
             return self.round_fail('选卡入口:邀请函弹窗未现')
-        board: dict[str, int] = {}
-        try:
-            from sr_od.application.currency_war.obs.cw_observation import read_board
-            board = read_board(self.ctx, screen) or {}
-        except Exception as e:   # noqa: BLE001  板面读数失败走兜底(现金为王)
-            log.warning('[cw-bookcard] 羁绊面板读数失败(走现金为王兜底): %s', e)
+        # 上阵羁绊计数取自状态容器(按上阵行读时现算),不读画面上的羁绊面板;
+        # 没有对局对象 = 空表,选卡走「现金为王」兜底。
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        board: dict[str, int] = dict(_gs.board.value) if _gs is not None else {}
         card_bonds = [_resolve_card_bonds(self.ctx, screen, a)
                       for a in CARD_AREAS]
         # 坐标域生产(类型化载荷生产半,住观察侧;op-layer.md §1.1 :35
@@ -174,8 +174,6 @@ class CwScreenExpertInvite(CwOperation):
             cash_point=(None if _cash_pt is None
                         else (_cash_pt.x, _cash_pt.y)),
             screen=screen)
-        _match = getattr(self.ctx, 'cw_match', None)
-        _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_expert_invite_obs(_gs, obs)
         self._obs = obs
